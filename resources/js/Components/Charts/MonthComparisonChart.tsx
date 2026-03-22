@@ -43,7 +43,7 @@ export default function MonthComparisonChart({ data, months }: Props) {
                             width={70}
                         />
                         <Tooltip
-                            formatter={(v: number) => [formatCurrency(v)]}
+                            formatter={(v) => [formatCurrency((v as number) ?? 0)]}
                             contentStyle={{ fontSize: 12 }}
                         />
                         <Legend iconType="rect" />

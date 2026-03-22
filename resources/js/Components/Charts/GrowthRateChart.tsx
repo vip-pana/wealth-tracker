@@ -38,7 +38,7 @@ export default function GrowthRateChart({ data }: Props) {
                             width={50}
                         />
                         <Tooltip
-                            formatter={(v: number) => [formatPercent(v), 'Variazione MoM']}
+                            formatter={(v) => [formatPercent((v as number) ?? 0), 'Variazione MoM']}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
                             contentStyle={{ fontSize: 12 }}
                         />

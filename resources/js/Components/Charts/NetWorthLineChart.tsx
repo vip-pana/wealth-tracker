@@ -38,7 +38,7 @@ export default function NetWorthLineChart({ data }: Props) {
                             className="fill-muted-foreground"
                         />
                         <Tooltip
-                            formatter={(v: number) => [formatCurrency(v), 'Totale']}
+                            formatter={(v) => [formatCurrency((v as number) ?? 0), 'Totale']}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
                             contentStyle={{ fontSize: 12 }}
                         />

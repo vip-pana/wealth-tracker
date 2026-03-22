@@ -40,8 +40,8 @@ export default function AllocationDonutChart({ data }: Props) {
                             ))}
                         </Pie>
                         <Tooltip
-                            formatter={(v: number, name: string) => [
-                                `${formatCurrency(v)} (${total > 0 ? ((v / total) * 100).toFixed(1) : 0}%)`,
+                            formatter={(v, name) => [
+                                `${formatCurrency((v as number) ?? 0)} (${total > 0 ? ((((v as number) ?? 0) / total) * 100).toFixed(1) : 0}%)`,
                                 name,
                             ]}
                             contentStyle={{ fontSize: 12 }}

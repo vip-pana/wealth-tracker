@@ -42,7 +42,7 @@ export default function ForecastChart({ data }: Props) {
                             width={70}
                         />
                         <Tooltip
-                            formatter={(v: number, name: string) => [formatCurrency(v), name]}
+                            formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
                             contentStyle={{ fontSize: 12 }}
                         />
