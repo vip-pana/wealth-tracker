@@ -7,10 +7,12 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\MonthlySnapshot;
+use App\Models\SnapshotCategoryValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AnalyticsController extends Controller
 {
@@ -36,7 +38,7 @@ class AnalyticsController extends Controller
             'growthRates' => $growthRates,
             'monthComparison' => $monthComparison,
             'forecast' => $forecast,
-            'categories' => $categories->map(fn ($c) => [
+            'categories' => $categories->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
@@ -96,7 +98,7 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    public function exportCsv(Request $request)
+    public function exportCsv(Request $request): StreamedResponse
     {
         $categoryId = $request->get('category_id');
         $dateFrom = $request->get('date_from');
@@ -122,7 +124,8 @@ class AnalyticsController extends Controller
             'Cache-Control' => 'no-cache, no-store',
         ];
 
-        $callback = function () use ($assets) {
+        $callback = function () use ($assets): void {
+            /** @var resource $handle */
             $handle = fopen('php://output', 'w');
             // UTF-8 BOM for Excel compatibility
             fwrite($handle, "\xEF\xBB\xBF");
@@ -144,14 +147,22 @@ class AnalyticsController extends Controller
 
     // ─── Private helpers ────────────────────────────────────────────────────
 
+    /** @param Collection<int, MonthlySnapshot> $snapshots
+     * @return array<int, array<string, mixed>>
+     */
     private function buildNetWorthSeries(Collection $snapshots): array
     {
-        return $snapshots->map(fn ($s) => [
+        return $snapshots->map(fn (MonthlySnapshot $s) => [
             'month' => $s->date->format('Y-m-d'),
             'total_value' => (float) $s->total_value,
         ])->values()->toArray();
     }
 
+    /**
+     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Category>  $categories
+     * @return array<int, array<string, mixed>>
+     */
     private function buildAllocationData(Collection $snapshots, Collection $categories): array
     {
         $last = $snapshots->last();
@@ -159,16 +170,21 @@ class AnalyticsController extends Controller
             return [];
         }
 
-        return $last->categoryValues->map(fn ($cv) => [
+        return $last->categoryValues->map(fn (SnapshotCategoryValue $cv) => [
             'name' => $cv->category->name,
             'value' => (float) $cv->value,
             'color' => $cv->category->color,
         ])->values()->toArray();
     }
 
+    /**
+     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Category>  $categories
+     * @return array<int, array<string, mixed>>
+     */
     private function buildStackedBar(Collection $snapshots, Collection $categories): array
     {
-        return $snapshots->map(function ($s) use ($categories) {
+        return $snapshots->map(function (MonthlySnapshot $s) use ($categories) {
             $entry = ['month' => $s->date->format('Y-m-d')];
             foreach ($categories as $cat) {
                 $cv = $s->categoryValues->firstWhere('category_id', $cat->id);
@@ -179,6 +195,10 @@ class AnalyticsController extends Controller
         })->values()->toArray();
     }
 
+    /**
+     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @return array<int, array<string, mixed>>
+     */
     private function computeGrowthRates(Collection $snapshots): array
     {
         $result = [];
@@ -199,6 +219,11 @@ class AnalyticsController extends Controller
         return $result;
     }
 
+    /**
+     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Category>  $categories
+     * @return array<int, array<string, mixed>>
+     */
     private function computeMonthComparison(Collection $snapshots, Collection $categories): array
     {
         if ($snapshots->count() < 2) {
@@ -208,7 +233,7 @@ class AnalyticsController extends Controller
         $last = $snapshots->last();
         $penult = $snapshots->slice(-2, 1)->first();
 
-        return $categories->map(function ($cat) use ($last, $penult) {
+        return $categories->map(function (Category $cat) use ($last, $penult) {
             $lastVal = optional($last->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
             $penultVal = optional($penult->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
 
@@ -221,6 +246,10 @@ class AnalyticsController extends Controller
         })->values()->toArray();
     }
 
+    /**
+     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @return array<int, array<string, mixed>>
+     */
     private function computeForecast(Collection $snapshots): array
     {
         if ($snapshots->count() < 2) {
@@ -229,7 +258,7 @@ class AnalyticsController extends Controller
 
         $n = $snapshots->count();
         $xs = range(0, $n - 1);
-        $ys = $snapshots->pluck('total_value')->map(fn ($v) => (float) $v)->toArray();
+        $ys = $snapshots->pluck('total_value')->map(fn (mixed $v) => (float) $v)->toArray();
 
         $sumX = array_sum($xs);
         $sumY = array_sum($ys);
@@ -245,7 +274,7 @@ class AnalyticsController extends Controller
         $intercept = ($sumY - $slope * $sumX) / $n;
 
         // Historical points with trend line
-        $historical = $snapshots->values()->map(function ($s, $i) use ($intercept, $slope) {
+        $historical = $snapshots->values()->map(function (MonthlySnapshot $s, int $i) use ($intercept, $slope) {
             return [
                 'month' => $s->date->format('Y-m-d'),
                 'actual' => (float) $s->total_value,
@@ -255,7 +284,9 @@ class AnalyticsController extends Controller
         })->toArray();
 
         // 6-month projection
-        $lastDate = $snapshots->last()->date->copy();
+        /** @var MonthlySnapshot $lastSnap */
+        $lastSnap = $snapshots->last();
+        $lastDate = $lastSnap->date->copy();
         $projection = [];
         for ($i = 1; $i <= 6; $i++) {
             $x = $n - 1 + $i;

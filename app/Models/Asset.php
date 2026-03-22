@@ -26,6 +26,7 @@ class Asset extends Model
         'date' => 'date:Y-m-d',
     ];
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

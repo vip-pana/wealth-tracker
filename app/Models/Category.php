@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $color
  * @property string|null $icon
  * @property int $sort_order
+ * @property int|null $assets_count
  */
 class Category extends Model
 {
@@ -22,11 +23,13 @@ class Category extends Model
         'sort_order' => 'integer',
     ];
 
+    /** @return HasMany<Asset, $this> */
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
     }
 
+    /** @return HasMany<SnapshotCategoryValue, $this> */
     public function snapshotValues(): HasMany
     {
         return $this->hasMany(SnapshotCategoryValue::class);

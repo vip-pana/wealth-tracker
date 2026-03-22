@@ -17,7 +17,7 @@ class CategoryController extends Controller
         $categories = Category::orderBy('sort_order')
             ->withCount('assets')
             ->get()
-            ->map(fn ($c) => [
+            ->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
