@@ -50,6 +50,8 @@ export default function MonthComparisonChart({ data, months }: Props) {
                                 borderColor: 'hsl(var(--border))',
                                 color: 'hsl(var(--card-foreground))',
                             }}
+                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="rect" />
                         <Bar dataKey="previous" name={prevLabel} fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.7} />

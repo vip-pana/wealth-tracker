@@ -50,6 +50,8 @@ export default function ForecastChart({ data }: Props) {
                                 borderColor: 'hsl(var(--border))',
                                 color: 'hsl(var(--card-foreground))',
                             }}
+                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="line" />
                         {splitMonth && (

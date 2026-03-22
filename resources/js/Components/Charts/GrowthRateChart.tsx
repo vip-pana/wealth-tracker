@@ -46,6 +46,8 @@ export default function GrowthRateChart({ data }: Props) {
                                 borderColor: 'hsl(var(--border))',
                                 color: 'hsl(var(--card-foreground))',
                             }}
+                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" />
                         <Bar dataKey="mom_pct" radius={[4, 4, 0, 0]}>

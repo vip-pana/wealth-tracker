@@ -47,6 +47,8 @@ export default function StackedBarChart({ data, categories }: Props) {
                                 borderColor: 'hsl(var(--border))',
                                 color: 'hsl(var(--card-foreground))',
                             }}
+                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="circle" iconSize={8} />
                         {categories.map((cat) => (

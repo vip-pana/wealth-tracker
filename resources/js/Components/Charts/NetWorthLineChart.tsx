@@ -46,6 +46,8 @@ export default function NetWorthLineChart({ data }: Props) {
                                 borderColor: 'hsl(var(--border))',
                                 color: 'hsl(var(--card-foreground))',
                             }}
+                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Line
                             type="monotone"
