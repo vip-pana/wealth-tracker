@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, Save, ChevronLeft, ChevronRight, ArrowRightLeft, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Save, ChevronLeft, ChevronRight, ArrowRightLeft, Copy } from 'lucide-react';
 import { formatMonthLong, formatCurrency } from '@/lib/formatters';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
@@ -44,8 +44,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
 
     const [copyOpen, setCopyOpen] = useState(false);
     const copyForm = useForm({ source_date: '' });
-    const refreshForm = useForm({});
-    const hasLiveAssets = assets.some((a) => a.ticker !== null);
 
     const handleSaveSnapshot = () => {
         if (assets.length === 0) {
@@ -210,17 +208,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
                             )}
                         </div>
                         <div className="flex gap-2">
-                            {hasLiveAssets && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => refreshForm.post('/prices/refresh')}
-                                    disabled={refreshForm.processing}
-                                >
-                                    <RefreshCw className={`w-4 h-4 mr-1 ${refreshForm.processing ? 'animate-spin' : ''}`} />
-                                    Aggiorna prezzi
-                                </Button>
-                            )}
                             <Button
                                 variant="default"
                                 size="sm"
