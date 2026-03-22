@@ -233,6 +233,10 @@ class AnalyticsController extends Controller
         $last = $snapshots->last();
         $penult = $snapshots->slice(-2, 1)->first();
 
+        if (! $last instanceof MonthlySnapshot || ! $penult instanceof MonthlySnapshot) {
+            return [];
+        }
+
         return $categories->map(function (Category $cat) use ($last, $penult) {
             $lastVal = optional($last->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
             $penultVal = optional($penult->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
