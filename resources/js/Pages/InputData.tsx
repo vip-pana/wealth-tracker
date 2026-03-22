@@ -157,7 +157,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
 
                 {/* Summary cards */}
                 {assets.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
                         <Card>
                             <CardContent className="p-4">
                                 <p className="text-xs text-muted-foreground">Totale</p>

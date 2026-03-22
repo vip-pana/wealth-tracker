@@ -123,9 +123,8 @@ export default function AssetForm({ open, onClose, categories, month, editAsset 
                     <div className="space-y-1">
                         <Label>Valore (€)</Label>
                         <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                            type="text"
+                            inputMode="decimal"
                             value={data.value}
                             onChange={(e) => setData('value', e.target.value)}
                             placeholder="0.00"
