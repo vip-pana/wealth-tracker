@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAssetRequest;
+use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Category;
 use Illuminate\Http\RedirectResponse;
@@ -58,31 +60,16 @@ class AssetController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreAssetRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
-            'value' => 'required|numeric|min:0',
-            'date' => 'required|date_format:Y-m-d',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        Asset::create($validated);
+        Asset::create($request->validated());
 
         return redirect()->back()->with('success', 'Asset aggiunto.');
     }
 
-    public function update(Request $request, Asset $asset): RedirectResponse
+    public function update(UpdateAssetRequest $request, Asset $asset): RedirectResponse
     {
-        $validated = $request->validate([
-            'category_id' => 'sometimes|exists:categories,id',
-            'name' => 'sometimes|string|max:255',
-            'value' => 'sometimes|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
-        ]);
-
-        $asset->update($validated);
+        $asset->update($request->validated());
 
         return redirect()->back()->with('success', 'Asset aggiornato.');
     }

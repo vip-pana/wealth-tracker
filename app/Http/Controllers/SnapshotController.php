@@ -4,22 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSnapshotRequest;
 use App\Models\Asset;
 use App\Models\MonthlySnapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SnapshotController extends Controller
 {
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSnapshotRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'month' => 'required|date_format:Y-m-d',
-        ]);
-
-        $month = (string) $validated['month'];
+        /** @var array{month: string} $validated */
+        $validated = $request->validated();
+        $month = $validated['month'];
 
         DB::transaction(function () use ($month) {
             // Compute total from assets for that month
