@@ -40,8 +40,8 @@ class SnapshotController extends Controller
             // Upsert per-category values
             foreach ($byCat as $row) {
                 SnapshotCategoryValue::updateOrCreate(
-                    ['snapshot_id' => $snapshot->id, 'category_id' => $row->category_id],
-                    ['value' => $row->subtotal]
+                    ['snapshot_id' => $snapshot->id, 'category_id' => $row->getAttribute('category_id')],
+                    ['value' => $row->getAttribute('subtotal')]
                 );
             }
 

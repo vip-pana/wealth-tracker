@@ -65,7 +65,7 @@ class AnalyticsController extends Controller
             $query->whereDate('date', '<=', $dateTo);
         }
 
-        $assets = $query->get()->map(fn ($a) => [
+        $assets = $query->get()->map(fn (Asset $a) => [
             'id' => $a->id,
             'name' => $a->name,
             'value' => (float) $a->value,
@@ -79,7 +79,7 @@ class AnalyticsController extends Controller
             ],
         ]);
 
-        $categories = Category::orderBy('sort_order')->get()->map(fn ($c) => [
+        $categories = Category::orderBy('sort_order')->get()->map(fn (Category $c) => [
             'id' => $c->id,
             'name' => $c->name,
             'color' => $c->color,

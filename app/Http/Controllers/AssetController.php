@@ -21,7 +21,7 @@ class AssetController extends Controller
             ->whereDate('date', $month)
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($a) => [
+            ->map(fn (Asset $a) => [
                 'id' => $a->id,
                 'name' => $a->name,
                 'value' => (float) $a->value,
@@ -37,7 +37,7 @@ class AssetController extends Controller
             ]);
 
         $categories = Category::orderBy('sort_order')->get()
-            ->map(fn ($c) => [
+            ->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
