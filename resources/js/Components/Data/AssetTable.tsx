@@ -63,8 +63,24 @@ export default function AssetTable({ assets, onEdit }: Props) {
         <TableRow key={asset.id}>
             <TableCell>
                 <div>
-                    <p className="font-medium">{asset.name}</p>
-                    {asset.notes && (
+                    <div className="flex items-center gap-2">
+                        <p className="font-medium">{asset.name}</p>
+                        {asset.ticker && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-xs font-mono text-blue-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                {asset.ticker}
+                            </span>
+                        )}
+                    </div>
+                    {asset.ticker && asset.quantity !== null && (
+                        <p className="text-xs text-muted-foreground">
+                            {asset.quantity} unità
+                            {asset.price !== null && (
+                                <> · {formatCurrency(asset.price)}/unità</>
+                            )}
+                        </p>
+                    )}
+                    {asset.notes && !asset.ticker && (
                         <p className="text-xs text-muted-foreground">{asset.notes}</p>
                     )}
                 </div>

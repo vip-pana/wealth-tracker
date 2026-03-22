@@ -19,7 +19,9 @@ class UpdateAssetRequest extends FormRequest
         return [
             'category_id' => 'sometimes|exists:categories,id',
             'name' => 'sometimes|string|max:255',
-            'value' => 'sometimes|numeric|min:0',
+            'ticker' => 'nullable|string|max:30',
+            'quantity' => 'nullable|numeric|min:0',
+            'value' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ];
     }

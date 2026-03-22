@@ -13,9 +13,17 @@ export interface Asset {
     category_id: number;
     category: Pick<Category, 'id' | 'name' | 'color' | 'icon' | 'macro_category'>;
     name: string;
-    value: number;
-    date: string;    // "YYYY-MM-DD"
+    ticker: string | null;
+    quantity: number | null;
+    price: number | null;   // current price fetched from API
+    value: number;          // quantity * price for live assets, manual value otherwise
+    date: string;           // "YYYY-MM-DD"
     notes: string | null;
+}
+
+export interface AssetPriceInfo {
+    price: number;
+    fetched_at: string; // ISO string
 }
 
 export interface MonthlySnapshot {

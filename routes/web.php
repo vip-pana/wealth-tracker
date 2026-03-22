@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\PriceController;
 use App\Http\Controllers\SnapshotController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,9 @@ Route::post('/snapshots', [SnapshotController::class, 'store'])->name('snapshots
 Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
 Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
 Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+
+// ─── Prices ───────────────────────────────────────────────────────────────────
+Route::post('/prices/refresh', [PriceController::class, 'refresh'])->name('prices.refresh');
 
 // ─── Export (plain HTTP, not Inertia) ─────────────────────────────────────────
 Route::get('/export/csv', [AnalyticsController::class, 'exportCsv'])->name('export.csv');

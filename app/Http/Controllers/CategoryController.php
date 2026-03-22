@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
+use App\Models\AssetPrice;
 use App\Models\Category;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -28,8 +29,16 @@ class CategoryController extends Controller
                 'assets_count' => $c->assets_count,
             ]);
 
+        $prices = AssetPrice::all()->map(fn (AssetPrice $p) => [
+            'ticker' => $p->ticker,
+            'price' => $p->price,
+            'currency' => $p->currency,
+            'fetched_at' => $p->fetched_at->toISOString(),
+        ]);
+
         return Inertia::render('Settings', [
             'categories' => $categories,
+            'prices' => $prices,
         ]);
     }
 

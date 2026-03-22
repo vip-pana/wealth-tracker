@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, RefreshCw } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -29,12 +29,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
+import { formatCurrency } from '@/lib/formatters';
 import type { Category } from '@/types/models';
 
 const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto'] as const;
 
+interface PriceEntry {
+    ticker: string;
+    price: number;
+    currency: string;
+    fetched_at: string;
+}
+
 interface Props {
     categories: (Category & { assets_count: number })[];
+    prices: PriceEntry[];
 }
 
 type CategoryForm = {
@@ -188,9 +197,10 @@ function DeleteCategoryButton({ category }: { category: Category & { assets_coun
     );
 }
 
-export default function Settings({ categories }: Props) {
+export default function Settings({ categories, prices }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
+    const refreshForm = useForm({});
 
     return (
         <>
@@ -273,6 +283,57 @@ export default function Settings({ categories }: Props) {
                                 ))}
                             </TableBody>
                         </Table>
+                    </CardContent>
+                </Card>
+
+                {/* Prices */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                            <CardTitle className="text-base">Prezzi asset live</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Aggiornati automaticamente ogni giorno alle 06:00
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => refreshForm.post('/prices/refresh')}
+                            disabled={refreshForm.processing}
+                        >
+                            <RefreshCw className={`w-4 h-4 mr-1 ${refreshForm.processing ? 'animate-spin' : ''}`} />
+                            Aggiorna ora
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {prices.length === 0 ? (
+                            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                                Nessun prezzo disponibile. Aggiungi asset con un ticker e clicca &quot;Aggiorna ora&quot;.
+                            </p>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Ticker</TableHead>
+                                        <TableHead className="text-right">Prezzo</TableHead>
+                                        <TableHead className="text-right">Ultimo aggiornamento</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {prices.map((p) => (
+                                        <TableRow key={p.ticker}>
+                                            <TableCell className="font-mono font-medium">{p.ticker}</TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                {formatCurrency(p.price)}
+                                            </TableCell>
+                                            <TableCell className="text-right text-sm text-muted-foreground">
+                                                {new Date(p.fetched_at).toLocaleString('it-IT')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
                     </CardContent>
                 </Card>
 

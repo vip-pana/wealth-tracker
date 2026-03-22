@@ -9,6 +9,7 @@ use App\Http\Requests\CopyAssetsRequest;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\Category;
 use App\Models\MonthlySnapshot;
 use Illuminate\Http\RedirectResponse;
@@ -22,25 +23,36 @@ class AssetController extends Controller
     {
         $month = $request->string('month', now()->format('Y-m-01'))->value();
 
+        $prices = AssetPrice::all()->keyBy('ticker');
+
         $assets = Asset::with('category')
             ->whereDate('date', $month)
             ->orderBy('created_at')
             ->get()
-            ->map(fn (Asset $a) => [
-                'id' => $a->id,
-                'name' => $a->name,
-                'value' => (float) $a->value,
-                'date' => $a->date->format('Y-m-d'),
-                'notes' => $a->notes,
-                'category_id' => $a->category_id,
-                'category' => [
-                    'id' => $a->category->id,
-                    'name' => $a->category->name,
-                    'color' => $a->category->color,
-                    'icon' => $a->category->icon,
-                    'macro_category' => $a->category->macro_category?->value,
-                ],
-            ]);
+            ->map(function (Asset $a) use ($prices) {
+                /** @var AssetPrice|null $priceRecord */
+                $priceRecord = $a->ticker !== null ? $prices->get($a->ticker) : null;
+                $price = $priceRecord?->price;
+
+                return [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'ticker' => $a->ticker,
+                    'quantity' => $a->quantity,
+                    'price' => $price,
+                    'value' => $a->currentValue($price),
+                    'date' => $a->date->format('Y-m-d'),
+                    'notes' => $a->notes,
+                    'category_id' => $a->category_id,
+                    'category' => [
+                        'id' => $a->category->id,
+                        'name' => $a->category->name,
+                        'color' => $a->category->color,
+                        'icon' => $a->category->icon,
+                        'macro_category' => $a->category->macro_category?->value,
+                    ],
+                ];
+            });
 
         $categories = Category::orderBy('sort_order')->get()
             ->map(fn (Category $c) => [
@@ -62,10 +74,14 @@ class AssetController extends Controller
         $snapshotState = 'missing';
         if ($snapshot !== null) {
             $snapshotUpdatedAt = $snapshot->updated_at?->toDateTimeString();
-            $snapshotState = ($latestAssetUpdate !== null && $snapshotUpdatedAt !== null && $latestAssetUpdate > $snapshotUpdatedAt)
-                ? 'stale'
-                : 'current';
+            $isStale = $latestAssetUpdate !== null && $snapshotUpdatedAt !== null && $latestAssetUpdate > $snapshotUpdatedAt;
+            $snapshotState = $isStale ? 'stale' : 'current';
         }
+
+        $priceMap = $prices->mapWithKeys(fn (AssetPrice $p) => [$p->ticker => [
+            'price' => $p->price,
+            'fetched_at' => $p->fetched_at->toISOString(),
+        ]]);
 
         return Inertia::render('InputData', [
             'assets' => $assets,
@@ -73,6 +89,7 @@ class AssetController extends Controller
             'month' => $month,
             'availableMonths' => $availableMonths,
             'snapshotState' => $snapshotState,
+            'prices' => $priceMap,
         ]);
     }
 
@@ -108,6 +125,8 @@ class AssetController extends Controller
                 Asset::create([
                     'category_id' => $asset->category_id,
                     'name' => $asset->name,
+                    'ticker' => $asset->ticker,
+                    'quantity' => $asset->quantity,
                     'value' => $asset->value,
                     'date' => $targetDate,
                     'notes' => $asset->notes,

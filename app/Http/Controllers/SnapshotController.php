@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSnapshotRequest;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\MonthlySnapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Http\RedirectResponse;
@@ -20,14 +21,21 @@ class SnapshotController extends Controller
         $month = $validated['month'];
 
         DB::transaction(function () use ($month) {
-            // Compute total from assets for that month
-            $total = Asset::whereDate('date', $month)->sum('value');
+            $prices = AssetPrice::all()->keyBy('ticker');
 
-            // Compute per-category sums
-            $byCat = Asset::whereDate('date', $month)
-                ->selectRaw('category_id, SUM(value) as subtotal')
-                ->groupBy('category_id')
-                ->get();
+            $assets = Asset::whereDate('date', $month)->get();
+
+            // Compute per-category sums using live prices where available
+            $byCat = [];
+            $total = 0.0;
+            foreach ($assets as $asset) {
+                /** @var AssetPrice|null $priceRecord */
+                $priceRecord = $asset->ticker !== null ? $prices->get($asset->ticker) : null;
+                $value = $asset->currentValue($priceRecord?->price);
+                $total += $value;
+                $catId = $asset->category_id;
+                $byCat[$catId] = ($byCat[$catId] ?? 0.0) + $value;
+            }
 
             // Upsert snapshot
             $snapshot = MonthlySnapshot::updateOrCreate(
@@ -36,15 +44,15 @@ class SnapshotController extends Controller
             );
 
             // Upsert per-category values
-            foreach ($byCat as $row) {
+            foreach ($byCat as $catId => $value) {
                 SnapshotCategoryValue::updateOrCreate(
-                    ['snapshot_id' => $snapshot->id, 'category_id' => $row->getAttribute('category_id')],
-                    ['value' => $row->getAttribute('subtotal')]
+                    ['snapshot_id' => $snapshot->id, 'category_id' => $catId],
+                    ['value' => $value]
                 );
             }
 
             // Remove stale category values (categories with no assets this month)
-            $activeCatIds = $byCat->pluck('category_id');
+            $activeCatIds = array_keys($byCat);
             SnapshotCategoryValue::where('snapshot_id', $snapshot->id)
                 ->whereNotIn('category_id', $activeCatIds)
                 ->delete();
