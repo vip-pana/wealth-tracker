@@ -4,13 +4,14 @@ export interface Category {
     color: string;   // "#3b82f6"
     icon: string | null;
     sort_order: number;
+    macro_category: string | null;
     assets_count?: number;
 }
 
 export interface Asset {
     id: number;
     category_id: number;
-    category: Pick<Category, 'id' | 'name' | 'color' | 'icon'>;
+    category: Pick<Category, 'id' | 'name' | 'color' | 'icon' | 'macro_category'>;
     name: string;
     value: number;
     date: string;    // "YYYY-MM-DD"

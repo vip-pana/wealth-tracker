@@ -33,3 +33,19 @@ export interface ForecastPoint {
     trend: number | null;
     forecast: number | null;
 }
+
+export interface MacroAllocationSlice {
+    name: string;
+    value: number;
+}
+
+export interface MacroStackedBarPoint {
+    month: string;
+    [macroName: string]: string | number;
+}
+
+export interface MacroComparisonPoint {
+    macro: string;
+    current: number;
+    previous: number;
+}

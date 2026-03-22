@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\MacroCategory;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $color
  * @property string|null $icon
  * @property int $sort_order
+ * @property MacroCategory|null $macro_category
  * @property int|null $assets_count
  */
 class Category extends Model
@@ -22,10 +24,11 @@ class Category extends Model
     /** @use HasFactory<CategoryFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'color', 'icon', 'sort_order'];
+    protected $fillable = ['name', 'color', 'icon', 'sort_order', 'macro_category'];
 
     protected $casts = [
         'sort_order' => 'integer',
+        'macro_category' => MacroCategory::class,
     ];
 
     /** @return HasMany<Asset, $this> */

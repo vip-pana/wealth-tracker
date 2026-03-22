@@ -44,7 +44,12 @@ export default function AllocationDonutChart({ data }: Props) {
                                 `${formatCurrency((v as number) ?? 0)} (${total > 0 ? ((((v as number) ?? 0) / total) * 100).toFixed(1) : 0}%)`,
                                 name,
                             ]}
-                            contentStyle={{ fontSize: 12 }}
+                            contentStyle={{
+                                fontSize: 12,
+                                backgroundColor: 'hsl(var(--card))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--card-foreground))',
+                            }}
                         />
                         <Legend
                             iconType="circle"

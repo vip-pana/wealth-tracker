@@ -44,7 +44,12 @@ export default function MonthComparisonChart({ data, months }: Props) {
                         />
                         <Tooltip
                             formatter={(v) => [formatCurrency((v as number) ?? 0)]}
-                            contentStyle={{ fontSize: 12 }}
+                            contentStyle={{
+                                fontSize: 12,
+                                backgroundColor: 'hsl(var(--card))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--card-foreground))',
+                            }}
                         />
                         <Legend iconType="rect" />
                         <Bar dataKey="previous" name={prevLabel} fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.7} />

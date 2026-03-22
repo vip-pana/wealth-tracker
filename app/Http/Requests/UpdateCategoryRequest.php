@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\MacroCategory;
 use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateCategoryRequest extends FormRequest
 {
@@ -14,7 +16,7 @@ class UpdateCategoryRequest extends FormRequest
         return true;
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         /** @var Category $category */
@@ -25,6 +27,7 @@ class UpdateCategoryRequest extends FormRequest
             'color' => 'sometimes|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'icon' => 'nullable|string|max:10',
             'sort_order' => 'nullable|integer|min:0',
+            'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],
         ];
     }
 }

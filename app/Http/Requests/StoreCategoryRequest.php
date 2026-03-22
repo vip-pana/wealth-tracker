@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\MacroCategory;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCategoryRequest extends FormRequest
 {
@@ -13,7 +15,7 @@ class StoreCategoryRequest extends FormRequest
         return true;
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -21,6 +23,7 @@ class StoreCategoryRequest extends FormRequest
             'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'icon' => 'nullable|string|max:10',
             'sort_order' => 'nullable|integer|min:0',
+            'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],
         ];
     }
 }

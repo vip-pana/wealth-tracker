@@ -44,7 +44,12 @@ export default function ForecastChart({ data }: Props) {
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
-                            contentStyle={{ fontSize: 12 }}
+                            contentStyle={{
+                                fontSize: 12,
+                                backgroundColor: 'hsl(var(--card))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--card-foreground))',
+                            }}
                         />
                         <Legend iconType="line" />
                         {splitMonth && (

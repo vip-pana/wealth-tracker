@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
@@ -22,7 +22,16 @@ import {
     TableRow,
 } from '@/Components/ui/table';
 import { Pencil, Trash2, Plus, Download } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 import type { Category } from '@/types/models';
+
+const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto'] as const;
 
 interface Props {
     categories: (Category & { assets_count: number })[];
@@ -32,6 +41,7 @@ type CategoryForm = {
     name: string;
     color: string;
     icon: string;
+    macro_category: string;
 };
 
 function CategoryDialog({
@@ -45,10 +55,22 @@ function CategoryDialog({
 }) {
     const isEdit = !!editCategory;
     const { data, setData, post, put, processing, errors, reset } = useForm<CategoryForm>({
-        name:  editCategory?.name ?? '',
-        color: editCategory?.color ?? '#6366f1',
-        icon:  editCategory?.icon ?? '',
+        name:           editCategory?.name ?? '',
+        color:          editCategory?.color ?? '#6366f1',
+        icon:           editCategory?.icon ?? '',
+        macro_category: editCategory?.macro_category ?? '',
     });
+
+    useEffect(() => {
+        if (open) {
+            setData({
+                name:           editCategory?.name ?? '',
+                color:          editCategory?.color ?? '#6366f1',
+                icon:           editCategory?.icon ?? '',
+                macro_category: editCategory?.macro_category ?? '',
+            });
+        }
+    }, [open, editCategory, setData]);
 
     const handleClose = () => {
         reset();
@@ -107,6 +129,23 @@ function CategoryDialog({
                             placeholder="💰"
                             maxLength={10}
                         />
+                    </div>
+                    <div className="space-y-1">
+                        <Label>Macro-categoria</Label>
+                        <Select
+                            value={data.macro_category}
+                            onValueChange={(v) => setData('macro_category', v === '__none__' ? '' : v)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Nessuna" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">Nessuna</SelectItem>
+                                {MACRO_CATEGORIES.map((mc) => (
+                                    <SelectItem key={mc} value={mc}>{mc}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={handleClose}>
@@ -179,6 +218,7 @@ export default function Settings({ categories }: Props) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Categoria</TableHead>
+                                    <TableHead>Macro</TableHead>
                                     <TableHead>Colore</TableHead>
                                     <TableHead>Asset</TableHead>
                                     <TableHead className="w-20 text-right">Azioni</TableHead>
@@ -192,6 +232,12 @@ export default function Settings({ categories }: Props) {
                                                 {cat.icon && <span>{cat.icon}</span>}
                                                 {cat.name}
                                             </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {cat.macro_category
+                                                ? <Badge variant="outline">{cat.macro_category}</Badge>
+                                                : <span className="text-xs text-muted-foreground">—</span>
+                                            }
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">

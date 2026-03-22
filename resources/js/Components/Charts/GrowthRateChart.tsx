@@ -40,7 +40,12 @@ export default function GrowthRateChart({ data }: Props) {
                         <Tooltip
                             formatter={(v) => [formatPercent((v as number) ?? 0), 'Variazione MoM']}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
-                            contentStyle={{ fontSize: 12 }}
+                            contentStyle={{
+                                fontSize: 12,
+                                backgroundColor: 'hsl(var(--card))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--card-foreground))',
+                            }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" />
                         <Bar dataKey="mom_pct" radius={[4, 4, 0, 0]}>

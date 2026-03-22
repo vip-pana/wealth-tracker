@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -36,6 +37,18 @@ export default function AssetForm({ open, onClose, categories, month, editAsset 
         date:        editAsset?.date ?? month,
         notes:       editAsset?.notes ?? '',
     });
+
+    useEffect(() => {
+        if (open) {
+            setData({
+                category_id: editAsset?.category_id?.toString() ?? '',
+                name:        editAsset?.name ?? '',
+                value:       editAsset?.value?.toString() ?? '',
+                date:        editAsset?.date ?? month,
+                notes:       editAsset?.notes ?? '',
+            });
+        }
+    }, [open, editAsset, month, setData]);
 
     const handleClose = () => {
         reset();

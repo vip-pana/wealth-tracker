@@ -51,6 +51,53 @@ export default function AssetTable({ assets, onEdit }: Props) {
 
     const total = assets.reduce((sum, a) => sum + a.value, 0);
 
+    // Group by macro_category; assets without one go under null
+    const groups = new Map<string | null, Asset[]>();
+    for (const asset of assets) {
+        const macro = asset.category.macro_category ?? null;
+        if (!groups.has(macro)) groups.set(macro, []);
+        groups.get(macro)!.push(asset);
+    }
+
+    const renderAssetRow = (asset: Asset) => (
+        <TableRow key={asset.id}>
+            <TableCell>
+                <div>
+                    <p className="font-medium">{asset.name}</p>
+                    {asset.notes && (
+                        <p className="text-xs text-muted-foreground">{asset.notes}</p>
+                    )}
+                </div>
+            </TableCell>
+            <TableCell>
+                <Badge
+                    variant="outline"
+                    style={{ borderColor: asset.category.color }}
+                    className="text-foreground"
+                >
+                    {asset.category.icon && <span className="mr-1">{asset.category.icon}</span>}
+                    {asset.category.name}
+                </Badge>
+            </TableCell>
+            <TableCell className="text-right font-mono">
+                {formatCurrency(asset.value)}
+            </TableCell>
+            <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => onEdit(asset)}
+                    >
+                        <Pencil className="w-4 h-4" />
+                    </Button>
+                    <DeleteButton assetId={asset.id} />
+                </div>
+            </TableCell>
+        </TableRow>
+    );
+
     return (
         <div>
             <Table>
@@ -63,42 +110,17 @@ export default function AssetTable({ assets, onEdit }: Props) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {assets.map((asset) => (
-                        <TableRow key={asset.id}>
-                            <TableCell>
-                                <div>
-                                    <p className="font-medium">{asset.name}</p>
-                                    {asset.notes && (
-                                        <p className="text-xs text-muted-foreground">{asset.notes}</p>
-                                    )}
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <Badge
-                                    variant="outline"
-                                    style={{ borderColor: asset.category.color, color: asset.category.color }}
-                                >
-                                    {asset.category.icon && <span className="mr-1">{asset.category.icon}</span>}
-                                    {asset.category.name}
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                                {formatCurrency(asset.value)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <div className="flex justify-end gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                        onClick={() => onEdit(asset)}
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </Button>
-                                    <DeleteButton assetId={asset.id} />
-                                </div>
-                            </TableCell>
-                        </TableRow>
+                    {[...groups.entries()].map(([macro, groupAssets]) => (
+                        <>
+                            {macro !== null && (
+                                <TableRow key={`group-${macro}`} className="bg-muted/30 hover:bg-muted/30">
+                                    <TableCell colSpan={4} className="py-1.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                        {macro}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {groupAssets.map(renderAssetRow)}
+                        </>
                     ))}
                 </TableBody>
             </Table>

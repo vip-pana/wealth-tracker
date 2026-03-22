@@ -35,6 +35,7 @@ class AssetController extends Controller
                     'name' => $a->category->name,
                     'color' => $a->category->color,
                     'icon' => $a->category->icon,
+                    'macro_category' => $a->category->macro_category?->value,
                 ],
             ]);
 

@@ -28,19 +28,24 @@ export default function NetWorthLineChart({ data }: Props) {
                         <XAxis
                             dataKey="month"
                             tickFormatter={formatMonthLabel}
-                            tick={{ fontSize: 11 }}
-                            className="fill-muted-foreground"
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            stroke="hsl(var(--border))"
                         />
                         <YAxis
                             tickFormatter={formatCurrencyCompact}
-                            tick={{ fontSize: 11 }}
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            stroke="hsl(var(--border))"
                             width={70}
-                            className="fill-muted-foreground"
                         />
                         <Tooltip
                             formatter={(v) => [formatCurrency((v as number) ?? 0), 'Totale']}
                             labelFormatter={(d) => formatMonthLabel(d as string)}
-                            contentStyle={{ fontSize: 12 }}
+                            contentStyle={{
+                                fontSize: 12,
+                                backgroundColor: 'hsl(var(--card))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--card-foreground))',
+                            }}
                         />
                         <Line
                             type="monotone"

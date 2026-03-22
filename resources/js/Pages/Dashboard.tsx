@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import NetWorthLineChart from '@/Components/Charts/NetWorthLineChart';
 import AllocationDonutChart from '@/Components/Charts/AllocationDonutChart';
@@ -11,8 +12,14 @@ import { formatCurrency, formatPercent, formatMonthLong } from '@/lib/formatters
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint } from '@/types/analytics';
+import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
+
+const MACRO_COLORS: Record<string, string> = {
+    'Liquidità': '#60a5fa',
+    'ETF':       '#34d399',
+    'Cripto':    '#f59e0b',
+};
 
 interface Props {
     netWorthSeries: NetWorthPoint[];
@@ -21,6 +28,9 @@ interface Props {
     growthRates: GrowthRatePoint[];
     monthComparison: MonthComparisonPoint[];
     forecast: ForecastPoint[];
+    macroAllocationData: MacroAllocationSlice[];
+    macroStackedBar: MacroStackedBarPoint[];
+    macroMonthComparison: MacroComparisonPoint[];
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     latestSnapshot: string | null;
@@ -61,10 +71,14 @@ export default function Dashboard({
     growthRates,
     monthComparison,
     forecast,
+    macroAllocationData,
+    macroStackedBar,
+    macroMonthComparison,
     categories,
     hasData,
     latestSnapshot,
 }: Props) {
+    const [macroMode, setMacroMode] = useState(false);
     if (!hasData) {
         return (
             <>
@@ -103,17 +117,51 @@ export default function Dashboard({
               ]
             : null;
 
+    const macroAllocationWithColor: AllocationSlice[] = macroAllocationData.map((s) => ({
+        ...s,
+        color: MACRO_COLORS[s.name] ?? '#94a3b8',
+    }));
+
+    const macroCategories = Object.entries(MACRO_COLORS).map(([name, color]) => ({
+        id: 0,
+        name,
+        color,
+    }));
+
+    const macroComparisonPoints: MonthComparisonPoint[] = macroMonthComparison.map((p) => ({
+        category: p.macro,
+        color: MACRO_COLORS[p.macro] ?? '#94a3b8',
+        current: p.current,
+        previous: p.previous,
+    }));
+
     return (
         <>
             <Head title="Dashboard" />
             <div className="p-6 space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold">Dashboard</h1>
-                    {latestSnapshot && (
-                        <p className="text-sm text-muted-foreground">
-                            Ultimo aggiornamento: {formatMonthLong(latestSnapshot)}
-                        </p>
-                    )}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Dashboard</h1>
+                        {latestSnapshot && (
+                            <p className="text-sm text-muted-foreground">
+                                Ultimo aggiornamento: {formatMonthLong(latestSnapshot)}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
+                        <button
+                            onClick={() => setMacroMode(false)}
+                            className={`px-3 py-1.5 ${!macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Categorie
+                        </button>
+                        <button
+                            onClick={() => setMacroMode(true)}
+                            className={`px-3 py-1.5 ${macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Macro
+                        </button>
+                    </div>
                 </div>
 
                 {/* Summary cards */}
@@ -123,7 +171,7 @@ export default function Dashboard({
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
                         change={totalChange}
                     />
-                    {allocationData.slice(0, 3).map((slice) => (
+                    {(macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
                         <SummaryCard
                             key={slice.name}
                             label={slice.name}
@@ -135,10 +183,10 @@ export default function Dashboard({
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <NetWorthLineChart data={netWorthSeries} />
-                    <AllocationDonutChart data={allocationData} />
-                    <StackedBarChart data={stackedBar} categories={categories} />
+                    <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
+                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
                     <GrowthRateChart data={growthRates} />
-                    <MonthComparisonChart data={monthComparison} months={snapshotMonths} />
+                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : monthComparison} months={snapshotMonths} />
                     <ForecastChart data={forecast} />
                 </div>
             </div>
