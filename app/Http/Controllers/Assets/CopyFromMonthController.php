@@ -13,23 +13,20 @@ class CopyFromMonthController extends Controller
 {
     public function __invoke(CopyAssetsRequest $request): RedirectResponse
     {
-        $sourceDate = $request->string('source_date')->value();
-        $targetDate = $request->string('month', now()->format('Y-m-01'))->value();
-
-        Asset::whereDate('date', $sourceDate)
+        Asset::whereDate('date', $request->sourceDate())
             ->get()
-            ->each(function (Asset $asset) use ($targetDate): void {
-                Asset::create([
+            ->each(
+                fn (Asset $asset): mixed => Asset::create([
                     'category_id' => $asset->category_id,
                     'name' => $asset->name,
                     'ticker' => $asset->ticker,
                     'wallet_address' => $asset->wallet_address,
                     'quantity' => $asset->quantity,
                     'value' => $asset->value,
-                    'date' => $targetDate,
+                    'date' => $request->targetDate(),
                     'notes' => $asset->notes,
-                ]);
-            });
+                ])
+            );
 
         return redirect()->back()->with('success', 'Asset copiati.');
     }

@@ -13,10 +13,8 @@ class BulkMoveController extends Controller
 {
     public function __invoke(BulkMoveAssetsRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-
-        Asset::whereIn('id', $validated['asset_ids'])
-            ->update(['date' => $validated['target_date']]);
+        Asset::whereIn('id', $request->assetIds())
+            ->update(['date' => $request->targetDate()]);
 
         return redirect()->back()->with('success', 'Asset spostati.');
     }

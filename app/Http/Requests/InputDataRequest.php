@@ -6,7 +6,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CopyAssetsRequest extends FormRequest
+class InputDataRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,16 +17,11 @@ class CopyAssetsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'source_date' => ['required', 'date_format:Y-m-d'],
+            'month' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 
-    public function sourceDate(): string
-    {
-        return $this->string('source_date')->value();
-    }
-
-    public function targetDate(): string
+    public function month(): string
     {
         return $this->string('month', now()->format('Y-m-01'))->value();
     }

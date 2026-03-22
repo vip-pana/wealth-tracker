@@ -6,7 +6,6 @@ namespace App\Actions\Analysis;
 
 use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
-use App\Http\Requests\AnalysisRequest;
 use App\Models\Category;
 
 class FetchAnalysisData extends Action
@@ -17,12 +16,8 @@ class FetchAnalysisData extends Action
     ) {}
 
     /** @return array<string, mixed> */
-    public function run(AnalysisRequest $request): array
+    public function run(?int $categoryId, ?string $dateFrom, ?string $dateTo): array
     {
-        $categoryId = $request->integer('category_id') ?: null;
-        $dateFrom = $request->has('date_from') ? $request->string('date_from')->value() : null;
-        $dateTo = $request->has('date_to') ? $request->string('date_to')->value() : null;
-
         $categories = Category::orderBy('sort_order')->get()->map(fn (Category $c) => [
             'id' => $c->id,
             'name' => $c->name,

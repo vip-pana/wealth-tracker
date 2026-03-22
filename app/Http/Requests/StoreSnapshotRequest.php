@@ -20,4 +20,9 @@ class StoreSnapshotRequest extends FormRequest
             'month' => 'required|date_format:Y-m-d',
         ];
     }
+
+    public function month(): string
+    {
+        return $this->string('month')->value();
+    }
 }

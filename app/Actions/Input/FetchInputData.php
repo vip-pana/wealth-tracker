@@ -8,7 +8,6 @@ use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
 use App\Models\AssetPrice;
 use App\Models\Category;
-use Illuminate\Http\Request;
 
 class FetchInputData extends Action
 {
@@ -19,10 +18,8 @@ class FetchInputData extends Action
     ) {}
 
     /** @return array<string, mixed> */
-    public function run(Request $request): array
+    public function run(string $month): array
     {
-        $month = $request->string('month', now()->format('Y-m-01'))->value();
-
         $prices = AssetPrice::all()->keyBy('ticker');
 
         $categories = Category::orderBy('sort_order')->get()

@@ -22,4 +22,18 @@ class BulkMoveAssetsRequest extends FormRequest
             'target_date' => ['required', 'date_format:Y-m-d'],
         ];
     }
+
+    /** @return array<int, int> */
+    public function assetIds(): array
+    {
+        /** @var array<int, int> $ids */
+        $ids = $this->validated('asset_ids', []);
+
+        return $ids;
+    }
+
+    public function targetDate(): string
+    {
+        return $this->string('target_date')->value();
+    }
 }

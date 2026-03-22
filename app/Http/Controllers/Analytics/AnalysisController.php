@@ -18,6 +18,6 @@ class AnalysisController extends Controller
 
     public function __invoke(AnalysisRequest $request): Response
     {
-        return Inertia::render('Analysis', $this->fetchAnalysisData->run($request));
+        return Inertia::render('Analysis', $this->fetchAnalysisData->run($request->categoryId(), $request->dateFrom(), $request->dateTo()));
     }
 }
