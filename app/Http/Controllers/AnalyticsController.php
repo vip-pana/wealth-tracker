@@ -51,19 +51,19 @@ class AnalyticsController extends Controller
 
     public function analysis(Request $request): Response
     {
-        $categoryId = $request->get('category_id');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $categoryId = $request->input('category_id');
+        $dateFrom = $request->has('date_from') ? $request->string('date_from')->value() : null;
+        $dateTo = $request->has('date_to') ? $request->string('date_to')->value() : null;
 
         $query = Asset::with('category')->orderByDesc('date')->orderBy('category_id');
 
-        if ($categoryId) {
+        if ($categoryId !== null) {
             $query->where('category_id', $categoryId);
         }
-        if ($dateFrom) {
+        if ($dateFrom !== null) {
             $query->whereDate('date', '>=', $dateFrom);
         }
-        if ($dateTo) {
+        if ($dateTo !== null) {
             $query->whereDate('date', '<=', $dateTo);
         }
 
@@ -91,7 +91,7 @@ class AnalyticsController extends Controller
             'assets' => $assets,
             'categories' => $categories,
             'filters' => [
-                'category_id' => $categoryId ? (int) $categoryId : null,
+                'category_id' => $categoryId !== null ? $request->integer('category_id') : null,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
             ],
@@ -100,19 +100,19 @@ class AnalyticsController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $categoryId = $request->get('category_id');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $categoryId = $request->input('category_id');
+        $dateFrom = $request->has('date_from') ? $request->string('date_from')->value() : null;
+        $dateTo = $request->has('date_to') ? $request->string('date_to')->value() : null;
 
         $query = Asset::with('category')->orderBy('date')->orderBy('category_id');
 
-        if ($categoryId) {
+        if ($categoryId !== null) {
             $query->where('category_id', $categoryId);
         }
-        if ($dateFrom) {
+        if ($dateFrom !== null) {
             $query->whereDate('date', '>=', $dateFrom);
         }
-        if ($dateTo) {
+        if ($dateTo !== null) {
             $query->whereDate('date', '<=', $dateTo);
         }
 
@@ -148,11 +148,11 @@ class AnalyticsController extends Controller
     // ─── Private helpers ────────────────────────────────────────────────────
 
     /** @param Collection<int, MonthlySnapshot> $snapshots
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function buildNetWorthSeries(Collection $snapshots): array
     {
-        return $snapshots->map(fn (MonthlySnapshot $s) => [
+        return $snapshots->map(fn (MonthlySnapshot $s): array => [
             'month' => $s->date->format('Y-m-d'),
             'total_value' => (float) $s->total_value,
         ])->values()->toArray();
@@ -161,7 +161,7 @@ class AnalyticsController extends Controller
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function buildAllocationData(Collection $snapshots, Collection $categories): array
     {
@@ -170,7 +170,7 @@ class AnalyticsController extends Controller
             return [];
         }
 
-        return $last->categoryValues->map(fn (SnapshotCategoryValue $cv) => [
+        return $last->categoryValues->map(fn (SnapshotCategoryValue $cv): array => [
             'name' => $cv->category->name,
             'value' => (float) $cv->value,
             'color' => $cv->category->color,
@@ -180,15 +180,16 @@ class AnalyticsController extends Controller
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function buildStackedBar(Collection $snapshots, Collection $categories): array
     {
-        return $snapshots->map(function (MonthlySnapshot $s) use ($categories) {
+        return $snapshots->map(function (MonthlySnapshot $s) use ($categories): array {
             $entry = ['month' => $s->date->format('Y-m-d')];
             foreach ($categories as $cat) {
+                /** @var SnapshotCategoryValue|null $cv */
                 $cv = $s->categoryValues->firstWhere('category_id', $cat->id);
-                $entry[$cat->name] = $cv ? (float) $cv->value : 0.0;
+                $entry[$cat->name] = $cv !== null ? (float) $cv->value : 0.0;
             }
 
             return $entry;
@@ -197,7 +198,7 @@ class AnalyticsController extends Controller
 
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function computeGrowthRates(Collection $snapshots): array
     {
@@ -222,7 +223,7 @@ class AnalyticsController extends Controller
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function computeMonthComparison(Collection $snapshots, Collection $categories): array
     {
@@ -237,22 +238,24 @@ class AnalyticsController extends Controller
             return [];
         }
 
-        return $categories->map(function (Category $cat) use ($last, $penult) {
-            $lastVal = optional($last->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
-            $penultVal = optional($penult->categoryValues->firstWhere('category_id', $cat->id))->value ?? 0;
+        return $categories->map(function (Category $cat) use ($last, $penult): array {
+            /** @var SnapshotCategoryValue|null $lastCv */
+            $lastCv = $last->categoryValues->firstWhere('category_id', $cat->id);
+            /** @var SnapshotCategoryValue|null $penultCv */
+            $penultCv = $penult->categoryValues->firstWhere('category_id', $cat->id);
 
             return [
                 'category' => $cat->name,
                 'color' => $cat->color,
-                'current' => (float) $lastVal,
-                'previous' => (float) $penultVal,
+                'current' => $lastCv !== null ? (float) $lastCv->value : 0.0,
+                'previous' => $penultCv !== null ? (float) $penultCv->value : 0.0,
             ];
         })->values()->toArray();
     }
 
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
-     * @return array<int, array<string, mixed>>
+     * @return array<int, mixed>
      */
     private function computeForecast(Collection $snapshots): array
     {
@@ -262,12 +265,16 @@ class AnalyticsController extends Controller
 
         $n = $snapshots->count();
         $xs = range(0, $n - 1);
-        $ys = $snapshots->pluck('total_value')->map(fn (mixed $v) => (float) $v)->toArray();
+        /** @var array<int, float> $ys */
+        $ys = $snapshots->map(fn (MonthlySnapshot $s): float => $s->total_value)->toArray();
 
         $sumX = array_sum($xs);
         $sumY = array_sum($ys);
-        $sumXY = array_sum(array_map(fn ($x, $y) => $x * $y, $xs, $ys));
-        $sumX2 = array_sum(array_map(fn ($x) => $x * $x, $xs));
+        $sumXY = 0.0;
+        foreach ($xs as $i => $x) {
+            $sumXY += $x * $ys[$i];
+        }
+        $sumX2 = array_sum(array_map(fn (mixed $x): int => (int) $x * (int) $x, $xs));
 
         $denominator = $n * $sumX2 - $sumX ** 2;
         if ($denominator == 0) {
@@ -278,7 +285,7 @@ class AnalyticsController extends Controller
         $intercept = ($sumY - $slope * $sumX) / $n;
 
         // Historical points with trend line
-        $historical = $snapshots->values()->map(function (MonthlySnapshot $s, int $i) use ($intercept, $slope) {
+        $historical = $snapshots->values()->map(function (MonthlySnapshot $s, int $i) use ($intercept, $slope): array {
             return [
                 'month' => $s->date->format('Y-m-d'),
                 'actual' => (float) $s->total_value,

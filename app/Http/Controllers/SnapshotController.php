@@ -15,11 +15,11 @@ class SnapshotController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'month' => 'required|date_format:Y-m-d',
         ]);
 
-        $month = $request->input('month');
+        $month = (string) $validated['month'];
 
         DB::transaction(function () use ($month) {
             // Compute total from assets for that month

@@ -15,7 +15,7 @@ class AssetController extends Controller
 {
     public function index(Request $request): Response
     {
-        $month = $request->get('month', now()->format('Y-m-01'));
+        $month = $request->string('month', now()->format('Y-m-01'))->value();
 
         $assets = Asset::with('category')
             ->whereDate('date', $month)
