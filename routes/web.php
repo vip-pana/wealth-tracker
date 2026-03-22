@@ -26,19 +26,23 @@ Route::get('/analysis', AnalysisController::class)->name('analysis.index');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
-Route::post('/assets/bulk-move', BulkMoveController::class)->name('assets.bulk-move');
-Route::post('/assets/copy-from-month', CopyFromMonthController::class)->name('assets.copy-from-month');
-Route::post('/assets', StoreAssetController::class)->name('assets.store');
-Route::put('/assets/{asset}', UpdateAssetController::class)->name('assets.update');
-Route::delete('/assets/{asset}', DestroyAssetController::class)->name('assets.destroy');
+Route::prefix('assets')->name('assets.')->group(function () {
+    Route::post('/', StoreAssetController::class)->name('store');
+    Route::put('/{asset}', UpdateAssetController::class)->name('update');
+    Route::delete('/{asset}', DestroyAssetController::class)->name('destroy');
+    Route::post('/bulk-move', BulkMoveController::class)->name('bulk-move');
+    Route::post('/copy-from-month', CopyFromMonthController::class)->name('copy-from-month');
+});
 
 // ─── Snapshots ────────────────────────────────────────────────────────────────
 Route::post('/snapshots', StoreSnapshotController::class)->name('snapshots.store');
 
 // ─── Categories CRUD ──────────────────────────────────────────────────────────
-Route::post('/categories', StoreCategoryController::class)->name('categories.store');
-Route::put('/categories/{category}', UpdateCategoryController::class)->name('categories.update');
-Route::delete('/categories/{category}', DestroyCategoryController::class)->name('categories.destroy');
+Route::prefix('categories')->name('categories.')->group(function () {
+    Route::post('/', StoreCategoryController::class)->name('store');
+    Route::put('/{category}', UpdateCategoryController::class)->name('update');
+    Route::delete('/{category}', DestroyCategoryController::class)->name('destroy');
+});
 
 // ─── Prices ───────────────────────────────────────────────────────────────────
 Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
