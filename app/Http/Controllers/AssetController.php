@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkMoveAssetsRequest;
+use App\Http\Requests\CopyAssetsRequest;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Category;
+use App\Models\MonthlySnapshot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -54,11 +56,23 @@ class AssetController extends Controller
             ->orderByDesc('month')
             ->pluck('month');
 
+        $snapshot = MonthlySnapshot::where('date', $month)->first();
+        $latestAssetUpdate = Asset::whereDate('date', $month)->max('updated_at');
+
+        $snapshotState = 'missing';
+        if ($snapshot !== null) {
+            $snapshotUpdatedAt = $snapshot->updated_at?->toDateTimeString();
+            $snapshotState = ($latestAssetUpdate !== null && $snapshotUpdatedAt !== null && $latestAssetUpdate > $snapshotUpdatedAt)
+                ? 'stale'
+                : 'current';
+        }
+
         return Inertia::render('InputData', [
             'assets' => $assets,
             'categories' => $categories,
             'month' => $month,
             'availableMonths' => $availableMonths,
+            'snapshotState' => $snapshotState,
         ]);
     }
 
@@ -81,6 +95,26 @@ class AssetController extends Controller
         $asset->delete();
 
         return redirect()->back()->with('success', 'Asset eliminato.');
+    }
+
+    public function copyFromMonth(CopyAssetsRequest $request): RedirectResponse
+    {
+        $sourceDate = $request->string('source_date')->value();
+        $targetDate = $request->string('month', now()->format('Y-m-01'))->value();
+
+        Asset::whereDate('date', $sourceDate)
+            ->get()
+            ->each(function (Asset $asset) use ($targetDate): void {
+                Asset::create([
+                    'category_id' => $asset->category_id,
+                    'name' => $asset->name,
+                    'value' => $asset->value,
+                    'date' => $targetDate,
+                    'notes' => $asset->notes,
+                ]);
+            });
+
+        return redirect()->back()->with('success', 'Asset copiati.');
     }
 
     public function bulkMove(BulkMoveAssetsRequest $request): RedirectResponse

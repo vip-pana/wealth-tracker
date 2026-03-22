@@ -16,6 +16,7 @@ Route::get('/settings', [CategoryController::class, 'index'])->name('settings.in
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
 Route::post('/assets/bulk-move', [AssetController::class, 'bulkMove'])->name('assets.bulk-move');
+Route::post('/assets/copy-from-month', [AssetController::class, 'copyFromMonth'])->name('assets.copy-from-month');
 Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
 Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
 Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('assets.destroy');

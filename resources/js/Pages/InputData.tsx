@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, Save, ChevronLeft, ChevronRight, ArrowRightLeft } from 'lucide-react';
+import { Plus, Save, ChevronLeft, ChevronRight, ArrowRightLeft, Copy } from 'lucide-react';
 import { formatMonthLong, formatCurrency } from '@/lib/formatters';
 import type { Asset, Category } from '@/types/models';
 
@@ -28,9 +28,10 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color' | 'icon'>[];
     month: string;
     availableMonths: string[];
+    snapshotState: 'missing' | 'stale' | 'current';
 }
 
-export default function InputData({ assets, categories, month, availableMonths }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -39,6 +40,9 @@ export default function InputData({ assets, categories, month, availableMonths }
         asset_ids: [] as number[],
         target_date: '',
     });
+
+    const [copyOpen, setCopyOpen] = useState(false);
+    const copyForm = useForm({ source_date: '' });
 
     const handleSaveSnapshot = () => {
         if (assets.length === 0) {
@@ -74,6 +78,12 @@ export default function InputData({ assets, categories, month, availableMonths }
         }
         return options.reverse();
     })();
+
+    const handleCopy = () => {
+        copyForm.post(`/assets/copy-from-month?month=${month}`, {
+            onSuccess: () => setCopyOpen(false),
+        });
+    };
 
     const handleOpenMove = () => {
         moveForm.setData({
@@ -176,9 +186,26 @@ export default function InputData({ assets, categories, month, availableMonths }
                 {/* Main asset card */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-3">
-                        <CardTitle className="text-base">
-                            Asset — {formatMonthLong(month)}
-                        </CardTitle>
+                        <div className="flex items-center gap-3">
+                            <CardTitle className="text-base">
+                                Asset — {formatMonthLong(month)}
+                            </CardTitle>
+                            {assets.length > 0 && snapshotState === 'missing' && (
+                                <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">
+                                    Snapshot non salvato
+                                </span>
+                            )}
+                            {assets.length > 0 && snapshotState === 'stale' && (
+                                <span className="inline-flex items-center rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white">
+                                    Snapshot non aggiornato
+                                </span>
+                            )}
+                            {assets.length > 0 && snapshotState === 'current' && (
+                                <span className="inline-flex items-center rounded-full bg-green-500 px-2 py-0.5 text-xs font-medium text-white">
+                                    Snapshot aggiornato
+                                </span>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <Button
                                 variant="default"
@@ -191,6 +218,19 @@ export default function InputData({ assets, categories, month, availableMonths }
                                 <Plus className="w-4 h-4 mr-1" />
                                 Aggiungi
                             </Button>
+                            {assets.length === 0 && availableMonths.filter((m) => m !== month).length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        copyForm.setData('source_date', '');
+                                        setCopyOpen(true);
+                                    }}
+                                >
+                                    <Copy className="w-4 h-4 mr-1" />
+                                    Copia da mese
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -233,6 +273,46 @@ export default function InputData({ assets, categories, month, availableMonths }
                 month={month}
                 editAsset={editAsset}
             />
+
+            <Dialog open={copyOpen} onOpenChange={setCopyOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Copia asset da un altro mese</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Gli asset del mese selezionato verranno copiati in{' '}
+                        <strong>{formatMonthLong(month)}</strong> con gli stessi nomi e valori.
+                    </p>
+                    <Select
+                        value={copyForm.data.source_date}
+                        onValueChange={(v) => copyForm.setData('source_date', v)}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Seleziona mese sorgente" />
+                        </SelectTrigger>
+                        <SelectContent position="popper" side="bottom" avoidCollisions={false}>
+                            {availableMonths
+                                .filter((m) => m !== month)
+                                .map((m) => (
+                                    <SelectItem key={m} value={m}>
+                                        {formatMonthLong(m)}
+                                    </SelectItem>
+                                ))}
+                        </SelectContent>
+                    </Select>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCopyOpen(false)}>
+                            Annulla
+                        </Button>
+                        <Button
+                            onClick={handleCopy}
+                            disabled={!copyForm.data.source_date || copyForm.processing}
+                        >
+                            Copia
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
                 <DialogContent>

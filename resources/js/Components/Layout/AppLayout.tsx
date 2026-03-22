@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, Sun, Moon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import type { SharedProps } from '@/types/index.d';
@@ -35,13 +35,20 @@ function FlashMessage() {
                 <div
                     key={toast.id}
                     className={cn(
-                        'rounded-md px-4 py-3 text-sm font-medium shadow-lg',
+                        'flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium shadow-lg',
                         toast.type === 'success'
                             ? 'bg-green-500 text-white'
                             : 'bg-destructive text-destructive-foreground',
                     )}
                 >
-                    {toast.message}
+                    <span>{toast.message}</span>
+                    <button
+                        onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                        className="ml-auto opacity-70 hover:opacity-100"
+                        aria-label="Chiudi"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             ))}
         </div>
