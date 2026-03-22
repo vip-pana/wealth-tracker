@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8080:8000"
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/vendor
+      - sqlite_data:/app/storage/app
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/storage/app/database.sqlite
+      APP_URL: http://localhost:8080
+      LARAVEL_BYPASS_ENV_CHECK: "1"
+      PNPM_HOME: /root/.local/share/pnpm
+    command: >-
+      sh -c "touch /app/storage/app/database.sqlite &&
+      sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
+      php artisan migrate --force &&
+      pnpm install --frozen-lockfile --ignore-scripts &&
+      pnpm dlx concurrently -c '#93c5fd,#c4b5fd,#fb7185,#fdba74' 'php artisan serve --host=0.0.0.0' 'php artisan queue:listen --tries=1' 'php artisan pail --timeout=0' 'pnpm dev --host' --names=server,queue,logs,vite"
+
+volumes:
+  sqlite_data:
