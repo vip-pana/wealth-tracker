@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Prices;
 
+use App\Http\Controllers\Controller;
 use App\Services\PriceFetcherService;
 use Illuminate\Http\RedirectResponse;
 
-class PriceController extends Controller
+class RefreshController extends Controller
 {
-    public function refresh(PriceFetcherService $fetcher): RedirectResponse
+    public function __invoke(PriceFetcherService $fetcher): RedirectResponse
     {
         $fetcher->fetchAll();
 
