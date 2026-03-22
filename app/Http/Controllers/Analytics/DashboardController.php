@@ -42,15 +42,15 @@ class DashboardController extends Controller
         $categories = Category::orderBy('sort_order')->get();
 
         return Inertia::render('Dashboard', [
-            'netWorthSeries' => ($this->buildNetWorthSeries)($snapshots),
-            'allocationData' => ($this->buildAllocationData)($snapshots, $categories),
-            'stackedBar' => ($this->buildStackedBar)($snapshots, $categories),
-            'growthRates' => ($this->computeGrowthRates)($snapshots),
-            'monthComparison' => ($this->computeMonthComparison)($snapshots, $categories),
-            'forecast' => ($this->computeForecast)($snapshots),
-            'macroAllocationData' => ($this->buildMacroAllocationData)($snapshots),
-            'macroStackedBar' => ($this->buildMacroStackedBar)($snapshots),
-            'macroMonthComparison' => ($this->buildMacroMonthComparison)($snapshots),
+            'netWorthSeries' => $this->buildNetWorthSeries->run($snapshots),
+            'allocationData' => $this->buildAllocationData->run($snapshots, $categories),
+            'stackedBar' => $this->buildStackedBar->run($snapshots, $categories),
+            'growthRates' => $this->computeGrowthRates->run($snapshots),
+            'monthComparison' => $this->computeMonthComparison->run($snapshots, $categories),
+            'forecast' => $this->computeForecast->run($snapshots),
+            'macroAllocationData' => $this->buildMacroAllocationData->run($snapshots),
+            'macroStackedBar' => $this->buildMacroStackedBar->run($snapshots),
+            'macroMonthComparison' => $this->buildMacroMonthComparison->run($snapshots),
             'categories' => $categories->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,

@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Action;
 use App\Models\MonthlySnapshot;
 use Illuminate\Support\Collection;
 
-class BuildMacroAllocationData
+class BuildMacroAllocationData extends Action
 {
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
      * @return array<int, mixed>
      */
-    public function __invoke(Collection $snapshots): array
+    public function run(Collection $snapshots): array
     {
         $last = $snapshots->last();
         if (! $last) {

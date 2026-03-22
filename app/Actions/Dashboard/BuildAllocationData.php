@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Action;
 use App\Models\Category;
 use App\Models\MonthlySnapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Support\Collection;
 
-class BuildAllocationData
+class BuildAllocationData extends Action
 {
     /**
      * @param  Collection<int, MonthlySnapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
      * @return array<int, mixed>
      */
-    public function __invoke(Collection $snapshots, Collection $categories): array
+    public function run(Collection $snapshots, Collection $categories): array
     {
         $last = $snapshots->last();
         if (! $last) {

@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Action;
 use App\Models\MonthlySnapshot;
 use Illuminate\Support\Collection;
 
-class BuildNetWorthSeries
+class BuildNetWorthSeries extends Action
 {
     /** @param Collection<int, MonthlySnapshot> $snapshots
      * @return array<int, mixed>
      */
-    public function __invoke(Collection $snapshots): array
+    public function run(Collection $snapshots): array
     {
         return $snapshots->map(fn (MonthlySnapshot $s): array => [
             'month' => $s->date->format('Y-m-d'),
