@@ -1,0 +1,30 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Build output
+public/build/
+public/hot/
+
+# Database
+storage/app/database.sqlite
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Logs and cache
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+.phpunit.cache/
+.phpunit.result.cache
+
+# Environment
+.env
+.env.*
+
+# Lock files (large, not useful for context)
+composer.lock
+pnpm-lock.yaml
