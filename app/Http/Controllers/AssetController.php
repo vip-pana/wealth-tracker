@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkMoveAssetsRequest;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
@@ -80,5 +81,15 @@ class AssetController extends Controller
         $asset->delete();
 
         return redirect()->back()->with('success', 'Asset eliminato.');
+    }
+
+    public function bulkMove(BulkMoveAssetsRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        Asset::whereIn('id', $validated['asset_ids'])
+            ->update(['date' => $validated['target_date']]);
+
+        return redirect()->back()->with('success', 'Asset spostati.');
     }
 }

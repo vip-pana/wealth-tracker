@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SharedProps } from '@/types/index.d';
 import { Button } from '@/Components/ui/button';
 
@@ -14,36 +14,36 @@ const navItems = [
 
 function FlashMessage() {
     const { flash } = usePage<{ flash: SharedProps['flash'] }>().props;
-    const [visible, setVisible] = useState(false);
-    const [message, setMessage] = useState<string | null>(null);
-    const [type, setType] = useState<'success' | 'error'>('success');
+    const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
+    const counterRef = useRef(0);
 
     useEffect(() => {
         const msg = flash.success ?? flash.error ?? null;
         if (!msg) return;
-        const t = flash.success
-            ? setTimeout(() => setVisible(false), 3000)
-            : setTimeout(() => setVisible(false), 4000);
-        /* eslint-disable react-hooks/set-state-in-effect */
-        setMessage(msg);
-        setType(flash.success ? 'success' : 'error');
-        setVisible(true);
-        /* eslint-enable react-hooks/set-state-in-effect */
+        const id = ++counterRef.current;
+        const type = flash.success ? 'success' : 'error';
+        setToasts((prev) => [...prev, { id, message: msg, type }]);
+        const t = setTimeout(() => {
+            setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        }, type === 'success' ? 3000 : 4000);
         return () => clearTimeout(t);
-    }, [flash.success, flash.error]);
-
-    if (!visible || !message) return null;
+    }, [flash]);
 
     return (
-        <div
-            className={cn(
-                'fixed top-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-medium shadow-lg transition-all',
-                type === 'success'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-destructive text-destructive-foreground',
-            )}
-        >
-            {message}
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+            {toasts.map((toast) => (
+                <div
+                    key={toast.id}
+                    className={cn(
+                        'rounded-md px-4 py-3 text-sm font-medium shadow-lg',
+                        toast.type === 'success'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-destructive text-destructive-foreground',
+                    )}
+                >
+                    {toast.message}
+                </div>
+            ))}
         </div>
     );
 }
