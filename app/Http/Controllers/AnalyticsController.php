@@ -93,9 +93,17 @@ class AnalyticsController extends Controller
             'color' => $c->color,
         ]);
 
+        /** @var list<string> $availableMonths */
+        $availableMonths = Asset::selectRaw("strftime('%Y-%m-01', date) as month")
+            ->groupByRaw("strftime('%Y-%m', date)")
+            ->orderByDesc('month')
+            ->pluck('month')
+            ->all();
+
         return Inertia::render('Analysis', [
             'assets' => $assets,
             'categories' => $categories,
+            'availableMonths' => $availableMonths,
             'filters' => [
                 'category_id' => $categoryId !== null ? $request->integer('category_id') : null,
                 'date_from' => $dateFrom,

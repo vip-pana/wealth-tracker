@@ -11,7 +11,6 @@ import {
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import {
     Select,
@@ -34,10 +33,11 @@ interface Filters {
 interface Props {
     assets: Asset[];
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
+    availableMonths: string[];
     filters: Filters;
 }
 
-export default function Analysis({ assets, categories, filters }: Props) {
+export default function Analysis({ assets, categories, availableMonths, filters }: Props) {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
 
     const applyFilters = () => {
@@ -121,32 +121,52 @@ export default function Analysis({ assets, categories, filters }: Props) {
 
                             <div className="space-y-1">
                                 <Label className="text-xs">Da</Label>
-                                <Input
-                                    type="date"
-                                    className="w-40"
-                                    value={localFilters.date_from ?? ''}
-                                    onChange={(e) =>
+                                <Select
+                                    value={localFilters.date_from ?? 'all'}
+                                    onValueChange={(v) =>
                                         setLocalFilters((f) => ({
                                             ...f,
-                                            date_from: e.target.value || null,
+                                            date_from: v === 'all' ? null : v,
                                         }))
                                     }
-                                />
+                                >
+                                    <SelectTrigger className="w-40">
+                                        <SelectValue placeholder="Tutti" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Tutti</SelectItem>
+                                        {availableMonths.map((m) => (
+                                            <SelectItem key={m} value={m}>
+                                                {formatMonthLong(m)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="space-y-1">
                                 <Label className="text-xs">A</Label>
-                                <Input
-                                    type="date"
-                                    className="w-40"
-                                    value={localFilters.date_to ?? ''}
-                                    onChange={(e) =>
+                                <Select
+                                    value={localFilters.date_to ?? 'all'}
+                                    onValueChange={(v) =>
                                         setLocalFilters((f) => ({
                                             ...f,
-                                            date_to: e.target.value || null,
+                                            date_to: v === 'all' ? null : v,
                                         }))
                                     }
-                                />
+                                >
+                                    <SelectTrigger className="w-40">
+                                        <SelectValue placeholder="Tutti" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Tutti</SelectItem>
+                                        {availableMonths.map((m) => (
+                                            <SelectItem key={m} value={m}>
+                                                {formatMonthLong(m)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <Button size="sm" onClick={applyFilters}>
