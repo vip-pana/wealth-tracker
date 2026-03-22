@@ -78,6 +78,9 @@ export default function AssetTable({ assets, onEdit }: Props) {
                             {asset.price !== null && (
                                 <> · {formatCurrency(asset.price)}/unità</>
                             )}
+                            {asset.wallet_address && (
+                                <> · <span className="font-mono" title={asset.wallet_address}>{asset.wallet_address.slice(0, 8)}…{asset.wallet_address.slice(-6)}</span></>
+                            )}
                         </p>
                     )}
                     {asset.notes && !asset.ticker && (

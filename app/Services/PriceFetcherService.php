@@ -18,8 +18,12 @@ class PriceFetcherService
 
     private const CRYPTO_TICKERS = ['BTC'];
 
+    private const BLOCKSTREAM_URL = 'https://blockstream.info/api/address/';
+
     public function fetchAll(): void
     {
+        $this->fetchWalletBalances();
+
         $tickers = Asset::whereNotNull('ticker')
             ->distinct()
             ->pluck('ticker')
@@ -38,6 +42,33 @@ class PriceFetcherService
 
         foreach ($etfTickers as $ticker) {
             $this->fetchEtfPrice($ticker);
+        }
+    }
+
+    private function fetchWalletBalances(): void
+    {
+        $assets = Asset::whereNotNull('wallet_address')->get();
+
+        foreach ($assets as $asset) {
+            /** @var string $address */
+            $address = $asset->wallet_address;
+
+            $response = Http::get(self::BLOCKSTREAM_URL.urlencode($address));
+
+            if (! $response->successful()) {
+                Log::warning('Blockstream fetch failed', ['address' => $address, 'status' => $response->status()]);
+
+                continue;
+            }
+
+            /** @var array{chain_stats: array{funded_txo_sum: int, spent_txo_sum: int}} $data */
+            $data = $response->json();
+
+            $satoshis = $data['chain_stats']['funded_txo_sum'] - $data['chain_stats']['spent_txo_sum'];
+            $btc = $satoshis / 100_000_000;
+
+            $asset->quantity = $btc;
+            $asset->save();
         }
     }
 

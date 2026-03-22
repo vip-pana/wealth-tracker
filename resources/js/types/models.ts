@@ -14,6 +14,7 @@ export interface Asset {
     category: Pick<Category, 'id' | 'name' | 'color' | 'icon' | 'macro_category'>;
     name: string;
     ticker: string | null;
+    wallet_address: string | null;
     quantity: number | null;
     price: number | null;   // current price fetched from API
     value: number;          // quantity * price for live assets, manual value otherwise

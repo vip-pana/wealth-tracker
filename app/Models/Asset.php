@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property float $value
  * @property string|null $ticker
+ * @property string|null $wallet_address
  * @property float|null $quantity
  * @property Carbon $date
  * @property string|null $notes
@@ -26,7 +27,7 @@ class Asset extends Model
     /** @use HasFactory<AssetFactory> */
     use HasFactory;
 
-    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'quantity', 'date', 'notes'];
+    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'wallet_address', 'quantity', 'date', 'notes'];
 
     protected $casts = [
         'value' => 'float',

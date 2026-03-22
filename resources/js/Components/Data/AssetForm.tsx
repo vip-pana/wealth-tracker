@@ -33,31 +33,34 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
     const isEdit = !!editAsset;
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        category_id: editAsset?.category_id?.toString() ?? '',
-        name:        editAsset?.name ?? '',
-        ticker:      editAsset?.ticker ?? '',
-        quantity:    editAsset?.quantity?.toString() ?? '',
-        value:       editAsset?.value?.toString() ?? '',
-        date:        editAsset?.date ?? month,
-        notes:       editAsset?.notes ?? '',
+        category_id:    editAsset?.category_id?.toString() ?? '',
+        name:           editAsset?.name ?? '',
+        ticker:         editAsset?.ticker ?? '',
+        wallet_address: editAsset?.wallet_address ?? '',
+        quantity:       editAsset?.quantity?.toString() ?? '',
+        value:          editAsset?.value?.toString() ?? '',
+        date:           editAsset?.date ?? month,
+        notes:          editAsset?.notes ?? '',
     });
 
     useEffect(() => {
         if (open) {
             setData({
-                category_id: editAsset?.category_id?.toString() ?? '',
-                name:        editAsset?.name ?? '',
-                ticker:      editAsset?.ticker ?? '',
-                quantity:    editAsset?.quantity?.toString() ?? '',
-                value:       editAsset?.value?.toString() ?? '',
-                date:        editAsset?.date ?? month,
-                notes:       editAsset?.notes ?? '',
+                category_id:    editAsset?.category_id?.toString() ?? '',
+                name:           editAsset?.name ?? '',
+                ticker:         editAsset?.ticker ?? '',
+                wallet_address: editAsset?.wallet_address ?? '',
+                quantity:       editAsset?.quantity?.toString() ?? '',
+                value:          editAsset?.value?.toString() ?? '',
+                date:           editAsset?.date ?? month,
+                notes:          editAsset?.notes ?? '',
             });
         }
     }, [open, editAsset, month, setData]);
 
     const hasLiveTicker = data.ticker.trim() !== '';
-    const currentPrice = hasLiveTicker ? prices[data.ticker.trim().toUpperCase()] : null;
+    const hasWalletAddress = data.wallet_address.trim() !== '';
+    const currentPrice = hasLiveTicker ? prices[data.ticker.trim().toUpperCase()] ?? prices[data.ticker.trim()] : null;
     const computedValue =
         currentPrice && data.quantity && !isNaN(parseFloat(data.quantity))
             ? parseFloat(data.quantity) * currentPrice.price
@@ -159,13 +162,39 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 value={data.quantity}
                                 onChange={(e) => setData('quantity', e.target.value)}
                                 placeholder="es. 0.5"
-                                disabled={!hasLiveTicker}
+                                disabled={!hasLiveTicker || hasWalletAddress}
+                                readOnly={hasWalletAddress}
+                                title={hasWalletAddress ? 'Aggiornata automaticamente dal wallet' : undefined}
                             />
                             {errors.quantity && (
                                 <p className="text-xs text-destructive">{errors.quantity}</p>
                             )}
                         </div>
                     </div>
+
+                    {/* Wallet address */}
+                    {hasLiveTicker && (
+                        <div className="space-y-1">
+                            <Label>
+                                Indirizzo wallet{' '}
+                                <span className="text-muted-foreground font-normal">(opzionale)</span>
+                            </Label>
+                            <Input
+                                value={data.wallet_address}
+                                onChange={(e) => setData('wallet_address', e.target.value)}
+                                placeholder="es. bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+                                className="font-mono text-xs"
+                            />
+                            {hasWalletAddress && (
+                                <p className="text-xs text-muted-foreground">
+                                    La quantità verrà aggiornata automaticamente dal saldo on-chain ad ogni fetch.
+                                </p>
+                            )}
+                            {errors.wallet_address && (
+                                <p className="text-xs text-destructive">{errors.wallet_address}</p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Live price info OR manual value */}
                     {hasLiveTicker ? (
