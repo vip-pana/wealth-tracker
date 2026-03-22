@@ -1,5 +1,3 @@
-import type { PageProps as InertiaPageProps } from '@inertiajs/core';
-
 export interface SharedProps {
     flash: {
         success?: string | null;
@@ -8,5 +6,6 @@ export interface SharedProps {
 }
 
 declare module '@inertiajs/core' {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface PageProps extends SharedProps {}
 }

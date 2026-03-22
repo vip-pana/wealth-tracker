@@ -11,7 +11,7 @@ import {
 } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
 import { formatCurrency } from '@/lib/formatters';
-import type { Asset, Category } from '@/types/models';
+import type { Asset } from '@/types/models';
 
 interface Props {
     assets: Asset[];

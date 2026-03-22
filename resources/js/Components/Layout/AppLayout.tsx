@@ -19,20 +19,17 @@ function FlashMessage() {
     const [type, setType] = useState<'success' | 'error'>('success');
 
     useEffect(() => {
-        if (flash.success) {
-            setMessage(flash.success);
-            setType('success');
-            setVisible(true);
-            const t = setTimeout(() => setVisible(false), 3000);
-            return () => clearTimeout(t);
-        }
-        if (flash.error) {
-            setMessage(flash.error);
-            setType('error');
-            setVisible(true);
-            const t = setTimeout(() => setVisible(false), 4000);
-            return () => clearTimeout(t);
-        }
+        const msg = flash.success ?? flash.error ?? null;
+        if (!msg) return;
+        const t = flash.success
+            ? setTimeout(() => setVisible(false), 3000)
+            : setTimeout(() => setVisible(false), 4000);
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setMessage(msg);
+        setType(flash.success ? 'success' : 'error');
+        setVisible(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+        return () => clearTimeout(t);
     }, [flash.success, flash.error]);
 
     if (!visible || !message) return null;

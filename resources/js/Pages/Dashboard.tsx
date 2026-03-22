@@ -90,7 +90,6 @@ export default function Dashboard({
 
     const lastPoint = netWorthSeries[netWorthSeries.length - 1];
     const prevPoint = netWorthSeries[netWorthSeries.length - 2];
-    const latestGrowth = growthRates[growthRates.length - 1];
     const totalChange = prevPoint && lastPoint
         ? ((lastPoint.total_value - prevPoint.total_value) / prevPoint.total_value) * 100
         : null;
