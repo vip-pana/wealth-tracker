@@ -1,9 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import type { SharedProps } from '@/types/index.d';
-import { Button } from '@/Components/ui/button';
 
 const navItems = [
     { href: '/',         label: 'Dashboard',   icon: LayoutDashboard },
@@ -58,20 +57,9 @@ function FlashMessage() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { url } = usePage();
 
-    const [isDark, setIsDark] = useState(() => {
-        if (typeof window === 'undefined') return false;
-        return localStorage.getItem('theme') === 'dark';
-    });
-
     useEffect(() => {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    }, [isDark]);
+        document.documentElement.classList.add('dark');
+    }, []);
 
     // Determine active nav link (match prefix)
     const isActive = (href: string) => {
@@ -108,18 +96,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     ))}
                 </nav>
 
-                {/* Theme toggle */}
-                <div className="px-3 py-4 border-t border-border">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start gap-3 text-muted-foreground"
-                        onClick={() => setIsDark(!isDark)}
-                    >
-                        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                        {isDark ? 'Modalità chiara' : 'Modalità scura'}
-                    </Button>
-                </div>
+
             </aside>
 
             {/* Main content */}
