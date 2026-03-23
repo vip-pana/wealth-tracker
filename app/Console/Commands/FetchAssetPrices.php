@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\PriceFetcherService;
+use App\Actions\Prices\FetchAllPrices;
 use Illuminate\Console\Command;
 
 class FetchAssetPrices extends Command
@@ -13,10 +13,10 @@ class FetchAssetPrices extends Command
 
     protected $description = 'Fetch current prices for all assets with a ticker';
 
-    public function handle(PriceFetcherService $fetcher): int
+    public function handle(FetchAllPrices $fetchAllPrices): int
     {
         $this->info('Fetching asset prices...');
-        $fetcher->fetchAll();
+        $fetchAllPrices->run();
         $this->info('Done.');
 
         return Command::SUCCESS;
