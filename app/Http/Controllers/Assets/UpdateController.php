@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Assets;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\UpdateAssetRequest;
+use App\Http\Requests\Assets\UpdateAssetRequest;
 use App\Models\Asset;
 use Illuminate\Http\RedirectResponse;
 

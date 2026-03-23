@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Snapshots;
 
 use App\Actions\Snapshots\StoreSnapshot;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreSnapshotRequest;
+use App\Http\Requests\Snapshots\StoreSnapshotRequest;
 use Illuminate\Http\RedirectResponse;
 
 class StoreController extends Controller

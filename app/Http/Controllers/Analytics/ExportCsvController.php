@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Analytics;
 
 use App\Actions\Analytics\ExportCsv;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ExportCsvRequest;
+use App\Http\Requests\Analytics\ExportCsvRequest;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportCsvController extends Controller

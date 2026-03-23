@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Analytics;
 
 use App\Actions\Analysis\FetchAnalysisData;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\AnalysisRequest;
+use App\Http\Requests\Analytics\AnalysisRequest;
 use Inertia\Inertia;
 use Inertia\Response;
 

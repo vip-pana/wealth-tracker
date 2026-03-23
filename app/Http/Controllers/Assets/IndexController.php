@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Assets;
 
 use App\Actions\Input\FetchInputData;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\InputDataRequest;
+use App\Http\Requests\Assets\InputDataRequest;
 use Inertia\Inertia;
 use Inertia\Response;
 

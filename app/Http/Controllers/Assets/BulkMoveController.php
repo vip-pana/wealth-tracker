@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Assets;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\BulkMoveAssetsRequest;
+use App\Http\Requests\Assets\BulkMoveAssetsRequest;
 use App\Models\Asset;
 use Illuminate\Http\RedirectResponse;
 

@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Categories;
 
 use App\Enums\MacroCategory;
+use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreCategoryRequest extends FormRequest
+class UpdateCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,9 +19,12 @@ class StoreCategoryRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
+        /** @var Category $category */
+        $category = $this->route('category');
+
         return [
-            'name' => 'required|string|max:100|unique:categories,name',
-            'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'name' => 'sometimes|string|max:100|unique:categories,name,'.$category->id,
+            'color' => 'sometimes|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'icon' => 'nullable|string|max:10',
             'sort_order' => 'nullable|integer|min:0',
             'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],

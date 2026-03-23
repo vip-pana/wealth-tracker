@@ -2,24 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Analytics;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ExportCsvRequest extends FormRequest
+class AnalysisRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    /** @return array<string, mixed> */
+    /** @return array<string, array<int, string>> */
     public function rules(): array
     {
         return [
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
-            'date_to' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ];
     }
 

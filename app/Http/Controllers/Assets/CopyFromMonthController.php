@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Assets;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CopyAssetsRequest;
+use App\Http\Requests\Assets\CopyAssetsRequest;
 use App\Models\Asset;
 use Illuminate\Http\RedirectResponse;
 
