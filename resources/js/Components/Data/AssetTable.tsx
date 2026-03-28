@@ -3,6 +3,13 @@ import { useForm } from '@inertiajs/react';
 import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/Components/ui/dialog';
+import {
     Table,
     TableBody,
     TableCell,
@@ -18,25 +25,44 @@ interface Props {
     onEdit: (asset: Asset) => void;
 }
 
-function DeleteButton({ assetId }: { assetId: number }) {
+function DeleteButton({ asset }: { asset: Asset }) {
+    const [open, setOpen] = useState(false);
     const { delete: destroy, processing } = useForm({});
 
-    const handleDelete = () => {
-        if (confirm('Eliminare questo asset?')) {
-            destroy(`/assets/${assetId}`);
-        }
-    };
-
     return (
-        <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={handleDelete}
-            disabled={processing}
-        >
-            <Trash2 className="w-4 h-4" />
-        </Button>
+        <>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => setOpen(true)}
+            >
+                <Trash2 className="w-4 h-4" />
+            </Button>
+
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Elimina asset</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Stai per rimuovere <span className="font-medium text-foreground">{asset.name}</span> dal mese corrente. Gli altri mesi non vengono modificati.
+                    </p>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)} disabled={processing}>
+                            Annulla
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            disabled={processing}
+                            onClick={() => destroy(`/assets/${asset.id}`, { onSuccess: () => setOpen(false) })}
+                        >
+                            Elimina
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
@@ -111,7 +137,7 @@ function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset)
                             >
                                 <Pencil className="w-4 h-4" />
                             </Button>
-                            <DeleteButton assetId={asset.id} />
+                            <DeleteButton asset={asset} />
                         </div>
                     </TableCell>
                 </TableRow>

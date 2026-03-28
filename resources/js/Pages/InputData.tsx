@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, Save, ChevronLeft, ChevronRight, ArrowRightLeft, Copy } from 'lucide-react';
+import { Plus, Save, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { formatMonthLong, formatCurrency } from '@/lib/formatters';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
@@ -36,12 +36,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
-    const [moveOpen, setMoveOpen] = useState(false);
-    const moveForm = useForm({
-        asset_ids: [] as number[],
-        target_date: '',
-    });
-
     const [copyOpen, setCopyOpen] = useState(false);
     const copyForm = useForm({ source_date: '' });
 
@@ -69,34 +63,9 @@ export default function InputData({ assets, categories, month, availableMonths, 
         handleMonthChange(newMonth);
     };
 
-    const moveMonthOptions = (() => {
-        const [y, m] = month.split('-').map(Number);
-        const options: string[] = [];
-        for (let i = -24; i <= -1; i++) {
-            const d = new Date(y, m - 1 + i, 1);
-            const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-            if (val !== month) options.push(val);
-        }
-        return options.reverse();
-    })();
-
     const handleCopy = () => {
         copyForm.post(`/assets/copy-from-month?month=${month}`, {
             onSuccess: () => setCopyOpen(false),
-        });
-    };
-
-    const handleOpenMove = () => {
-        moveForm.setData({
-            asset_ids: assets.map((a) => a.id),
-            target_date: '',
-        });
-        setMoveOpen(true);
-    };
-
-    const handleMove = () => {
-        moveForm.post('/assets/bulk-move', {
-            onSuccess: () => setMoveOpen(false),
         });
     };
 
@@ -233,16 +202,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 </Button>
                             )}
                             <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleOpenMove}
-                                disabled={assets.length === 0}
-                            >
-                                <ArrowRightLeft className="w-4 h-4 mr-1" />
-                                Sposta mese
-                            </Button>
-                            <div className="w-px h-5 bg-border mx-1" />
-                            <Button
                                 size="sm"
                                 onClick={handleSaveSnapshot}
                                 disabled={savingSnapshot || assets.length === 0 || snapshotState === 'current'}
@@ -321,43 +280,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Sposta asset a un altro mese</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Verranno spostati tutti i {assets.length} asset di{' '}
-                        <strong>{formatMonthLong(month)}</strong> al mese selezionato.
-                    </p>
-                    <Select
-                        value={moveForm.data.target_date}
-                        onValueChange={(v) => moveForm.setData('target_date', v)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleziona mese di destinazione" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" side="bottom" avoidCollisions={false}>
-                            {moveMonthOptions.map((m) => (
-                                <SelectItem key={m} value={m}>
-                                    {formatMonthLong(m)}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setMoveOpen(false)}>
-                            Annulla
-                        </Button>
-                        <Button
-                            onClick={handleMove}
-                            disabled={!moveForm.data.target_date || moveForm.processing}
-                        >
-                            Sposta
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </>
     );
 }

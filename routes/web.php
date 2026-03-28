@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\Analytics\AnalysisController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
-use App\Http\Controllers\Assets\BulkMoveController;
 use App\Http\Controllers\Assets\CopyFromMonthController;
 use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
@@ -35,7 +34,6 @@ Route::prefix('assets')->name('assets.')->group(function () {
     Route::post('/', StoreAssetController::class)->name('store');
     Route::put('/{asset}', UpdateAssetController::class)->name('update');
     Route::delete('/{asset}', DestroyAssetController::class)->name('destroy');
-    Route::post('/bulk-move', BulkMoveController::class)->name('bulk-move');
     Route::post('/copy-from-month', CopyFromMonthController::class)->name('copy-from-month');
 });
 

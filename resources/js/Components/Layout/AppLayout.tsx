@@ -6,9 +6,9 @@ import type { SharedProps } from '@/types/index.d';
 
 const navItems = [
     { href: '/',         label: 'Dashboard',   icon: LayoutDashboard },
+    { href: '/goal',     label: 'Obiettivo',    icon: Target },
     { href: '/input',    label: 'Input Dati',   icon: PlusSquare },
     { href: '/analysis', label: 'Analisi',      icon: BarChart2 },
-    { href: '/goal',     label: 'Obiettivo',    icon: Target },
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];
 
