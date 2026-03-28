@@ -166,28 +166,17 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* Summary cards */}
+                {/* Summary cards + goal */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     <SummaryCard
                         label="Patrimonio attuale"
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
                         change={totalChange}
                     />
-                    {(macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
-                        <SummaryCard
-                            key={slice.name}
-                            label={slice.name}
-                            value={formatCurrency(slice.value)}
-                        />
-                    ))}
-                </div>
-
-                {/* Goal banner */}
-                {goal && lastPoint && (
-                    <Link href="/goal" className="block">
-                        <Card className="border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
-                            <CardContent className="p-3">
-                                <div className="flex items-center gap-4">
+                    {goal && lastPoint ? (
+                        <Link href="/goal" className="contents">
+                            <Card className="col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                                <CardContent className="p-3 h-full flex items-center gap-4">
                                     <Target className="w-5 h-5 text-amber-500 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1.5">
@@ -207,11 +196,19 @@ export default function Dashboard({
                                     <span className="text-sm font-bold text-amber-500 flex-shrink-0">
                                         {((lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%
                                     </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                )}
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ) : (
+                        (macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
+                            <SummaryCard
+                                key={slice.name}
+                                label={slice.name}
+                                value={formatCurrency(slice.value)}
+                            />
+                        ))
+                    )}
+                </div>
 
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
