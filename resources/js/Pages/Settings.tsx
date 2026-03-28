@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
-import { Badge } from '@/Components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -21,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, RefreshCw, Layers } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -187,12 +186,12 @@ function DeleteCategoryButton({ category }: { category: Category & { assets_coun
         <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
             onClick={handleDelete}
             disabled={processing || category.assets_count > 0}
             title={category.assets_count > 0 ? 'Categoria in uso' : 'Elimina'}
         >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
         </Button>
     );
 }
@@ -220,69 +219,44 @@ export default function Settings({ categories, prices }: Props) {
                             }}
                         >
                             <Plus className="w-4 h-4 mr-1" />
-                            Nuova categoria
+                            Nuova
                         </Button>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Categoria</TableHead>
-                                    <TableHead>Macro</TableHead>
-                                    <TableHead>Colore</TableHead>
-                                    <TableHead>Asset</TableHead>
-                                    <TableHead className="w-20 text-right">Azioni</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {categories.map((cat) => (
-                                    <TableRow key={cat.id}>
-                                        <TableCell>
-                                            <span className="flex items-center gap-2 font-medium">
-                                                {cat.icon && <span>{cat.icon}</span>}
-                                                {cat.name}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            {cat.macro_category
-                                                ? <Badge variant="outline">{cat.macro_category}</Badge>
-                                                : <span className="text-xs text-muted-foreground">—</span>
-                                            }
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-5 h-5 rounded-full border border-border"
-                                                    style={{ backgroundColor: cat.color }}
-                                                />
-                                                <span className="font-mono text-xs text-muted-foreground">
-                                                    {cat.color}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary">{cat.assets_count}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => {
-                                                        setEditCategory(cat);
-                                                        setDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </Button>
-                                                <DeleteCategoryButton category={cat} />
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <div className="divide-y divide-border">
+                            {categories.map((cat) => (
+                                <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                                    <span className="text-sm font-medium flex-1 flex items-center gap-1.5">
+                                        {cat.icon && <span>{cat.icon}</span>}
+                                        {cat.name}
+                                    </span>
+                                    {cat.macro_category && (
+                                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Layers className="w-3 h-3" />
+                                            {cat.macro_category}
+                                        </span>
+                                    )}
+                                    <span className="text-xs text-muted-foreground w-16 text-right">
+                                        {cat.assets_count} asset
+                                    </span>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                            onClick={() => {
+                                                setEditCategory(cat);
+                                                setDialogOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <DeleteCategoryButton category={cat} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
 

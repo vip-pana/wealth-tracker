@@ -207,7 +207,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 </span>
                             )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                             <Button
                                 variant="default"
                                 size="sm"
@@ -241,14 +241,19 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 <ArrowRightLeft className="w-4 h-4 mr-1" />
                                 Sposta mese
                             </Button>
+                            <div className="w-px h-5 bg-border mx-1" />
                             <Button
-                                variant="outline"
                                 size="sm"
                                 onClick={handleSaveSnapshot}
-                                disabled={savingSnapshot || assets.length === 0}
+                                disabled={savingSnapshot || assets.length === 0 || snapshotState === 'current'}
+                                className={
+                                    snapshotState === 'current'
+                                        ? 'bg-green-600 hover:bg-green-600 text-white'
+                                        : 'bg-amber-500 hover:bg-amber-600 text-white'
+                                }
                             >
                                 <Save className="w-4 h-4 mr-1" />
-                                Salva snapshot
+                                {snapshotState === 'current' ? 'Snapshot salvato' : 'Salva snapshot'}
                             </Button>
                         </div>
                     </CardHeader>
