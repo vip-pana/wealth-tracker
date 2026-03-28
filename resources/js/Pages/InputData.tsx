@@ -119,11 +119,11 @@ export default function InputData({ assets, categories, month, availableMonths, 
     return (
         <>
             <Head title="Input Dati" />
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
                 {/* Header row */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold">Input Dati</h1>
+                        <h1 className="text-base font-bold">Input Dati</h1>
                         <p className="text-sm text-muted-foreground">
                             Gestisci gli asset per il mese selezionato
                         </p>
@@ -160,20 +160,20 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 {assets.length > 0 && (
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
                         <Card>
-                            <CardContent className="p-4">
+                            <CardContent className="p-3">
                                 <p className="text-xs text-muted-foreground">Totale</p>
-                                <p className="text-lg font-bold">{formatCurrency(total)}</p>
+                                <p className="text-base font-bold">{formatCurrency(total)}</p>
                             </CardContent>
                         </Card>
                         {Object.values(byCat).map((cat) => (
                             <Card key={cat.name}>
-                                <CardContent className="p-4">
+                                <CardContent className="p-3">
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                                         {cat.icon && <span>{cat.icon}</span>}
                                         {cat.name}
                                     </p>
                                     <p
-                                        className="text-lg font-bold"
+                                        className="text-base font-bold"
                                         style={{ color: cat.color }}
                                     >
                                         {formatCurrency(cat.total)}

@@ -8,8 +8,8 @@ import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
+import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
 
@@ -191,11 +191,19 @@ function MilestonesSection({
                                 )}
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">Data</Label>
+                                <Label className="text-xs text-muted-foreground">Anno</Label>
                                 <Input
-                                    type="date"
-                                    value={item.target_date}
-                                    onChange={(e) => onUpdate(idx, 'target_date', e.target.value)}
+                                    type="number"
+                                    min={2020}
+                                    max={2100}
+                                    step={1}
+                                    value={item.target_date ? item.target_date.slice(0, 4) : ''}
+                                    onChange={(e) => {
+                                        const y = e.target.value;
+                                        onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
+                                    }}
+                                    placeholder="es. 2030"
+                                    className="font-mono"
                                 />
                             </div>
                         </div>
@@ -364,11 +372,19 @@ function GoalFormDialog({
                             {errors.target_value && <p className="text-xs text-destructive">{errors.target_value}</p>}
                         </div>
                         <div className="space-y-1">
-                            <Label>Data target (opzionale)</Label>
+                            <Label>Anno target (opzionale)</Label>
                             <Input
-                                type="date"
-                                value={data.target_date}
-                                onChange={(e) => setData('target_date', e.target.value)}
+                                type="number"
+                                min={2020}
+                                max={2100}
+                                step={1}
+                                value={data.target_date ? data.target_date.slice(0, 4) : ''}
+                                onChange={(e) => {
+                                    const y = e.target.value;
+                                    setData('target_date', y ? `${y}-01-01` : '');
+                                }}
+                                placeholder="es. 2045"
+                                className="font-mono"
                             />
                         </div>
                     </div>
@@ -473,6 +489,45 @@ function SmallDonut({ data, title }: { data: { name: string; value: number; colo
     );
 }
 
+function MilestoneAccordionItem({
+    milestone,
+    achieved,
+    defaultOpen,
+}: {
+    milestone: { id: number; target_value: number; target_date: string; notes: string | null };
+    achieved: boolean;
+    defaultOpen: boolean;
+}) {
+    const [open, setOpen] = useState(defaultOpen);
+
+    return (
+        <div>
+            <button
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                onClick={() => setOpen((o) => !o)}
+            >
+                {achieved ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <span className={`flex-1 text-sm font-semibold ${achieved ? 'line-through text-muted-foreground' : ''}`}>
+                    {formatCurrencyNoDecimals(milestone.target_value)}
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">{milestone.target_date.slice(0, 4)}</span>
+                </span>
+                {milestone.notes && (
+                    open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                )}
+            </button>
+            {open && milestone.notes && (
+                <div className="px-11 pb-3">
+                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">{milestone.notes}</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Progress view ────────────────────────────────────────────────────────────
 
 function GoalProgress({
@@ -538,7 +593,7 @@ function GoalProgress({
     const today = new Date().toISOString().slice(0, 10);
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-4">
             <Head title={`Obiettivo — ${goal.name}`} />
 
             {/* Header */}
@@ -546,7 +601,7 @@ function GoalProgress({
                 <div>
                     <div className="flex items-center gap-2">
                         <Target className="w-5 h-5 text-primary" />
-                        <h1 className="text-2xl font-bold">{goal.name}</h1>
+                        <h1 className="text-lg font-bold">{goal.name}</h1>
                     </div>
                     {goal.description && (
                         <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{goal.description}</p>
@@ -554,7 +609,7 @@ function GoalProgress({
                     {goal.target_date && (
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                             <CalendarClock className="w-3.5 h-3.5" />
-                            Entro il {formatDate(goal.target_date)}
+                            Anno target: {goal.target_date.slice(0, 4)}
                             {months !== null && months > 0 && (
                                 <span className="ml-1">({months} mesi rimanenti)</span>
                             )}
@@ -572,7 +627,8 @@ function GoalProgress({
                 </div>
             </div>
 
-            {/* Progress */}
+            {/* Progress + Milestones side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -582,8 +638,8 @@ function GoalProgress({
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex justify-between text-sm">
-                        <span className="font-medium">{formatCurrency(current)}</span>
-                        <span className="text-muted-foreground">{formatCurrency(target)}</span>
+                        <span className="font-medium">{formatCurrencyNoDecimals(current)}</span>
+                        <span className="text-muted-foreground">{formatCurrencyNoDecimals(target)}</span>
                     </div>
                     <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
                         <div
@@ -593,7 +649,7 @@ function GoalProgress({
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{progressPct.toFixed(1)}% raggiunto</span>
-                        <span>{formatCurrency(remaining)} mancanti</span>
+                        <span>{formatCurrencyNoDecimals(remaining)} mancanti</span>
                     </div>
 
                     {/* Growth rate */}
@@ -611,6 +667,27 @@ function GoalProgress({
                     )}
                 </CardContent>
             </Card>
+
+            {sortedMilestones.length > 0 && (() => {
+                const nextIdx = sortedMilestones.findIndex((m) => current < m.target_value && m.target_date > today);
+                return (
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Milestone</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border">
+                                {sortedMilestones.map((m, idx) => {
+                                    const achieved = current >= m.target_value || m.target_date <= today;
+                                    const defaultOpen = idx === nextIdx || (nextIdx === -1 && idx === sortedMilestones.length - 1);
+                                    return <MilestoneAccordionItem key={m.id} milestone={m} achieved={achieved} defaultOpen={defaultOpen} />;
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })()}
+            </div>
 
             {/* Allocation comparison */}
             {(goal.categoryAllocations.length > 0 || goal.macroAllocations.length > 0) && (
@@ -681,39 +758,6 @@ function GoalProgress({
                 </Card>
             )}
 
-            {/* Milestones */}
-            {sortedMilestones.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Milestone</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {sortedMilestones.map((m) => {
-                                const achieved = current >= m.target_value || m.target_date <= today;
-                                return (
-                                    <div key={m.id} className="flex items-center gap-3">
-                                        {achieved ? (
-                                            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                                        ) : (
-                                            <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                                        )}
-                                        <div className="flex-1">
-                                            <p className={`text-sm font-semibold ${achieved ? 'line-through text-muted-foreground' : ''}`}>
-                                                {formatCurrency(m.target_value)}
-                                                <span className="ml-2 text-xs font-normal text-muted-foreground">{formatDate(m.target_date)}</span>
-                                            </p>
-                                            {m.notes && (
-                                                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{m.notes}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }

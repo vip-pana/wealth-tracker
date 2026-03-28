@@ -181,11 +181,13 @@ export default function Dashboard({
                 </div>
 
                 {/* Charts grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <NetWorthLineChart data={netWorthSeries} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
-                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
                     <GrowthRateChart data={growthRates} />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
                     <MonthComparisonChart data={macroMode ? macroComparisonPoints : monthComparison} months={snapshotMonths} />
                     <ForecastChart data={forecast} />
                 </div>

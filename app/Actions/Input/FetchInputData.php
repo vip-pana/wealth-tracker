@@ -28,6 +28,7 @@ class FetchInputData extends Action
                 'name' => $c->name,
                 'color' => $c->color,
                 'icon' => $c->icon,
+                'macro_category' => $c->macro_category?->value,
             ]);
 
         $priceMap = $prices->mapWithKeys(fn (AssetPrice $p) => [$p->ticker => [

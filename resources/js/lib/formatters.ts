@@ -12,6 +12,19 @@ export function formatCurrency(value: number): string {
 }
 
 /**
+ * Format a number as Euro currency without decimals.
+ * e.g. 12345.67 → "€ 12.346"
+ */
+export function formatCurrencyNoDecimals(value: number): string {
+    return new Intl.NumberFormat('it-IT', {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+}
+
+/**
  * Compact currency: € 12.3k or € 1.2M
  */
 export function formatCurrencyCompact(value: number): string {

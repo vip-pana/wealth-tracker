@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Download, Filter, X } from 'lucide-react';
+import { Download, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatMonthLong } from '@/lib/formatters';
 import type { Asset, Category } from '@/types/models';
 
@@ -39,6 +39,8 @@ interface Props {
 
 export default function Analysis({ assets, categories, availableMonths, filters }: Props) {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
 
     const applyFilters = () => {
         const params: Record<string, string> = {};
@@ -50,6 +52,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
 
     const clearFilters = () => {
         setLocalFilters({ category_id: null, date_from: null, date_to: null });
+        setPage(1);
         router.get('/analysis', {}, { preserveState: false });
     };
 
@@ -57,6 +60,10 @@ export default function Analysis({ assets, categories, availableMonths, filters 
         filters.category_id || filters.date_from || filters.date_to;
 
     const total = assets.reduce((s, a) => s + a.value, 0);
+
+    const totalPages = Math.max(1, Math.ceil(assets.length / perPage));
+    const safePage = Math.min(page, totalPages);
+    const pagedAssets = assets.slice((safePage - 1) * perPage, safePage * perPage);
 
     // Build CSV export URL
     const exportParams = new URLSearchParams();
@@ -68,10 +75,10 @@ export default function Analysis({ assets, categories, availableMonths, filters 
     return (
         <>
             <Head title="Analisi" />
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Analisi</h1>
+                        <h1 className="text-lg font-bold">Analisi</h1>
                         <p className="text-sm text-muted-foreground">
                             {assets.length} asset trovati{hasFilters ? ' (filtrati)' : ''}
                         </p>
@@ -201,7 +208,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {assets.map((asset) => (
+                                        {pagedAssets.map((asset) => (
                                             <TableRow key={asset.id}>
                                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                                                     {formatMonthLong(asset.date)}
@@ -237,11 +244,33 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         ))}
                                     </TableBody>
                                 </Table>
-                                <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted/40">
-                                    <span className="text-sm text-muted-foreground">
-                                        {assets.length} righe
-                                    </span>
-                                    <span className="font-bold">{formatCurrency(total)}</span>
+                                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-muted/40">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm text-muted-foreground">
+                                            {assets.length} righe · pagina {safePage} di {totalPages}
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs text-muted-foreground">Righe per pagina:</span>
+                                            <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setPage(1); }}>
+                                                <SelectTrigger className="h-7 w-16 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {[10, 25, 50, 100].map((n) => (
+                                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setPage((p) => p - 1)}>
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </>
                         )}
