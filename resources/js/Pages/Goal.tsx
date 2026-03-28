@@ -9,7 +9,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
-import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/formatters';
+import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
 
@@ -70,13 +70,6 @@ function formatPct(value: number): string {
     return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
 }
 
-function formatDate(dateStr: string): string {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('it-IT', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
 
 function monthsUntil(dateStr: string): number {
     const target = new Date(dateStr + 'T00:00:00');

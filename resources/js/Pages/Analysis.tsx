@@ -59,8 +59,6 @@ export default function Analysis({ assets, categories, availableMonths, filters 
     const hasFilters =
         filters.category_id || filters.date_from || filters.date_to;
 
-    const total = assets.reduce((s, a) => s + a.value, 0);
-
     const totalPages = Math.max(1, Math.ceil(assets.length / perPage));
     const safePage = Math.min(page, totalPages);
     const pagedAssets = assets.slice((safePage - 1) * perPage, safePage * perPage);

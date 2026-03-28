@@ -80,7 +80,6 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         }
     };
 
-    const hasWalletAddress = data.wallet_address.trim() !== '';
     const currentPrice = data.ticker.trim() !== ''
         ? prices[data.ticker.trim().toUpperCase()] ?? prices[data.ticker.trim()]
         : null;
