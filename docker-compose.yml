@@ -18,6 +18,7 @@ services:
       APP_URL: http://localhost:8080
       LARAVEL_BYPASS_ENV_CHECK: "1"
       PNPM_HOME: /root/.local/share/pnpm
+      CI: "true"
     command: >-
       sh -c "touch /app/storage/app/database.sqlite &&
       sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
