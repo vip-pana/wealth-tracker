@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, TrendingUp, X } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import type { SharedProps } from '@/types/index.d';
@@ -8,6 +8,7 @@ const navItems = [
     { href: '/',         label: 'Dashboard',   icon: LayoutDashboard },
     { href: '/input',    label: 'Input Dati',   icon: PlusSquare },
     { href: '/analysis', label: 'Analisi',      icon: BarChart2 },
+    { href: '/goal',     label: 'Obiettivo',    icon: Target },
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];
 

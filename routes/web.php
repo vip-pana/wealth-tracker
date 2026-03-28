@@ -15,6 +15,10 @@ use App\Http\Controllers\Categories\DestroyController as DestroyCategoryControll
 use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
 use App\Http\Controllers\Categories\StoreController as StoreCategoryController;
 use App\Http\Controllers\Categories\UpdateController as UpdateCategoryController;
+use App\Http\Controllers\Goals\DestroyController as DestroyGoalController;
+use App\Http\Controllers\Goals\IndexController as IndexGoalController;
+use App\Http\Controllers\Goals\StoreController as StoreGoalController;
+use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
 use App\Http\Controllers\Snapshots\StoreController as StoreSnapshotController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +28,7 @@ Route::get('/', DashboardController::class)->name('dashboard');
 Route::get('/input', IndexAssetController::class)->name('input.index');
 Route::get('/analysis', AnalysisController::class)->name('analysis.index');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
+Route::get('/goal', IndexGoalController::class)->name('goal.index');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
 Route::prefix('assets')->name('assets.')->group(function () {
@@ -42,6 +47,13 @@ Route::prefix('categories')->name('categories.')->group(function () {
     Route::post('/', StoreCategoryController::class)->name('store');
     Route::put('/{category}', UpdateCategoryController::class)->name('update');
     Route::delete('/{category}', DestroyCategoryController::class)->name('destroy');
+});
+
+// ─── Goal ─────────────────────────────────────────────────────────────────────
+Route::prefix('goal')->name('goal.')->group(function () {
+    Route::post('/', StoreGoalController::class)->name('store');
+    Route::put('/{goal}', UpdateGoalController::class)->name('update');
+    Route::delete('/{goal}', DestroyGoalController::class)->name('destroy');
 });
 
 // ─── Prices ───────────────────────────────────────────────────────────────────

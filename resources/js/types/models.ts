@@ -39,3 +39,27 @@ export interface SnapshotCategoryValue {
     category_id: number;
     value: number;
 }
+
+export interface GoalCategoryAllocation {
+    category_id: number | null;
+    macro_category: string | null;
+    percentage: number;
+}
+
+export interface GoalMilestone {
+    id: number;
+    notes: string | null;
+    target_value: number;
+    target_date: string; // "YYYY-MM-DD"
+}
+
+export interface Goal {
+    id: number;
+    name: string;
+    description: string | null;
+    target_value: number;
+    target_date: string | null; // "YYYY-MM-DD"
+    categoryAllocations: GoalCategoryAllocation[];
+    macroAllocations: GoalCategoryAllocation[];
+    milestones: GoalMilestone[];
+}
