@@ -16,25 +16,4 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'resources/js'),
         },
     },
-    build: {
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    'vendor-react': ['react', 'react-dom', '@inertiajs/react'],
-                    'vendor-recharts': ['recharts'],
-                    'vendor-radix': [
-                        '@radix-ui/react-dialog',
-                        '@radix-ui/react-dropdown-menu',
-                        '@radix-ui/react-label',
-                        '@radix-ui/react-popover',
-                        '@radix-ui/react-select',
-                        '@radix-ui/react-separator',
-                        '@radix-ui/react-slot',
-                        '@radix-ui/react-tooltip',
-                    ],
-                    'vendor-lucide': ['lucide-react'],
-                },
-            },
-        },
-    },
 });
