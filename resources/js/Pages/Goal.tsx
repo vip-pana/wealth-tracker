@@ -7,7 +7,7 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { Category } from '@/types/models';
@@ -455,16 +455,16 @@ function GoalFormDialog({
 
 function SmallDonut({ data, title }: { data: { name: string; value: number; color: string }[]; title: string }) {
     return (
-        <div className="space-y-2">
+        <div className="space-y-1 w-56">
             <p className="text-xs font-medium text-muted-foreground text-center">{title}</p>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
                     <Pie
                         data={data}
                         cx="50%"
-                        cy="45%"
-                        innerRadius={55}
-                        outerRadius={80}
+                        cy="50%"
+                        innerRadius={46}
+                        outerRadius={68}
                         paddingAngle={3}
                         dataKey="value"
                         nameKey="name"
@@ -482,7 +482,6 @@ function SmallDonut({ data, title }: { data: { name: string; value: number; colo
                             color: 'hsl(var(--card-foreground))',
                         }}
                     />
-                    <Legend iconType="circle" iconSize={8} formatter={(value) => <span style={{ fontSize: 11 }}>{value}</span>} />
                 </PieChart>
             </ResponsiveContainer>
         </div>
@@ -715,44 +714,61 @@ function GoalProgress({
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="p-3">
                         {currentNetWorth === null ? (
                             <p className="text-sm text-muted-foreground text-center py-4">
                                 Nessuno snapshot disponibile. Crea uno snapshot per vedere il confronto.
                             </p>
                         ) : (
-                            <>
+                            <div className="flex gap-6">
                                 {/* Donuts */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="flex gap-10 flex-shrink-0">
                                     <SmallDonut data={currentDonut} title="Attuale" />
                                     <SmallDonut data={targetDonut} title="Target" />
                                 </div>
 
                                 {/* Deviation table */}
-                                <div className="space-y-2">
-                                    {deviations.map((d) => (
-                                        <div key={d.name} className="flex items-center gap-3 text-sm">
-                                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
-                                            <span className="flex-1 font-medium">{d.name}</span>
-                                            <span className="text-muted-foreground w-14 text-right font-mono">{d.currentPct.toFixed(1)}%</span>
-                                            <span className="text-muted-foreground w-4 text-center">→</span>
-                                            <span className="text-muted-foreground w-14 text-right font-mono">{d.targetPct.toFixed(1)}%</span>
-                                            <Badge
-                                                variant="outline"
-                                                className={`w-16 justify-center font-mono text-xs ${
-                                                    Math.abs(d.delta) < 1
-                                                        ? 'text-green-500 border-green-500/30'
-                                                        : d.delta > 0
-                                                        ? 'text-blue-400 border-blue-400/30'
-                                                        : 'text-orange-400 border-orange-400/30'
-                                                }`}
-                                            >
-                                                {d.delta > 0 ? '+' : ''}{d.delta.toFixed(1)}%
-                                            </Badge>
-                                        </div>
-                                    ))}
+                                <div className="flex-1 self-center">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="text-muted-foreground font-medium">
+                                                <th className="text-left pb-2 font-medium">Categoria</th>
+                                                <th className="text-right pb-2 font-medium px-4">Attuale</th>
+                                                <th className="text-right pb-2 font-medium px-4">Target</th>
+                                                <th className="text-right pb-2 font-medium pl-4">Delta</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="space-y-1">
+                                            {deviations.map((d) => (
+                                                <tr key={d.name}>
+                                                    <td className="py-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                                                            <span className="font-medium text-sm">{d.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{d.currentPct.toFixed(1)}%</td>
+                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{d.targetPct.toFixed(1)}%</td>
+                                                    <td className="text-right py-1 pl-4">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`font-mono text-xs ${
+                                                                Math.abs(d.delta) < 1
+                                                                    ? 'text-green-500 border-green-500/30'
+                                                                    : d.delta > 0
+                                                                    ? 'text-blue-400 border-blue-400/30'
+                                                                    : 'text-orange-400 border-orange-400/30'
+                                                            }`}
+                                                        >
+                                                            {d.delta > 0 ? '+' : ''}{d.delta.toFixed(1)}%
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </CardContent>
                 </Card>

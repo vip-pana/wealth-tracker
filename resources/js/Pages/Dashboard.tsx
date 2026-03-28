@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/Components/ui/card';
 import { formatCurrency, formatPercent, formatMonthLong } from '@/lib/formatters';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
-import { PlusSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { PlusSquare, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
 import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -34,6 +34,7 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     latestSnapshot: string | null;
+    goal: { name: string; target_value: number; target_date: string | null } | null;
 }
 
 function SummaryCard({
@@ -77,6 +78,7 @@ export default function Dashboard({
     categories,
     hasData,
     latestSnapshot,
+    goal,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
     if (!hasData) {
@@ -180,9 +182,40 @@ export default function Dashboard({
                     ))}
                 </div>
 
+                {/* Goal banner */}
+                {goal && lastPoint && (
+                    <Link href="/goal" className="block">
+                        <Card className="border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                            <CardContent className="p-3">
+                                <div className="flex items-center gap-4">
+                                    <Target className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-sm font-medium truncate">{goal.name}</span>
+                                            <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                                                {formatCurrency(lastPoint.total_value)} / {formatCurrency(goal.target_value)}
+                                                {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-muted rounded-full h-1.5">
+                                            <div
+                                                className="bg-amber-500 h-1.5 rounded-full transition-all"
+                                                style={{ width: `${Math.min(100, (lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-amber-500 flex-shrink-0">
+                                        {((lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
+
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                    <NetWorthLineChart data={netWorthSeries} />
+                    <NetWorthLineChart data={netWorthSeries} goalTarget={goal?.target_value} goalName={goal?.name} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
                     <GrowthRateChart data={growthRates} />
                 </div>

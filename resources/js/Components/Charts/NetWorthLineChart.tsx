@@ -6,6 +6,7 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
+    ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrency, formatCurrencyCompact, formatMonthLabel } from '@/lib/formatters';
@@ -13,9 +14,11 @@ import type { NetWorthPoint } from '@/types/analytics';
 
 interface Props {
     data: NetWorthPoint[];
+    goalTarget?: number | null;
+    goalName?: string | null;
 }
 
-export default function NetWorthLineChart({ data }: Props) {
+export default function NetWorthLineChart({ data, goalTarget, goalName }: Props) {
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
@@ -49,6 +52,20 @@ export default function NetWorthLineChart({ data }: Props) {
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        {goalTarget != null && (
+                            <ReferenceLine
+                                y={goalTarget}
+                                stroke="#f59e0b"
+                                strokeDasharray="5 3"
+                                strokeWidth={1.5}
+                                label={{
+                                    value: goalName ?? 'Obiettivo',
+                                    position: 'insideTopRight',
+                                    fontSize: 10,
+                                    fill: '#f59e0b',
+                                }}
+                            />
+                        )}
                         <Line
                             type="monotone"
                             dataKey="total_value"

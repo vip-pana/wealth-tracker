@@ -6,6 +6,7 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
 use App\Models\Category;
+use App\Models\Goal;
 use App\Models\MonthlySnapshot;
 
 class FetchDashboardData extends Action
@@ -49,6 +50,11 @@ class FetchDashboardData extends Action
             ])->values()->toArray(),
             'hasData' => $snapshots->count() > 0,
             'latestSnapshot' => $snapshots->last()?->date?->format('Y-m-d'),
+            'goal' => ($goal = Goal::first()) ? [
+                'name' => $goal->name,
+                'target_value' => $goal->target_value,
+                'target_date' => $goal->target_date?->format('Y-m-d'),
+            ] : null,
         ];
     }
 }
