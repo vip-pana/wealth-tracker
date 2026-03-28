@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Analytics\AnalysisController;
+use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
+use App\Http\Controllers\Analytics\ImportCsvController;
 use App\Http\Controllers\Assets\CopyFromMonthController;
 use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
@@ -57,5 +59,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
 // ─── Prices ───────────────────────────────────────────────────────────────────
 Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
 
-// ─── Export (plain HTTP, not Inertia) ─────────────────────────────────────────
+// ─── Export / Import (plain HTTP, not Inertia) ────────────────────────────────
 Route::get('/export/csv', ExportCsvController::class)->name('export.csv');
+Route::get('/import/csv/template', CsvTemplateController::class)->name('import.csv.template');
+Route::post('/import/csv', ImportCsvController::class)->name('import.csv');

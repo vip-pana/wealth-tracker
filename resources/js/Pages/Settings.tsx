@@ -20,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, RefreshCw, Layers } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -51,6 +51,63 @@ type CategoryForm = {
     icon: string;
     macro_category: string;
 };
+
+function ImportCsvDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const { data, setData, post, processing, errors, reset } = useForm<{ file: File | null }>({ file: null });
+
+    const handleClose = () => {
+        reset();
+        onClose();
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post('/import/csv', { forceFormData: true, onSuccess: () => { reset(); onClose(); } });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Importa da CSV</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        Carica un file CSV nel formato richiesto.{' '}
+                        <a href="/import/csv/template" download className="underline hover:text-foreground">
+                            Scarica template
+                        </a>{' '}
+                        per vedere il formato corretto.
+                    </p>
+                    <div className="space-y-1">
+                        <Label>File CSV</Label>
+                        <Input
+                            type="file"
+                            accept=".csv,text/csv"
+                            className="text-sm"
+                            onChange={(e) => setData('file', e.target.files?.[0] ?? null)}
+                        />
+                        {errors.file && <p className="text-xs text-destructive">{errors.file}</p>}
+                    </div>
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                        <p className="font-medium text-foreground">Formato atteso (separatore <code>;</code>):</p>
+                        <p><code>data;categoria;nome_asset;valore;note</code></p>
+                        <p><code>2026-01-01;ETF;Gold SGLD;1243.00;</code></p>
+                        <p>Se un asset con stessa data e nome esiste già, viene aggiornato.</p>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={handleClose}>
+                            Annulla
+                        </Button>
+                        <Button type="submit" disabled={processing || !data.file}>
+                            {processing ? 'Importando...' : 'Importa'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function CategoryDialog({
     open,
@@ -198,6 +255,7 @@ function DeleteCategoryButton({ category }: { category: Category & { assets_coun
 
 export default function Settings({ categories, prices }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
     const refreshForm = useForm({});
 
@@ -311,27 +369,23 @@ export default function Settings({ categories, prices }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Export */}
+                {/* Import / Export */}
                 <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Backup & Export</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between p-3 rounded-md border border-border">
-                            <div>
-                                <p className="text-sm font-medium">Esporta tutti i dati (CSV)</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Scarica tutti gli asset in formato CSV (compatibile con Excel)
-                                </p>
-                            </div>
+                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <CardTitle className="text-base">Dati</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                                <Upload className="w-4 h-4 mr-2" />
+                                Importa CSV
+                            </Button>
                             <a href="/export/csv" download>
                                 <Button variant="outline" size="sm">
                                     <Download className="w-4 h-4 mr-2" />
-                                    Download CSV
+                                    Esporta CSV
                                 </Button>
                             </a>
                         </div>
-                    </CardContent>
+                    </CardHeader>
                 </Card>
             </div>
 
@@ -343,6 +397,7 @@ export default function Settings({ categories, prices }: Props) {
                 }}
                 editCategory={editCategory}
             />
+            <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} />
         </>
     );
 }
