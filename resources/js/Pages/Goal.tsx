@@ -13,7 +13,6 @@ import { formatCurrency, formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
 
-const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto'] as const;
 const MACRO_COLORS: Record<string, string> = {
     'Liquidità': '#60a5fa',
     'ETF': '#34d399',
@@ -58,7 +57,6 @@ type GoalFormData = {
     target_value: string;
     target_date: string;
     category_allocations: AllocationFormItem[];
-    macro_allocations: AllocationFormItem[];
     milestones: MilestoneFormItem[];
 };
 
@@ -66,6 +64,10 @@ type GoalFormData = {
 
 function allocationSum(items: AllocationFormItem[]): number {
     return items.reduce((s, i) => s + (parseFloat(i.percentage) || 0), 0);
+}
+
+function formatPct(value: number): string {
+    return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
 }
 
 function formatDate(dateStr: string): string {
@@ -111,46 +113,167 @@ function AllocationSection({
     renderSelect: (item: AllocationFormItem, idx: number) => React.ReactNode;
 }) {
     const sum = allocationSum(items);
+    const remaining = Math.max(0, 100 - sum);
     const sumOk = items.length === 0 || Math.abs(sum - 100) < 0.01;
 
     return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <Label>{title}</Label>
-                {items.length > 0 && (
-                    <span className={`text-xs font-mono ${sumOk ? 'text-green-500' : 'text-destructive'}`}>
-                        {sum.toFixed(1)}% / 100%
-                    </span>
-                )}
+        <div className="space-y-3">
+            <Label>{title}</Label>
+
+            {items.map((item, idx) => {
+                const pct = parseFloat(item.percentage) || 0;
+                return (
+                    <div key={idx} className="space-y-1.5">
+                        <div className="flex gap-2 items-center">
+                            <div className="flex-1">{renderSelect(item, idx)}</div>
+                            <div className="relative w-20">
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={0.1}
+                                    value={item.percentage}
+                                    onChange={(e) => onUpdate(idx, 'percentage', e.target.value)}
+                                    className="text-right font-mono pr-6"
+                                    placeholder="0"
+                                />
+                                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => onRemove(idx)}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        {pct > 0 && (
+                            <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                                <div
+                                    className="h-1 rounded-full bg-primary transition-all"
+                                    style={{ width: `${Math.min(100, pct)}%` }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+
+            <Button type="button" variant="outline" size="sm" onClick={onAdd} className="w-full">
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Aggiungi
+            </Button>
+
+            {items.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                            className={`h-1.5 rounded-full transition-all ${sumOk ? 'bg-green-500' : sum > 100 ? 'bg-destructive' : 'bg-primary'}`}
+                            style={{ width: `${Math.min(100, sum)}%` }}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                            {sumOk ? 'Allocazione completa' : `Rimanente: ${formatPct(remaining)}`}
+                        </span>
+                        <span className={`font-mono ${sumOk ? 'text-green-500' : sum > 100 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            {formatPct(sum)} / 100%
+                        </span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MilestoneFormRow({
+    item,
+    idx,
+    isLast,
+    onUpdate,
+    onRemove,
+}: {
+    item: MilestoneFormItem;
+    idx: number;
+    isLast: boolean;
+    onUpdate: (idx: number, field: string, value: string) => void;
+    onRemove: (idx: number) => void;
+}) {
+    const [noteOpen, setNoteOpen] = useState(!!item.notes);
+
+    return (
+        <div className="flex gap-3">
+            {/* Timeline spine */}
+            <div className="flex flex-col items-center flex-shrink-0 w-5">
+                <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 mt-2">
+                    <span className="text-[10px] font-bold text-primary">{idx + 1}</span>
+                </div>
+                {!isLast && <div className="w-px flex-1 bg-border mt-1" />}
             </div>
-            {items.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
-                    <div className="flex-1">{renderSelect(item, idx)}</div>
+
+            {/* Content */}
+            <div className={`flex-1 space-y-2 ${isLast ? '' : 'pb-4'}`}>
+                <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                        <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={item.target_value}
+                            onChange={(e) => onUpdate(idx, 'target_value', e.target.value)}
+                            placeholder="Valore es. 50000"
+                            className="font-mono pr-24 text-sm"
+                        />
+                        {item.target_value && !isNaN(parseFloat(item.target_value)) && (
+                            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
+                                {formatCurrencyNoDecimals(parseFloat(item.target_value))}
+                            </span>
+                        )}
+                    </div>
                     <Input
                         type="number"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                        value={item.percentage}
-                        onChange={(e) => onUpdate(idx, 'percentage', e.target.value)}
-                        className="w-24 text-right font-mono"
-                        placeholder="%"
+                        min={2020}
+                        max={2100}
+                        step={1}
+                        value={item.target_date ? item.target_date.slice(0, 4) : ''}
+                        onChange={(e) => {
+                            const y = e.target.value;
+                            onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
+                        }}
+                        placeholder="Anno"
+                        className="font-mono text-sm w-24 flex-shrink-0"
                     />
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
                         onClick={() => onRemove(idx)}
                     >
                         <Trash2 className="w-4 h-4" />
                     </Button>
                 </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={onAdd} className="w-full">
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Aggiungi
-            </Button>
+
+                {noteOpen ? (
+                    <textarea
+                        value={item.notes}
+                        onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
+                        placeholder="Note opzionali..."
+                        rows={7}
+                        autoFocus
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setNoteOpen(true)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        + Aggiungi nota
+                    </button>
+                )}
+            </div>
         </div>
     );
 }
@@ -169,66 +292,18 @@ function MilestonesSection({
     return (
         <div className="space-y-2">
             <Label>Milestone intermedie (opzionale)</Label>
-            {items.map((item, idx) => (
-                <div key={idx} className="rounded-md border border-border p-3 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                        <div className="grid grid-cols-2 gap-3 flex-1">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">Valore</Label>
-                                <Input
-                                    type="number"
-                                    min={0}
-                                    step="any"
-                                    value={item.target_value}
-                                    onChange={(e) => onUpdate(idx, 'target_value', e.target.value)}
-                                    placeholder="es. 50000"
-                                    className="font-mono"
-                                />
-                                {item.target_value && !isNaN(parseFloat(item.target_value)) && (
-                                    <p className="text-xs text-muted-foreground font-medium">
-                                        {formatCurrency(parseFloat(item.target_value))}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">Anno</Label>
-                                <Input
-                                    type="number"
-                                    min={2020}
-                                    max={2100}
-                                    step={1}
-                                    value={item.target_date ? item.target_date.slice(0, 4) : ''}
-                                    onChange={(e) => {
-                                        const y = e.target.value;
-                                        onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
-                                    }}
-                                    placeholder="es. 2030"
-                                    className="font-mono"
-                                />
-                            </div>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 mt-6 text-muted-foreground hover:text-destructive flex-shrink-0"
-                            onClick={() => onRemove(idx)}
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Note (opzionale)</Label>
-                        <textarea
-                            value={item.notes}
-                            onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
-                            placeholder="Strategia, azioni da intraprendere, considerazioni..."
-                            rows={2}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                    </div>
-                </div>
-            ))}
+            <div className="space-y-0">
+                {items.map((item, idx) => (
+                    <MilestoneFormRow
+                        key={idx}
+                        item={item}
+                        idx={idx}
+                        isLast={idx === items.length - 1}
+                        onUpdate={onUpdate}
+                        onRemove={onRemove}
+                    />
+                ))}
+            </div>
             <Button type="button" variant="outline" size="sm" onClick={onAdd} className="w-full">
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Aggiungi milestone
@@ -261,10 +336,6 @@ function GoalFormDialog({
             category_id: String(a.category_id ?? ''),
             percentage: String(a.percentage),
         })) ?? [],
-        macro_allocations: goal?.macroAllocations.map((a) => ({
-            macro_category: a.macro_category ?? '',
-            percentage: String(a.percentage),
-        })) ?? [],
         milestones: goal?.milestones.map((m) => ({
             notes: m.notes ?? '',
             target_value: String(m.target_value),
@@ -283,10 +354,6 @@ function GoalFormDialog({
                     category_id: String(a.category_id ?? ''),
                     percentage: String(a.percentage),
                 })) ?? [],
-                macro_allocations: goal?.macroAllocations.map((a) => ({
-                    macro_category: a.macro_category ?? '',
-                    percentage: String(a.percentage),
-                })) ?? [],
                 milestones: goal?.milestones.map((m) => ({
                     notes: m.notes ?? '',
                     target_value: String(m.target_value),
@@ -301,12 +368,6 @@ function GoalFormDialog({
         const updated = [...(data.category_allocations as AllocationFormItem[])];
         updated[idx] = { ...updated[idx], [field]: value };
         setData('category_allocations', updated);
-    };
-
-    const updateMacroAlloc = (idx: number, field: string, value: string) => {
-        const updated = [...(data.macro_allocations as AllocationFormItem[])];
-        updated[idx] = { ...updated[idx], [field]: value };
-        setData('macro_allocations', updated);
     };
 
     const updateMilestone = (idx: number, field: string, value: string) => {
@@ -354,25 +415,26 @@ function GoalFormDialog({
                             />
                         </div>
                         <div className="space-y-1">
-                            <Label>Valore target (€)</Label>
-                            <Input
-                                type="number"
-                                min={0}
-                                step={1000}
-                                value={data.target_value}
-                                onChange={(e) => setData('target_value', e.target.value)}
-                                placeholder="es. 500000"
-                                className="font-mono"
-                            />
-                            {data.target_value && !isNaN(parseFloat(data.target_value)) && (
-                                <p className="text-xs text-muted-foreground font-medium">
-                                    {formatCurrency(parseFloat(data.target_value))}
-                                </p>
-                            )}
+                            <Label>Patrimonio obiettivo</Label>
+                            <div className="relative">
+                                <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={data.target_value}
+                                    onChange={(e) => setData('target_value', e.target.value)}
+                                    placeholder="es. 500000"
+                                    className="font-mono pr-32"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono pointer-events-none">
+                                    {data.target_value && !isNaN(parseFloat(data.target_value))
+                                        ? formatCurrencyNoDecimals(parseFloat(data.target_value))
+                                        : ''}
+                                </span>
+                            </div>
                             {errors.target_value && <p className="text-xs text-destructive">{errors.target_value}</p>}
                         </div>
                         <div className="space-y-1">
-                            <Label>Anno target (opzionale)</Label>
+                            <Label>Anno di raggiungimento (opzionale)</Label>
                             <Input
                                 type="number"
                                 min={2020}
@@ -390,54 +452,40 @@ function GoalFormDialog({
                     </div>
 
                     {/* Category allocations */}
-                    <AllocationSection
-                        title="Target allocation per categoria"
-                        items={data.category_allocations as AllocationFormItem[]}
-                        onAdd={() => setData('category_allocations', [...(data.category_allocations as AllocationFormItem[]), { category_id: '', percentage: '' }])}
-                        onUpdate={updateCategoryAlloc}
-                        onRemove={(idx) => setData('category_allocations', (data.category_allocations as AllocationFormItem[]).filter((_, i) => i !== idx))}
-                        renderSelect={(item, idx) => (
-                            <select
-                                value={(item as AllocationFormItem).category_id ?? ''}
-                                onChange={(e) => updateCategoryAlloc(idx, 'category_id', e.target.value)}
-                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Seleziona categoria</option>
-                                {categories.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        )}
-                    />
-
-                    {/* Macro allocations */}
-                    <AllocationSection
-                        title="Target allocation per macro-categoria"
-                        items={data.macro_allocations as AllocationFormItem[]}
-                        onAdd={() => setData('macro_allocations', [...(data.macro_allocations as AllocationFormItem[]), { macro_category: '', percentage: '' }])}
-                        onUpdate={updateMacroAlloc}
-                        onRemove={(idx) => setData('macro_allocations', (data.macro_allocations as AllocationFormItem[]).filter((_, i) => i !== idx))}
-                        renderSelect={(item, idx) => (
-                            <select
-                                value={(item as AllocationFormItem).macro_category ?? ''}
-                                onChange={(e) => updateMacroAlloc(idx, 'macro_category', e.target.value)}
-                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Seleziona macro</option>
-                                {MACRO_CATEGORIES.map((mc) => (
-                                    <option key={mc} value={mc}>{mc}</option>
-                                ))}
-                            </select>
-                        )}
-                    />
+                    <div className="rounded-md border border-border p-4">
+                        <AllocationSection
+                            title="Target allocation per categoria"
+                            items={data.category_allocations as AllocationFormItem[]}
+                            onAdd={() => setData('category_allocations', [...(data.category_allocations as AllocationFormItem[]), { category_id: '', percentage: '' }])}
+                            onUpdate={updateCategoryAlloc}
+                            onRemove={(idx) => setData('category_allocations', (data.category_allocations as AllocationFormItem[]).filter((_, i) => i !== idx))}
+                            renderSelect={(item, idx) => (
+                                <div className="relative">
+                                    <select
+                                        value={(item as AllocationFormItem).category_id ?? ''}
+                                        onChange={(e) => updateCategoryAlloc(idx, 'category_id', e.target.value)}
+                                        className="w-full h-9 appearance-none rounded-md border border-input bg-background pl-3 pr-8 text-sm"
+                                    >
+                                        <option value="">Seleziona categoria</option>
+                                        {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                </div>
+                            )}
+                        />
+                    </div>
 
                     {/* Milestones */}
-                    <MilestonesSection
-                        items={data.milestones as MilestoneFormItem[]}
-                        onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', target_value: '', target_date: '' }])}
-                        onUpdate={updateMilestone}
-                        onRemove={(idx) => setData('milestones', (data.milestones as MilestoneFormItem[]).filter((_, i) => i !== idx))}
-                    />
+                    <div className="rounded-md border border-border p-4">
+                        <MilestonesSection
+                            items={data.milestones as MilestoneFormItem[]}
+                            onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', target_value: '', target_date: '' }])}
+                            onUpdate={updateMilestone}
+                            onRemove={(idx) => setData('milestones', (data.milestones as MilestoneFormItem[]).filter((_, i) => i !== idx))}
+                        />
+                    </div>
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
@@ -747,8 +795,8 @@ function GoalProgress({
                                                             <span className="font-medium text-sm">{d.name}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{d.currentPct.toFixed(1)}%</td>
-                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{d.targetPct.toFixed(1)}%</td>
+                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.currentPct)}</td>
+                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.targetPct)}</td>
                                                     <td className="text-right py-1 pl-4">
                                                         <Badge
                                                             variant="outline"
@@ -760,7 +808,7 @@ function GoalProgress({
                                                                     : 'text-orange-400 border-orange-400/30'
                                                             }`}
                                                         >
-                                                            {d.delta > 0 ? '+' : ''}{d.delta.toFixed(1)}%
+                                                            {d.delta > 0 ? '+' : ''}{formatPct(d.delta)}
                                                         </Badge>
                                                     </td>
                                                 </tr>
