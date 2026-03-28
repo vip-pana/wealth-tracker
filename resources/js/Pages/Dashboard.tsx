@@ -50,11 +50,11 @@ function SummaryCard({
 
     return (
         <Card>
-            <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                <p className="text-xl font-bold">{value}</p>
+            <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                <p className="text-base font-bold">{value}</p>
                 {change != null && Icon && (
-                    <p className={`text-xs flex items-center gap-1 mt-1 ${color}`}>
+                    <p className={`text-xs flex items-center gap-1 mt-0.5 ${color}`}>
                         <Icon className="w-3 h-3" />
                         {formatPercent(change)} vs mese prec.
                     </p>
@@ -138,10 +138,10 @@ export default function Dashboard({
     return (
         <>
             <Head title="Dashboard" />
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Dashboard</h1>
+                        <h1 className="text-lg font-bold">Dashboard</h1>
                         {latestSnapshot && (
                             <p className="text-sm text-muted-foreground">
                                 Ultimo aggiornamento: {formatMonthLong(latestSnapshot)}
@@ -165,7 +165,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Summary cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     <SummaryCard
                         label="Patrimonio attuale"
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
@@ -181,7 +181,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Charts grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <NetWorthLineChart data={netWorthSeries} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
                     <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />

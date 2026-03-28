@@ -29,11 +29,11 @@ export default function MonthComparisonChart({ data, months }: Props) {
 
     return (
         <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base">Confronto mese su mese</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-sm">Confronto mese su mese</CardTitle>
             </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
+            <CardContent className="px-3 pb-3">
+                <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis dataKey="category" tick={{ fontSize: 11 }} />

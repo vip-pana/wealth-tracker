@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import type { SharedProps } from '@/types/index.d';
@@ -57,12 +57,12 @@ function FlashMessage() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { url } = usePage();
+    const [collapsed, setCollapsed] = useState(false);
 
     useEffect(() => {
         document.documentElement.classList.add('dark');
     }, []);
 
-    // Determine active nav link (match prefix)
     const isActive = (href: string) => {
         if (href === '/') return url === '/';
         return url.startsWith(href);
@@ -71,33 +71,65 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-screen overflow-hidden bg-background">
             {/* Sidebar */}
-            <aside className="w-64 flex-shrink-0 border-r border-border flex flex-col">
+            <aside
+                className={cn(
+                    'relative flex-shrink-0 border-r border-border flex flex-col transition-all duration-300 ease-in-out',
+                    collapsed ? 'w-[60px]' : 'w-56',
+                )}
+            >
                 {/* Logo */}
-                <div className="flex items-center gap-2 px-6 py-5 border-b border-border">
-                    <TrendingUp className="w-6 h-6 text-primary" />
-                    <span className="font-bold text-lg text-foreground">Wealth Tracker</span>
+                <div className={cn(
+                    'flex items-center border-b border-border h-[60px] overflow-hidden',
+                    collapsed ? 'justify-center px-0' : 'gap-2 px-4',
+                )}>
+                    <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
+                    {!collapsed && (
+                        <span className="font-bold text-base text-foreground whitespace-nowrap">Wealth Tracker</span>
+                    )}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
                     {navItems.map(({ href, label, icon: Icon }) => (
                         <Link
                             key={href}
                             href={href}
+                            title={collapsed ? label : undefined}
                             className={cn(
-                                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                                'flex items-center gap-3 px-2 py-2 rounded-md text-sm font-medium transition-colors',
+                                collapsed ? 'justify-center' : '',
                                 isActive(href)
                                     ? 'bg-primary text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                             )}
                         >
                             <Icon className="w-4 h-4 flex-shrink-0" />
-                            {label}
+                            {!collapsed && (
+                                <span className="whitespace-nowrap">{label}</span>
+                            )}
                         </Link>
                     ))}
                 </nav>
 
-
+                {/* Toggle button */}
+                <div className="px-2 py-3 border-t border-border">
+                    <button
+                        onClick={() => setCollapsed((c) => !c)}
+                        className={cn(
+                            'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
+                            collapsed ? 'justify-center' : '',
+                        )}
+                    >
+                        {collapsed ? (
+                            <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                        ) : (
+                            <>
+                                <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                                <span>Comprimi</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </aside>
 
             {/* Main content */}

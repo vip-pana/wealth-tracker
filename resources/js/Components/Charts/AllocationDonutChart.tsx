@@ -19,18 +19,18 @@ export default function AllocationDonutChart({ data }: Props) {
 
     return (
         <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base">Composizione attuale</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-sm">Composizione attuale</CardTitle>
             </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
+            <CardContent className="px-3 pb-3">
+                <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
                         <Pie
                             data={data}
                             cx="50%"
-                            cy="45%"
-                            innerRadius={65}
-                            outerRadius={95}
+                            cy="38%"
+                            innerRadius={50}
+                            outerRadius={72}
                             paddingAngle={3}
                             dataKey="value"
                             nameKey="name"
