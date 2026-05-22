@@ -20,6 +20,10 @@ use App\Http\Controllers\Goals\DestroyController as DestroyGoalController;
 use App\Http\Controllers\Goals\IndexController as IndexGoalController;
 use App\Http\Controllers\Goals\StoreController as StoreGoalController;
 use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
+use App\Http\Controllers\Pension\DestroyController as DestroyPensionController;
+use App\Http\Controllers\Pension\IndexController as IndexPensionController;
+use App\Http\Controllers\Pension\StoreController as StorePensionController;
+use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
 use App\Http\Controllers\Snapshots\StoreController as StoreSnapshotController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +34,7 @@ Route::get('/input', IndexAssetController::class)->name('input.index');
 Route::get('/analysis', AnalysisController::class)->name('analysis.index');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
+Route::get('/pension', IndexPensionController::class)->name('pension.index');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
 Route::prefix('assets')->name('assets.')->group(function () {
@@ -54,6 +59,13 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('/', StoreGoalController::class)->name('store');
     Route::put('/{goal}', UpdateGoalController::class)->name('update');
     Route::delete('/{goal}', DestroyGoalController::class)->name('destroy');
+});
+
+// ─── Pension ──────────────────────────────────────────────────────────────────
+Route::prefix('pension')->name('pension.')->group(function () {
+    Route::post('/', StorePensionController::class)->name('store');
+    Route::put('/{asset}', UpdatePensionController::class)->name('update');
+    Route::delete('/{asset}', DestroyPensionController::class)->name('destroy');
 });
 
 // ─── Prices ───────────────────────────────────────────────────────────────────

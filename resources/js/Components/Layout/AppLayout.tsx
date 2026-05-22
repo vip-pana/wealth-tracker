@@ -1,14 +1,15 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
 
 const navItems = [
-    { href: '/',         label: 'Dashboard',   icon: LayoutDashboard },
+    { href: '/',         label: 'Dashboard',    icon: LayoutDashboard },
     { href: '/goal',     label: 'Obiettivo',    icon: Target },
     { href: '/input',    label: 'Input Dati',   icon: PlusSquare },
+    { href: '/pension',  label: 'Fondo Pensione', icon: PiggyBank },
     { href: '/analysis', label: 'Analisi',      icon: BarChart2 },
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];

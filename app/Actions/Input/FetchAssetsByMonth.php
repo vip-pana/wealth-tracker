@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Input;
 
 use App\Actions\Action;
+use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use Illuminate\Support\Collection;
@@ -17,8 +18,16 @@ class FetchAssetsByMonth extends Action
      */
     public function run(string $month, Collection $prices): Collection
     {
+        $illiquidMacros = MacroCategory::illiquidValues();
+
         return Asset::with('category')
             ->whereDate('date', $month)
+            ->when($illiquidMacros !== [], function ($query) use ($illiquidMacros): void {
+                $query->whereHas('category', function ($q) use ($illiquidMacros): void {
+                    $q->whereNotIn('macro_category', $illiquidMacros)
+                        ->orWhereNull('macro_category');
+                });
+            })
             ->orderBy('created_at')
             ->get()
             ->map(function (Asset $a) use ($prices) {

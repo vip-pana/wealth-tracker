@@ -18,11 +18,15 @@ class FetchAnalysisData extends Action
     /** @return array<string, mixed> */
     public function run(?int $categoryId, ?string $dateFrom, ?string $dateTo): array
     {
-        $categories = Category::orderBy('sort_order')->get()->map(fn (Category $c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'color' => $c->color,
-        ]);
+        $categories = Category::orderBy('sort_order')
+            ->get()
+            ->reject(fn (Category $c): bool => $c->macro_category?->isIlliquid() ?? false)
+            ->values()
+            ->map(fn (Category $c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'color' => $c->color,
+            ]);
 
         return [
             'assets' => $this->filterAssets->run($categoryId, $dateFrom, $dateTo),

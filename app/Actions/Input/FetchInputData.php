@@ -23,6 +23,8 @@ class FetchInputData extends Action
         $prices = AssetPrice::all()->keyBy('ticker');
 
         $categories = Category::orderBy('sort_order')->get()
+            ->reject(fn (Category $c): bool => $c->macro_category?->isIlliquid() ?? false)
+            ->values()
             ->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,

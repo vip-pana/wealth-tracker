@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Analysis;
 
 use App\Actions\Action;
+use App\Enums\MacroCategory;
 use App\Models\Asset;
 use Illuminate\Support\Collection;
 
@@ -15,7 +16,19 @@ class FilterAssets extends Action
      */
     public function run(?int $categoryId, ?string $dateFrom, ?string $dateTo): Collection
     {
-        $query = Asset::with('category')->orderByDesc('date')->orderBy('category_id');
+        $illiquidMacros = MacroCategory::illiquidValues();
+        $query = Asset::with('category')
+            ->whereHas('category', function ($q) use ($illiquidMacros): void {
+                if ($illiquidMacros === []) {
+                    return;
+                }
+                $q->where(function ($inner) use ($illiquidMacros): void {
+                    $inner->whereNotIn('macro_category', $illiquidMacros)
+                        ->orWhereNull('macro_category');
+                });
+            })
+            ->orderByDesc('date')
+            ->orderBy('category_id');
 
         if ($categoryId !== null) {
             $query->where('category_id', $categoryId);
