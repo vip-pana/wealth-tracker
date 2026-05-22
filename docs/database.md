@@ -18,13 +18,21 @@ Do **not** remove this override. Do **not** rely on `phpunit.xml` `<env>` or `.e
 
 ## Backups
 
-A `launchd` job (`~/Library/LaunchAgents/com.vincenzo.wealth-tracker-backup.plist`) runs `~/wealth-tracker-data/backup.sh` every day at 03:00.
+The canonical backup script lives in the repo at `scripts/backup.sh`. It reads two required env vars:
+
+- `WEALTH_TRACKER_DATA_DIR` — directory containing `database.sqlite`
+- `WEALTH_TRACKER_BACKUP_DIR` — destination directory (typically a cloud-synced folder)
+
+Optional: `WEALTH_TRACKER_RETENTION_DAYS` (default 2).
+
+On this machine, a thin wrapper at `~/wealth-tracker-data/backup.sh` exports the local paths and invokes `scripts/backup.sh`. A `launchd` job (`~/Library/LaunchAgents/com.vincenzo.wealth-tracker-backup.plist`) runs the wrapper every day at 03:00.
 
 The script:
 
-1. Uses `sqlite3 .backup` (via the `keinos/sqlite3` Docker image) to make an atomic copy that is safe even if the app is writing.
-2. Writes the copy to `~/Library/CloudStorage/ProtonDrive-v.panacciulli@proton.me-folder/wealth-tracker-backups/database-YYYYMMDD-HHMMSS.sqlite`.
-3. Deletes backups older than 2 days.
+1. Uses `sqlite3 .backup` (via the `keinos/sqlite3` Docker image) to make an atomic snapshot, safe even if the app is writing.
+2. Stages the snapshot on a local path first, then copies it into the destination — `mv` into a sandboxed cloud-sync folder fails on macOS, so `cp` is used.
+3. Writes the final file as `database-YYYYMMDD-HHMMSS.sqlite`.
+4. Deletes backups older than the retention window.
 
 Proton Drive syncs the backup folder to the cloud automatically.
 
