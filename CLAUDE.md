@@ -5,6 +5,7 @@
 Load these docs when working in the relevant area:
 
 - **Testing** → @docs/testing.md
+- **Database & Backup** → @docs/database.md
 
 ## Claude-specific instructions
 
