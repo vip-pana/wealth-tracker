@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -95,7 +95,16 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        const opts = { onSuccess: () => { reset(); onClose(); } };
+        const hasTicker = data.ticker.trim() !== '';
+        const opts = {
+            onSuccess: () => {
+                reset();
+                onClose();
+                if (hasTicker) {
+                    router.post('/prices/refresh', {}, { preserveScroll: true });
+                }
+            },
+        };
         if (isEdit) {
             put(`/assets/${editAsset!.id}`, opts);
         } else {
