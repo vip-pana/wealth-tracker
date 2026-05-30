@@ -1,0 +1,34 @@
+# Extended glossary terminology
+# Add entries as the team clarifies meanings or introduces new concepts.
+# Each entry: definition (required), plus optional relationship / synonyms / notes.
+
+entities:
+  Asset:
+    definition: One logged holding for a month — manual value or ticker + quantity priced live.
+    relationship: "belongs to Category; see app/Models/Asset.php"
+  Category:
+    definition: A bucket assets belong to, classified by a MacroCategory enum.
+    relationship: "has many Asset and SnapshotCategoryValue; see app/Models/Category.php"
+  MacroCategory:
+    definition: High-level class — Liquidità, ETF, Cripto, Fondo Pensione (the last is illiquid).
+    relationship: "enum on Category; see app/Enums/MacroCategory.php"
+  Snapshot:
+    definition: A dated photo of net worth, created manually, never auto-computed.
+    relationship: "has many SnapshotCategoryValue; see app/Models/Snapshot.php"
+  SnapshotCategoryValue:
+    definition: Per-category value frozen into a snapshot.
+    relationship: "belongs to Snapshot and Category"
+  AssetPrice:
+    definition: Last fetched live price for a ticker, with fetched_at timestamp.
+    relationship: "looked up by ticker when valuing Assets"
+  Goal:
+    definition: One savings goal with target value/date, category and macro allocation targets, milestones.
+    relationship: "has many GoalCategoryAllocation and GoalMilestone; see app/Models/Goal.php"
+
+concepts:
+  Pension entry:
+    definition: An annual, year-end, illiquid Asset under the Fondo Pensione macro category.
+    notes: "Tracked on its own page; excluded from liquid dashboards but counted in total net worth."
+  Stale price:
+    definition: A live price older than 24h or missing; flagged in the UI instead of shown as fresh.
+    notes: "See priceFreshness() in resources/js/lib/metrics.ts"

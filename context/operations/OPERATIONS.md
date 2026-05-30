@@ -1,0 +1,39 @@
+<!-- purpose: Environments, configuration, deploys, and any per-variant behavior. Read when touching env vars, build config, or anything that differs between environments or variants. -->
+# Operations
+
+<!-- exodia:section:intro -->
+How to build, test, run, and back up the app. Single-user, local-first; runs in Docker against a bind-mounted SQLite file.
+
+## Environments
+
+<!-- exodia:section:environments -->
+Local dev only — no staging/prod tiers. Config defaults live in `.env.example` (SQLite, `QUEUE_CONNECTION=database`, cache=database). Docker runs PHP, the Vite dev server, a queue worker (`php artisan queue:listen`), and pail logs together; the container is `wealth-tracker-app-1`. **Run project commands inside that container, not on the host** (host `node_modules`/`vendor` differ from the container's).
+
+## Commands
+
+<!-- exodia:section:config -->
+Canonical list is in `composer.json` / `package.json` scripts — reference, don't copy. Key ones:
+- `composer dev` — start everything; `php artisan migrate` — migrations.
+- `composer lint` / `composer lint:fix` — Pint; `composer analyse` — PHPStan level 9.
+- `pnpm run lint` / `lint:fix` — ESLint; `pnpm run typecheck` — tsc; `pnpm run test` — Vitest.
+- `php artisan test` — PHPUnit.
+
+## Deploy
+
+<!-- exodia:section:deploy -->
+No deploy pipeline. The quality gate (pre-push hook in `.githooks/pre-push`, mirrored by `.github/workflows/ci.yml`) runs six checks **in order, inside Docker**: Pint → PHPStan → ESLint → tsc → Vitest → PHPUnit. All must pass before push. Enable the hook with `composer setup-hooks`. Versions are released via git tags + `CHANGELOG.md` (current: `v1.0.0`).
+
+## Backup & restore
+
+<!-- exodia:section:variants -->
+Dev DB lives at `~/wealth-tracker-data/database.sqlite`, bind-mounted into the container. Backups are atomic `sqlite3 .backup` / `VACUUM INTO` snapshots synced to Proton Drive — nightly (launchd at 03:00), after every snapshot (queued `BackupDatabase` job), and on demand (Settings → "Backup ora", or `~/wealth-tracker-data/backup.sh`). Full restore procedure and the test-suite DB-safety override: [../../docs/database.md](../../docs/database.md). **Never overwrite the live DB without explicit confirmation.**
+
+## Localization / i18n
+
+<!-- exodia:section:i18n -->
+N/A — UI strings are Italian, hardcoded; no translation framework.
+
+## L3 Data
+
+<!-- exodia:section:l3 -->
+- `variants.yaml`: per-variant behavioral differences (any axis the codebase varies along).
