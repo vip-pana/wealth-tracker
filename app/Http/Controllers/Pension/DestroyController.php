@@ -14,6 +14,8 @@ class DestroyController extends Controller
     {
         $asset->delete();
 
-        return redirect()->back()->with('success', 'Valore fondo pensione eliminato.');
+        return redirect()->back()
+            ->with('success', 'Valore fondo pensione eliminato.')
+            ->with('undo', route('assets.restore', $asset->id, absolute: false));
     }
 }

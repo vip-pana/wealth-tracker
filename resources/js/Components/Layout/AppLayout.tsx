@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -16,7 +16,7 @@ const navItems = [
 
 function FlashMessage() {
     const { flash } = usePage<{ flash: SharedProps['flash'] }>().props;
-    const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
+    const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error'; undo?: string | null }[]>([]);
     const counterRef = useRef(0);
 
     useEffect(() => {
@@ -24,12 +24,23 @@ function FlashMessage() {
         if (!msg) return;
         const id = ++counterRef.current;
         const type = flash.success ? 'success' : 'error';
-        setToasts((prev) => [...prev, { id, message: msg, type }]);
+        const undo = flash.success ? flash.undo : null;
+        setToasts((prev) => [...prev, { id, message: msg, type, undo }]);
+        const timeout = undo ? 6000 : type === 'success' ? 3000 : 4000;
         const t = setTimeout(() => {
             setToasts((prev) => prev.filter((toast) => toast.id !== id));
-        }, type === 'success' ? 3000 : 4000);
+        }, timeout);
         return () => clearTimeout(t);
     }, [flash]);
+
+    const dismiss = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+    const handleUndo = (toast: { id: number; undo?: string | null }) => {
+        if (toast.undo) {
+            router.post(toast.undo, {}, { preserveScroll: true });
+        }
+        dismiss(toast.id);
+    };
 
     return (
         <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
@@ -44,8 +55,16 @@ function FlashMessage() {
                     )}
                 >
                     <span>{toast.message}</span>
+                    {toast.undo && (
+                        <button
+                            onClick={() => handleUndo(toast)}
+                            className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
+                        >
+                            Annulla
+                        </button>
+                    )}
                     <button
-                        onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                        onClick={() => dismiss(toast.id)}
                         className="ml-auto opacity-70 hover:opacity-100"
                         aria-label="Chiudi"
                     >

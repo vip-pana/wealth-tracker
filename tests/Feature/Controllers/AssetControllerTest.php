@@ -62,4 +62,24 @@ class AssetControllerTest extends TestCase
 
         $this->assertSoftDeleted('assets', ['id' => $asset->id]);
     }
+
+    public function test_destroy_flashes_an_undo_url(): void
+    {
+        $asset = Asset::factory()->create();
+
+        $this->delete("/assets/{$asset->id}")
+            ->assertRedirect()
+            ->assertSessionHas('undo', route('assets.restore', $asset->id, absolute: false));
+    }
+
+    public function test_restores_a_soft_deleted_asset(): void
+    {
+        $asset = Asset::factory()->create();
+        $asset->delete();
+        $this->assertSoftDeleted('assets', ['id' => $asset->id]);
+
+        $this->post("/assets/{$asset->id}/restore")->assertRedirect();
+
+        $this->assertNotSoftDeleted('assets', ['id' => $asset->id]);
+    }
 }

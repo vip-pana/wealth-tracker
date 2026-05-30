@@ -14,6 +14,8 @@ class DestroyController extends Controller
     {
         $goal->delete();
 
-        return redirect()->route('goal.index')->with('success', 'Obiettivo eliminato.');
+        return redirect()->route('goal.index')
+            ->with('success', 'Obiettivo eliminato.')
+            ->with('undo', route('goal.restore', $goal->id, absolute: false));
     }
 }

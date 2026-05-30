@@ -14,6 +14,8 @@ class DestroyController extends Controller
     {
         $asset->delete();
 
-        return redirect()->back()->with('success', 'Asset eliminato.');
+        return redirect()->back()
+            ->with('success', 'Asset eliminato.')
+            ->with('undo', route('assets.restore', $asset->id, absolute: false));
     }
 }

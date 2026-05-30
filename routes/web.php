@@ -10,15 +10,18 @@ use App\Http\Controllers\Analytics\ImportCsvController;
 use App\Http\Controllers\Assets\CopyFromMonthController;
 use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
+use App\Http\Controllers\Assets\RestoreController as RestoreAssetController;
 use App\Http\Controllers\Assets\StoreController as StoreAssetController;
 use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
 use App\Http\Controllers\Backup\StoreController as StoreBackupController;
 use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
 use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
+use App\Http\Controllers\Categories\RestoreController as RestoreCategoryController;
 use App\Http\Controllers\Categories\StoreController as StoreCategoryController;
 use App\Http\Controllers\Categories\UpdateController as UpdateCategoryController;
 use App\Http\Controllers\Goals\DestroyController as DestroyGoalController;
 use App\Http\Controllers\Goals\IndexController as IndexGoalController;
+use App\Http\Controllers\Goals\RestoreController as RestoreGoalController;
 use App\Http\Controllers\Goals\StoreController as StoreGoalController;
 use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
 use App\Http\Controllers\Pension\DestroyController as DestroyPensionController;
@@ -42,6 +45,7 @@ Route::prefix('assets')->name('assets.')->group(function () {
     Route::post('/', StoreAssetController::class)->name('store');
     Route::put('/{asset}', UpdateAssetController::class)->name('update');
     Route::delete('/{asset}', DestroyAssetController::class)->name('destroy');
+    Route::post('/{asset}/restore', RestoreAssetController::class)->name('restore');
     Route::post('/copy-from-month', CopyFromMonthController::class)->name('copy-from-month');
 });
 
@@ -53,6 +57,7 @@ Route::prefix('categories')->name('categories.')->group(function () {
     Route::post('/', StoreCategoryController::class)->name('store');
     Route::put('/{category}', UpdateCategoryController::class)->name('update');
     Route::delete('/{category}', DestroyCategoryController::class)->name('destroy');
+    Route::post('/{category}/restore', RestoreCategoryController::class)->name('restore');
 });
 
 // ─── Goal ─────────────────────────────────────────────────────────────────────
@@ -60,6 +65,7 @@ Route::prefix('goal')->name('goal.')->group(function () {
     Route::post('/', StoreGoalController::class)->name('store');
     Route::put('/{goal}', UpdateGoalController::class)->name('update');
     Route::delete('/{goal}', DestroyGoalController::class)->name('destroy');
+    Route::post('/{goal}/restore', RestoreGoalController::class)->name('restore');
 });
 
 // ─── Pension ──────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ export interface SharedProps {
     flash: {
         success?: string | null;
         error?: string | null;
+        undo?: string | null;
     };
 }
 

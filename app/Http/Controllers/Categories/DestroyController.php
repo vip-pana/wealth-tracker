@@ -20,6 +20,8 @@ class DestroyController extends Controller
 
         $category->delete();
 
-        return redirect()->back()->with('success', 'Categoria eliminata.');
+        return redirect()->back()
+            ->with('success', 'Categoria eliminata.')
+            ->with('undo', route('categories.restore', $category->id, absolute: false));
     }
 }
