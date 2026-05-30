@@ -210,7 +210,7 @@ function MilestoneFormRow({
 
             {/* Content */}
             <div className={`flex-1 space-y-2 ${isLast ? '' : 'pb-4'}`}>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                     <div className="relative flex-1">
                         <Input
                             type="text"
@@ -226,28 +226,30 @@ function MilestoneFormRow({
                             </span>
                         )}
                     </div>
-                    <Input
-                        type="number"
-                        min={2020}
-                        max={2100}
-                        step={1}
-                        value={item.target_date ? item.target_date.slice(0, 4) : ''}
-                        onChange={(e) => {
-                            const y = e.target.value;
-                            onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
-                        }}
-                        placeholder="Anno"
-                        className="font-mono text-sm w-24 flex-shrink-0"
-                    />
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
-                        onClick={() => onRemove(idx)}
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2 items-center">
+                        <Input
+                            type="number"
+                            min={2020}
+                            max={2100}
+                            step={1}
+                            value={item.target_date ? item.target_date.slice(0, 4) : ''}
+                            onChange={(e) => {
+                                const y = e.target.value;
+                                onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
+                            }}
+                            placeholder="Anno"
+                            className="font-mono text-sm flex-1 sm:flex-none sm:w-24"
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                            onClick={() => onRemove(idx)}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {noteOpen ? (
