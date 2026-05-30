@@ -19,6 +19,10 @@ interface Props {
 }
 
 export default function StackedBarChart({ data, categories }: Props) {
+    const visibleCategories = categories.filter((cat) =>
+        data.some((point) => (point[cat.name] as number ?? 0) > 0)
+    );
+
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
@@ -51,7 +55,7 @@ export default function StackedBarChart({ data, categories }: Props) {
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="circle" iconSize={8} />
-                        {categories.map((cat) => (
+                        {visibleCategories.map((cat) => (
                             <Bar
                                 key={cat.name}
                                 dataKey={cat.name}

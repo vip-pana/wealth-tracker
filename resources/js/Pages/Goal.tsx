@@ -495,13 +495,14 @@ function GoalFormDialog({
 // ─── Donut chart (inline, simple) ─────────────────────────────────────────────
 
 function SmallDonut({ data, title }: { data: { name: string; value: number; color: string }[]; title: string }) {
+    const visible = data.filter((d) => d.value > 0);
     return (
         <div className="space-y-1 w-56">
             <p className="text-xs font-medium text-muted-foreground text-center">{title}</p>
             <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
                     <Pie
-                        data={data}
+                        data={visible}
                         cx="50%"
                         cy="50%"
                         innerRadius={46}
@@ -510,7 +511,7 @@ function SmallDonut({ data, title }: { data: { name: string; value: number; colo
                         dataKey="value"
                         nameKey="name"
                     >
-                        {data.map((entry) => (
+                        {visible.map((entry) => (
                             <Cell key={entry.name} fill={entry.color} />
                         ))}
                     </Pie>

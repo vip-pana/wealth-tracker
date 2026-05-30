@@ -14,6 +14,7 @@ interface Props {
 
 export default function AllocationDonutChart({ data }: Props) {
     const total = data.reduce((s, d) => s + d.value, 0);
+    const visible = data.filter((d) => d.value > 0);
 
     return (
         <Card>
@@ -26,7 +27,7 @@ export default function AllocationDonutChart({ data }: Props) {
                     <div className="flex-shrink-0">
                         <PieChart width={170} height={170}>
                             <Pie
-                                data={data}
+                                data={visible}
                                 cx={85}
                                 cy={85}
                                 innerRadius={52}
@@ -37,7 +38,7 @@ export default function AllocationDonutChart({ data }: Props) {
                                 startAngle={90}
                                 endAngle={-270}
                             >
-                                {data.map((entry) => (
+                                {visible.map((entry) => (
                                     <Cell key={entry.name} fill={entry.color} />
                                 ))}
                             </Pie>
@@ -68,7 +69,7 @@ export default function AllocationDonutChart({ data }: Props) {
                             </tr>
                         </thead>
                         <tbody>
-                            {data.map((entry) => (
+                            {visible.map((entry) => (
                                 <tr key={entry.name}>
                                     <td className="py-1 pr-2">
                                         <div className="flex items-center gap-1.5">
