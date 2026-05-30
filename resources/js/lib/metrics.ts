@@ -25,3 +25,49 @@ export function findForecastSplitDate(
     const splitIndex = data.findIndex((d) => d.forecast !== null && d.actual === null);
     return splitIndex > 0 ? (data[splitIndex]?.date ?? null) : null;
 }
+
+/** A live price is considered stale once it is older than this. */
+export const PRICE_STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+export interface PriceFreshness {
+    /** Human label of the price age, in Italian (e.g. "2 min fa", "3 giorni fa"). */
+    label: string;
+    /** True when the price is missing or older than PRICE_STALE_AFTER_MS. */
+    stale: boolean;
+}
+
+/**
+ * Describe how fresh a live price is, given when it was fetched. A null/empty
+ * timestamp (price never fetched) is reported as missing and stale.
+ */
+export function priceFreshness(
+    fetchedAt: string | null | undefined,
+    now: Date = new Date(),
+): PriceFreshness {
+    if (!fetchedAt) {
+        return { label: 'prezzo non disponibile', stale: true };
+    }
+
+    const fetched = new Date(fetchedAt);
+    if (Number.isNaN(fetched.getTime())) {
+        return { label: 'prezzo non disponibile', stale: true };
+    }
+
+    const ageMs = now.getTime() - fetched.getTime();
+    const stale = ageMs >= PRICE_STALE_AFTER_MS;
+
+    return { label: 'agg. ' + relativeAge(ageMs), stale };
+}
+
+/** Render a non-negative age in milliseconds as a short Italian "... fa" label. */
+function relativeAge(ageMs: number): string {
+    const minutes = Math.floor(ageMs / 60_000);
+    if (minutes < 1) return 'ora';
+    if (minutes < 60) return `${minutes} min fa`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} ${hours === 1 ? 'ora' : 'ore'} fa`;
+
+    const days = Math.floor(hours / 24);
+    return `${days} ${days === 1 ? 'giorno' : 'giorni'} fa`;
+}

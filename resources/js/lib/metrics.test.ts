@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { netWorthChangePct, findForecastSplitDate } from './metrics';
+import { netWorthChangePct, findForecastSplitDate, priceFreshness } from './metrics';
 
 describe('netWorthChangePct', () => {
     it('computes a positive change', () => {
@@ -44,5 +44,39 @@ describe('findForecastSplitDate', () => {
 
     it('returns null for an empty series', () => {
         expect(findForecastSplitDate([])).toBeNull();
+    });
+});
+
+describe('priceFreshness', () => {
+    const now = new Date('2026-05-30T12:00:00Z');
+    const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+
+    it('reports a missing price as stale', () => {
+        expect(priceFreshness(null, now)).toEqual({ label: 'prezzo non disponibile', stale: true });
+        expect(priceFreshness('', now)).toEqual({ label: 'prezzo non disponibile', stale: true });
+    });
+
+    it('reports an unparseable timestamp as stale', () => {
+        expect(priceFreshness('not-a-date', now).stale).toBe(true);
+    });
+
+    it('labels a very recent price as "ora" and not stale', () => {
+        const r = priceFreshness(ago(30 * 1000), now);
+        expect(r.label).toBe('agg. ora');
+        expect(r.stale).toBe(false);
+    });
+
+    it('labels minutes and hours', () => {
+        expect(priceFreshness(ago(5 * 60_000), now).label).toBe('agg. 5 min fa');
+        expect(priceFreshness(ago(60 * 60_000), now).label).toBe('agg. 1 ora fa');
+        expect(priceFreshness(ago(3 * 60 * 60_000), now).label).toBe('agg. 3 ore fa');
+    });
+
+    it('is fresh just under 24h and stale at/after 24h', () => {
+        expect(priceFreshness(ago(23 * 60 * 60_000), now).stale).toBe(false);
+        const oneDay = priceFreshness(ago(24 * 60 * 60_000), now);
+        expect(oneDay.stale).toBe(true);
+        expect(oneDay.label).toBe('agg. 1 giorno fa');
+        expect(priceFreshness(ago(3 * 24 * 60 * 60_000), now).label).toBe('agg. 3 giorni fa');
     });
 });

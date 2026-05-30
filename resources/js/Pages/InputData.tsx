@@ -238,6 +238,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 setEditAsset(a);
                                 setFormOpen(true);
                             }}
+                            prices={prices}
                         />
                     </CardContent>
                 </Card>

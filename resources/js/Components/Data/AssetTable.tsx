@@ -18,11 +18,14 @@ import {
     TableRow,
 } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/formatters';
-import type { Asset } from '@/types/models';
+import { priceFreshness } from '@/lib/metrics';
+import { cn } from '@/lib/utils';
+import type { Asset, AssetPriceInfo } from '@/types/models';
 
 interface Props {
     assets: Asset[];
     onEdit: (asset: Asset) => void;
+    prices: Record<string, AssetPriceInfo>;
 }
 
 function DeleteButton({ asset }: { asset: Asset }) {
@@ -66,7 +69,7 @@ function DeleteButton({ asset }: { asset: Asset }) {
     );
 }
 
-function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset) => void }) {
+function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a: Asset) => void; prices: Record<string, AssetPriceInfo> }) {
     const [open, setOpen] = useState(true);
     const cat = assets[0].category;
     const total = assets.reduce((sum, a) => sum + a.value, 0);
@@ -95,15 +98,30 @@ function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset)
                     </div>
                 </TableCell>
             </TableRow>
-            {open && assets.map((asset) => (
+            {open && assets.map((asset) => {
+                const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
+                return (
                 <TableRow key={asset.id}>
                     <TableCell className="pl-10">
                         <div>
                             <div className="flex items-center gap-2">
                                 <p className="font-medium">{asset.name}</p>
                                 {asset.ticker && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-1.5 py-0.5 text-xs font-mono text-blue-400">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                    <span
+                                        className={cn(
+                                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-mono',
+                                            freshness?.stale
+                                                ? 'bg-muted text-muted-foreground'
+                                                : 'bg-blue-500/10 text-blue-400',
+                                        )}
+                                        title={freshness?.label}
+                                    >
+                                        <span
+                                            className={cn(
+                                                'w-1.5 h-1.5 rounded-full',
+                                                freshness?.stale ? 'bg-muted-foreground' : 'bg-blue-400 animate-pulse',
+                                            )}
+                                        />
                                         {asset.ticker}
                                     </span>
                                 )}
@@ -113,6 +131,9 @@ function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset)
                                     {asset.quantity} unità
                                     {asset.price !== null && (
                                         <> · {formatCurrency(asset.price)}/unità</>
+                                    )}
+                                    {freshness && (
+                                        <> · <span className={cn(freshness.stale && 'text-amber-500')}>{freshness.label}</span></>
                                     )}
                                     {asset.wallet_address && (
                                         <> · <span className="font-mono" title={asset.wallet_address}>{asset.wallet_address.slice(0, 8)}…{asset.wallet_address.slice(-6)}</span></>
@@ -141,12 +162,13 @@ function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset)
                         </div>
                     </TableCell>
                 </TableRow>
-            ))}
+                );
+            })}
         </>
     );
 }
 
-export default function AssetTable({ assets, onEdit }: Props) {
+export default function AssetTable({ assets, onEdit, prices }: Props) {
     if (assets.length === 0) {
         return (
             <div className="py-12 text-center text-muted-foreground text-sm">
@@ -176,7 +198,7 @@ export default function AssetTable({ assets, onEdit }: Props) {
                 </TableHeader>
                 <TableBody>
                     {[...groups.entries()].map(([categoryId, groupAssets]) => (
-                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} />
+                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} prices={prices} />
                     ))}
                 </TableBody>
             </Table>
