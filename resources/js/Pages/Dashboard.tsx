@@ -11,6 +11,7 @@ import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
 import { Card, CardContent } from '@/Components/ui/card';
 import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
+import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
@@ -108,9 +109,7 @@ export default function Dashboard({
 
     const lastPoint = netWorthSeries[netWorthSeries.length - 1];
     const prevPoint = netWorthSeries[netWorthSeries.length - 2];
-    const totalChange = prevPoint && lastPoint
-        ? ((lastPoint.total_value - prevPoint.total_value) / prevPoint.total_value) * 100
-        : null;
+    const totalChange = netWorthChangePct(prevPoint?.total_value, lastPoint?.total_value);
 
     // Get the two most recent snapshot dates for comparison chart
     const snapshotMonths: [string, string] | null =

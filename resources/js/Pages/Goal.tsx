@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
-import { allocationSum, monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth } from '@/lib/goalMath';
+import { allocationSum, monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth, formatPct, pctOfTotal, allocationDeviation } from '@/lib/goalMath';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
 
@@ -62,12 +62,6 @@ type GoalFormData = {
     category_allocations: AllocationFormItem[];
     milestones: MilestoneFormItem[];
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatPct(value: number): string {
-    return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
-}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -580,8 +574,8 @@ function GoalProgress({
     const categoryDeviations = goal.categoryAllocations.map((alloc) => {
         const cat = categories.find((c) => c.id === alloc.category_id);
         const currentVal = currentAllocation.find((a) => a.category_id === alloc.category_id)?.value ?? 0;
-        const currentPct = totalCurrent > 0 ? (currentVal / totalCurrent) * 100 : 0;
-        const delta = currentPct - alloc.percentage;
+        const currentPct = pctOfTotal(currentVal, totalCurrent);
+        const delta = allocationDeviation(currentVal, totalCurrent, alloc.percentage);
         return { name: cat?.name ?? '?', color: cat?.color ?? '#94a3b8', currentPct, targetPct: alloc.percentage, delta };
     });
 
@@ -592,8 +586,8 @@ function GoalProgress({
     const totalCurrentMacro = currentMacroAllocation.reduce((s, a) => s + a.value, 0);
     const macroDeviations = goal.macroAllocations.map((alloc) => {
         const currentVal = currentMacroAllocation.find((a) => a.macro_category === alloc.macro_category)?.value ?? 0;
-        const currentPct = totalCurrentMacro > 0 ? (currentVal / totalCurrentMacro) * 100 : 0;
-        const delta = currentPct - (alloc.percentage);
+        const currentPct = pctOfTotal(currentVal, totalCurrentMacro);
+        const delta = allocationDeviation(currentVal, totalCurrentMacro, alloc.percentage);
         const color = MACRO_COLORS[alloc.macro_category ?? ''] ?? '#94a3b8';
         return { name: alloc.macro_category ?? '', color, currentPct, targetPct: alloc.percentage, delta };
     });

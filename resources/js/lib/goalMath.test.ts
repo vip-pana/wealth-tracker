@@ -4,6 +4,9 @@ import {
     monthsUntil,
     requiredMonthlyGrowth,
     requiredAnnualGrowth,
+    formatPct,
+    pctOfTotal,
+    allocationDeviation,
 } from '@/lib/goalMath';
 
 describe('allocationSum', () => {
@@ -79,5 +82,43 @@ describe('requiredAnnualGrowth', () => {
 
     it('is 0 when target equals current', () => {
         expect(requiredAnnualGrowth(1000, 1000, 24)).toBeCloseTo(0, 6);
+    });
+});
+
+describe('formatPct', () => {
+    it('drops decimals for integers', () => {
+        expect(formatPct(50)).toBe('50%');
+        expect(formatPct(0)).toBe('0%');
+    });
+
+    it('keeps one decimal for fractions', () => {
+        expect(formatPct(50.5)).toBe('50.5%');
+        expect(formatPct(-5.123)).toBe('-5.1%');
+    });
+});
+
+describe('pctOfTotal', () => {
+    it('computes a share', () => {
+        expect(pctOfTotal(25, 100)).toBe(25);
+        expect(pctOfTotal(1, 3)).toBeCloseTo(33.333, 2);
+    });
+
+    it('guards a zero total', () => {
+        expect(pctOfTotal(50, 0)).toBe(0);
+    });
+});
+
+describe('allocationDeviation', () => {
+    it('is positive when over-allocated vs target', () => {
+        // 50 of 100 = 50%, target 40% -> +10pp.
+        expect(allocationDeviation(50, 100, 40)).toBeCloseTo(10);
+    });
+
+    it('is negative when under-allocated vs target', () => {
+        expect(allocationDeviation(30, 100, 40)).toBeCloseTo(-10);
+    });
+
+    it('treats a zero total as 0% current allocation', () => {
+        expect(allocationDeviation(0, 0, 40)).toBeCloseTo(-40);
     });
 });

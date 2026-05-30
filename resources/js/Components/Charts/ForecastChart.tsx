@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
+import { findForecastSplitDate } from '@/lib/metrics';
 import type { ForecastPoint } from '@/types/analytics';
 
 interface Props {
@@ -20,8 +21,7 @@ interface Props {
 
 export default function ForecastChart({ data }: Props) {
     // Find the split point between historical and forecast
-    const splitIndex = data.findIndex((d) => d.forecast !== null && d.actual === null);
-    const splitDate = splitIndex > 0 ? data[splitIndex]?.date : null;
+    const splitDate = findForecastSplitDate(data);
 
     return (
         <Card>

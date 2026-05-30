@@ -26,3 +26,18 @@ export function requiredAnnualGrowth(current: number, target: number, months: nu
     if (monthly === null) return null;
     return (Math.pow(1 + monthly / 100, 12) - 1) * 100;
 }
+
+/** Format a percentage: integers without decimals, fractions to one decimal. */
+export function formatPct(value: number): string {
+    return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
+}
+
+/** A value's share of a total, as a percentage. Guards a zero total. */
+export function pctOfTotal(value: number, total: number): number {
+    return total > 0 ? (value / total) * 100 : 0;
+}
+
+/** Deviation of a current share from its target share, in percentage points. */
+export function allocationDeviation(currentValue: number, total: number, targetPct: number): number {
+    return pctOfTotal(currentValue, total) - targetPct;
+}
