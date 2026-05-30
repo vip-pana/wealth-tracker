@@ -263,7 +263,7 @@ export default function Settings({ categories, prices }: Props) {
     return (
         <>
             <Head title="Impostazioni" />
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
                 <h1 className="text-lg font-bold">Impostazioni</h1>
 
                 {/* Categories */}

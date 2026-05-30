@@ -634,7 +634,7 @@ function GoalProgress({
     const today = new Date().toISOString().slice(0, 10);
 
     return (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
             <Head title={`Obiettivo — ${goal.name}`} />
 
             {/* Header */}
@@ -669,7 +669,7 @@ function GoalProgress({
             </div>
 
             {/* Progress + Milestones side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">

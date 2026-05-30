@@ -91,7 +91,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
     return (
         <>
             <Head title="Input Dati" />
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
                 {/* Header: two cards — month values editor vs snapshot */}
                 <div className="grid gap-3 md:grid-cols-2">
                     {/* Card: month values */}

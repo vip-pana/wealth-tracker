@@ -73,7 +73,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
     return (
         <>
             <Head title="Analisi" />
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-lg font-bold">Analisi</h1>
