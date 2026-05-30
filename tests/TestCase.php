@@ -9,6 +9,14 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Tests don't build frontend assets, so don't require the Vite manifest.
+        $this->withoutVite();
+    }
+
     public function createApplication(): Application
     {
         $app = require __DIR__.'/../bootstrap/app.php';
