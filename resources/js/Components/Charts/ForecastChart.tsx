@@ -10,6 +10,7 @@ import {
     ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { ForecastPoint } from '@/types/analytics';
 
@@ -28,6 +29,9 @@ export default function ForecastChart({ data }: Props) {
                 <CardTitle className="text-sm">Previsioni (prossimi 6 mesi)</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
+                {data.length === 0 ? (
+                    <ChartEmptyState message="Servono almeno due snapshot per stimare una previsione." />
+                ) : (
                 <ResponsiveContainer width="100%" height={200}>
                     <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -92,6 +96,7 @@ export default function ForecastChart({ data }: Props) {
                         />
                     </ComposedChart>
                 </ResponsiveContainer>
+                )}
             </CardContent>
         </Card>
     );

@@ -10,6 +10,7 @@ import {
     Cell,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatDateLabel, formatPercent } from '@/lib/formatters';
 import type { GrowthRatePoint } from '@/types/analytics';
 
@@ -24,6 +25,9 @@ export default function GrowthRateChart({ data }: Props) {
                 <CardTitle className="text-sm">Variazione tra snapshot (%)</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
+                {data.length < 2 ? (
+                    <ChartEmptyState message="Servono almeno due snapshot per confrontare la variazione." />
+                ) : (
                 <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -60,6 +64,7 @@ export default function GrowthRateChart({ data }: Props) {
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
+                )}
             </CardContent>
         </Card>
     );

@@ -9,6 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { MonthComparisonPoint } from '@/types/analytics';
 
@@ -31,6 +32,9 @@ export default function MonthComparisonChart({ data, months }: Props) {
                 <CardTitle className="text-sm">Confronto tra snapshot</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
+                {!months || visibleData.length === 0 ? (
+                    <ChartEmptyState message="Servono almeno due snapshot per confrontarli." />
+                ) : (
                 <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={visibleData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -56,6 +60,7 @@ export default function MonthComparisonChart({ data, months }: Props) {
                         <Bar dataKey="current" name={currLabel} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
+                )}
             </CardContent>
         </Card>
     );
