@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm --version)"
+      "Bash(npm --version)",
+      "Bash(docker compose *)",
+      "Bash(cd /Users/vincenzo.panacciulli/Develop/wealth-tracker *)",
+      "Read(//tmp/**)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

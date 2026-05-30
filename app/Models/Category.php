@@ -9,6 +9,8 @@ use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -18,11 +20,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $sort_order
  * @property MacroCategory|null $macro_category
  * @property int|null $assets_count
+ * @property Carbon|null $deleted_at
  */
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
     use HasFactory;
+
+    use SoftDeletes;
 
     protected $fillable = ['name', 'color', 'icon', 'sort_order', 'macro_category'];
 

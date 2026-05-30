@@ -3,11 +3,9 @@ import {
     Pie,
     Cell,
     Tooltip,
-    ResponsiveContainer,
-    Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrency } from '@/lib/formatters';
+import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { AllocationSlice } from '@/types/analytics';
 
 interface Props {
@@ -16,52 +14,80 @@ interface Props {
 
 export default function AllocationDonutChart({ data }: Props) {
     const total = data.reduce((s, d) => s + d.value, 0);
+    const visible = data.filter((d) => d.value > 0);
 
     return (
         <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base">Composizione attuale</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-sm">Composizione attuale</CardTitle>
             </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="45%"
-                            innerRadius={65}
-                            outerRadius={95}
-                            paddingAngle={3}
-                            dataKey="value"
-                            nameKey="name"
-                        >
-                            {data.map((entry) => (
-                                <Cell key={entry.name} fill={entry.color} />
+            <CardContent className="px-3 pb-3">
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                    {/* Donut */}
+                    <div className="flex-shrink-0">
+                        <PieChart width={170} height={170}>
+                            <Pie
+                                data={visible}
+                                cx={85}
+                                cy={85}
+                                innerRadius={52}
+                                outerRadius={76}
+                                paddingAngle={3}
+                                dataKey="value"
+                                nameKey="name"
+                                startAngle={90}
+                                endAngle={-270}
+                            >
+                                {visible.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} tabIndex={-1} style={{ outline: 'none' }} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                formatter={(v, name) => [
+                                    `${formatCurrencyNoDecimals((v as number) ?? 0)} (${total > 0 ? ((((v as number) ?? 0) / total) * 100).toFixed(1) : 0}%)`,
+                                    name,
+                                ]}
+                                contentStyle={{
+                                    fontSize: 12,
+                                    backgroundColor: 'hsl(var(--card))',
+                                    borderColor: 'hsl(var(--border))',
+                                    color: 'hsl(var(--card-foreground))',
+                                }}
+                                labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+                                itemStyle={{ color: 'hsl(var(--card-foreground))' }}
+                            />
+                        </PieChart>
+                    </div>
+
+                    {/* Legend table */}
+                    <table className="w-full sm:flex-1 text-xs">
+                        <thead>
+                            <tr className="text-muted-foreground">
+                                <th className="text-left pb-1.5 font-medium">Categoria</th>
+                                <th className="text-right pb-1.5 font-medium">Valore</th>
+                                <th className="text-right pb-1.5 font-medium pl-2">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {visible.map((entry) => (
+                                <tr key={entry.name}>
+                                    <td className="py-1 pr-2">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                                            <span className="text-muted-foreground">{entry.name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-1 text-right font-mono font-medium whitespace-nowrap">
+                                        {formatCurrencyNoDecimals(entry.value)}
+                                    </td>
+                                    <td className="py-1 pl-2 text-right font-mono text-muted-foreground whitespace-nowrap">
+                                        {total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%
+                                    </td>
+                                </tr>
                             ))}
-                        </Pie>
-                        <Tooltip
-                            formatter={(v, name) => [
-                                `${formatCurrency((v as number) ?? 0)} (${total > 0 ? ((((v as number) ?? 0) / total) * 100).toFixed(1) : 0}%)`,
-                                name,
-                            ]}
-                            contentStyle={{
-                                fontSize: 12,
-                                backgroundColor: 'hsl(var(--card))',
-                                borderColor: 'hsl(var(--border))',
-                                color: 'hsl(var(--card-foreground))',
-                            }}
-                            labelStyle={{ color: 'hsl(var(--card-foreground))' }}
-                            itemStyle={{ color: 'hsl(var(--card-foreground))' }}
-                        />
-                        <Legend
-                            iconType="circle"
-                            iconSize={8}
-                            formatter={(value) => (
-                                <span style={{ fontSize: 12 }}>{value}</span>
-                            )}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
+                        </tbody>
+                    </table>
+                </div>
             </CardContent>
         </Card>
     );

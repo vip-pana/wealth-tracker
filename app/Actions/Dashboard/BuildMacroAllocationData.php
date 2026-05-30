@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Dashboard;
+
+use App\Actions\Action;
+use App\Models\Snapshot;
+use Illuminate\Support\Collection;
+
+class BuildMacroAllocationData extends Action
+{
+    /**
+     * @param  Collection<int, Snapshot>  $snapshots
+     * @return array<int, mixed>
+     */
+    public function run(Collection $snapshots): array
+    {
+        $last = $snapshots->last();
+        if (! $last) {
+            return [];
+        }
+
+        /** @var array<string, float> $totals */
+        $totals = [];
+        foreach ($last->categoryValues as $cv) {
+            $macro = $cv->category->macro_category?->value;
+            if ($macro === null) {
+                continue;
+            }
+            $totals[$macro] = ($totals[$macro] ?? 0.0) + (float) $cv->value;
+        }
+
+        return array_map(
+            fn (string $macro, float $value): array => ['name' => $macro, 'value' => $value],
+            array_keys($totals),
+            $totals,
+        );
+    }
+}

@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
+import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
 import NetWorthLineChart from '@/Components/Charts/NetWorthLineChart';
 import AllocationDonutChart from '@/Components/Charts/AllocationDonutChart';
 import StackedBarChart from '@/Components/Charts/StackedBarChart';
@@ -8,10 +10,10 @@ import GrowthRateChart from '@/Components/Charts/GrowthRateChart';
 import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
 import { Card, CardContent } from '@/Components/ui/card';
-import { formatCurrency, formatPercent, formatMonthLong } from '@/lib/formatters';
+import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
-import { PlusSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
 import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -34,6 +36,7 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     latestSnapshot: string | null;
+    goal: { name: string; target_value: number; target_date: string | null } | null;
 }
 
 function SummaryCard({
@@ -50,11 +53,11 @@ function SummaryCard({
 
     return (
         <Card>
-            <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                <p className="text-xl font-bold">{value}</p>
+            <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                <p className="text-base font-bold">{value}</p>
                 {change != null && Icon && (
-                    <p className={`text-xs flex items-center gap-1 mt-1 ${color}`}>
+                    <p className={`text-xs flex items-center gap-1 mt-0.5 ${color}`}>
                         <Icon className="w-3 h-3" />
                         {formatPercent(change)} vs mese prec.
                     </p>
@@ -77,6 +80,7 @@ export default function Dashboard({
     categories,
     hasData,
     latestSnapshot,
+    goal,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
     if (!hasData) {
@@ -108,12 +112,12 @@ export default function Dashboard({
         ? ((lastPoint.total_value - prevPoint.total_value) / prevPoint.total_value) * 100
         : null;
 
-    // Get the two most recent snapshot months for comparison chart
+    // Get the two most recent snapshot dates for comparison chart
     const snapshotMonths: [string, string] | null =
         netWorthSeries.length >= 2
             ? [
-                netWorthSeries[netWorthSeries.length - 2].month,
-                netWorthSeries[netWorthSeries.length - 1].month,
+                netWorthSeries[netWorthSeries.length - 2].date,
+                netWorthSeries[netWorthSeries.length - 1].date,
               ]
             : null;
 
@@ -138,54 +142,75 @@ export default function Dashboard({
     return (
         <>
             <Head title="Dashboard" />
-            <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold">Dashboard</h1>
-                        {latestSnapshot && (
-                            <p className="text-sm text-muted-foreground">
-                                Ultimo aggiornamento: {formatMonthLong(latestSnapshot)}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
-                        <button
-                            onClick={() => setMacroMode(false)}
-                            className={`px-3 py-1.5 ${!macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Categorie
-                        </button>
-                        <button
-                            onClick={() => setMacroMode(true)}
-                            className={`px-3 py-1.5 ${macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Macro
-                        </button>
-                    </div>
-                </div>
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+                <PageHeader
+                    icon={LayoutDashboard}
+                    title="Dashboard"
+                    subtitle={latestSnapshot ? `Ultimo aggiornamento: ${formatDateLong(latestSnapshot)}` : undefined}
+                    actions={
+                        <SegmentedToggle
+                            options={[
+                                { value: 'category', label: 'Categorie' },
+                                { value: 'macro', label: 'Macro' },
+                            ]}
+                            value={macroMode ? 'macro' : 'category'}
+                            onChange={(v) => setMacroMode(v === 'macro')}
+                        />
+                    }
+                />
 
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Summary cards + goal */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <SummaryCard
                         label="Patrimonio attuale"
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
                         change={totalChange}
                     />
-                    {(macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
-                        <SummaryCard
-                            key={slice.name}
-                            label={slice.name}
-                            value={formatCurrency(slice.value)}
-                        />
-                    ))}
+                    {goal && lastPoint ? (
+                        <Link href="/goal" className="contents">
+                            <Card className="sm:col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                                <CardContent className="p-3 h-full flex items-center gap-4">
+                                    <Target className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-sm font-medium truncate">{goal.name}</span>
+                                            <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                                                {formatCurrency(lastPoint.total_value)} / {formatCurrency(goal.target_value)}
+                                                {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-muted rounded-full h-1.5">
+                                            <div
+                                                className="bg-amber-500 h-1.5 rounded-full transition-all"
+                                                style={{ width: `${Math.min(100, (lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-bold text-amber-500 flex-shrink-0">
+                                        {((lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%
+                                    </span>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ) : (
+                        (macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
+                            <SummaryCard
+                                key={slice.name}
+                                label={slice.name}
+                                value={formatCurrency(slice.value)}
+                            />
+                        ))
+                    )}
                 </div>
 
                 {/* Charts grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <NetWorthLineChart data={netWorthSeries} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <NetWorthLineChart data={netWorthSeries} goalTarget={goal?.target_value} goalName={goal?.name} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
-                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
                     <GrowthRateChart data={growthRates} />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
                     <MonthComparisonChart data={macroMode ? macroComparisonPoints : monthComparison} months={snapshotMonths} />
                     <ForecastChart data={forecast} />
                 </div>

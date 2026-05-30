@@ -6,12 +6,19 @@ namespace Tests\Feature\Controllers;
 
 use App\Models\Asset;
 use App\Models\Category;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class CategoryControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+    }
 
     public function test_stores_a_category(): void
     {
@@ -49,7 +56,7 @@ class CategoryControllerTest extends TestCase
 
         $this->delete("/categories/{$category->id}")->assertRedirect();
 
-        $this->assertDatabaseMissing('categories', ['id' => $category->id]);
+        $this->assertSoftDeleted('categories', ['id' => $category->id]);
     }
 
     public function test_refuses_to_destroy_a_category_with_assets(): void

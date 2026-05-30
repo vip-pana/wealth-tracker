@@ -9,7 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrencyCompact, formatCurrency, formatMonthLabel } from '@/lib/formatters';
+import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { StackedBarPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -19,18 +19,22 @@ interface Props {
 }
 
 export default function StackedBarChart({ data, categories }: Props) {
+    const visibleCategories = categories.filter((cat) =>
+        data.some((point) => (point[cat.name] as number ?? 0) > 0)
+    );
+
     return (
         <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base">Composizione per categoria</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+                <CardTitle className="text-sm">Composizione per categoria</CardTitle>
             </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
+            <CardContent className="px-3 pb-3">
+                <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
-                            dataKey="month"
-                            tickFormatter={formatMonthLabel}
+                            dataKey="date"
+                            tickFormatter={formatDateLabel}
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
@@ -40,7 +44,7 @@ export default function StackedBarChart({ data, categories }: Props) {
                         />
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
-                            labelFormatter={(d) => formatMonthLabel(d as string)}
+                            labelFormatter={(d) => formatDateLabel(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',
@@ -51,7 +55,7 @@ export default function StackedBarChart({ data, categories }: Props) {
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="circle" iconSize={8} />
-                        {categories.map((cat) => (
+                        {visibleCategories.map((cat) => (
                             <Bar
                                 key={cat.name}
                                 dataKey={cat.name}

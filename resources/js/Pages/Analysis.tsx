@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import {
     Table,
     TableBody,
@@ -20,7 +21,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Download, Filter, X } from 'lucide-react';
+import { Download, Filter, X, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
 import { formatCurrency, formatMonthLong } from '@/lib/formatters';
 import type { Asset, Category } from '@/types/models';
 
@@ -39,6 +40,8 @@ interface Props {
 
 export default function Analysis({ assets, categories, availableMonths, filters }: Props) {
     const [localFilters, setLocalFilters] = useState<Filters>(filters);
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
 
     const applyFilters = () => {
         const params: Record<string, string> = {};
@@ -50,13 +53,16 @@ export default function Analysis({ assets, categories, availableMonths, filters 
 
     const clearFilters = () => {
         setLocalFilters({ category_id: null, date_from: null, date_to: null });
+        setPage(1);
         router.get('/analysis', {}, { preserveState: false });
     };
 
     const hasFilters =
         filters.category_id || filters.date_from || filters.date_to;
 
-    const total = assets.reduce((s, a) => s + a.value, 0);
+    const totalPages = Math.max(1, Math.ceil(assets.length / perPage));
+    const safePage = Math.min(page, totalPages);
+    const pagedAssets = assets.slice((safePage - 1) * perPage, safePage * perPage);
 
     // Build CSV export URL
     const exportParams = new URLSearchParams();
@@ -68,21 +74,20 @@ export default function Analysis({ assets, categories, availableMonths, filters 
     return (
         <>
             <Head title="Analisi" />
-            <div className="p-6 space-y-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold">Analisi</h1>
-                        <p className="text-sm text-muted-foreground">
-                            {assets.length} asset trovati{hasFilters ? ' (filtrati)' : ''}
-                        </p>
-                    </div>
-                    <a href={exportUrl} download>
-                        <Button variant="outline" size="sm">
-                            <Download className="w-4 h-4 mr-2" />
-                            Esporta CSV
-                        </Button>
-                    </a>
-                </div>
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+                <PageHeader
+                    icon={BarChart2}
+                    title="Analisi"
+                    subtitle={`${assets.length} asset trovati${hasFilters ? ' (filtrati)' : ''}`}
+                    actions={
+                        <a href={exportUrl} download>
+                            <Button variant="outline" size="sm">
+                                <Download className="w-4 h-4 mr-2" />
+                                Esporta CSV
+                            </Button>
+                        </a>
+                    }
+                />
 
                 {/* Filters */}
                 <Card>
@@ -93,7 +98,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-wrap gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs">Categoria</Label>
                                 <Select
@@ -105,7 +110,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutte" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -130,7 +135,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutti" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -155,7 +160,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutti" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -168,12 +173,14 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
 
-                            <Button size="sm" onClick={applyFilters}>
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 mt-3">
+                            <Button size="sm" onClick={applyFilters} className="w-full sm:w-auto">
                                 Applica
                             </Button>
                             {hasFilters && (
-                                <Button size="sm" variant="ghost" onClick={clearFilters}>
+                                <Button size="sm" variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
                                     <X className="w-4 h-4 mr-1" />
                                     Rimuovi filtri
                                 </Button>
@@ -191,57 +198,109 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                             </div>
                         ) : (
                             <>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Mese</TableHead>
-                                            <TableHead>Asset</TableHead>
-                                            <TableHead>Categoria</TableHead>
-                                            <TableHead className="text-right">Valore</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {assets.map((asset) => (
-                                            <TableRow key={asset.id}>
-                                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                                                    {formatMonthLong(asset.date)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <p className="font-medium">{asset.name}</p>
-                                                        {asset.notes && (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {asset.notes}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant="outline"
-                                                        style={{
-                                                            borderColor: asset.category.color,
-                                                            color: asset.category.color,
-                                                        }}
-                                                    >
-                                                        {asset.category.icon && (
-                                                            <span className="mr-1">{asset.category.icon}</span>
-                                                        )}
-                                                        {asset.category.name}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono">
-                                                    {formatCurrency(asset.value)}
-                                                </TableCell>
+                                {/* Desktop: table */}
+                                <div className="hidden lg:block">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Mese</TableHead>
+                                                <TableHead>Asset</TableHead>
+                                                <TableHead>Categoria</TableHead>
+                                                <TableHead className="text-right">Valore</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted/40">
-                                    <span className="text-sm text-muted-foreground">
-                                        {assets.length} righe
-                                    </span>
-                                    <span className="font-bold">{formatCurrency(total)}</span>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {pagedAssets.map((asset) => (
+                                                <TableRow key={asset.id}>
+                                                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                                        {formatMonthLong(asset.date)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <p className="font-medium">{asset.name}</p>
+                                                            {asset.notes && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {asset.notes}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant="outline"
+                                                            style={{
+                                                                borderColor: asset.category.color,
+                                                                color: asset.category.color,
+                                                            }}
+                                                        >
+                                                            {asset.category.icon && (
+                                                                <span className="mr-1">{asset.category.icon}</span>
+                                                            )}
+                                                            {asset.category.name}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono">
+                                                        {formatCurrency(asset.value)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Mobile: cards */}
+                                <div className="lg:hidden divide-y divide-border">
+                                    {pagedAssets.map((asset) => (
+                                        <div key={asset.id} className="p-4 space-y-2">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium truncate">{asset.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatMonthLong(asset.date)}</p>
+                                                </div>
+                                                <span className="font-mono font-semibold whitespace-nowrap">{formatCurrency(asset.value)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Badge
+                                                    variant="outline"
+                                                    style={{ borderColor: asset.category.color, color: asset.category.color }}
+                                                >
+                                                    {asset.category.icon && <span className="mr-1">{asset.category.icon}</span>}
+                                                    {asset.category.name}
+                                                </Badge>
+                                                {asset.notes && (
+                                                    <span className="text-xs text-muted-foreground truncate">{asset.notes}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-muted/40">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm text-muted-foreground">
+                                            {assets.length} righe · pagina {safePage} di {totalPages}
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs text-muted-foreground">Righe per pagina:</span>
+                                            <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setPage(1); }}>
+                                                <SelectTrigger className="h-7 w-16 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {[10, 25, 50, 100].map((n) => (
+                                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setPage((p) => p - 1)}>
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </>
                         )}

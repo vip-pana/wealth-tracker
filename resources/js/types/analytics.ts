@@ -1,5 +1,5 @@
 export interface NetWorthPoint {
-    month: string;       // "YYYY-MM-DD"
+    date: string;        // "YYYY-MM-DD"
     total_value: number;
 }
 
@@ -10,13 +10,13 @@ export interface AllocationSlice {
 }
 
 export interface StackedBarPoint {
-    month: string;
+    date: string;
     [categoryName: string]: string | number;
 }
 
 export interface GrowthRatePoint {
-    month: string;
-    mom_pct: number;
+    date: string;
+    change_pct: number;
     total_value: number;
 }
 
@@ -28,7 +28,7 @@ export interface MonthComparisonPoint {
 }
 
 export interface ForecastPoint {
-    month: string;
+    date: string;
     actual: number | null;
     trend: number | null;
     forecast: number | null;
@@ -40,7 +40,7 @@ export interface MacroAllocationSlice {
 }
 
 export interface MacroStackedBarPoint {
-    month: string;
+    date: string;
     [macroName: string]: string | number;
 }
 

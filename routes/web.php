@@ -2,32 +2,80 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\AssetController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\SnapshotController;
+use App\Http\Controllers\Analytics\AnalysisController;
+use App\Http\Controllers\Analytics\CsvTemplateController;
+use App\Http\Controllers\Analytics\DashboardController;
+use App\Http\Controllers\Analytics\ExportCsvController;
+use App\Http\Controllers\Analytics\ImportCsvController;
+use App\Http\Controllers\Assets\CopyFromMonthController;
+use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
+use App\Http\Controllers\Assets\IndexController as IndexAssetController;
+use App\Http\Controllers\Assets\StoreController as StoreAssetController;
+use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
+use App\Http\Controllers\Backup\StoreController as StoreBackupController;
+use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
+use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
+use App\Http\Controllers\Categories\StoreController as StoreCategoryController;
+use App\Http\Controllers\Categories\UpdateController as UpdateCategoryController;
+use App\Http\Controllers\Goals\DestroyController as DestroyGoalController;
+use App\Http\Controllers\Goals\IndexController as IndexGoalController;
+use App\Http\Controllers\Goals\StoreController as StoreGoalController;
+use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
+use App\Http\Controllers\Pension\DestroyController as DestroyPensionController;
+use App\Http\Controllers\Pension\IndexController as IndexPensionController;
+use App\Http\Controllers\Pension\StoreController as StorePensionController;
+use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
+use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
+use App\Http\Controllers\Snapshots\StoreController as StoreSnapshotController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
-Route::get('/', [AnalyticsController::class, 'dashboard'])->name('dashboard');
-Route::get('/input', [AssetController::class, 'index'])->name('input.index');
-Route::get('/analysis', [AnalyticsController::class, 'analysis'])->name('analysis.index');
-Route::get('/settings', [CategoryController::class, 'index'])->name('settings.index');
+Route::get('/', DashboardController::class)->name('dashboard');
+Route::get('/input', IndexAssetController::class)->name('input.index');
+Route::get('/analysis', AnalysisController::class)->name('analysis.index');
+Route::get('/settings', IndexCategoryController::class)->name('settings.index');
+Route::get('/goal', IndexGoalController::class)->name('goal.index');
+Route::get('/pension', IndexPensionController::class)->name('pension.index');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
-Route::post('/assets/bulk-move', [AssetController::class, 'bulkMove'])->name('assets.bulk-move');
-Route::post('/assets/copy-from-month', [AssetController::class, 'copyFromMonth'])->name('assets.copy-from-month');
-Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
-Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
-Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('assets.destroy');
+Route::prefix('assets')->name('assets.')->group(function () {
+    Route::post('/', StoreAssetController::class)->name('store');
+    Route::put('/{asset}', UpdateAssetController::class)->name('update');
+    Route::delete('/{asset}', DestroyAssetController::class)->name('destroy');
+    Route::post('/copy-from-month', CopyFromMonthController::class)->name('copy-from-month');
+});
 
 // ─── Snapshots ────────────────────────────────────────────────────────────────
-Route::post('/snapshots', [SnapshotController::class, 'store'])->name('snapshots.store');
+Route::post('/snapshots', StoreSnapshotController::class)->name('snapshots.store');
 
 // ─── Categories CRUD ──────────────────────────────────────────────────────────
-Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
-Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
-Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+Route::prefix('categories')->name('categories.')->group(function () {
+    Route::post('/', StoreCategoryController::class)->name('store');
+    Route::put('/{category}', UpdateCategoryController::class)->name('update');
+    Route::delete('/{category}', DestroyCategoryController::class)->name('destroy');
+});
 
-// ─── Export (plain HTTP, not Inertia) ─────────────────────────────────────────
-Route::get('/export/csv', [AnalyticsController::class, 'exportCsv'])->name('export.csv');
+// ─── Goal ─────────────────────────────────────────────────────────────────────
+Route::prefix('goal')->name('goal.')->group(function () {
+    Route::post('/', StoreGoalController::class)->name('store');
+    Route::put('/{goal}', UpdateGoalController::class)->name('update');
+    Route::delete('/{goal}', DestroyGoalController::class)->name('destroy');
+});
+
+// ─── Pension ──────────────────────────────────────────────────────────────────
+Route::prefix('pension')->name('pension.')->group(function () {
+    Route::post('/', StorePensionController::class)->name('store');
+    Route::put('/{asset}', UpdatePensionController::class)->name('update');
+    Route::delete('/{asset}', DestroyPensionController::class)->name('destroy');
+});
+
+// ─── Backup ───────────────────────────────────────────────────────────────────
+Route::post('/backup', StoreBackupController::class)->name('backup.store');
+
+// ─── Prices ───────────────────────────────────────────────────────────────────
+Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
+
+// ─── Export / Import (plain HTTP, not Inertia) ────────────────────────────────
+Route::get('/export/csv', ExportCsvController::class)->name('export.csv');
+Route::get('/import/csv/template', CsvTemplateController::class)->name('import.csv.template');
+Route::post('/import/csv', ImportCsvController::class)->name('import.csv');
