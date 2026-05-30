@@ -6,7 +6,7 @@ Personal wealth tracker: log assets by category each month, take monthly snapsho
 
 ## Stack
 
-- **Backend**: Laravel 12, PHP 8.2, SQLite
+- **Backend**: Laravel 12, PHP 8.4, SQLite
 - **Frontend**: React 19 + TypeScript (strict), Inertia.js v2, Tailwind CSS, Recharts
 - **Package manager**: pnpm
 - **Quality**: PHPStan level 9, Laravel Pint, ESLint v9, TypeScript strict

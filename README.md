@@ -34,7 +34,7 @@ for normal desktop use.
 
 ## Running locally
 
-**Requirements**: PHP 8.2+, Composer, Node.js 22+, pnpm
+**Requirements**: PHP 8.4+, Composer, Node.js 22+, pnpm
 
 ```bash
 cp .env.example .env
