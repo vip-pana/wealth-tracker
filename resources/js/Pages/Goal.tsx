@@ -499,7 +499,7 @@ function GoalFormDialog({
 function SmallDonut({ data, title }: { data: { name: string; value: number; color: string }[]; title: string }) {
     const visible = data.filter((d) => d.value > 0);
     return (
-        <div className="space-y-1 w-full max-w-[14rem] min-w-0 flex-1 lg:flex-none">
+        <div className="space-y-1 min-w-0 flex-1 max-w-[14rem] lg:flex-none lg:w-56">
             <p className="text-xs font-medium text-muted-foreground text-center">{title}</p>
             <div className="pointer-events-none">
                 <ResponsiveContainer width="100%" height={170}>
