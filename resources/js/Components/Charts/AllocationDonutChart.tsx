@@ -22,7 +22,7 @@ export default function AllocationDonutChart({ data }: Props) {
                 <CardTitle className="text-sm">Composizione attuale</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-                <div className="flex items-center gap-6">
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                     {/* Donut */}
                     <div className="flex-shrink-0">
                         <PieChart width={170} height={170}>
@@ -60,7 +60,7 @@ export default function AllocationDonutChart({ data }: Props) {
                     </div>
 
                     {/* Legend table */}
-                    <table className="flex-1 text-xs">
+                    <table className="w-full sm:flex-1 text-xs">
                         <thead>
                             <tr className="text-muted-foreground">
                                 <th className="text-left pb-1.5 font-medium">Categoria</th>
