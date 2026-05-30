@@ -98,7 +98,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-wrap gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs">Categoria</Label>
                                 <Select
@@ -110,7 +110,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutte" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -135,7 +135,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutti" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -160,7 +160,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                         }))
                                     }
                                 >
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Tutti" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -173,12 +173,14 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
 
-                            <Button size="sm" onClick={applyFilters}>
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 mt-3">
+                            <Button size="sm" onClick={applyFilters} className="w-full sm:w-auto">
                                 Applica
                             </Button>
                             {hasFilters && (
-                                <Button size="sm" variant="ghost" onClick={clearFilters}>
+                                <Button size="sm" variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
                                     <X className="w-4 h-4 mr-1" />
                                     Rimuovi filtri
                                 </Button>
