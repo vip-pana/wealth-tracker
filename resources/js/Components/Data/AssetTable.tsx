@@ -34,7 +34,7 @@ function DeleteButton({ asset }: { asset: Asset }) {
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
                 onClick={() => setOpen(true)}
             >
                 <Trash2 className="w-4 h-4" />
@@ -132,7 +132,7 @@ function CategoryGroup({ assets, onEdit }: { assets: Asset[]; onEdit: (a: Asset)
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                                 onClick={() => onEdit(asset)}
                             >
                                 <Pencil className="w-4 h-4" />

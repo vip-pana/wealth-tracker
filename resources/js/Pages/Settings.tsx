@@ -244,12 +244,12 @@ function DeleteCategoryButton({ category }: { category: Category & { assets_coun
         <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
             onClick={handleDelete}
             disabled={processing || category.assets_count > 0}
             title={category.assets_count > 0 ? 'Categoria in uso' : 'Elimina'}
         >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
         </Button>
     );
 }
@@ -308,13 +308,13 @@ export default function Settings({ categories, prices }: Props) {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                                             onClick={() => {
                                                 setEditCategory(cat);
                                                 setDialogOpen(true);
                                             }}
                                         >
-                                            <Pencil className="w-3.5 h-3.5" />
+                                            <Pencil className="w-4 h-4" />
                                         </Button>
                                         <DeleteCategoryButton category={cat} />
                                     </div>

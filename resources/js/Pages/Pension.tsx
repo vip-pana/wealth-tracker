@@ -380,16 +380,16 @@ export default function PensionPage({ categories, entries, availableYears, total
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex gap-1 justify-end">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(entry)}>
-                                                    <Pencil className="w-3.5 h-3.5" />
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent" onClick={() => openEdit(entry)}>
+                                                    <Pencil className="w-4 h-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
                                                     onClick={() => handleDelete(entry)}
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </TableCell>
