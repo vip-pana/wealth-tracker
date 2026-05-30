@@ -6,6 +6,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -13,9 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $category_id
  * @property string|null $macro_category
  * @property float $percentage
+ * @property Carbon|null $deleted_at
  */
 class GoalCategoryAllocation extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['goal_id', 'category_id', 'macro_category', 'percentage'];
 
     protected $casts = [

@@ -7,16 +7,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property Carbon $date
  * @property float $total_value
+ * @property Carbon|null $deleted_at
  * @property-read Collection<int, SnapshotCategoryValue> $categoryValues
  */
 class Snapshot extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['date', 'total_value'];
 
     protected $casts = [

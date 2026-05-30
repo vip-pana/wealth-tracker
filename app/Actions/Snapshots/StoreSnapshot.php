@@ -20,16 +20,17 @@ class StoreSnapshot extends Action
         DB::transaction(function () use ($date) {
             ['byCategory' => $byCat, 'total' => $total] = $this->computeValuesAsOf->run($date);
 
-            $snapshot = Snapshot::updateOrCreate(
-                ['date' => $date],
-                ['total_value' => $total]
-            );
+            $snapshot = Snapshot::withTrashed()->firstOrNew(['date' => $date]);
+            $snapshot->total_value = $total;
+            $snapshot->deleted_at = null;
+            $snapshot->save();
 
             foreach ($byCat as $catId => $value) {
-                SnapshotCategoryValue::updateOrCreate(
-                    ['snapshot_id' => $snapshot->id, 'category_id' => $catId],
-                    ['value' => $value]
-                );
+                $categoryValue = SnapshotCategoryValue::withTrashed()
+                    ->firstOrNew(['snapshot_id' => $snapshot->id, 'category_id' => $catId]);
+                $categoryValue->value = $value;
+                $categoryValue->deleted_at = null;
+                $categoryValue->save();
             }
 
             SnapshotCategoryValue::where('snapshot_id', $snapshot->id)

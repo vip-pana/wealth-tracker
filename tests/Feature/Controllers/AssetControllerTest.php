@@ -60,6 +60,6 @@ class AssetControllerTest extends TestCase
 
         $this->delete("/assets/{$asset->id}")->assertRedirect();
 
-        $this->assertDatabaseMissing('assets', ['id' => $asset->id]);
+        $this->assertSoftDeleted('assets', ['id' => $asset->id]);
     }
 }

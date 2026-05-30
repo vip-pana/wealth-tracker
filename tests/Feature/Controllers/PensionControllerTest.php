@@ -111,7 +111,7 @@ class PensionControllerTest extends TestCase
 
         $this->delete("/pension/{$asset->id}")->assertRedirect();
 
-        $this->assertDatabaseMissing('assets', ['id' => $asset->id]);
+        $this->assertSoftDeleted('assets', ['id' => $asset->id]);
     }
 
     public function test_update_without_year_keeps_existing_date(): void

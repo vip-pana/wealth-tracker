@@ -56,7 +56,7 @@ class CategoryControllerTest extends TestCase
 
         $this->delete("/categories/{$category->id}")->assertRedirect();
 
-        $this->assertDatabaseMissing('categories', ['id' => $category->id]);
+        $this->assertSoftDeleted('categories', ['id' => $category->id]);
     }
 
     public function test_refuses_to_destroy_a_category_with_assets(): void

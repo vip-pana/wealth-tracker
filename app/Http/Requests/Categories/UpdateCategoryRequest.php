@@ -23,7 +23,7 @@ class UpdateCategoryRequest extends FormRequest
         $category = $this->route('category');
 
         return [
-            'name' => 'sometimes|string|max:100|unique:categories,name,'.$category->id,
+            'name' => ['sometimes', 'string', 'max:100', Rule::unique('categories', 'name')->ignore($category->id)->withoutTrashed()],
             'color' => 'sometimes|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'icon' => 'nullable|string|max:10',
             'sort_order' => 'nullable|integer|min:0',

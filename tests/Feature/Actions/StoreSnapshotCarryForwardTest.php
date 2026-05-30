@@ -121,4 +121,22 @@ class StoreSnapshotCarryForwardTest extends TestCase
         $this->assertDatabaseHas('snapshots', ['date' => '2026-05-10', 'total_value' => 10000.00]);
         $this->assertDatabaseHas('snapshots', ['date' => '2026-05-25', 'total_value' => 12000.00]);
     }
+
+    public function test_re_snapshotting_a_soft_deleted_date_restores_it_without_duplicating(): void
+    {
+        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF]);
+        Asset::factory()->create(['category_id' => $etf->id, 'value' => 10000, 'date' => '2026-05-01']);
+
+        app(StoreSnapshot::class)->run('2026-05-30');
+        Snapshot::where('date', '2026-05-30')->first()?->delete();
+
+        $this->assertSame(0, Snapshot::count());
+        $this->assertSame(1, Snapshot::withTrashed()->count());
+
+        app(StoreSnapshot::class)->run('2026-05-30');
+
+        $this->assertSame(1, Snapshot::count());
+        $this->assertSame(1, Snapshot::withTrashed()->count());
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-30', 'total_value' => 10000.00, 'deleted_at' => null]);
+    }
 }
