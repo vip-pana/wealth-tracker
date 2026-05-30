@@ -6,9 +6,11 @@ namespace App\Actions\Input;
 
 use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
+use App\Actions\Snapshots\ComputeValuesAsOf;
 use App\Models\AssetPrice;
 use App\Models\Category;
 use App\Models\Snapshot;
+use Illuminate\Support\Carbon;
 
 class FetchInputData extends Action
 {
@@ -16,6 +18,7 @@ class FetchInputData extends Action
         private readonly FetchAssetsByMonth $fetchAssetsByMonth,
         private readonly ResolveSnapshotState $resolveSnapshotState,
         private readonly FetchAvailableMonths $fetchAvailableMonths,
+        private readonly ComputeValuesAsOf $computeValuesAsOf,
     ) {}
 
     /** @return array<string, mixed> */
@@ -40,6 +43,7 @@ class FetchInputData extends Action
         ]]);
 
         $lastSnapshot = Snapshot::orderByDesc('date')->first();
+        $currentNetWorth = $this->computeValuesAsOf->run(Carbon::now()->toDateString())['total'];
 
         return [
             'assets' => $this->fetchAssetsByMonth->run($month, $prices),
@@ -48,6 +52,7 @@ class FetchInputData extends Action
             'availableMonths' => $this->fetchAvailableMonths->run(),
             'snapshotState' => $this->resolveSnapshotState->run($month),
             'lastSnapshotDate' => $lastSnapshot?->date->format('Y-m-d'),
+            'currentNetWorth' => $currentNetWorth,
             'prices' => $priceMap,
         ];
     }

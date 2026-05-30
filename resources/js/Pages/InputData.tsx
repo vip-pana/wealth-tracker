@@ -30,10 +30,11 @@ interface Props {
     availableMonths: string[];
     snapshotState: 'missing' | 'stale' | 'current';
     lastSnapshotDate: string | null;
+    currentNetWorth: number;
     prices: Record<string, AssetPriceInfo>;
 }
 
-export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, prices }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, prices }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -147,11 +148,15 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                     </span>
                                 )}
                             </div>
-                            <p className="text-sm">
-                                {lastSnapshotDate
-                                    ? <>Ultimo: <strong>{formatDateLong(lastSnapshotDate)}</strong></>
-                                    : <span className="text-muted-foreground">Nessuno snapshot ancora</span>}
-                            </p>
+                            <div>
+                                <p className="text-2xl font-bold">{formatCurrency(currentNetWorth)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Patrimonio attuale ·{' '}
+                                    {lastSnapshotDate
+                                        ? <>ultimo snapshot {formatDateLong(lastSnapshotDate)}</>
+                                        : 'nessuno snapshot ancora'}
+                                </p>
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 Congela il valore attuale di tutti gli asset in un punto del grafico. Fanne uno quando vuoi registrare lo stato di oggi.
                             </p>
