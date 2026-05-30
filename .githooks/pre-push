@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Pre-push gate: runs the same checks as CI before allowing a push.
+# Enable with: composer setup-hooks  (or: git config core.hooksPath .githooks)
+# Bypass once (not recommended): git push --no-verify
+
+set -e
+
+echo "→ Laravel Pint (style)"
+composer lint || { echo "✗ Pint failed. Run 'composer lint:fix'."; exit 1; }
+
+echo "→ PHPStan (static analysis)"
+composer analyse || { echo "✗ PHPStan failed. Fix the reported errors."; exit 1; }
+
+echo "→ ESLint"
+pnpm run lint || { echo "✗ ESLint failed. Run 'pnpm run lint:fix'."; exit 1; }
+
+echo "→ TypeScript (tsc)"
+pnpm run typecheck || { echo "✗ TypeScript errors. Fix them before pushing."; exit 1; }
+
+echo "→ Vitest (frontend tests)"
+pnpm run test || { echo "✗ Frontend tests failed."; exit 1; }
+
+echo "→ PHPUnit (backend tests)"
+php artisan test || { echo "✗ Backend tests failed."; exit 1; }
+
+echo "✓ All checks passed."
+exit 0

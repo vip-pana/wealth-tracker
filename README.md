@@ -58,15 +58,26 @@ The app will be available at [http://localhost:8000](http://localhost:8000).
 | JS lint check | `pnpm run lint` |
 | JS lint fix | `pnpm run lint:fix` |
 | TypeScript check | `pnpm run typecheck` |
-| Run tests | `php artisan test` |
+| Frontend tests | `pnpm run test` |
+| Backend tests | `php artisan test` |
+| Enable the pre-push hook | `composer setup-hooks` |
 
 ## Pre-push checks
 
-Run in order before pushing:
+A pre-push git hook (`.githooks/pre-push`) runs the full gate and **blocks
+the push** if anything fails. Enable it once per clone:
+
+```bash
+composer setup-hooks   # sets git config core.hooksPath .githooks
+```
+
+The hook (and CI, on every push/PR) runs, in order:
 
 1. `composer lint` — Laravel Pint style check
 2. `composer analyse` — PHPStan level 9
 3. `pnpm run lint` — ESLint
 4. `pnpm run typecheck` — TypeScript strict
+5. `pnpm run test` — Vitest (frontend)
+6. `php artisan test` — PHPUnit (backend)
 
-All four must pass.
+To bypass once (discouraged): `git push --no-verify`.
