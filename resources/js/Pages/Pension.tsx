@@ -350,7 +350,7 @@ export default function PensionPage({ categories, entries, availableYears, total
                         <CardTitle className="text-base">Storico</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <Table>
+                        <Table className="min-w-[600px]">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Anno</TableHead>

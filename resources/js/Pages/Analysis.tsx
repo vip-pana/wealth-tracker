@@ -196,52 +196,82 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                             </div>
                         ) : (
                             <>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Mese</TableHead>
-                                            <TableHead>Asset</TableHead>
-                                            <TableHead>Categoria</TableHead>
-                                            <TableHead className="text-right">Valore</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {pagedAssets.map((asset) => (
-                                            <TableRow key={asset.id}>
-                                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                                                    {formatMonthLong(asset.date)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <p className="font-medium">{asset.name}</p>
-                                                        {asset.notes && (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {asset.notes}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant="outline"
-                                                        style={{
-                                                            borderColor: asset.category.color,
-                                                            color: asset.category.color,
-                                                        }}
-                                                    >
-                                                        {asset.category.icon && (
-                                                            <span className="mr-1">{asset.category.icon}</span>
-                                                        )}
-                                                        {asset.category.name}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono">
-                                                    {formatCurrency(asset.value)}
-                                                </TableCell>
+                                {/* Desktop: table */}
+                                <div className="hidden lg:block">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Mese</TableHead>
+                                                <TableHead>Asset</TableHead>
+                                                <TableHead>Categoria</TableHead>
+                                                <TableHead className="text-right">Valore</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {pagedAssets.map((asset) => (
+                                                <TableRow key={asset.id}>
+                                                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                                        {formatMonthLong(asset.date)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <p className="font-medium">{asset.name}</p>
+                                                            {asset.notes && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {asset.notes}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant="outline"
+                                                            style={{
+                                                                borderColor: asset.category.color,
+                                                                color: asset.category.color,
+                                                            }}
+                                                        >
+                                                            {asset.category.icon && (
+                                                                <span className="mr-1">{asset.category.icon}</span>
+                                                            )}
+                                                            {asset.category.name}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono">
+                                                        {formatCurrency(asset.value)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Mobile: cards */}
+                                <div className="lg:hidden divide-y divide-border">
+                                    {pagedAssets.map((asset) => (
+                                        <div key={asset.id} className="p-4 space-y-2">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium truncate">{asset.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatMonthLong(asset.date)}</p>
+                                                </div>
+                                                <span className="font-mono font-semibold whitespace-nowrap">{formatCurrency(asset.value)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Badge
+                                                    variant="outline"
+                                                    style={{ borderColor: asset.category.color, color: asset.category.color }}
+                                                >
+                                                    {asset.category.icon && <span className="mr-1">{asset.category.icon}</span>}
+                                                    {asset.category.name}
+                                                </Badge>
+                                                {asset.notes && (
+                                                    <span className="text-xs text-muted-foreground truncate">{asset.notes}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-muted/40">
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm text-muted-foreground">
