@@ -9,7 +9,7 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { Category } from '@/types/models';
@@ -501,33 +501,26 @@ function SmallDonut({ data, title }: { data: { name: string; value: number; colo
     return (
         <div className="space-y-1 w-full max-w-[14rem] min-w-0 flex-1 lg:flex-none">
             <p className="text-xs font-medium text-muted-foreground text-center">{title}</p>
-            <ResponsiveContainer width="100%" height={170}>
-                <PieChart>
-                    <Pie
-                        data={visible}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={46}
-                        outerRadius={68}
-                        paddingAngle={3}
-                        dataKey="value"
-                        nameKey="name"
-                    >
-                        {visible.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
-                        ))}
-                    </Pie>
-                    <Tooltip
-                        formatter={(v) => [`${(v as number).toFixed(1)}%`]}
-                        contentStyle={{
-                            fontSize: 12,
-                            backgroundColor: 'hsl(var(--card))',
-                            borderColor: 'hsl(var(--border))',
-                            color: 'hsl(var(--card-foreground))',
-                        }}
-                    />
-                </PieChart>
-            </ResponsiveContainer>
+            <div className="pointer-events-none">
+                <ResponsiveContainer width="100%" height={170}>
+                    <PieChart>
+                        <Pie
+                            data={visible}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={46}
+                            outerRadius={68}
+                            paddingAngle={3}
+                            dataKey="value"
+                            nameKey="name"
+                        >
+                            {visible.map((entry) => (
+                                <Cell key={entry.name} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} tabIndex={-1} style={{ outline: 'none' }} />
+                            ))}
+                        </Pie>
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 }
