@@ -142,7 +142,7 @@ export default function Dashboard({
     return (
         <>
             <Head title="Dashboard" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={LayoutDashboard}
                     title="Dashboard"

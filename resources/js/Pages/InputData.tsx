@@ -92,7 +92,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
     return (
         <>
             <Head title="Input Dati" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader icon={PlusSquare} title="Input Dati" />
 
                 {/* Header: two cards — month values editor vs snapshot */}

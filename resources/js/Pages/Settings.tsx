@@ -294,7 +294,7 @@ export default function Settings({ categories, prices }: Props) {
     return (
         <>
             <Head title="Impostazioni" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader icon={SettingsIcon} title="Impostazioni" />
 
                 {/* Categories */}

@@ -636,7 +636,7 @@ function GoalProgress({
     const today = new Date().toISOString().slice(0, 10);
 
     return (
-        <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
+        <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
             <Head title={`Obiettivo — ${goal.name}`} />
 
             <PageHeader
