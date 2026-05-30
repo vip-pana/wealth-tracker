@@ -20,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -31,7 +31,7 @@ import {
 import { formatCurrency } from '@/lib/formatters';
 import type { Category } from '@/types/models';
 
-const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto'] as const;
+const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto', 'Fondo Pensione'] as const;
 
 interface PriceEntry {
     ticker: string;
@@ -258,6 +258,7 @@ export default function Settings({ categories, prices }: Props) {
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
     const refreshForm = useForm({});
+    const backupForm = useForm({});
 
     return (
         <>
@@ -385,6 +386,27 @@ export default function Settings({ categories, prices }: Props) {
                                 </Button>
                             </a>
                         </div>
+                    </CardHeader>
+                </Card>
+
+                {/* Backup */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                            <CardTitle className="text-base">Backup database</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Snapshot atomico verso il cloud. Backup automatico ogni notte alle 03:00.
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => backupForm.post('/backup', { preserveScroll: true })}
+                            disabled={backupForm.processing}
+                        >
+                            <Database className={`w-4 h-4 mr-1 ${backupForm.processing ? 'animate-pulse' : ''}`} />
+                            Backup ora
+                        </Button>
                     </CardHeader>
                 </Card>
             </div>

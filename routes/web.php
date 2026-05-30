@@ -12,6 +12,7 @@ use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
 use App\Http\Controllers\Assets\StoreController as StoreAssetController;
 use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
+use App\Http\Controllers\Backup\StoreController as StoreBackupController;
 use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
 use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
 use App\Http\Controllers\Categories\StoreController as StoreCategoryController;
@@ -67,6 +68,9 @@ Route::prefix('pension')->name('pension.')->group(function () {
     Route::put('/{asset}', UpdatePensionController::class)->name('update');
     Route::delete('/{asset}', DestroyPensionController::class)->name('destroy');
 });
+
+// ─── Backup ───────────────────────────────────────────────────────────────────
+Route::post('/backup', StoreBackupController::class)->name('backup.store');
 
 // ─── Prices ───────────────────────────────────────────────────────────────────
 Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');

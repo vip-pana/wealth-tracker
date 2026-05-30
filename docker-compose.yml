@@ -10,11 +10,14 @@ services:
       - .:/app
       - /app/vendor
       - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
+      - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
     env_file:
       - .env
     environment:
       DB_CONNECTION: sqlite
       DB_DATABASE: /app/storage/app/database.sqlite
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: "2"
       APP_URL: http://localhost:8080
       LARAVEL_BYPASS_ENV_CHECK: "1"
       PNPM_HOME: /root/.local/share/pnpm

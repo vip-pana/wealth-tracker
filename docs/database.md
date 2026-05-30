@@ -52,11 +52,12 @@ SQLite writes the file in-place while the app is running. A cloud sync client (P
 
 ### Running a manual backup
 
-```
-~/wealth-tracker-data/backup.sh
-```
+There are two ways:
 
-Logs land at `~/wealth-tracker-data/backup.log` and `backup.error.log`.
+- From the UI: Settings → "Backup ora" button. Uses the in-app endpoint `POST /backup`, which runs SQLite's `VACUUM INTO` against the directory mounted at `/app/backups` (set via `BACKUP_DIR`, defaulting to the same Proton Drive folder used by the nightly job).
+- From the host shell: `~/wealth-tracker-data/backup.sh`. Logs land at `~/wealth-tracker-data/backup.log` and `backup.error.log`.
+
+Both paths apply the same retention window.
 
 ### Managing the launchd job
 
