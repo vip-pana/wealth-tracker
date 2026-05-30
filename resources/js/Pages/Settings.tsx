@@ -299,7 +299,7 @@ export default function Settings({ categories, prices }: Props) {
 
                 {/* Categories */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
                         <CardTitle className="text-base">Categorie</CardTitle>
                         <Button
                             size="sm"
@@ -352,7 +352,7 @@ export default function Settings({ categories, prices }: Props) {
 
                 {/* Prices */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
                         <div>
                             <CardTitle className="text-base">Prezzi asset live</CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -400,7 +400,7 @@ export default function Settings({ categories, prices }: Props) {
 
                 {/* Import / Export */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
                         <CardTitle className="text-base">Dati</CardTitle>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
@@ -419,7 +419,7 @@ export default function Settings({ categories, prices }: Props) {
 
                 {/* Backup */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
                         <div>
                             <CardTitle className="text-base">Backup database</CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
