@@ -34,6 +34,20 @@ import type { Category } from '@/types/models';
 
 const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto', 'Fondo Pensione'] as const;
 
+// Well-separated hues so categories stay distinguishable in charts.
+const CATEGORY_PALETTE = [
+    '#6366f1', // indigo
+    '#0ce708', // green
+    '#f7931a', // orange
+    '#d4af37', // gold
+    '#ef4444', // red
+    '#06b6d4', // cyan
+    '#a855f7', // purple
+    '#ec4899', // pink
+    '#64748b', // slate
+    '#fcfcfc', // white
+] as const;
+
 interface PriceEntry {
     ticker: string;
     price: number;
@@ -184,6 +198,18 @@ function CategoryDialog({
                                 placeholder="#6366f1"
                                 className="font-mono"
                             />
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                            {CATEGORY_PALETTE.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setData('color', c)}
+                                    className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${data.color.toLowerCase() === c.toLowerCase() ? 'border-foreground ring-2 ring-foreground/30' : 'border-border'}`}
+                                    style={{ backgroundColor: c }}
+                                    aria-label={`Colore ${c}`}
+                                />
+                            ))}
                         </div>
                         {errors.color && <p className="text-xs text-destructive">{errors.color}</p>}
                     </div>

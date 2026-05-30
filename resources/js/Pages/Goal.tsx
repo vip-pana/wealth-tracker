@@ -514,7 +514,7 @@ function SmallDonut({ data, title }: { data: { name: string; value: number; colo
                         nameKey="name"
                     >
                         {visible.map((entry) => (
-                            <Cell key={entry.name} fill={entry.color} />
+                            <Cell key={entry.name} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} />
                         ))}
                     </Pie>
                     <Tooltip
