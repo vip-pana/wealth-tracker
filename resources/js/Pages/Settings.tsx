@@ -261,6 +261,10 @@ export default function Settings({ categories, prices }: Props) {
     const refreshForm = useForm({});
     const backupForm = useForm({});
 
+    const lastPriceUpdate = prices.length > 0
+        ? new Date(Math.max(...prices.map((p) => new Date(p.fetched_at).getTime())))
+        : null;
+
     return (
         <>
             <Head title="Impostazioni" />
@@ -327,6 +331,7 @@ export default function Settings({ categories, prices }: Props) {
                             <CardTitle className="text-base">Prezzi asset live</CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 Aggiornati automaticamente ogni giorno alle 06:00
+                                {lastPriceUpdate && ` · ultimo aggiornamento ${lastPriceUpdate.toLocaleString('it-IT')}`}
                             </p>
                         </div>
                         <Button
@@ -350,7 +355,6 @@ export default function Settings({ categories, prices }: Props) {
                                     <TableRow>
                                         <TableHead>Ticker</TableHead>
                                         <TableHead className="text-right">Prezzo</TableHead>
-                                        <TableHead className="text-right">Ultimo aggiornamento</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -359,9 +363,6 @@ export default function Settings({ categories, prices }: Props) {
                                             <TableCell className="font-mono font-medium">{p.ticker}</TableCell>
                                             <TableCell className="text-right font-mono">
                                                 {formatCurrency(p.price)}
-                                            </TableCell>
-                                            <TableCell className="text-right text-sm text-muted-foreground">
-                                                {new Date(p.fetched_at).toLocaleString('it-IT')}
                                             </TableCell>
                                         </TableRow>
                                     ))}
