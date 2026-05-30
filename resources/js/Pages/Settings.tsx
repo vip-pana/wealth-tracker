@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -20,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -264,7 +265,7 @@ export default function Settings({ categories, prices }: Props) {
         <>
             <Head title="Impostazioni" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
-                <h1 className="text-lg font-bold">Impostazioni</h1>
+                <PageHeader icon={SettingsIcon} title="Impostazioni" />
 
                 {/* Categories */}
                 <Card>

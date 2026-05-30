@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -268,22 +269,22 @@ export default function PensionPage({ categories, entries, availableYears, total
         <>
             <Head title="Fondo Pensione" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <PiggyBank className="w-5 h-5 text-primary" />
-                            <h1 className="text-lg font-bold">Fondo Pensione</h1>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+                <PageHeader
+                    icon={PiggyBank}
+                    title="Fondo Pensione"
+                    subtitle={
+                        <span className="flex items-center gap-1.5">
                             <Info className="w-3.5 h-3.5" />
                             Asset illiquido: escluso da Dashboard e Analisi, conteggiato nel patrimonio totale.
-                        </p>
-                    </div>
-                    <Button onClick={openCreate}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Aggiungi valore
-                    </Button>
-                </div>
+                        </span>
+                    }
+                    actions={
+                        <Button onClick={openCreate}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Aggiungi valore
+                        </Button>
+                    }
+                />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
                     <Card>

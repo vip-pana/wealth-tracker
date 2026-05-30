@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -637,36 +638,37 @@ function GoalProgress({
         <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
             <Head title={`Obiettivo — ${goal.name}`} />
 
-            {/* Header */}
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-primary" />
-                        <h1 className="text-lg font-bold">{goal.name}</h1>
-                    </div>
-                    {goal.description && (
-                        <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{goal.description}</p>
-                    )}
-                    {goal.target_date && (
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <CalendarClock className="w-3.5 h-3.5" />
-                            Anno target: {goal.target_date.slice(0, 4)}
-                            {months !== null && months > 0 && (
-                                <span className="ml-1">({months} mesi rimanenti)</span>
-                            )}
-                        </p>
-                    )}
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={onEdit}>
-                        <Pencil className="w-4 h-4 mr-1" />
-                        Modifica
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onDelete}>
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                icon={Target}
+                title={goal.name}
+                subtitle={(goal.description || goal.target_date) ? (
+                    <>
+                        {goal.description && (
+                            <p className="whitespace-pre-wrap">{goal.description}</p>
+                        )}
+                        {goal.target_date && (
+                            <p className="text-xs mt-1 flex items-center gap-1">
+                                <CalendarClock className="w-3.5 h-3.5" />
+                                Anno target: {goal.target_date.slice(0, 4)}
+                                {months !== null && months > 0 && (
+                                    <span className="ml-1">({months} mesi rimanenti)</span>
+                                )}
+                            </p>
+                        )}
+                    </>
+                ) : undefined}
+                actions={
+                    <>
+                        <Button variant="outline" size="sm" onClick={onEdit}>
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Modifica
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onDelete}>
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Progress + Milestones side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

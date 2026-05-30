@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import AssetForm from '@/Components/Data/AssetForm';
 import AssetTable from '@/Components/Data/AssetTable';
 import { Button } from '@/Components/ui/button';
@@ -19,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, ChevronLeft, ChevronRight, Copy, Camera } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Copy, Camera, PlusSquare } from 'lucide-react';
 import { formatMonthLong, formatDateLong, formatCurrency, today } from '@/lib/formatters';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
@@ -92,6 +93,8 @@ export default function InputData({ assets, categories, month, availableMonths, 
         <>
             <Head title="Input Dati" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
+                <PageHeader icon={PlusSquare} title="Input Dati" />
+
                 {/* Header: two cards — month values editor vs snapshot */}
                 <div className="grid gap-3 md:grid-cols-2">
                     {/* Card: month values */}

@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import {
     Table,
     TableBody,
@@ -20,7 +21,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Download, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Filter, X, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
 import { formatCurrency, formatMonthLong } from '@/lib/formatters';
 import type { Asset, Category } from '@/types/models';
 
@@ -74,20 +75,19 @@ export default function Analysis({ assets, categories, availableMonths, filters 
         <>
             <Head title="Analisi" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-lg font-bold">Analisi</h1>
-                        <p className="text-sm text-muted-foreground">
-                            {assets.length} asset trovati{hasFilters ? ' (filtrati)' : ''}
-                        </p>
-                    </div>
-                    <a href={exportUrl} download>
-                        <Button variant="outline" size="sm">
-                            <Download className="w-4 h-4 mr-2" />
-                            Esporta CSV
-                        </Button>
-                    </a>
-                </div>
+                <PageHeader
+                    icon={BarChart2}
+                    title="Analisi"
+                    subtitle={`${assets.length} asset trovati${hasFilters ? ' (filtrati)' : ''}`}
+                    actions={
+                        <a href={exportUrl} download>
+                            <Button variant="outline" size="sm">
+                                <Download className="w-4 h-4 mr-2" />
+                                Esporta CSV
+                            </Button>
+                        </a>
+                    }
+                />
 
                 {/* Filters */}
                 <Card>

@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
+import { PageHeader } from '@/Components/Layout/PageHeader';
 import NetWorthLineChart from '@/Components/Charts/NetWorthLineChart';
 import AllocationDonutChart from '@/Components/Charts/AllocationDonutChart';
 import StackedBarChart from '@/Components/Charts/StackedBarChart';
@@ -11,7 +12,7 @@ import { Card, CardContent } from '@/Components/ui/card';
 import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
-import { PlusSquare, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
+import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
 import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -141,30 +142,27 @@ export default function Dashboard({
         <>
             <Head title="Dashboard" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-lg font-bold">Dashboard</h1>
-                        {latestSnapshot && (
-                            <p className="text-sm text-muted-foreground">
-                                Ultimo aggiornamento: {formatDateLong(latestSnapshot)}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
-                        <button
-                            onClick={() => setMacroMode(false)}
-                            className={`px-3 py-1.5 ${!macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Categorie
-                        </button>
-                        <button
-                            onClick={() => setMacroMode(true)}
-                            className={`px-3 py-1.5 ${macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Macro
-                        </button>
-                    </div>
-                </div>
+                <PageHeader
+                    icon={LayoutDashboard}
+                    title="Dashboard"
+                    subtitle={latestSnapshot ? `Ultimo aggiornamento: ${formatDateLong(latestSnapshot)}` : undefined}
+                    actions={
+                        <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
+                            <button
+                                onClick={() => setMacroMode(false)}
+                                className={`px-3 py-1.5 ${!macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Categorie
+                            </button>
+                            <button
+                                onClick={() => setMacroMode(true)}
+                                className={`px-3 py-1.5 ${macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Macro
+                            </button>
+                        </div>
+                    }
+                />
 
                 {/* Summary cards + goal */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
