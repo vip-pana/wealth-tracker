@@ -698,7 +698,7 @@ function GoalProgress({
 
                     {/* Growth rate */}
                     {annualGrowth !== null && monthlyGrowth !== null && months !== null && months > 0 && (
-                        <div className="pt-2 border-t border-border grid grid-cols-2 gap-4">
+                        <div className="pt-2 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <p className="text-xs text-muted-foreground">Crescita mensile necessaria</p>
                                 <p className="text-lg font-bold text-primary">{monthlyGrowth.toFixed(2)}%</p>

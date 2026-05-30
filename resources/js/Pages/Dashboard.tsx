@@ -160,7 +160,7 @@ export default function Dashboard({
                 />
 
                 {/* Summary cards + goal */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <SummaryCard
                         label="Patrimonio attuale"
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
@@ -168,7 +168,7 @@ export default function Dashboard({
                     />
                     {goal && lastPoint ? (
                         <Link href="/goal" className="contents">
-                            <Card className="col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                            <Card className="sm:col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
                                 <CardContent className="p-3 h-full flex items-center gap-4">
                                     <Target className="w-5 h-5 text-amber-500 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
