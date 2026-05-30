@@ -499,7 +499,7 @@ function GoalFormDialog({
 function SmallDonut({ data, title }: { data: { name: string; value: number; color: string }[]; title: string }) {
     const visible = data.filter((d) => d.value > 0);
     return (
-        <div className="space-y-1 w-56">
+        <div className="space-y-1 w-full max-w-[14rem] min-w-0 flex-1 lg:flex-none">
             <p className="text-xs font-medium text-muted-foreground text-center">{title}</p>
             <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
@@ -756,15 +756,15 @@ function GoalProgress({
                                 Nessuno snapshot disponibile. Crea uno snapshot per vedere il confronto.
                             </p>
                         ) : (
-                            <div className="flex gap-6">
+                            <div className="flex flex-col lg:flex-row gap-6">
                                 {/* Donuts */}
-                                <div className="flex gap-10 flex-shrink-0">
+                                <div className="flex justify-center gap-4 sm:gap-10 lg:flex-shrink-0">
                                     <SmallDonut data={currentDonut} title="Attuale" />
                                     <SmallDonut data={targetDonut} title="Target" />
                                 </div>
 
                                 {/* Deviation table */}
-                                <div className="flex-1 self-center">
+                                <div className="flex-1 self-center overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="text-muted-foreground font-medium">
