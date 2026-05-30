@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -114,10 +114,14 @@ function NavItem({
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { url } = usePage();
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+    const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+        localStorage.getItem('theme') === 'light' ? 'light' : 'dark',
+    );
 
     useEffect(() => {
-        document.documentElement.classList.add('dark');
-    }, []);
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        localStorage.setItem('theme', theme);
+    }, [theme]);
 
     const isActive = (href: string) => {
         if (href === '/') return url === '/';
@@ -159,7 +163,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 {/* Toggle button */}
-                <div className="px-2 py-3 border-t border-border">
+                <div className="px-2 py-3 border-t border-border space-y-1">
+                    <button
+                        onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+                        className={cn(
+                            'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
+                            collapsed ? 'justify-center' : '',
+                        )}
+                        title={theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}
+                    >
+                        {theme === 'dark' ? (
+                            <Sun className="w-4 h-4 flex-shrink-0" />
+                        ) : (
+                            <Moon className="w-4 h-4 flex-shrink-0" />
+                        )}
+                        {!collapsed && <span>{theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}</span>}
+                    </button>
                     <button
                         onClick={() => setCollapsed((c) => { localStorage.setItem('sidebar-collapsed', String(!c)); return !c; })}
                         className={cn(
