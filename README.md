@@ -19,6 +19,19 @@ The app will be available at [http://localhost:8080](http://localhost:8080).
 
 The SQLite database is persisted in a named Docker volume (`sqlite_data`).
 
+### Accessing from a phone on the same Wi-Fi
+
+Start with `DEV_HOST` set to your computer's LAN IP so the Vite assets are
+served from that address instead of `localhost`:
+
+```bash
+DEV_HOST=192.168.1.7 docker compose up   # use your machine's LAN IP
+```
+
+Then open `http://192.168.1.7:8080` from the phone (same Wi-Fi, computer
+awake, container running). Without `DEV_HOST` it defaults to `localhost`
+for normal desktop use.
+
 ## Running locally
 
 **Requirements**: PHP 8.2+, Composer, Node.js 22+, pnpm
