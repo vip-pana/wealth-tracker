@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -63,12 +63,14 @@ function NavItem({
     icon: Icon,
     active,
     collapsed,
+    onNavigate,
 }: {
     href: string;
     label: string;
     icon: React.ElementType;
     active: boolean;
     collapsed: boolean;
+    onNavigate?: () => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
     const [tooltip, setTooltip] = useState<{ top: number; left: number } | null>(null);
@@ -85,6 +87,7 @@ function NavItem({
         <div ref={ref} onMouseEnter={showTooltip} onMouseLeave={hideTooltip}>
             <Link
                 href={href}
+                onClick={onNavigate}
                 className={cn(
                     'flex items-center gap-3 px-2 py-2 rounded-md text-sm font-medium transition-colors',
                     collapsed ? 'justify-center' : '',
@@ -114,6 +117,7 @@ function NavItem({
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { url } = usePage();
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+    const [mobileOpen, setMobileOpen] = useState(false);
     const [theme, setTheme] = useState<'dark' | 'light'>(() =>
         localStorage.getItem('theme') === 'light' ? 'light' : 'dark',
     );
@@ -123,6 +127,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         localStorage.setItem('theme', theme);
     }, [theme]);
 
+    // Only honor the collapsed width on desktop; the mobile drawer always shows labels.
+    const [isDesktop, setIsDesktop] = useState(true);
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const update = () => setIsDesktop(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
+    const showCollapsed = isDesktop && collapsed;
+
     const isActive = (href: string) => {
         if (href === '/') return url === '/';
         return url.startsWith(href);
@@ -130,20 +145,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="flex h-screen overflow-hidden bg-background">
+            {/* Mobile top bar */}
+            <div className="lg:hidden fixed top-0 inset-x-0 z-30 h-[56px] flex items-center gap-2 px-4 border-b border-border bg-background">
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    className="p-2 -ml-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    aria-label="Apri menu"
+                >
+                    <Menu className="w-5 h-5" />
+                </button>
+                <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
+                <span className="font-bold text-base text-foreground">Wealth Tracker</span>
+            </div>
+
+            {/* Mobile overlay */}
+            {mobileOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 z-40 bg-black/50"
+                    onClick={() => setMobileOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
             <aside
                 className={cn(
-                    'relative flex-shrink-0 border-r border-border flex flex-col transition-all duration-300 ease-in-out overflow-x-visible',
-                    collapsed ? 'w-[60px]' : 'w-56',
+                    'border-r border-border flex flex-col overflow-x-visible bg-background',
+                    // Desktop: in-flow, collapsible width
+                    'lg:relative lg:flex-shrink-0 lg:translate-x-0 lg:transition-all lg:duration-300 lg:ease-in-out',
+                    collapsed ? 'lg:w-[60px]' : 'lg:w-56',
+                    // Mobile: off-canvas drawer
+                    'fixed inset-y-0 left-0 z-50 w-56 transition-transform duration-300 ease-in-out',
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 )}
             >
                 {/* Logo */}
                 <div className={cn(
                     'flex items-center border-b border-border h-[60px] overflow-hidden',
-                    collapsed ? 'justify-center px-0' : 'gap-2 px-4',
+                    showCollapsed ? 'justify-center px-0' : 'gap-2 px-4',
                 )}>
                     <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
-                    {!collapsed && (
+                    {!showCollapsed && (
                         <span className="font-bold text-base text-foreground whitespace-nowrap">Wealth Tracker</span>
                     )}
                 </div>
@@ -157,7 +198,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             label={label}
                             icon={Icon}
                             active={isActive(href)}
-                            collapsed={collapsed}
+                            collapsed={showCollapsed}
+                            onNavigate={() => setMobileOpen(false)}
                         />
                     ))}
                 </nav>
@@ -168,7 +210,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
                         className={cn(
                             'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
-                            collapsed ? 'justify-center' : '',
+                            showCollapsed ? 'justify-center' : '',
                         )}
                         title={theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}
                     >
@@ -177,16 +219,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         ) : (
                             <Moon className="w-4 h-4 flex-shrink-0" />
                         )}
-                        {!collapsed && <span>{theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}</span>}
+                        {!showCollapsed && <span>{theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}</span>}
                     </button>
                     <button
                         onClick={() => setCollapsed((c) => { localStorage.setItem('sidebar-collapsed', String(!c)); return !c; })}
                         className={cn(
-                            'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
-                            collapsed ? 'justify-center' : '',
+                            'hidden lg:flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
+                            showCollapsed ? 'justify-center' : '',
                         )}
                     >
-                        {collapsed ? (
+                        {showCollapsed ? (
                             <ChevronRight className="w-4 h-4 flex-shrink-0" />
                         ) : (
                             <>
@@ -199,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto pt-[56px] lg:pt-0">
                 {children}
             </main>
 
