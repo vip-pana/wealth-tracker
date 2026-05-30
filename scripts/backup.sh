@@ -7,7 +7,7 @@
 #   WEALTH_TRACKER_BACKUP_DIR destination directory (e.g. a Proton Drive folder)
 #
 # Optional env vars:
-#   WEALTH_TRACKER_RETENTION_DAYS  how many days to keep backups (default: 2)
+#   WEALTH_TRACKER_RETENTION_DAYS  how many days to keep backups (default: 30)
 #
 # The script uses `sqlite3 .backup` via the keinos/sqlite3 Docker image to
 # produce a consistent snapshot even while the app is writing. The snapshot
@@ -19,7 +19,7 @@ set -euo pipefail
 : "${WEALTH_TRACKER_DATA_DIR:?WEALTH_TRACKER_DATA_DIR not set}"
 : "${WEALTH_TRACKER_BACKUP_DIR:?WEALTH_TRACKER_BACKUP_DIR not set}"
 
-RETENTION_DAYS="${WEALTH_TRACKER_RETENTION_DAYS:-2}"
+RETENTION_DAYS="${WEALTH_TRACKER_RETENTION_DAYS:-30}"
 DB_PATH="$WEALTH_TRACKER_DATA_DIR/database.sqlite"
 STAGING_DIR="$WEALTH_TRACKER_DATA_DIR/backup-staging"
 

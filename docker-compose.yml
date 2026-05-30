@@ -17,7 +17,7 @@ services:
       DB_CONNECTION: sqlite
       DB_DATABASE: /app/storage/app/database.sqlite
       BACKUP_DIR: /app/backups
-      BACKUP_RETENTION_DAYS: "2"
+      BACKUP_RETENTION_DAYS: "30"
       APP_URL: http://localhost:8080
       LARAVEL_BYPASS_ENV_CHECK: "1"
       PNPM_HOME: /root/.local/share/pnpm

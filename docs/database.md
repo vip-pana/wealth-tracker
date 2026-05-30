@@ -23,7 +23,7 @@ The canonical backup script lives in the repo at `scripts/backup.sh`. It reads t
 - `WEALTH_TRACKER_DATA_DIR` — directory containing `database.sqlite`
 - `WEALTH_TRACKER_BACKUP_DIR` — destination directory (typically a cloud-synced folder)
 
-Optional: `WEALTH_TRACKER_RETENTION_DAYS` (default 2).
+Optional: `WEALTH_TRACKER_RETENTION_DAYS` (default 30).
 
 On this machine, a thin wrapper at `~/wealth-tracker-data/backup.sh` exports the local paths and invokes `scripts/backup.sh`. A `launchd` job (`~/Library/LaunchAgents/com.vincenzo.wealth-tracker-backup.plist`) runs the wrapper every day at 03:00.
 
@@ -58,6 +58,10 @@ There are two ways:
 - From the host shell: `~/wealth-tracker-data/backup.sh`. Logs land at `~/wealth-tracker-data/backup.log` and `backup.error.log`.
 
 Both paths apply the same retention window.
+
+### Automatic backup on every snapshot
+
+Saving a snapshot (`POST /snapshots`) dispatches a queued `BackupDatabase` job that runs the same `VACUUM INTO` backup. It is queued, not synchronous — the snapshot save returns immediately and a failed backup is logged (`Log::warning`) without breaking the snapshot. Requires a queue worker (`php artisan queue:listen`, already part of `composer dev` and the container start command).
 
 ### Managing the launchd job
 
