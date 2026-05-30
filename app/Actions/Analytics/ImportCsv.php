@@ -68,9 +68,11 @@ class ImportCsv extends Action
             $rawValue = trim((string) $row[3]);
             $rawNote = isset($row[4]) ? trim((string) $row[4]) : '';
 
-            // Validate date
-            $date = Carbon::createFromFormat('Y-m-d', $rawDate);
-            if (! $date instanceof Carbon) {
+            // Validate date — createFromFormat silently overflows out-of-range parts
+            // (e.g. 2026-13-99 -> 2027-04-09) and throws on unparseable input, so we
+            // round-trip the formatted result to reject anything that didn't match exactly.
+            $date = $this->parseDate($rawDate);
+            if ($date === null) {
                 $errors[] = "Riga {$lineNumber}: data '{$rawDate}' non valida (formato atteso: YYYY-MM-DD).";
                 $skipped++;
 
@@ -78,7 +80,7 @@ class ImportCsv extends Action
             }
 
             // Resolve category
-            $catKey = mb_strtolower($rawCat);
+            $catKey = mb_strtolower(trim($rawCat));
             if (! isset($categoryMap[$catKey])) {
                 $errors[] = "Riga {$lineNumber}: categoria '{$rawCat}' non trovata.";
                 $skipped++;
@@ -94,7 +96,7 @@ class ImportCsv extends Action
                 continue;
             }
 
-            $value = (float) str_replace(',', '.', $rawValue);
+            $value = $this->parseDecimal($rawValue);
 
             $asset = Asset::updateOrCreate(
                 [
@@ -118,5 +120,40 @@ class ImportCsv extends Action
         fclose($handle);
 
         return new ImportCsvResult($created, $updated, $skipped, $errors);
+    }
+
+    private function parseDate(string $raw): ?Carbon
+    {
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $raw);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $date instanceof Carbon || $date->format('Y-m-d') !== $raw) {
+            return null;
+        }
+
+        return $date;
+    }
+
+    private function parseDecimal(string $raw): float
+    {
+        $raw = str_replace(' ', '', $raw);
+        $lastComma = strrpos($raw, ',');
+        $lastDot = strrpos($raw, '.');
+
+        if ($lastComma !== false && $lastDot !== false) {
+            // Both present: the rightmost is the decimal separator, the other groups thousands.
+            $decimalSep = $lastComma > $lastDot ? ',' : '.';
+            $thousandsSep = $decimalSep === ',' ? '.' : ',';
+            $raw = str_replace($thousandsSep, '', $raw);
+            $raw = str_replace($decimalSep, '.', $raw);
+        } elseif ($lastComma !== false) {
+            // Only a comma: treat it as the decimal separator (European format).
+            $raw = str_replace(',', '.', $raw);
+        }
+
+        return (float) $raw;
     }
 }
