@@ -65,6 +65,7 @@ Snapshots are created manually via `POST /snapshots` — they are not auto-compu
 | JS lint check | `pnpm run lint` |
 | JS lint fix | `pnpm run lint:fix` |
 | TypeScript check | `pnpm run typecheck` |
+| JS unit tests | `pnpm run test` |
 | Run migrations | `php artisan migrate` |
 
 ## Pre-push checks (run in order)

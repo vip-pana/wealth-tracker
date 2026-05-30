@@ -54,5 +54,8 @@ jobs:
       - name: Typecheck (tsc)
         run: pnpm run typecheck
 
+      - name: Tests (Vitest)
+        run: pnpm run test
+
       - name: Tests (PHPUnit)
         run: php artisan test

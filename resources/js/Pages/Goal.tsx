@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
+import { allocationSum, monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth } from '@/lib/goalMath';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
 
@@ -64,30 +65,8 @@ type GoalFormData = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function allocationSum(items: AllocationFormItem[]): number {
-    return items.reduce((s, i) => s + (parseFloat(i.percentage) || 0), 0);
-}
-
 function formatPct(value: number): string {
     return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
-}
-
-
-function monthsUntil(dateStr: string): number {
-    const target = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    return (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
-}
-
-function requiredMonthlyGrowth(current: number, target: number, months: number): number | null {
-    if (months <= 0 || current <= 0) return null;
-    return (Math.pow(target / current, 1 / months) - 1) * 100;
-}
-
-function requiredAnnualGrowth(current: number, target: number, months: number): number | null {
-    const monthly = requiredMonthlyGrowth(current, target, months);
-    if (monthly === null) return null;
-    return (Math.pow(1 + monthly / 100, 12) - 1) * 100;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
