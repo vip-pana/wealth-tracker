@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
+import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -738,24 +739,15 @@ function GoalProgress({
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-base">Composizione: attuale vs target</CardTitle>
-                            <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
-                                {goal.categoryAllocations.length > 0 && (
-                                    <button
-                                        onClick={() => setAllocTab('category')}
-                                        className={`px-3 py-1.5 ${allocTab === 'category' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Categorie
-                                    </button>
-                                )}
-                                {goal.macroAllocations.length > 0 && (
-                                    <button
-                                        onClick={() => setAllocTab('macro')}
-                                        className={`px-3 py-1.5 ${allocTab === 'macro' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        Macro
-                                    </button>
-                                )}
-                            </div>
+                            <SegmentedToggle
+                                size="xs"
+                                options={[
+                                    ...(goal.categoryAllocations.length > 0 ? [{ value: 'category' as const, label: 'Categorie' }] : []),
+                                    ...(goal.macroAllocations.length > 0 ? [{ value: 'macro' as const, label: 'Macro' }] : []),
+                                ]}
+                                value={allocTab}
+                                onChange={setAllocTab}
+                            />
                         </div>
                     </CardHeader>
                     <CardContent className="p-3">

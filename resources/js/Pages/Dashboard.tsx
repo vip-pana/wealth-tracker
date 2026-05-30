@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
+import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
 import NetWorthLineChart from '@/Components/Charts/NetWorthLineChart';
 import AllocationDonutChart from '@/Components/Charts/AllocationDonutChart';
 import StackedBarChart from '@/Components/Charts/StackedBarChart';
@@ -147,20 +148,14 @@ export default function Dashboard({
                     title="Dashboard"
                     subtitle={latestSnapshot ? `Ultimo aggiornamento: ${formatDateLong(latestSnapshot)}` : undefined}
                     actions={
-                        <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
-                            <button
-                                onClick={() => setMacroMode(false)}
-                                className={`px-3 py-1.5 ${!macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                Categorie
-                            </button>
-                            <button
-                                onClick={() => setMacroMode(true)}
-                                className={`px-3 py-1.5 ${macroMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                Macro
-                            </button>
-                        </div>
+                        <SegmentedToggle
+                            options={[
+                                { value: 'category', label: 'Categorie' },
+                                { value: 'macro', label: 'Macro' },
+                            ]}
+                            value={macroMode ? 'macro' : 'category'}
+                            onChange={(v) => setMacroMode(v === 'macro')}
+                        />
                     }
                 />
 
