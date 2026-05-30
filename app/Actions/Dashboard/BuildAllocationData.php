@@ -6,14 +6,14 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
 use App\Models\Category;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Support\Collection;
 
 class BuildAllocationData extends Action
 {
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
      * @return array<int, mixed>
      */

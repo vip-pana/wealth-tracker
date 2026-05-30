@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use Illuminate\Support\Collection;
 
 class BuildMacroAllocationData extends Action
 {
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @return array<int, mixed>
      */
     public function run(Collection $snapshots): array

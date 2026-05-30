@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $snapshot_id
  * @property int $category_id
  * @property float $value
- * @property-read MonthlySnapshot $snapshot
+ * @property-read Snapshot $snapshot
  * @property-read Category $category
  */
 class SnapshotCategoryValue extends Model
@@ -25,10 +25,10 @@ class SnapshotCategoryValue extends Model
         'value' => 'float',
     ];
 
-    /** @return BelongsTo<MonthlySnapshot, $this> */
+    /** @return BelongsTo<Snapshot, $this> */
     public function snapshot(): BelongsTo
     {
-        return $this->belongsTo(MonthlySnapshot::class, 'snapshot_id');
+        return $this->belongsTo(Snapshot::class, 'snapshot_id');
     }
 
     /** @return BelongsTo<Category, $this> */

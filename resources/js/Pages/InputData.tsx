@@ -19,8 +19,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, Save, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
-import { formatMonthLong, formatCurrency } from '@/lib/formatters';
+import { Plus, ChevronLeft, ChevronRight, Copy, Camera } from 'lucide-react';
+import { formatMonthLong, formatDateLong, formatCurrency, today } from '@/lib/formatters';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 interface Props {
@@ -29,10 +29,11 @@ interface Props {
     month: string;
     availableMonths: string[];
     snapshotState: 'missing' | 'stale' | 'current';
+    lastSnapshotDate: string | null;
     prices: Record<string, AssetPriceInfo>;
 }
 
-export default function InputData({ assets, categories, month, availableMonths, snapshotState, prices }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, prices }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -44,9 +45,10 @@ export default function InputData({ assets, categories, month, availableMonths, 
             alert('Aggiungi almeno un asset prima di salvare lo snapshot.');
             return;
         }
-        if (confirm(`Salvare lo snapshot per ${formatMonthLong(month)}?`)) {
+        const date = today();
+        if (confirm(`Salvare lo snapshot di oggi (${formatDateLong(date)})?`)) {
             setSavingSnapshot(true);
-            router.post('/snapshots', { month }, {
+            router.post('/snapshots', { date }, {
                 onFinish: () => setSavingSnapshot(false),
             });
         }
@@ -89,51 +91,86 @@ export default function InputData({ assets, categories, month, availableMonths, 
         <>
             <Head title="Input Dati" />
             <div className="p-4 space-y-4">
-                {/* Header row */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-base font-bold">Input Dati</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Gestisci gli asset per il mese selezionato
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => navigateMonth('prev')}>
-                            <ChevronLeft className="w-4 h-4" />
-                        </Button>
+                {/* Header: two cards — month values editor vs snapshot */}
+                <div className="grid gap-3 md:grid-cols-2">
+                    {/* Card: month values */}
+                    <Card>
+                        <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-medium text-muted-foreground">Valori del mese</p>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('prev')}>
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </Button>
+                                    <Select value={month} onValueChange={handleMonthChange}>
+                                        <SelectTrigger className="h-7 w-36">
+                                            <SelectValue>{formatMonthLong(month)}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableMonths.map((m) => (
+                                                <SelectItem key={m} value={m}>
+                                                    {formatMonthLong(m)}
+                                                </SelectItem>
+                                            ))}
+                                            {!availableMonths.includes(month) && (
+                                                <SelectItem value={month}>{formatMonthLong(month)}</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('next')}>
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                            <p className="text-2xl font-bold">{formatCurrency(total)}</p>
+                            <p className="text-xs text-muted-foreground">
+                                Aggiorna qui il valore corrente di ogni asset. Questi numeri non finiscono nei grafici finché non scatti uno snapshot.
+                            </p>
+                        </CardContent>
+                    </Card>
 
-                        <Select value={month} onValueChange={handleMonthChange}>
-                            <SelectTrigger className="w-44">
-                                <SelectValue>{formatMonthLong(month)}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableMonths.map((m) => (
-                                    <SelectItem key={m} value={m}>
-                                        {formatMonthLong(m)}
-                                    </SelectItem>
-                                ))}
-                                {/* Always show current month */}
-                                {!availableMonths.includes(month) && (
-                                    <SelectItem value={month}>{formatMonthLong(month)}</SelectItem>
+                    {/* Card: snapshot */}
+                    <Card>
+                        <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                    <Camera className="w-3.5 h-3.5" /> Snapshot patrimonio
+                                </p>
+                                {snapshotState === 'current' && (
+                                    <span className="inline-flex items-center rounded-full bg-green-500 px-2 py-0.5 text-xs font-medium text-white">
+                                        Aggiornato
+                                    </span>
                                 )}
-                            </SelectContent>
-                        </Select>
-
-                        <Button variant="outline" size="icon" onClick={() => navigateMonth('next')}>
-                            <ChevronRight className="w-4 h-4" />
-                        </Button>
-                    </div>
+                                {snapshotState === 'stale' && (
+                                    <span className="inline-flex items-center rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white">
+                                        Da aggiornare
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm">
+                                {lastSnapshotDate
+                                    ? <>Ultimo: <strong>{formatDateLong(lastSnapshotDate)}</strong></>
+                                    : <span className="text-muted-foreground">Nessuno snapshot ancora</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Congela il valore attuale di tutti gli asset in un punto del grafico. Fanne uno quando vuoi registrare lo stato di oggi.
+                            </p>
+                            <Button
+                                size="sm"
+                                onClick={handleSaveSnapshot}
+                                disabled={savingSnapshot || assets.length === 0}
+                                className="bg-amber-500 hover:bg-amber-600 text-white"
+                            >
+                                <Camera className="w-4 h-4 mr-1" />
+                                {savingSnapshot ? 'Salvando...' : `Fotografa adesso (${formatDateLong(today())})`}
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Summary cards */}
+                {/* Per-category breakdown */}
                 {assets.length > 0 && (
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-                        <Card>
-                            <CardContent className="p-3">
-                                <p className="text-xs text-muted-foreground">Totale</p>
-                                <p className="text-base font-bold">{formatCurrency(total)}</p>
-                            </CardContent>
-                        </Card>
                         {Object.values(byCat).map((cat) => (
                             <Card key={cat.name}>
                                 <CardContent className="p-3">
@@ -156,26 +193,9 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 {/* Main asset card */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-3">
-                        <div className="flex items-center gap-3">
-                            <CardTitle className="text-base">
-                                Asset — {formatMonthLong(month)}
-                            </CardTitle>
-                            {assets.length > 0 && snapshotState === 'missing' && (
-                                <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">
-                                    Snapshot non salvato
-                                </span>
-                            )}
-                            {assets.length > 0 && snapshotState === 'stale' && (
-                                <span className="inline-flex items-center rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-medium text-white">
-                                    Snapshot non aggiornato
-                                </span>
-                            )}
-                            {assets.length > 0 && snapshotState === 'current' && (
-                                <span className="inline-flex items-center rounded-full bg-green-500 px-2 py-0.5 text-xs font-medium text-white">
-                                    Snapshot aggiornato
-                                </span>
-                            )}
-                        </div>
+                        <CardTitle className="text-base">
+                            Asset — {formatMonthLong(month)}
+                        </CardTitle>
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="default"
@@ -201,19 +221,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                     Copia da mese
                                 </Button>
                             )}
-                            <Button
-                                size="sm"
-                                onClick={handleSaveSnapshot}
-                                disabled={savingSnapshot || assets.length === 0 || snapshotState === 'current'}
-                                className={
-                                    snapshotState === 'current'
-                                        ? 'bg-green-600 hover:bg-green-600 text-white'
-                                        : 'bg-amber-500 hover:bg-amber-600 text-white'
-                                }
-                            >
-                                <Save className="w-4 h-4 mr-1" />
-                                {snapshotState === 'current' ? 'Snapshot salvato' : 'Salva snapshot'}
-                            </Button>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">

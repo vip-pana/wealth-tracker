@@ -6,13 +6,19 @@ namespace App\Actions\Input;
 
 use App\Actions\Action;
 use App\Models\Asset;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
+use Illuminate\Support\Carbon;
 
 class ResolveSnapshotState extends Action
 {
     public function run(string $month): string
     {
-        $snapshot = MonthlySnapshot::where('date', $month)->first();
+        $monthStart = Carbon::parse($month)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+
+        $snapshot = Snapshot::whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->orderByDesc('date')
+            ->first();
 
         if ($snapshot === null) {
             return 'missing';

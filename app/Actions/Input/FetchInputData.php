@@ -8,6 +8,7 @@ use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
 use App\Models\AssetPrice;
 use App\Models\Category;
+use App\Models\Snapshot;
 
 class FetchInputData extends Action
 {
@@ -38,12 +39,15 @@ class FetchInputData extends Action
             'fetched_at' => $p->fetched_at->toISOString(),
         ]]);
 
+        $lastSnapshot = Snapshot::orderByDesc('date')->first();
+
         return [
             'assets' => $this->fetchAssetsByMonth->run($month, $prices),
             'categories' => $categories,
             'month' => $month,
             'availableMonths' => $this->fetchAvailableMonths->run(),
             'snapshotState' => $this->resolveSnapshotState->run($month),
+            'lastSnapshotDate' => $lastSnapshot?->date->format('Y-m-d'),
             'prices' => $priceMap,
         ];
     }

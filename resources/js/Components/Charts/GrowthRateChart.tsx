@@ -10,7 +10,7 @@ import {
     Cell,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatMonthLabel, formatPercent } from '@/lib/formatters';
+import { formatDateLabel, formatPercent } from '@/lib/formatters';
 import type { GrowthRatePoint } from '@/types/analytics';
 
 interface Props {
@@ -21,15 +21,15 @@ export default function GrowthRateChart({ data }: Props) {
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
-                <CardTitle className="text-sm">Variazione mese su mese (%)</CardTitle>
+                <CardTitle className="text-sm">Variazione tra snapshot (%)</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
-                            dataKey="month"
-                            tickFormatter={formatMonthLabel}
+                            dataKey="date"
+                            tickFormatter={formatDateLabel}
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
@@ -38,8 +38,8 @@ export default function GrowthRateChart({ data }: Props) {
                             width={50}
                         />
                         <Tooltip
-                            formatter={(v) => [formatPercent((v as number) ?? 0), 'Variazione MoM']}
-                            labelFormatter={(d) => formatMonthLabel(d as string)}
+                            formatter={(v) => [formatPercent((v as number) ?? 0), 'Variazione']}
+                            labelFormatter={(d) => formatDateLabel(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',
@@ -50,11 +50,11 @@ export default function GrowthRateChart({ data }: Props) {
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                        <Bar dataKey="mom_pct" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="change_pct" radius={[4, 4, 0, 0]}>
                             {data.map((entry) => (
                                 <Cell
-                                    key={entry.month}
-                                    fill={entry.mom_pct >= 0 ? '#22c55e' : '#ef4444'}
+                                    key={entry.date}
+                                    fill={entry.change_pct >= 0 ? '#22c55e' : '#ef4444'}
                                 />
                             ))}
                         </Bar>

@@ -6,14 +6,14 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
 use App\Models\Category;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Support\Collection;
 
 class ComputeMonthComparison extends Action
 {
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @param  Collection<int, Category>  $categories
      * @return array<int, mixed>
      */
@@ -26,7 +26,7 @@ class ComputeMonthComparison extends Action
         $last = $snapshots->last();
         $penult = $snapshots->slice(-2, 1)->first();
 
-        if (! $last instanceof MonthlySnapshot || ! $penult instanceof MonthlySnapshot) {
+        if (! $last instanceof Snapshot || ! $penult instanceof Snapshot) {
             return [];
         }
 

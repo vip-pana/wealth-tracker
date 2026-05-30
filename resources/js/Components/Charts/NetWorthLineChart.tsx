@@ -9,7 +9,7 @@ import {
     ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrency, formatCurrencyCompact, formatMonthLabel } from '@/lib/formatters';
+import { formatCurrency, formatCurrencyCompact, formatDateLabel } from '@/lib/formatters';
 import type { NetWorthPoint } from '@/types/analytics';
 
 interface Props {
@@ -29,8 +29,8 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
                     <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
-                            dataKey="month"
-                            tickFormatter={formatMonthLabel}
+                            dataKey="date"
+                            tickFormatter={formatDateLabel}
                             tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                             stroke="hsl(var(--border))"
                         />
@@ -42,7 +42,7 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
                         />
                         <Tooltip
                             formatter={(v) => [formatCurrency((v as number) ?? 0), 'Totale']}
-                            labelFormatter={(d) => formatMonthLabel(d as string)}
+                            labelFormatter={(d) => formatDateLabel(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',

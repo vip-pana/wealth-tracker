@@ -9,7 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrencyCompact, formatCurrency } from '@/lib/formatters';
+import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { MonthComparisonPoint } from '@/types/analytics';
 
 interface Props {
@@ -18,19 +18,15 @@ interface Props {
 }
 
 export default function MonthComparisonChart({ data, months }: Props) {
-    const [prevMonth, currMonth] = months ?? ['Mese prec.', 'Mese att.'];
+    const [prevDate, currDate] = months ?? ['Prec.', 'Attuale'];
 
-    const prevLabel = prevMonth.length > 7
-        ? new Date(prevMonth + 'T00:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })
-        : prevMonth;
-    const currLabel = currMonth.length > 7
-        ? new Date(currMonth + 'T00:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })
-        : currMonth;
+    const prevLabel = prevDate.length > 7 ? formatDateLabel(prevDate) : prevDate;
+    const currLabel = currDate.length > 7 ? formatDateLabel(currDate) : currDate;
 
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
-                <CardTitle className="text-sm">Confronto mese su mese</CardTitle>
+                <CardTitle className="text-sm">Confronto tra snapshot</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 <ResponsiveContainer width="100%" height={200}>

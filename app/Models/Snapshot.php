@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * @property float $total_value
  * @property-read Collection<int, SnapshotCategoryValue> $categoryValues
  */
-class MonthlySnapshot extends Model
+class Snapshot extends Model
 {
     protected $fillable = ['date', 'total_value'];
 

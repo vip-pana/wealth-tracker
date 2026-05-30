@@ -8,7 +8,7 @@ use App\Actions\Snapshots\StoreSnapshot;
 use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\Category;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,8 +27,8 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2026-01-31');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2026-01-31', 'total_value' => 15000.00]);
-        $snapshot = MonthlySnapshot::firstWhere('date', '2026-01-31');
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-01-31', 'total_value' => 15000.00]);
+        $snapshot = Snapshot::firstWhere('date', '2026-01-31');
         $this->assertNotNull($snapshot);
         $this->assertEqualsWithDelta(5000.00, SnapshotCategoryValue::where('snapshot_id', $snapshot->id)->where('category_id', $pension->id)->value('value'), 0.01);
     }
@@ -43,8 +43,8 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2026-05-31');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2026-05-31', 'total_value' => 17000.00]);
-        $snapshot = MonthlySnapshot::firstWhere('date', '2026-05-31');
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-31', 'total_value' => 17000.00]);
+        $snapshot = Snapshot::firstWhere('date', '2026-05-31');
         $this->assertNotNull($snapshot);
         $this->assertEqualsWithDelta(5000.00, SnapshotCategoryValue::where('snapshot_id', $snapshot->id)->where('category_id', $pension->id)->value('value'), 0.01);
     }
@@ -58,7 +58,7 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2027-03-31');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2027-03-31', 'total_value' => 7000.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2027-03-31', 'total_value' => 7000.00]);
     }
 
     public function test_does_not_include_future_pension_reports(): void
@@ -69,7 +69,7 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2026-05-31');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2026-05-31', 'total_value' => 0.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-31', 'total_value' => 0.00]);
     }
 
     public function test_sums_multiple_pension_assets_on_same_date(): void
@@ -81,7 +81,7 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2027-06-30');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2027-06-30', 'total_value' => 5000.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2027-06-30', 'total_value' => 5000.00]);
     }
 
     public function test_pension_carry_forward_does_not_double_count_when_pension_asset_present_in_target_month(): void
@@ -93,6 +93,32 @@ class StoreSnapshotCarryForwardTest extends TestCase
 
         app(StoreSnapshot::class)->run('2026-12-31');
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2026-12-31', 'total_value' => 6000.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-12-31', 'total_value' => 6000.00]);
+    }
+
+    public function test_carries_non_annual_category_forward_to_a_daily_snapshot(): void
+    {
+        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF]);
+
+        Asset::factory()->create(['category_id' => $etf->id, 'value' => 10000, 'date' => '2026-05-01']);
+
+        app(StoreSnapshot::class)->run('2026-05-30');
+
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-30', 'total_value' => 10000.00]);
+    }
+
+    public function test_keeps_two_snapshots_on_different_days_of_the_same_month(): void
+    {
+        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF]);
+
+        Asset::factory()->create(['category_id' => $etf->id, 'value' => 10000, 'date' => '2026-05-01']);
+        app(StoreSnapshot::class)->run('2026-05-10');
+
+        Asset::factory()->create(['category_id' => $etf->id, 'value' => 12000, 'date' => '2026-05-20']);
+        app(StoreSnapshot::class)->run('2026-05-25');
+
+        $this->assertSame(2, Snapshot::count());
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-10', 'total_value' => 10000.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2026-05-25', 'total_value' => 12000.00]);
     }
 }

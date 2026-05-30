@@ -5,41 +5,36 @@ declare(strict_types=1);
 namespace App\Actions\Snapshots;
 
 use App\Actions\Action;
-use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\Category;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use App\Models\SnapshotCategoryValue;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class StoreSnapshot extends Action
 {
-    public function run(string $month): void
+    public function run(string $date): void
     {
-        DB::transaction(function () use ($month) {
+        DB::transaction(function () use ($date) {
             $prices = AssetPrice::all()->keyBy('ticker');
-
-            $assets = Asset::whereDate('date', $month)->get();
 
             $byCat = [];
             $total = 0.0;
-            foreach ($assets as $asset) {
-                /** @var AssetPrice|null $priceRecord */
-                $priceRecord = $asset->ticker !== null ? $prices->get($asset->ticker) : null;
-                $value = $asset->currentValue($priceRecord?->price);
-                $total += $value;
-                $catId = $asset->category_id;
-                $byCat[$catId] = ($byCat[$catId] ?? 0.0) + $value;
-            }
+            foreach (Category::all() as $category) {
+                $value = $this->latestKnownValue($category->id, $date, $prices);
 
-            foreach ($this->carryForwardAnnualValues($month, array_keys($byCat)) as $catId => $value) {
-                $byCat[$catId] = $value;
+                if ($value === null) {
+                    continue;
+                }
+
+                $byCat[$category->id] = $value;
                 $total += $value;
             }
 
-            $snapshot = MonthlySnapshot::updateOrCreate(
-                ['date' => $month],
+            $snapshot = Snapshot::updateOrCreate(
+                ['date' => $date],
                 ['total_value' => $total]
             );
 
@@ -50,53 +45,41 @@ class StoreSnapshot extends Action
                 );
             }
 
-            $activeCatIds = array_keys($byCat);
             SnapshotCategoryValue::where('snapshot_id', $snapshot->id)
-                ->whereNotIn('category_id', $activeCatIds)
+                ->whereNotIn('category_id', array_keys($byCat))
                 ->delete();
         });
     }
 
     /**
-     * @param  array<int, int>  $alreadyCountedCategoryIds
-     * @return array<int, float>
+     * Value of a category as of $date: the assets of its most recent date on or
+     * before $date, priced live for tickers.
+     *
+     * @param  Collection<string, AssetPrice>  $prices
      */
-    private function carryForwardAnnualValues(string $month, array $alreadyCountedCategoryIds): array
+    private function latestKnownValue(int $categoryId, string $date, Collection $prices): ?float
     {
-        $annualMacros = array_values(array_filter(
-            MacroCategory::cases(),
-            fn (MacroCategory $m): bool => $m->isAnnual(),
-        ));
+        $latestDate = Asset::query()
+            ->where('category_id', $categoryId)
+            ->whereDate('date', '<=', $date)
+            ->max('date');
 
-        if ($annualMacros === []) {
-            return [];
+        if (! is_string($latestDate)) {
+            return null;
         }
 
-        $annualCategories = Category::query()
-            ->whereIn('macro_category', array_map(fn (MacroCategory $m): string => $m->value, $annualMacros))
-            ->whereNotIn('id', $alreadyCountedCategoryIds)
+        $assets = Asset::query()
+            ->where('category_id', $categoryId)
+            ->whereDate('date', $latestDate)
             ->get();
 
-        $result = [];
-        foreach ($annualCategories as $category) {
-            $lastAsset = Asset::query()
-                ->where('category_id', $category->id)
-                ->whereDate('date', '<=', $month)
-                ->orderByDesc('date')
-                ->first();
-
-            if ($lastAsset === null) {
-                continue;
-            }
-
-            $sum = (float) Asset::query()
-                ->where('category_id', $category->id)
-                ->whereDate('date', $lastAsset->date->format('Y-m-d'))
-                ->sum('value');
-
-            $result[$category->id] = $sum;
+        $value = 0.0;
+        foreach ($assets as $asset) {
+            /** @var AssetPrice|null $priceRecord */
+            $priceRecord = $asset->ticker !== null ? $prices->get($asset->ticker) : null;
+            $value += $asset->currentValue($priceRecord?->price);
         }
 
-        return $result;
+        return $value;
     }
 }

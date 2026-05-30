@@ -56,6 +56,24 @@ export function formatMonthLabel(dateStr: string): string {
 }
 
 /**
+ * Format a "YYYY-MM-DD" date string to a short day label.
+ * e.g. "2025-01-15" → "15 gen '25"
+ */
+export function formatDateLabel(dateStr: string): string {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+/**
+ * Format a "YYYY-MM-DD" date string to a long day label.
+ * e.g. "2025-01-15" → "15 Gennaio 2025"
+ */
+export function formatDateLong(dateStr: string): string {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/**
  * Format a "YYYY-MM-DD" date string to a long month label.
  * e.g. "2025-01-01" → "Gennaio 2025"
  */
@@ -79,4 +97,15 @@ export function toMonthString(date: Date): string {
  */
 export function currentMonth(): string {
     return toMonthString(new Date());
+}
+
+/**
+ * Returns today's date as "YYYY-MM-DD".
+ */
+export function today(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }

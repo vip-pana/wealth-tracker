@@ -17,8 +17,8 @@ class StoreController extends Controller
 
     public function __invoke(StoreSnapshotRequest $request): RedirectResponse
     {
-        $this->storeSnapshot->run($request->month());
+        $this->storeSnapshot->run($request->snapshotDate());
 
-        return redirect()->back()->with('success', 'Snapshot mensile salvato.');
+        return redirect()->back()->with('success', 'Snapshot salvato.');
     }
 }

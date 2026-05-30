@@ -7,7 +7,7 @@ namespace App\Actions\Goals;
 use App\Actions\Action;
 use App\Models\Category;
 use App\Models\Goal;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 
 class FetchGoalData extends Action
 {
@@ -18,7 +18,7 @@ class FetchGoalData extends Action
 
         $categories = Category::orderBy('sort_order')->get();
 
-        $latestSnapshot = MonthlySnapshot::with('categoryValues')
+        $latestSnapshot = Snapshot::with('categoryValues')
             ->orderByDesc('date')
             ->first();
 

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use Illuminate\Support\Collection;
 
 class BuildMacroMonthComparison extends Action
 {
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @return array<int, mixed>
      */
     public function run(Collection $snapshots): array
@@ -23,7 +23,7 @@ class BuildMacroMonthComparison extends Action
         $last = $snapshots->last();
         $penult = $snapshots->slice(-2, 1)->first();
 
-        if (! $last instanceof MonthlySnapshot || ! $penult instanceof MonthlySnapshot) {
+        if (! $last instanceof Snapshot || ! $penult instanceof Snapshot) {
             return [];
         }
 

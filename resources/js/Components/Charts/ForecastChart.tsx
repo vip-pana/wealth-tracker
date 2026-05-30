@@ -10,7 +10,7 @@ import {
     ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrencyCompact, formatCurrency, formatMonthLabel } from '@/lib/formatters';
+import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { ForecastPoint } from '@/types/analytics';
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 export default function ForecastChart({ data }: Props) {
     // Find the split point between historical and forecast
     const splitIndex = data.findIndex((d) => d.forecast !== null && d.actual === null);
-    const splitMonth = splitIndex > 0 ? data[splitIndex]?.month : null;
+    const splitDate = splitIndex > 0 ? data[splitIndex]?.date : null;
 
     return (
         <Card>
@@ -32,8 +32,8 @@ export default function ForecastChart({ data }: Props) {
                     <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
-                            dataKey="month"
-                            tickFormatter={formatMonthLabel}
+                            dataKey="date"
+                            tickFormatter={formatDateLabel}
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
@@ -43,7 +43,7 @@ export default function ForecastChart({ data }: Props) {
                         />
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
-                            labelFormatter={(d) => formatMonthLabel(d as string)}
+                            labelFormatter={(d) => formatDateLabel(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',
@@ -54,9 +54,9 @@ export default function ForecastChart({ data }: Props) {
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         <Legend iconType="line" />
-                        {splitMonth && (
+                        {splitDate && (
                             <ReferenceLine
-                                x={splitMonth}
+                                x={splitDate}
                                 stroke="hsl(var(--border))"
                                 strokeDasharray="4 4"
                             />

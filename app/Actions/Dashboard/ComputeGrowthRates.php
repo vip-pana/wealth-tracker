@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use Illuminate\Support\Collection;
 
 class ComputeGrowthRates extends Action
 {
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @return array<int, mixed>
      */
     public function run(Collection $snapshots): array
@@ -23,8 +23,8 @@ class ComputeGrowthRates extends Action
             if ($prev !== null && (float) $prev->total_value > 0) {
                 $mom = (((float) $s->total_value - (float) $prev->total_value) / (float) $prev->total_value) * 100;
                 $result[] = [
-                    'month' => $s->date->format('Y-m-d'),
-                    'mom_pct' => round($mom, 2),
+                    'date' => $s->date->format('Y-m-d'),
+                    'change_pct' => round($mom, 2),
                     'total_value' => (float) $s->total_value,
                 ];
             }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Snapshots;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 
 class StoreSnapshotRequest extends FormRequest
 {
@@ -17,12 +18,14 @@ class StoreSnapshotRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'month' => 'required|date_format:Y-m-d',
+            'date' => 'nullable|date_format:Y-m-d',
         ];
     }
 
-    public function month(): string
+    public function snapshotDate(): string
     {
-        return $this->string('month')->value();
+        $date = $this->string('date')->value();
+
+        return $date !== '' ? $date : Carbon::now()->toDateString();
     }
 }

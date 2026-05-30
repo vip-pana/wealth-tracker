@@ -8,7 +8,7 @@ import GrowthRateChart from '@/Components/Charts/GrowthRateChart';
 import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
 import { Card, CardContent } from '@/Components/ui/card';
-import { formatCurrency, formatPercent, formatMonthLong } from '@/lib/formatters';
+import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
@@ -110,12 +110,12 @@ export default function Dashboard({
         ? ((lastPoint.total_value - prevPoint.total_value) / prevPoint.total_value) * 100
         : null;
 
-    // Get the two most recent snapshot months for comparison chart
+    // Get the two most recent snapshot dates for comparison chart
     const snapshotMonths: [string, string] | null =
         netWorthSeries.length >= 2
             ? [
-                netWorthSeries[netWorthSeries.length - 2].month,
-                netWorthSeries[netWorthSeries.length - 1].month,
+                netWorthSeries[netWorthSeries.length - 2].date,
+                netWorthSeries[netWorthSeries.length - 1].date,
               ]
             : null;
 
@@ -146,7 +146,7 @@ export default function Dashboard({
                         <h1 className="text-lg font-bold">Dashboard</h1>
                         {latestSnapshot && (
                             <p className="text-sm text-muted-foreground">
-                                Ultimo aggiornamento: {formatMonthLong(latestSnapshot)}
+                                Ultimo aggiornamento: {formatDateLong(latestSnapshot)}
                             </p>
                         )}
                     </div>

@@ -6,7 +6,7 @@ namespace Tests\Feature\Controllers;
 
 use App\Models\Asset;
 use App\Models\Category;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,9 +27,9 @@ class SnapshotControllerTest extends TestCase
         Asset::factory()->create(['category_id' => $category->id, 'value' => 1000.00, 'date' => '2025-03-01']);
         Asset::factory()->create(['category_id' => $category->id, 'value' => 500.00, 'date' => '2025-03-01']);
 
-        $this->post('/snapshots', ['month' => '2025-03-01'])->assertRedirect();
+        $this->post('/snapshots', ['date' => '2025-03-01'])->assertRedirect();
 
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2025-03-01', 'total_value' => 1500.00]);
+        $this->assertDatabaseHas('snapshots', ['date' => '2025-03-01', 'total_value' => 1500.00]);
     }
 
     public function test_upserts_without_creating_duplicates(): void
@@ -37,13 +37,13 @@ class SnapshotControllerTest extends TestCase
         $category = Category::factory()->create();
         Asset::factory()->create(['category_id' => $category->id, 'value' => 1000.00, 'date' => '2025-03-01']);
 
-        $this->post('/snapshots', ['month' => '2025-03-01']);
+        $this->post('/snapshots', ['date' => '2025-03-01']);
 
         Asset::factory()->create(['category_id' => $category->id, 'value' => 200.00, 'date' => '2025-03-01']);
 
-        $this->post('/snapshots', ['month' => '2025-03-01'])->assertRedirect();
+        $this->post('/snapshots', ['date' => '2025-03-01'])->assertRedirect();
 
-        $this->assertSame(1, MonthlySnapshot::count());
-        $this->assertDatabaseHas('monthly_snapshots', ['date' => '2025-03-01', 'total_value' => 1200.00]);
+        $this->assertSame(1, Snapshot::count());
+        $this->assertDatabaseHas('snapshots', ['date' => '2025-03-01', 'total_value' => 1200.00]);
     }
 }

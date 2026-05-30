@@ -8,7 +8,7 @@ use App\Actions\Action;
 use App\Enums\MacroCategory;
 use App\Models\Category;
 use App\Models\Goal;
-use App\Models\MonthlySnapshot;
+use App\Models\Snapshot;
 use App\Models\SnapshotCategoryValue;
 use Illuminate\Support\Collection;
 
@@ -29,7 +29,7 @@ class FetchDashboardData extends Action
     /** @return array<string, mixed> */
     public function run(): array
     {
-        $allSnapshots = MonthlySnapshot::with('categoryValues.category')
+        $allSnapshots = Snapshot::with('categoryValues.category')
             ->orderBy('date')
             ->get();
 
@@ -43,7 +43,7 @@ class FetchDashboardData extends Action
             ->all();
 
         $latestSnapshot = $allSnapshots->last();
-        $totalNetWorth = $latestSnapshot instanceof MonthlySnapshot ? (float) $latestSnapshot->total_value : 0.0;
+        $totalNetWorth = $latestSnapshot instanceof Snapshot ? (float) $latestSnapshot->total_value : 0.0;
         $illiquidTotal = $this->illiquidTotalFor($latestSnapshot, $illiquidCategoryIds);
         $liquidTotal = $totalNetWorth - $illiquidTotal;
 
@@ -82,9 +82,9 @@ class FetchDashboardData extends Action
     }
 
     /**
-     * @param  Collection<int, MonthlySnapshot>  $snapshots
+     * @param  Collection<int, Snapshot>  $snapshots
      * @param  array<int, int>  $illiquidCategoryIds
-     * @return Collection<int, MonthlySnapshot>
+     * @return Collection<int, Snapshot>
      */
     private function stripIlliquid(Collection $snapshots, array $illiquidCategoryIds): Collection
     {
@@ -92,7 +92,7 @@ class FetchDashboardData extends Action
             return $snapshots;
         }
 
-        return $snapshots->map(function (MonthlySnapshot $snapshot) use ($illiquidCategoryIds): MonthlySnapshot {
+        return $snapshots->map(function (Snapshot $snapshot) use ($illiquidCategoryIds): Snapshot {
             $liquidValues = $snapshot->categoryValues->reject(
                 fn (SnapshotCategoryValue $cv): bool => in_array($cv->category_id, $illiquidCategoryIds, true)
             )->values();
@@ -108,7 +108,7 @@ class FetchDashboardData extends Action
     /**
      * @param  array<int, int>  $illiquidCategoryIds
      */
-    private function illiquidTotalFor(?MonthlySnapshot $snapshot, array $illiquidCategoryIds): float
+    private function illiquidTotalFor(?Snapshot $snapshot, array $illiquidCategoryIds): float
     {
         if ($snapshot === null || $illiquidCategoryIds === []) {
             return 0.0;

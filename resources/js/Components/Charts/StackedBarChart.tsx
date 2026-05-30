@@ -9,7 +9,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrencyCompact, formatCurrency, formatMonthLabel } from '@/lib/formatters';
+import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
 import type { StackedBarPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -29,8 +29,8 @@ export default function StackedBarChart({ data, categories }: Props) {
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
-                            dataKey="month"
-                            tickFormatter={formatMonthLabel}
+                            dataKey="date"
+                            tickFormatter={formatDateLabel}
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
@@ -40,7 +40,7 @@ export default function StackedBarChart({ data, categories }: Props) {
                         />
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
-                            labelFormatter={(d) => formatMonthLabel(d as string)}
+                            labelFormatter={(d) => formatDateLabel(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',
