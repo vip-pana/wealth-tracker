@@ -25,7 +25,7 @@ export default function GrowthRateChart({ data }: Props) {
                 <CardTitle className="text-sm">Variazione tra snapshot (%)</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-                {data.length < 2 ? (
+                {data.length === 0 ? (
                     <ChartEmptyState message="Servono almeno due snapshot per confrontare la variazione." />
                 ) : (
                 <ResponsiveContainer width="100%" height={200}>
