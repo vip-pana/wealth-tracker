@@ -84,7 +84,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         ? prices[data.ticker.trim().toUpperCase()] ?? prices[data.ticker.trim()]
         : null;
     const computedValue =
-        currentPrice && data.quantity && !isNaN(parseFloat(data.quantity))
+        currentPrice && currentPrice.price !== null && data.quantity && !isNaN(parseFloat(data.quantity))
             ? parseFloat(data.quantity) * currentPrice.price
             : null;
 
@@ -267,7 +267,9 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                     <>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Prezzo corrente</span>
-                                            <span className="font-mono">{formatCurrency(currentPrice.price)}</span>
+                                            <span className="font-mono">
+                                                {currentPrice.price !== null ? formatCurrency(currentPrice.price) : 'non disponibile'}
+                                            </span>
                                         </div>
                                         {computedValue !== null && (
                                             <div className="flex justify-between">
@@ -275,9 +277,11 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                                 <span className="font-mono font-semibold">{formatCurrency(computedValue)}</span>
                                             </div>
                                         )}
-                                        <p className="text-xs text-muted-foreground">
-                                            Aggiornato: {new Date(currentPrice.fetched_at).toLocaleString('it-IT')}
-                                        </p>
+                                        {currentPrice.fetched_at && (
+                                            <p className="text-xs text-muted-foreground">
+                                                Aggiornato: {new Date(currentPrice.fetched_at).toLocaleString('it-IT')}
+                                            </p>
+                                        )}
                                     </>
                                 ) : (
                                     <p className="text-muted-foreground text-xs">

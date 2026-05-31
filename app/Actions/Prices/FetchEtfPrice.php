@@ -7,7 +7,6 @@ namespace App\Actions\Prices;
 use App\Actions\Action;
 use App\Http\Clients\YahooFinanceClient;
 use App\Models\AssetPrice;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class FetchEtfPrice extends Action
@@ -31,19 +30,13 @@ class FetchEtfPrice extends Action
                 continue;
             }
 
-            AssetPrice::updateOrCreate(
-                ['ticker' => $ticker],
-                [
-                    'price' => $price,
-                    'currency' => self::CURRENCY,
-                    'fetched_at' => Carbon::now(),
-                ]
-            );
+            AssetPrice::recordSuccess($ticker, $price, self::CURRENCY);
 
             return new PriceRefreshResult(updated: [$ticker]);
         }
 
         Log::warning('Yahoo Finance missing price', ['ticker' => $ticker]);
+        AssetPrice::recordFailure($ticker, 'Prezzo non disponibile da Yahoo Finance.');
 
         return new PriceRefreshResult(failed: [$ticker]);
     }

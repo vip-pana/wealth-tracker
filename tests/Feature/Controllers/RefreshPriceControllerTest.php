@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Controllers;
 
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\Category;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,7 +68,62 @@ class RefreshPriceControllerTest extends TestCase
             ->assertSessionHas('error', 'Nessun prezzo aggiornato. Riprova più tardi.')
             ->assertSessionMissing('success');
 
-        $this->assertDatabaseMissing('asset_prices', ['ticker' => 'NOPE']);
+        // A failed fetch now records the attempt (no price) rather than nothing.
+        $this->assertDatabaseHas('asset_prices', ['ticker' => 'NOPE', 'last_status' => 'failed', 'price' => null]);
+    }
+
+    public function test_records_ok_status_on_success(): void
+    {
+        $this->etfAsset('ISAC');
+        $this->fakeYahoo(104.42);
+
+        $this->post('/prices/refresh')->assertRedirect();
+
+        $this->assertDatabaseHas('asset_prices', [
+            'ticker' => 'ISAC',
+            'last_status' => 'ok',
+        ]);
+    }
+
+    public function test_records_failed_status_and_keeps_no_price_on_failure(): void
+    {
+        $this->etfAsset('NOPE');
+        Http::fake(['query1.finance.yahoo.com/*' => Http::response('', 500)]);
+
+        $this->post('/prices/refresh')->assertRedirect();
+
+        // A row is created to record the failed attempt, with no price.
+        $this->assertDatabaseHas('asset_prices', [
+            'ticker' => 'NOPE',
+            'last_status' => 'failed',
+            'price' => null,
+        ]);
+    }
+
+    public function test_failure_does_not_wipe_a_previously_fetched_price(): void
+    {
+        // Seed a ticker that already has a good price from a prior fetch.
+        AssetPrice::create([
+            'ticker' => 'ISAC',
+            'price' => 104.42,
+            'currency' => 'EUR',
+            'fetched_at' => now(),
+            'last_status' => 'ok',
+            'last_attempt_at' => now(),
+        ]);
+        $this->etfAsset('ISAC');
+
+        // The next fetch fails for every candidate symbol.
+        Http::fake(['query1.finance.yahoo.com/*' => Http::response('', 500)]);
+
+        $this->post('/prices/refresh')->assertRedirect();
+
+        // The old price survives; only the status flips to failed.
+        $this->assertDatabaseHas('asset_prices', [
+            'ticker' => 'ISAC',
+            'last_status' => 'failed',
+            'price' => 104.42,
+        ]);
     }
 
     public function test_partial_success_reports_both_updated_and_failed(): void
@@ -87,7 +143,7 @@ class RefreshPriceControllerTest extends TestCase
         $error = session('error');
         $this->assertIsString($error);
         $this->assertStringContainsString('NOPE', $error);
-        $this->assertDatabaseHas('asset_prices', ['ticker' => 'ISAC']);
-        $this->assertDatabaseMissing('asset_prices', ['ticker' => 'NOPE']);
+        $this->assertDatabaseHas('asset_prices', ['ticker' => 'ISAC', 'last_status' => 'ok']);
+        $this->assertDatabaseHas('asset_prices', ['ticker' => 'NOPE', 'last_status' => 'failed', 'price' => null]);
     }
 }

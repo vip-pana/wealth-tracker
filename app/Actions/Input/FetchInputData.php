@@ -39,7 +39,7 @@ class FetchInputData extends Action
 
         $priceMap = $prices->mapWithKeys(fn (AssetPrice $p) => [$p->ticker => [
             'price' => $p->price,
-            'fetched_at' => $p->fetched_at->toISOString(),
+            'fetched_at' => $p->fetched_at?->toISOString(),
         ]]);
 
         $lastSnapshot = Snapshot::orderByDesc('date')->first();

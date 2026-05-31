@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -50,14 +50,25 @@ const CATEGORY_PALETTE = [
 
 interface PriceEntry {
     ticker: string;
-    price: number;
+    price: number | null;
     currency: string;
-    fetched_at: string;
+    fetched_at: string | null;
+    last_status: 'ok' | 'failed' | null;
+    last_attempt_at: string | null;
+    last_error: string | null;
+}
+
+interface TrashedItem {
+    type: string;
+    label: string;
+    deleted_at: string | null;
+    restore_url: string;
 }
 
 interface Props {
     categories: (Category & { assets_count: number })[];
     prices: PriceEntry[];
+    trashed: TrashedItem[];
 }
 
 type CategoryForm = {
@@ -280,16 +291,35 @@ function DeleteCategoryButton({ category }: { category: Category & { assets_coun
     );
 }
 
-export default function Settings({ categories, prices }: Props) {
+function RestoreButton({ url }: { url: string }) {
+    const { post, processing } = useForm({});
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className="h-8 flex-shrink-0"
+            onClick={() => post(url, { preserveScroll: true })}
+            disabled={processing}
+        >
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Ripristina
+        </Button>
+    );
+}
+
+export default function Settings({ categories, prices, trashed }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
     const refreshForm = useForm({});
     const backupForm = useForm({});
 
-    const lastPriceUpdate = prices.length > 0
-        ? new Date(Math.max(...prices.map((p) => new Date(p.fetched_at).getTime())))
-        : null;
+    const fetchedTimes = prices
+        .map((p) => p.fetched_at)
+        .filter((d): d is string => d !== null)
+        .map((d) => new Date(d).getTime());
+    const lastPriceUpdate = fetchedTimes.length > 0 ? new Date(Math.max(...fetchedTimes)) : null;
 
     return (
         <>
@@ -380,6 +410,7 @@ export default function Settings({ categories, prices }: Props) {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Ticker</TableHead>
+                                        <TableHead>Stato</TableHead>
                                         <TableHead className="text-right">Prezzo</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -387,8 +418,24 @@ export default function Settings({ categories, prices }: Props) {
                                     {prices.map((p) => (
                                         <TableRow key={p.ticker}>
                                             <TableCell className="font-mono font-medium">{p.ticker}</TableCell>
+                                            <TableCell>
+                                                {p.last_status === 'failed' ? (
+                                                    <span
+                                                        className="inline-flex items-center gap-1.5 text-xs text-amber-500"
+                                                        title={p.last_error ?? undefined}
+                                                    >
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                        Ultimo aggiornamento fallito
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                        Aggiornato
+                                                    </span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-right font-mono">
-                                                {formatCurrency(p.price)}
+                                                {p.price !== null ? formatCurrency(p.price) : '—'}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -436,6 +483,38 @@ export default function Settings({ categories, prices }: Props) {
                             Backup ora
                         </Button>
                     </CardHeader>
+                </Card>
+
+                {/* Trash / restore */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Elementi eliminati</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Asset, categorie e obiettivi eliminati. Puoi ripristinarli da qui.
+                        </p>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {trashed.length === 0 ? (
+                            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                                Nessun elemento eliminato.
+                            </p>
+                        ) : (
+                            <div className="divide-y divide-border">
+                                {trashed.map((item) => (
+                                    <div key={`${item.type}-${item.label}-${item.deleted_at}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                                        <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{item.type}</span>
+                                        <span className="text-sm font-medium flex-1 truncate">{item.label}</span>
+                                        {item.deleted_at && (
+                                            <span className="text-xs text-muted-foreground hidden sm:block">
+                                                {new Date(item.deleted_at).toLocaleDateString('it-IT')}
+                                            </span>
+                                        )}
+                                        <RestoreButton url={item.restore_url} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             </div>
 

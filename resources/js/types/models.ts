@@ -23,8 +23,8 @@ export interface Asset {
 }
 
 export interface AssetPriceInfo {
-    price: number;
-    fetched_at: string; // ISO string
+    price: number | null;
+    fetched_at: string | null; // ISO string; null if never fetched successfully
 }
 
 export interface MonthlySnapshot {

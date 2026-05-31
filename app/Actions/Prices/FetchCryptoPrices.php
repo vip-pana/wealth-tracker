@@ -7,7 +7,6 @@ namespace App\Actions\Prices;
 use App\Actions\Action;
 use App\Http\Clients\CoinGeckoClient;
 use App\Models\AssetPrice;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class FetchCryptoPrices extends Action
@@ -35,19 +34,13 @@ class FetchCryptoPrices extends Action
 
             if (! isset($data[$coinId]['eur'])) {
                 Log::warning('CoinGecko missing price', ['ticker' => $ticker]);
+                AssetPrice::recordFailure($ticker, 'Prezzo non disponibile da CoinGecko.');
                 $failed[] = $ticker;
 
                 continue;
             }
 
-            AssetPrice::updateOrCreate(
-                ['ticker' => $ticker],
-                [
-                    'price' => $data[$coinId]['eur'],
-                    'currency' => self::CURRENCY,
-                    'fetched_at' => Carbon::now(),
-                ]
-            );
+            AssetPrice::recordSuccess($ticker, (float) $data[$coinId]['eur'], self::CURRENCY);
             $updated[] = $ticker;
         }
 
