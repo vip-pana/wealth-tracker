@@ -14,9 +14,12 @@ class FetchWalletBalances extends Action
         private readonly BlockstreamClient $blockstream,
     ) {}
 
-    public function run(): void
+    public function run(): PriceRefreshResult
     {
         $assets = Asset::whereNotNull('wallet_address')->get();
+
+        $updated = [];
+        $failed = [];
 
         foreach ($assets as $asset) {
             /** @var string $address */
@@ -25,11 +28,16 @@ class FetchWalletBalances extends Action
             $btc = $this->blockstream->getBalanceBtc($address);
 
             if ($btc === null) {
+                $failed[] = $asset->name;
+
                 continue;
             }
 
             $asset->quantity = $btc;
             $asset->save();
+            $updated[] = $asset->name;
         }
+
+        return new PriceRefreshResult($updated, $failed);
     }
 }

@@ -20,7 +20,7 @@ class FetchEtfPrice extends Action
         private readonly YahooFinanceClient $yahooFinance,
     ) {}
 
-    public function run(string $ticker): void
+    public function run(string $ticker): PriceRefreshResult
     {
         $candidates = str_contains($ticker, '.') ? [$ticker] : [$ticker, $ticker.self::MILAN_EXCHANGE_SUFFIX];
 
@@ -40,9 +40,11 @@ class FetchEtfPrice extends Action
                 ]
             );
 
-            return;
+            return new PriceRefreshResult(updated: [$ticker]);
         }
 
         Log::warning('Yahoo Finance missing price', ['ticker' => $ticker]);
+
+        return new PriceRefreshResult(failed: [$ticker]);
     }
 }

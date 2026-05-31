@@ -16,8 +16,20 @@ class RefreshController extends Controller
 
     public function __invoke(): RedirectResponse
     {
-        $this->fetchAllPrices->run();
+        $result = $this->fetchAllPrices->run();
 
-        return redirect()->back()->with('success', 'Prezzi aggiornati.');
+        if ($result->nothingUpdated() && $result->hasFailures()) {
+            return redirect()->back()->with('error', 'Nessun prezzo aggiornato. Riprova più tardi.');
+        }
+
+        if ($result->hasFailures()) {
+            return redirect()->back()->with('error', sprintf(
+                'Aggiornati %d. Non riusciti: %s.',
+                $result->updatedCount(),
+                implode(', ', $result->failed),
+            ));
+        }
+
+        return redirect()->back()->with('success', sprintf('Prezzi aggiornati (%d).', $result->updatedCount()));
     }
 }

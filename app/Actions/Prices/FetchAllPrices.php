@@ -17,9 +17,9 @@ class FetchAllPrices extends Action
         private readonly FetchEtfPrice $fetchEtfPrice,
     ) {}
 
-    public function run(): void
+    public function run(): PriceRefreshResult
     {
-        $this->fetchWalletBalances->run();
+        $result = $this->fetchWalletBalances->run();
 
         $tickers = Asset::whereNotNull('ticker')
             ->distinct()
@@ -27,18 +27,20 @@ class FetchAllPrices extends Action
             ->all();
 
         if (empty($tickers)) {
-            return;
+            return $result;
         }
 
         $cryptoTickers = array_values(array_filter($tickers, fn (mixed $t) => is_string($t) && in_array(strtoupper($t), self::CRYPTO_TICKERS, true)));
         $etfTickers = array_values(array_filter($tickers, fn (mixed $t) => is_string($t) && ! in_array(strtoupper($t), self::CRYPTO_TICKERS, true)));
 
         if (! empty($cryptoTickers)) {
-            $this->fetchCryptoPrices->run($cryptoTickers);
+            $result = $result->merge($this->fetchCryptoPrices->run($cryptoTickers));
         }
 
         foreach ($etfTickers as $ticker) {
-            $this->fetchEtfPrice->run($ticker);
+            $result = $result->merge($this->fetchEtfPrice->run($ticker));
         }
+
+        return $result;
     }
 }

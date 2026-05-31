@@ -8,6 +8,7 @@ use App\Actions\Action;
 use App\Http\Clients\CoinGeckoClient;
 use App\Models\AssetPrice;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class FetchCryptoPrices extends Action
 {
@@ -20,16 +21,22 @@ class FetchCryptoPrices extends Action
     ) {}
 
     /** @param string[] $tickers */
-    public function run(array $tickers): void
+    public function run(array $tickers): PriceRefreshResult
     {
         $coinIds = array_map(fn (string $t) => strtolower($t) === 'btc' ? self::BTC_COINGECKO_ID : strtolower($t), $tickers);
 
         $data = $this->coinGecko->getPricesInEur($coinIds);
 
+        $updated = [];
+        $failed = [];
+
         foreach ($tickers as $ticker) {
             $coinId = strtolower($ticker) === 'btc' ? self::BTC_COINGECKO_ID : strtolower($ticker);
 
             if (! isset($data[$coinId]['eur'])) {
+                Log::warning('CoinGecko missing price', ['ticker' => $ticker]);
+                $failed[] = $ticker;
+
                 continue;
             }
 
@@ -41,6 +48,9 @@ class FetchCryptoPrices extends Action
                     'fetched_at' => Carbon::now(),
                 ]
             );
+            $updated[] = $ticker;
         }
+
+        return new PriceRefreshResult($updated, $failed);
     }
 }
