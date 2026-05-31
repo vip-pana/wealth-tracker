@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -47,6 +47,12 @@ const CATEGORY_PALETTE = [
     '#64748b', // slate
     '#fcfcfc', // white
 ] as const;
+
+/** Mask an IBAN to first 4 + last 4 chars (e.g. IT09 ···· 0125); null if empty. */
+function maskIban(iban: string | null): string | null {
+    if (!iban || iban.length < 8) return iban || null;
+    return `${iban.slice(0, 4)} ···· ${iban.slice(-4)}`;
+}
 
 interface PriceEntry {
     ticker: string;
@@ -98,6 +104,7 @@ interface Props {
     bankConnections: BankConnectionEntry[];
     banks: BankOption[];
     linkableAssets: LinkableAsset[];
+    bankRedirectReady: boolean;
 }
 
 type CategoryForm = {
@@ -337,7 +344,7 @@ function RestoreButton({ url }: { url: string }) {
     );
 }
 
-function ConnectBankDialog({ open, onClose, banks }: { open: boolean; onClose: () => void; banks: BankOption[] }) {
+function ConnectBankDialog({ open, onClose, banks, redirectReady }: { open: boolean; onClose: () => void; banks: BankOption[]; redirectReady: boolean }) {
     const [query, setQuery] = useState('');
     const { data, setData, post, processing } = useForm({ aspsp_name: '', aspsp_country: 'IT' });
 
@@ -358,9 +365,23 @@ function ConnectBankDialog({ open, onClose, banks }: { open: boolean; onClose: (
                     <DialogTitle>Collega un conto bancario</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3">
+                    {!redirectReady && (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>
+                                Serve un tunnel HTTPS attivo per il consenso. Avvia <code>cloudflared</code> e imposta <code>ENABLE_BANKING_REDIRECT_URL</code> (vedi <code>docs/enable-banking-usage.md</code>), altrimenti il collegamento fallirà.
+                            </span>
+                        </div>
+                    )}
                     <p className="text-sm text-muted-foreground">
-                        Scegli la tua banca. Verrai reindirizzato alla pagina di consenso della banca (sola lettura).
+                        Scegli la tua banca: ti porteremo sul <strong>sito della banca</strong> per autorizzare l&apos;accesso, poi tornerai qui.
                     </p>
+                    <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                        <ShieldCheck className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                        <span>
+                            Solo lettura del saldo: non possiamo muovere denaro. Le credenziali le inserisci sulla banca, non qui. Puoi scollegare quando vuoi.
+                        </span>
+                    </div>
                     <Input
                         placeholder="Cerca la tua banca…"
                         value={query}
@@ -432,7 +453,7 @@ function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; ass
     );
 }
 
-function BankConnectionsCard({ connections, banks, assets }: { connections: BankConnectionEntry[]; banks: BankOption[]; assets: LinkableAsset[] }) {
+function BankConnectionsCard({ connections, banks, assets, redirectReady }: { connections: BankConnectionEntry[]; banks: BankOption[]; assets: LinkableAsset[]; redirectReady: boolean }) {
     const [connectOpen, setConnectOpen] = useState(false);
 
     const disconnect = (id: number, name: string) => {
@@ -500,9 +521,14 @@ function BankConnectionsCard({ connections, banks, assets }: { connections: Bank
                                 </div>
                                 {c.accounts.map((acc) => (
                                     <div key={acc.id} className="flex items-center justify-between gap-3 pl-2">
-                                        <span className="text-xs text-muted-foreground font-mono truncate">
-                                            {acc.iban ?? acc.name ?? acc.id}
-                                        </span>
+                                        <div className="min-w-0">
+                                            <span className="block text-xs font-mono text-foreground truncate">
+                                                {maskIban(acc.iban) ?? acc.name ?? `Conto ${acc.id}`}
+                                            </span>
+                                            {acc.name && acc.iban && (
+                                                <span className="block text-xs text-muted-foreground truncate">{acc.name}</span>
+                                            )}
+                                        </div>
                                         <LinkAccountSelect account={acc} assets={assets} />
                                     </div>
                                 ))}
@@ -511,12 +537,12 @@ function BankConnectionsCard({ connections, banks, assets }: { connections: Bank
                     </div>
                 )}
             </CardContent>
-            <ConnectBankDialog open={connectOpen} onClose={() => setConnectOpen(false)} banks={banks} />
+            <ConnectBankDialog open={connectOpen} onClose={() => setConnectOpen(false)} banks={banks} redirectReady={redirectReady} />
         </Card>
     );
 }
 
-export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets }: Props) {
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -654,7 +680,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                 </Card>
 
                 {/* Bank connections (open banking) */}
-                <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} />
+                <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} redirectReady={bankRedirectReady} />
 
                 {/* Import / Export */}
                 <Card>

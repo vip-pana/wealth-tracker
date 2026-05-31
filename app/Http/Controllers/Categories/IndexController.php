@@ -12,6 +12,7 @@ use App\Models\BankConnection;
 use App\Models\Category;
 use App\Models\Goal;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -51,6 +52,7 @@ class IndexController extends Controller
             'prices' => $prices,
             'trashed' => $this->trashedItems(),
             'bankConnections' => $this->bankConnections(),
+            'bankRedirectReady' => $this->bankRedirectReady(),
             'linkableAssets' => Asset::query()
                 ->whereNull('ticker')
                 ->whereDate('date', now()->format('Y-m-01'))
@@ -60,6 +62,21 @@ class IndexController extends Controller
                 ->all(),
             'banks' => $this->banks(),
         ]);
+    }
+
+    /**
+     * Whether the configured consent redirect looks usable: an https URL on a
+     * public host. A localhost/placeholder value means no tunnel is set up yet,
+     * so starting a consent flow would fail — the UI warns about it.
+     */
+    private function bankRedirectReady(): bool
+    {
+        $url = Config::string('services.enable_banking.redirect_url', '');
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return str_starts_with($url, 'https://')
+            && is_string($host)
+            && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
     /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, asset_id: int|null}>}> */
