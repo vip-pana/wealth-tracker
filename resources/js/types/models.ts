@@ -15,7 +15,7 @@ export interface Asset {
     name: string;
     ticker: string | null;
     wallet_address: string | null;
-    gocardless_account_id: string | null;
+    bank_account_uid: string | null;
     quantity: number | null;
     price: number | null;   // current price fetched from API
     value: number;          // quantity * price for live assets, manual value otherwise

@@ -11,15 +11,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assets', function (Blueprint $table): void {
-            $table->string('gocardless_account_id')->nullable()->after('wallet_address');
-            $table->timestamp('gocardless_synced_at')->nullable()->after('gocardless_account_id');
+            $table->string('bank_account_uid')->nullable()->after('wallet_address');
+            $table->timestamp('bank_synced_at')->nullable()->after('bank_account_uid');
         });
     }
 
     public function down(): void
     {
         Schema::table('assets', function (Blueprint $table): void {
-            $table->dropColumn(['gocardless_account_id', 'gocardless_synced_at']);
+            $table->dropColumn(['bank_account_uid', 'bank_synced_at']);
         });
     }
 };

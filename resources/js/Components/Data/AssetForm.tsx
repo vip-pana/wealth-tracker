@@ -45,7 +45,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         name:           editAsset?.name ?? '',
         ticker:         editAsset?.ticker ?? '',
         wallet_address: editAsset?.wallet_address ?? '',
-        gocardless_account_id: editAsset?.gocardless_account_id ?? '',
+        bank_account_uid: editAsset?.bank_account_uid ?? '',
         quantity:       editAsset?.quantity?.toString() ?? '',
         value:          editAsset?.value?.toString() ?? '',
         date:           editAsset?.date ?? month,
@@ -59,6 +59,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             name:           editAsset?.name ?? '',
             ticker:         editAsset?.ticker ?? '',
             wallet_address: editAsset?.wallet_address ?? '',
+            bank_account_uid: editAsset?.bank_account_uid ?? '',
             quantity:       editAsset?.quantity?.toString() ?? '',
             value:          editAsset?.value?.toString() ?? '',
             date:           editAsset?.date ?? month,
@@ -78,7 +79,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             setShowWallet(false);
         } else {
             setData('value', '');
-            setData('gocardless_account_id', '');
+            setData('bank_account_uid', '');
         }
     };
 
@@ -196,23 +197,23 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 )}
                             </div>
                             <div className="space-y-1">
-                                <Label>ID conto GoCardless (opzionale)</Label>
+                                <Label>ID conto bancario (Enable Banking, opzionale)</Label>
                                 <Input
-                                    value={data.gocardless_account_id}
-                                    onChange={(e) => setData('gocardless_account_id', e.target.value)}
+                                    value={data.bank_account_uid}
+                                    onChange={(e) => setData('bank_account_uid', e.target.value)}
                                     placeholder="es. 7e246b2a-..."
                                     className="font-mono"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Se compilato, il valore viene aggiornato automaticamente dal saldo del conto collegato.
                                 </p>
-                                {editAsset?.gocardless_account_id && (
+                                {editAsset?.bank_account_uid && (
                                     <p className="text-xs text-muted-foreground">
                                         Saldo sincronizzato dal conto bancario collegato.
                                     </p>
                                 )}
-                                {errors.gocardless_account_id && (
-                                    <p className="text-xs text-destructive">{errors.gocardless_account_id}</p>
+                                {errors.bank_account_uid && (
+                                    <p className="text-xs text-destructive">{errors.bank_account_uid}</p>
                                 )}
                             </div>
                         </>

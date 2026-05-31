@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Prices;
 
 use App\Actions\Action;
-use App\Http\Clients\GoCardlessClient;
+use App\Http\Clients\EnableBankingClient;
 use App\Models\Asset;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -13,24 +13,24 @@ use Illuminate\Support\Facades\Log;
 class FetchBankBalances extends Action
 {
     public function __construct(
-        private readonly GoCardlessClient $goCardless,
+        private readonly EnableBankingClient $enableBanking,
     ) {}
 
     public function run(): PriceRefreshResult
     {
-        $assets = Asset::whereNotNull('gocardless_account_id')->get();
+        $assets = Asset::whereNotNull('bank_account_uid')->get();
 
         $updated = [];
         $failed = [];
 
         foreach ($assets as $asset) {
-            /** @var string $accountId */
-            $accountId = $asset->gocardless_account_id;
+            /** @var string $accountUid */
+            $accountUid = $asset->bank_account_uid;
 
-            $balance = $this->goCardless->accountBalance($accountId);
+            $balance = $this->enableBanking->accountBalance($accountUid);
 
             if ($balance === null) {
-                Log::warning('GoCardless balance unavailable', ['asset' => $asset->id]);
+                Log::warning('Bank balance unavailable', ['asset' => $asset->id]);
                 $failed[] = $asset->name;
 
                 continue;
@@ -39,7 +39,7 @@ class FetchBankBalances extends Action
             // Overwrite the stored value with the live balance; a failed fetch
             // above leaves the previous value untouched.
             $asset->value = $balance['amount'];
-            $asset->gocardless_synced_at = Carbon::now();
+            $asset->bank_synced_at = Carbon::now();
             $asset->save();
             $updated[] = $asset->name;
         }

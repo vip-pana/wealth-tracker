@@ -37,9 +37,9 @@ return [
         ],
     ],
 
-    'gocardless' => [
-        'secret_id' => env('GOCARDLESS_SECRET_ID', ''),
-        'secret_key' => env('GOCARDLESS_SECRET_KEY', ''),
+    'enable_banking' => [
+        'application_id' => env('ENABLE_BANKING_APPLICATION_ID', ''),
+        'private_key_path' => env('ENABLE_BANKING_PRIVATE_KEY_PATH', ''),
     ],
 
 ];

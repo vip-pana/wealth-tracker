@@ -16,30 +16,33 @@ class FetchBankBalancesTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $keyPath;
+
     protected function setUp(): void
     {
         parent::setUp();
         config(['cache.default' => 'array']);
-        config(['services.gocardless.secret_id' => 'id', 'services.gocardless.secret_key' => 'key']);
+
+        // The Enable Banking client signs a JWT with an RSA private key.
+        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        openssl_pkey_export($key, $pem);
+        $this->keyPath = tempnam(sys_get_temp_dir(), 'eb_test_key');
+        file_put_contents($this->keyPath, $pem);
+
+        config([
+            'services.enable_banking.application_id' => 'app-uuid',
+            'services.enable_banking.private_key_path' => $this->keyPath,
+        ]);
     }
 
     protected function tearDown(): void
     {
-        Cache::forget('gocardless.access_token');
+        Cache::forget('enable_banking.jwt');
+        @unlink($this->keyPath);
         parent::tearDown();
     }
 
-    private function fakeToken(): array
-    {
-        return [
-            'bankaccountdata.gocardless.com/api/v2/token/new/' => Http::response([
-                'access' => 'TOKEN',
-                'access_expires' => 86400,
-            ]),
-        ];
-    }
-
-    private function linkedAsset(string $accountId, float $value = 100): Asset
+    private function linkedAsset(string $uid, float $value = 100): Asset
     {
         $cat = Category::factory()->create();
 
@@ -47,7 +50,7 @@ class FetchBankBalancesTest extends TestCase
             'category_id' => $cat->id,
             'name' => 'Conto',
             'value' => $value,
-            'gocardless_account_id' => $accountId,
+            'bank_account_uid' => $uid,
             'date' => '2026-05-01',
         ]);
     }
@@ -56,40 +59,40 @@ class FetchBankBalancesTest extends TestCase
     {
         $asset = $this->linkedAsset('acc-1', 100);
 
-        Http::fake(array_merge($this->fakeToken(), [
-            'bankaccountdata.gocardless.com/api/v2/accounts/acc-1/balances/' => Http::response([
-                'balances' => [['balanceAmount' => ['amount' => '1500.50', 'currency' => 'EUR']]],
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/balances' => Http::response([
+                'balances' => [['balance_amount' => ['amount' => '1500.50', 'currency' => 'EUR']]],
             ]),
-        ]));
+        ]);
 
         $result = app(FetchBankBalances::class)->run();
 
         $this->assertSame(['Conto'], $result->updated);
         $asset->refresh();
         $this->assertEqualsWithDelta(1500.50, (float) $asset->value, 0.001);
-        $this->assertNotNull($asset->gocardless_synced_at);
+        $this->assertNotNull($asset->bank_synced_at);
     }
 
     public function test_failure_preserves_the_existing_value(): void
     {
         $asset = $this->linkedAsset('acc-1', 100);
 
-        Http::fake(array_merge($this->fakeToken(), [
-            'bankaccountdata.gocardless.com/api/v2/accounts/acc-1/balances/' => Http::response('', 500),
-        ]));
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/balances' => Http::response('', 500),
+        ]);
 
         $result = app(FetchBankBalances::class)->run();
 
         $this->assertSame(['Conto'], $result->failed);
         $asset->refresh();
         $this->assertEqualsWithDelta(100.0, (float) $asset->value, 0.001);
-        $this->assertNull($asset->gocardless_synced_at);
+        $this->assertNull($asset->bank_synced_at);
     }
 
     public function test_ignores_assets_without_a_linked_account(): void
     {
         $cat = Category::factory()->create();
-        Asset::factory()->create(['category_id' => $cat->id, 'gocardless_account_id' => null, 'date' => '2026-05-01']);
+        Asset::factory()->create(['category_id' => $cat->id, 'bank_account_uid' => null, 'date' => '2026-05-01']);
 
         $result = app(FetchBankBalances::class)->run();
 
