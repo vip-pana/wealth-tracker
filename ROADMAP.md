@@ -56,6 +56,35 @@ total. **No link to net worth / forecast for now.** Examples: subscriptions,
 mortgage, rent, loans. It's a self-contained mini-module; keep it isolated from
 the asset/snapshot model unless we later decide to integrate it.
 
+## External account sync — researched, blocked, parked
+
+Goal: pull balances from brokers/banks instead of typing them. Researched in
+depth (2026-05); current state:
+
+- **Trading212** — the only broker with a clean official, free, read-only API
+  (`/equity/account/summary`). Viable *if* there's a T212 Invest/ISA account.
+- **Scalable / Directa** — no public API. Only via a paid aggregator or an
+  unofficial browser proxy (discouraged: ToS + credential risk). Stay manual.
+- **Open banking (banks, not brokers)** — would cover current/savings accounts.
+  GoCardless/Nordigen had a free tier, but **new signups are disabled since
+  July 2025**; the free personal tier is gone. Enable Banking, Plaid, Tink,
+  wealthAPI are all B2B (no public pricing, no self-service, Plaid is US-only).
+  Conclusion: **free self-service open banking for a personal app no longer
+  exists.**
+
+A GoCardless integration was built anyway, on its own branch
+`feat/gocardless-open-banking` (two WIP commits, never merged to main):
+phase 1 = `GoCardlessClient` (read-only: token, institutions, requisition,
+accounts, balances; timeout+retry; tested with `Http::fake`); phase 2 = an
+`Asset` can carry a `gocardless_account_id`, `FetchBankBalances` overwrites its
+`value` with the fetched balance (Option A), wired into `FetchAllPrices`, with a
+manual account-id field in the asset form. It is **parked, not abandoned** — it
+works but has no credentials to run against until GoCardless reopens signups (or
+we find another open account). Phase 3 (consent-flow UI + 90-day renewal) was
+never started. Note: a migration on that branch adds `gocardless_account_id` /
+`gocardless_synced_at` to `assets` — if the branch is ever dropped, that
+migration goes with it.
+
 ## Explicitly out of scope (decided, not forgotten)
 
 These were considered and set aside as a poor fit for a single-user personal
