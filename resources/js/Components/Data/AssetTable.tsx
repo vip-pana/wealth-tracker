@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
     Dialog,
@@ -100,6 +100,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
             </TableRow>
             {open && assets.map((asset) => {
                 const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
+                const bankFreshness = !asset.ticker && asset.bank_synced_at ? priceFreshness(asset.bank_synced_at) : null;
                 return (
                 <TableRow key={asset.id}>
                     <TableCell className="pl-10">
@@ -125,6 +126,15 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                         {asset.ticker}
                                     </span>
                                 )}
+                                {bankFreshness && (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
+                                        title="Saldo sincronizzato dal conto bancario collegato"
+                                    >
+                                        <Landmark className="w-3 h-3" />
+                                        Banca
+                                    </span>
+                                )}
                             </div>
                             {asset.ticker && asset.quantity !== null && (
                                 <p className="text-xs text-muted-foreground">
@@ -140,7 +150,12 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                     )}
                                 </p>
                             )}
-                            {asset.notes && !asset.ticker && (
+                            {bankFreshness && (
+                                <p className="text-xs text-muted-foreground">
+                                    Saldo da banca · <span className={cn(bankFreshness.stale && 'text-amber-500')}>{bankFreshness.label}</span>
+                                </p>
+                            )}
+                            {asset.notes && !asset.ticker && !bankFreshness && (
                                 <p className="text-xs text-muted-foreground">{asset.notes}</p>
                             )}
                         </div>

@@ -76,6 +76,7 @@ interface BankConnectionEntry {
     id: number;
     status: 'active' | 'pending' | 'expired';
     aspsp_name: string;
+    aspsp_country: string;
     valid_until: string | null;
     accounts: BankAccountEntry[];
 }
@@ -393,6 +394,23 @@ function ConnectBankDialog({ open, onClose, banks }: { open: boolean; onClose: (
     );
 }
 
+function ReconnectButton({ connection }: { connection: BankConnectionEntry }) {
+    const { post, processing } = useForm({ aspsp_name: connection.aspsp_name, aspsp_country: connection.aspsp_country });
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => post('/banking/connect')}
+            disabled={processing}
+        >
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Riconnetti
+        </Button>
+    );
+}
+
 function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; assets: LinkableAsset[] }) {
     const link = (value: string) => {
         const assetId = value === '__none__' ? null : value;
@@ -431,7 +449,7 @@ function BankConnectionsCard({ connections, banks, assets }: { connections: Bank
         if (c.status === 'pending') {
             return <span className="text-xs text-amber-500">In attesa di consenso</span>;
         }
-        return <span className="text-xs text-destructive">Scaduto · riconnetti</span>;
+        return <span className="text-xs text-destructive">Scaduto</span>;
     };
 
     return (
@@ -467,15 +485,18 @@ function BankConnectionsCard({ connections, banks, assets }: { connections: Bank
                                         <span className="text-sm font-medium">{c.aspsp_name}</span>
                                         {statusBadge(c)}
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
-                                        onClick={() => disconnect(c.id, c.aspsp_name)}
-                                        title="Rimuovi collegamento"
-                                    >
-                                        <Unlink className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        {c.status === 'expired' && <ReconnectButton connection={c} />}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
+                                            onClick={() => disconnect(c.id, c.aspsp_name)}
+                                            title="Rimuovi collegamento"
+                                        >
+                                            <Unlink className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                                 {c.accounts.map((acc) => (
                                     <div key={acc.id} className="flex items-center justify-between gap-3 pl-2">

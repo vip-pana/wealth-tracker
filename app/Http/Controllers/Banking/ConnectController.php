@@ -38,6 +38,13 @@ class ConnectController extends Controller
                 ->with('error', 'Impossibile avviare il collegamento bancario. Riprova.');
         }
 
+        // Reconnecting the same bank: drop its old expired/pending connections
+        // so we don't pile up stale rows (a fresh consent supersedes them).
+        BankConnection::where('aspsp_name', $bank)
+            ->where('aspsp_country', $country)
+            ->whereIn('status', [BankConnection::STATUS_EXPIRED, BankConnection::STATUS_PENDING])
+            ->delete();
+
         BankConnection::create([
             'aspsp_name' => $bank,
             'aspsp_country' => $country,

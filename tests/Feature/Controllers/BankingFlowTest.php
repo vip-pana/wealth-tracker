@@ -59,6 +59,26 @@ class BankingFlowTest extends TestCase
         $this->assertDatabaseHas('bank_connections', ['aspsp_name' => 'Revolut', 'status' => 'pending']);
     }
 
+    public function test_reconnect_prunes_the_old_expired_connection_for_the_same_bank(): void
+    {
+        BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
+        ]);
+
+        Http::fake([
+            'api.enablebanking.com/auth' => Http::response([
+                'url' => 'https://tilisy.enablebanking.com/ais/start?sessionid=y',
+                'authorization_id' => 'auth-2',
+            ]),
+        ]);
+
+        $this->post('/banking/connect', ['aspsp_name' => 'Revolut', 'aspsp_country' => 'IT'])->assertRedirect();
+
+        $this->assertDatabaseMissing('bank_connections', ['state' => 'old']);
+        $this->assertSame(1, BankConnection::where('aspsp_name', 'Revolut')->count());
+        $this->assertDatabaseHas('bank_connections', ['aspsp_name' => 'Revolut', 'status' => 'pending']);
+    }
+
     public function test_callback_exchanges_code_and_persists_session_and_accounts(): void
     {
         $connection = BankConnection::create([

@@ -62,7 +62,7 @@ class IndexController extends Controller
         ]);
     }
 
-    /** @return list<array{id: int, status: string, aspsp_name: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, asset_id: int|null}>}> */
+    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, asset_id: int|null}>}> */
     private function bankConnections(): array
     {
         $out = [];
@@ -82,6 +82,7 @@ class IndexController extends Controller
                 'id' => $c->id,
                 'status' => $c->isActive() ? 'active' : ($c->status === BankConnection::STATUS_PENDING ? 'pending' : 'expired'),
                 'aspsp_name' => $c->aspsp_name,
+                'aspsp_country' => $c->aspsp_country,
                 'valid_until' => $c->valid_until?->toISOString(),
                 'accounts' => $accounts,
             ];

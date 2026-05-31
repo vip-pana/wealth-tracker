@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Actions;
 
+use App\Actions\Input\FetchAssetsByMonth;
 use App\Actions\Prices\FetchBankBalances;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\BankConnection;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +82,22 @@ class FetchBankBalancesTest extends TestCase
         $asset->refresh();
         $this->assertEqualsWithDelta(1500.50, (float) $asset->value, 0.001);
         $this->assertNotNull($asset->bank_synced_at);
+    }
+
+    public function test_input_payload_exposes_bank_synced_at(): void
+    {
+        $asset = $this->linkedAsset('acc-1', 100);
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/balances' => Http::response([
+                'balances' => [['balance_amount' => ['amount' => '1500.50', 'currency' => 'EUR']]],
+            ]),
+        ]);
+        app(FetchBankBalances::class)->run();
+
+        $payload = app(FetchAssetsByMonth::class)->run($asset->date->format('Y-m-01'), AssetPrice::all()->keyBy('ticker'));
+        $row = $payload->firstWhere('id', $asset->id);
+
+        $this->assertNotNull($row['bank_synced_at']);
     }
 
     public function test_failure_preserves_the_existing_value(): void
