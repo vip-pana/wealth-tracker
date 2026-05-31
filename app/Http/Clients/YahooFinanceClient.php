@@ -13,6 +13,8 @@ class YahooFinanceClient
     public function getPrice(string $symbol): ?float
     {
         $response = Http::withHeaders(['User-Agent' => 'Mozilla/5.0'])
+            ->timeout(10)
+            ->retry(3, 200, throw: false)
             ->get(self::URL.urlencode($symbol), [
                 'interval' => '1d',
                 'range' => '1d',

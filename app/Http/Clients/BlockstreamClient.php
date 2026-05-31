@@ -15,7 +15,9 @@ class BlockstreamClient
 
     public function getBalanceBtc(string $address): ?float
     {
-        $response = Http::get(self::URL.urlencode($address));
+        $response = Http::timeout(10)
+            ->retry(3, 200, throw: false)
+            ->get(self::URL.urlencode($address));
 
         if (! $response->successful()) {
             Log::warning('Blockstream fetch failed', ['address' => $address, 'status' => $response->status()]);
@@ -23,10 +25,16 @@ class BlockstreamClient
             return null;
         }
 
-        /** @var array{chain_stats: array{funded_txo_sum: int, spent_txo_sum: int}} $data */
-        $data = $response->json();
+        $funded = $response->json('chain_stats.funded_txo_sum');
+        $spent = $response->json('chain_stats.spent_txo_sum');
 
-        $satoshis = $data['chain_stats']['funded_txo_sum'] - $data['chain_stats']['spent_txo_sum'];
+        if (! is_numeric($funded) || ! is_numeric($spent)) {
+            Log::warning('Blockstream unexpected response', ['address' => $address]);
+
+            return null;
+        }
+
+        $satoshis = (int) $funded - (int) $spent;
 
         return $satoshis / self::SATOSHIS_PER_BTC;
     }

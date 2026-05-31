@@ -17,10 +17,12 @@ class CoinGeckoClient
      */
     public function getPricesInEur(array $coinIds): array
     {
-        $response = Http::get(self::URL, [
-            'ids' => implode(',', $coinIds),
-            'vs_currencies' => 'eur',
-        ]);
+        $response = Http::timeout(10)
+            ->retry(3, 200, throw: false)
+            ->get(self::URL, [
+                'ids' => implode(',', $coinIds),
+                'vs_currencies' => 'eur',
+            ]);
 
         if (! $response->successful()) {
             Log::warning('CoinGecko fetch failed', ['status' => $response->status()]);
