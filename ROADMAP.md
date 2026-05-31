@@ -56,34 +56,50 @@ total. **No link to net worth / forecast for now.** Examples: subscriptions,
 mortgage, rent, loans. It's a self-contained mini-module; keep it isolated from
 the asset/snapshot model unless we later decide to integrate it.
 
-## External account sync — researched, blocked, parked
+## External account sync — built on a branch, verified live, awaiting merge
 
-Goal: pull balances from brokers/banks instead of typing them. Researched in
-depth (2026-05); current state:
+Goal: pull balances from banks instead of typing them. Researched in depth
+(2026-05). Findings:
 
-- **Trading212** — the only broker with a clean official, free, read-only API
-  (`/equity/account/summary`). Viable *if* there's a T212 Invest/ISA account.
-- **Scalable / Directa** — no public API. Only via a paid aggregator or an
-  unofficial browser proxy (discouraged: ToS + credential risk). Stay manual.
-- **Open banking (banks, not brokers)** — would cover current/savings accounts.
-  GoCardless/Nordigen had a free tier, but **new signups are disabled since
-  July 2025**; the free personal tier is gone. Enable Banking, Plaid, Tink,
-  wealthAPI are all B2B (no public pricing, no self-service, Plaid is US-only).
-  Conclusion: **free self-service open banking for a personal app no longer
-  exists.**
+- **Banks via Enable Banking open banking** — the viable path. Its free
+  "restricted mode" lets an individual read their *own* pre-linked accounts in
+  production with no TPP licence or eIDAS certs (a licence is only needed to
+  serve *third parties*). Signups are open. **This works.**
+- **GoCardless/Nordigen** — was the obvious choice but **disabled new signups in
+  July 2025**; abandoned in favour of Enable Banking.
+- **Brokers (Scalable / Directa)** — no public API; open banking covers banks,
+  not investment brokers, so brokers **stay manual**. Trading212 has a free
+  official API and remains the only viable broker path *if* an account exists.
+- Plaid (US-only) / Tink / wealthAPI are B2B with no self-service — not for a
+  personal app.
 
-A GoCardless integration was built anyway, on its own branch
-`feat/gocardless-open-banking` (two WIP commits, never merged to main):
-phase 1 = `GoCardlessClient` (read-only: token, institutions, requisition,
-accounts, balances; timeout+retry; tested with `Http::fake`); phase 2 = an
-`Asset` can carry a `gocardless_account_id`, `FetchBankBalances` overwrites its
-`value` with the fetched balance (Option A), wired into `FetchAllPrices`, with a
-manual account-id field in the asset form. It is **parked, not abandoned** — it
-works but has no credentials to run against until GoCardless reopens signups (or
-we find another open account). Phase 3 (consent-flow UI + 90-day renewal) was
-never started. Note: a migration on that branch adds `gocardless_account_id` /
-`gocardless_synced_at` to `assets` — if the branch is ever dropped, that
-migration goes with it.
+A full Enable Banking integration is built on branch
+`feat/enable-banking-open-banking` (4 WIP commits, **not merged to main**):
+- **Phase 1** — `EnableBankingClient`: JWT RS256 signed with the app's PEM key,
+  `aspsps` / `auth` / `sessions` / account balances; timeout+retry; inert when
+  unconfigured. Tested with `Http::fake`.
+- **Phase 2** — balances flow into an asset's `value` (Option A) via
+  `FetchBankBalances`, wired into `FetchAllPrices`.
+- **Phase 3** — `bank_connections` + `bank_accounts` tables; `/banking` routes
+  (connect → consent → callback → link account to asset → disconnect); a
+  Settings "Conti bancari" section.
+
+**Verified live (2026-05-31):** read real balances end to end — Revolut 327,91 €
+and Isybank 4.466,02 € — through the actual API with the user's own credentials.
+
+**To use it / merge it:**
+- An HTTPS consent callback is required: run a tunnel (cloudflared/ngrok) to
+  `…/banking/callback` and set that URL both on the Enable Banking app and in
+  `ENABLE_BANKING_REDIRECT_URL`. The free-tier tunnel URL changes per restart.
+- The full in-app UI round-trip (click "Collega" → return from consent) was not
+  driven live yet — only the pieces (auth/sessions/balance live, the rest via
+  `Http::fake`). Drive it once with a tunnel before merging.
+- Sessions expire (~90 days); renewal is a manual re-consent (PSD2 requires the
+  user present) surfaced as "Riconnetti".
+- The branch carries migrations adding `assets.bank_synced_at` and the two bank
+  tables; the dev DB is rolled back so main stays aligned.
+- Credentials are configured locally: `ENABLE_BANKING_APPLICATION_ID` and a PEM
+  key at `~/wealth-tracker-data/enable-banking.pem` (kept out of git).
 
 ## Explicitly out of scope (decided, not forgotten)
 
