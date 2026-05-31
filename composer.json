@@ -51,7 +51,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "pnpm dlx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"pnpm dev\" --names=server,queue,logs,vite"
+            "pnpm dlx concurrently -c \"#93c5fd,#c4b5fd,#a78bfa,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan schedule:work\" \"php artisan pail --timeout=0\" \"pnpm dev\" --names=server,queue,scheduler,logs,vite"
         ],
         "lint": "@php ./vendor/bin/pint --test",
         "lint:fix": "@php ./vendor/bin/pint",

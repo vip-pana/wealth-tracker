@@ -7,7 +7,9 @@ How to build, test, run, and back up the app. Single-user, local-first; runs in 
 ## Environments
 
 <!-- exodia:section:environments -->
-Local dev only — no staging/prod tiers. Config defaults live in `.env.example` (SQLite, `QUEUE_CONNECTION=database`, cache=database). Docker runs PHP, the Vite dev server, a queue worker (`php artisan queue:listen`), and pail logs together; the container is `wealth-tracker-app-1`. **Run project commands inside that container, not on the host** (host `node_modules`/`vendor` differ from the container's).
+Local dev only — no staging/prod tiers. Config defaults live in `.env.example` (SQLite, `QUEUE_CONNECTION=database`, cache=database). Docker runs five processes via `concurrently`: PHP serve, a queue worker (`queue:listen`), the scheduler runner (`schedule:work`), pail logs, and the Vite dev server; the container is `wealth-tracker-app-1`. **Run project commands inside that container, not on the host** (host `node_modules`/`vendor` differ from the container's). The same process list is mirrored in `composer dev`.
+
+The Laravel scheduler is defined in `routes/console.php` (`prices:fetch` daily at 06:00) and only runs because `schedule:work` is in the start command — defining a schedule is not enough without a runner.
 
 ## Commands
 
