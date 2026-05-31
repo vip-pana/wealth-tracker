@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
         ]);
+
+        // Behind the cloudflared tunnel that terminates TLS, trust the proxy so
+        // Laravel sees X-Forwarded-Proto: https and generates https URLs
+        // (otherwise Inertia emits http URLs and the browser blocks them as
+        // mixed content). Safe here: a local-only app behind a tunnel you run.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

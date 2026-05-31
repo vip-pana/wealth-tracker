@@ -7,10 +7,11 @@ namespace App\Http\Controllers\Banking;
 use App\Http\Clients\EnableBankingClient;
 use App\Http\Controllers\Controller;
 use App\Models\BankConnection;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class ConnectController extends Controller
 {
@@ -18,7 +19,7 @@ class ConnectController extends Controller
         private readonly EnableBankingClient $enableBanking,
     ) {}
 
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request): Response
     {
         $bank = $request->string('aspsp_name')->value();
         $country = $request->string('aspsp_country')->value();
@@ -44,7 +45,9 @@ class ConnectController extends Controller
             'status' => BankConnection::STATUS_PENDING,
         ]);
 
-        // Send the user to the bank's consent page.
-        return redirect()->away($auth['url']);
+        // Send the user to the bank's consent page with a full-page redirect.
+        // Inertia::location triggers window.location instead of an XHR follow,
+        // which a cross-origin bank URL would block via CORS.
+        return Inertia::location($auth['url']);
     }
 }
