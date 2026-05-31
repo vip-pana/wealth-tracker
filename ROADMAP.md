@@ -91,6 +91,8 @@ These were considered and set aside as a poor fit for a single-user personal
 tracker — listed so we don't reconsider them by accident:
 
 - Macro-level goal allocations UI (backend ready, but not relevant in practice)
-- Trash / restore-from-UI (soft delete + toast undo already cover real need)
 - Tags, reminders, multi-user/teams
 - Generic full-text search (ticker lookup above covers the real need)
+
+(Trash / restore-from-UI was once here but shipped — see the "Elementi
+eliminati" section in Settings.)
