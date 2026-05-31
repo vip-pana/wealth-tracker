@@ -6,8 +6,10 @@ namespace Tests\Feature\Actions;
 
 use App\Actions\Prices\FetchBankBalances;
 use App\Models\Asset;
+use App\Models\BankConnection;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -23,7 +25,6 @@ class FetchBankBalancesTest extends TestCase
         parent::setUp();
         config(['cache.default' => 'array']);
 
-        // The Enable Banking client signs a JWT with an RSA private key.
         $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
         openssl_pkey_export($key, $pem);
         $this->keyPath = tempnam(sys_get_temp_dir(), 'eb_test_key');
@@ -42,17 +43,25 @@ class FetchBankBalancesTest extends TestCase
         parent::tearDown();
     }
 
-    private function linkedAsset(string $uid, float $value = 100): Asset
+    /**
+     * An asset linked, through an active connection, to a bank account uid.
+     */
+    private function linkedAsset(string $uid, float $value, string $status = BankConnection::STATUS_ACTIVE, ?Carbon $validUntil = null): Asset
     {
         $cat = Category::factory()->create();
+        $asset = Asset::factory()->create(['category_id' => $cat->id, 'name' => 'Conto', 'value' => $value, 'date' => '2026-05-01']);
 
-        return Asset::factory()->create([
-            'category_id' => $cat->id,
-            'name' => 'Conto',
-            'value' => $value,
-            'bank_account_uid' => $uid,
-            'date' => '2026-05-01',
+        $connection = BankConnection::create([
+            'aspsp_name' => 'Revolut',
+            'aspsp_country' => 'IT',
+            'state' => 'state-'.$uid,
+            'session_id' => 'sess-1',
+            'status' => $status,
+            'valid_until' => $validUntil ?? Carbon::now()->addDays(30),
         ]);
+        $connection->accounts()->create(['uid' => $uid, 'asset_id' => $asset->id]);
+
+        return $asset;
     }
 
     public function test_overwrites_value_with_the_live_balance(): void
@@ -77,9 +86,7 @@ class FetchBankBalancesTest extends TestCase
     {
         $asset = $this->linkedAsset('acc-1', 100);
 
-        Http::fake([
-            'api.enablebanking.com/accounts/acc-1/balances' => Http::response('', 500),
-        ]);
+        Http::fake(['api.enablebanking.com/accounts/acc-1/balances' => Http::response('', 500)]);
 
         $result = app(FetchBankBalances::class)->run();
 
@@ -89,10 +96,26 @@ class FetchBankBalancesTest extends TestCase
         $this->assertNull($asset->bank_synced_at);
     }
 
-    public function test_ignores_assets_without_a_linked_account(): void
+    public function test_skips_expired_connections(): void
     {
-        $cat = Category::factory()->create();
-        Asset::factory()->create(['category_id' => $cat->id, 'bank_account_uid' => null, 'date' => '2026-05-01']);
+        $asset = $this->linkedAsset('acc-1', 100, BankConnection::STATUS_ACTIVE, Carbon::now()->subDay());
+
+        Http::fake(['api.enablebanking.com/*' => Http::response(['balances' => [['balance_amount' => ['amount' => '999', 'currency' => 'EUR']]]])]);
+
+        $result = app(FetchBankBalances::class)->run();
+
+        $this->assertSame([], $result->updated);
+        $this->assertSame([], $result->failed);
+        $asset->refresh();
+        $this->assertEqualsWithDelta(100.0, (float) $asset->value, 0.001);
+    }
+
+    public function test_skips_accounts_not_linked_to_an_asset(): void
+    {
+        $connection = BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'st', 'session_id' => 's', 'status' => BankConnection::STATUS_ACTIVE, 'valid_until' => Carbon::now()->addDays(30),
+        ]);
+        $connection->accounts()->create(['uid' => 'acc-x', 'asset_id' => null]);
 
         $result = app(FetchBankBalances::class)->run();
 

@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -65,10 +65,38 @@ interface TrashedItem {
     restore_url: string;
 }
 
+interface BankAccountEntry {
+    id: number;
+    iban: string | null;
+    name: string | null;
+    asset_id: number | null;
+}
+
+interface BankConnectionEntry {
+    id: number;
+    status: 'active' | 'pending' | 'expired';
+    aspsp_name: string;
+    valid_until: string | null;
+    accounts: BankAccountEntry[];
+}
+
+interface BankOption {
+    name: string;
+    country: string;
+}
+
+interface LinkableAsset {
+    id: number;
+    name: string;
+}
+
 interface Props {
     categories: (Category & { assets_count: number })[];
     prices: PriceEntry[];
     trashed: TrashedItem[];
+    bankConnections: BankConnectionEntry[];
+    banks: BankOption[];
+    linkableAssets: LinkableAsset[];
 }
 
 type CategoryForm = {
@@ -308,7 +336,166 @@ function RestoreButton({ url }: { url: string }) {
     );
 }
 
-export default function Settings({ categories, prices, trashed }: Props) {
+function ConnectBankDialog({ open, onClose, banks }: { open: boolean; onClose: () => void; banks: BankOption[] }) {
+    const [query, setQuery] = useState('');
+    const { data, setData, post, processing } = useForm({ aspsp_name: '', aspsp_country: 'IT' });
+
+    const filtered = query.trim() === ''
+        ? banks.slice(0, 30)
+        : banks.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 30);
+
+    const connect = (bank: BankOption) => {
+        setData({ aspsp_name: bank.name, aspsp_country: bank.country });
+        // Submitting redirects the browser to the bank's consent page.
+        post('/banking/connect');
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Collega un conto bancario</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                        Scegli la tua banca. Verrai reindirizzato alla pagina di consenso della banca (sola lettura).
+                    </p>
+                    <Input
+                        placeholder="Cerca la tua banca…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        autoFocus
+                    />
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border rounded-md border border-border">
+                        {filtered.length === 0 ? (
+                            <p className="px-3 py-4 text-center text-sm text-muted-foreground">Nessuna banca trovata.</p>
+                        ) : (
+                            filtered.map((bank) => (
+                                <button
+                                    key={bank.name}
+                                    type="button"
+                                    onClick={() => connect(bank)}
+                                    disabled={processing}
+                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/40 transition-colors disabled:opacity-50"
+                                >
+                                    <span>{bank.name}</span>
+                                    <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
+                            ))
+                        )}
+                    </div>
+                    {data.aspsp_name && processing && (
+                        <p className="text-xs text-muted-foreground">Reindirizzamento a {data.aspsp_name}…</p>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; assets: LinkableAsset[] }) {
+    const link = (value: string) => {
+        const assetId = value === '__none__' ? null : value;
+        router.post(`/banking/accounts/${account.id}/link`, { asset_id: assetId }, { preserveScroll: true });
+    };
+
+    return (
+        <Select value={account.asset_id ? String(account.asset_id) : '__none__'} onValueChange={link}>
+            <SelectTrigger className="h-8 w-48 text-xs">
+                <SelectValue placeholder="Collega a un asset" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="__none__">Non collegato</SelectItem>
+                {assets.map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
+function BankConnectionsCard({ connections, banks, assets }: { connections: BankConnectionEntry[]; banks: BankOption[]; assets: LinkableAsset[] }) {
+    const [connectOpen, setConnectOpen] = useState(false);
+
+    const disconnect = (id: number, name: string) => {
+        if (confirm(`Rimuovere il collegamento con ${name}? Gli asset restano, ma non verranno più aggiornati automaticamente.`)) {
+            router.delete(`/banking/connections/${id}`, { preserveScroll: true });
+        }
+    };
+
+    const statusBadge = (c: BankConnectionEntry) => {
+        if (c.status === 'active') {
+            const until = c.valid_until ? new Date(c.valid_until).toLocaleDateString('it-IT') : null;
+            return <span className="text-xs text-green-500">Attivo{until ? ` · scade ${until}` : ''}</span>;
+        }
+        if (c.status === 'pending') {
+            return <span className="text-xs text-amber-500">In attesa di consenso</span>;
+        }
+        return <span className="text-xs text-destructive">Scaduto · riconnetti</span>;
+    };
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
+                <div>
+                    <CardTitle className="text-base">Conti bancari</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Collega un conto via open banking (sola lettura) per sincronizzarne il saldo.
+                    </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)} disabled={banks.length === 0}>
+                    <Landmark className="w-4 h-4 mr-1" />
+                    Collega conto
+                </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+                {banks.length === 0 && (
+                    <p className="px-4 py-3 text-xs text-amber-500">
+                        Enable Banking non configurato (chiave/credenziali mancanti).
+                    </p>
+                )}
+                {connections.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        Nessun conto collegato.
+                    </p>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {connections.map((c) => (
+                            <div key={c.id} className="px-4 py-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{c.aspsp_name}</span>
+                                        {statusBadge(c)}
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
+                                        onClick={() => disconnect(c.id, c.aspsp_name)}
+                                        title="Rimuovi collegamento"
+                                    >
+                                        <Unlink className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                                {c.accounts.map((acc) => (
+                                    <div key={acc.id} className="flex items-center justify-between gap-3 pl-2">
+                                        <span className="text-xs text-muted-foreground font-mono truncate">
+                                            {acc.iban ?? acc.name ?? acc.id}
+                                        </span>
+                                        <LinkAccountSelect account={acc} assets={assets} />
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+            <ConnectBankDialog open={connectOpen} onClose={() => setConnectOpen(false)} banks={banks} />
+        </Card>
+    );
+}
+
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -444,6 +631,9 @@ export default function Settings({ categories, prices, trashed }: Props) {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Bank connections (open banking) */}
+                <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} />
 
                 {/* Import / Export */}
                 <Card>

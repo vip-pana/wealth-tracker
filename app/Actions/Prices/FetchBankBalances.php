@@ -6,7 +6,8 @@ namespace App\Actions\Prices;
 
 use App\Actions\Action;
 use App\Http\Clients\EnableBankingClient;
-use App\Models\Asset;
+use App\Models\BankAccount;
+use App\Models\BankConnection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -18,19 +19,29 @@ class FetchBankBalances extends Action
 
     public function run(): PriceRefreshResult
     {
-        $assets = Asset::whereNotNull('bank_account_uid')->get();
+        // Linked accounts whose connection is still active and not expired.
+        $accounts = BankAccount::query()
+            ->whereNotNull('asset_id')
+            ->whereHas('connection', fn ($q) => $q
+                ->where('status', BankConnection::STATUS_ACTIVE)
+                ->where(fn ($q2) => $q2->whereNull('valid_until')->orWhere('valid_until', '>', Carbon::now()))
+            )
+            ->with('asset')
+            ->get();
 
         $updated = [];
         $failed = [];
 
-        foreach ($assets as $asset) {
-            /** @var string $accountUid */
-            $accountUid = $asset->bank_account_uid;
+        foreach ($accounts as $account) {
+            $asset = $account->asset;
+            if ($asset === null) {
+                continue;
+            }
 
-            $balance = $this->enableBanking->accountBalance($accountUid);
+            $balance = $this->enableBanking->accountBalance($account->uid);
 
             if ($balance === null) {
-                Log::warning('Bank balance unavailable', ['asset' => $asset->id]);
+                Log::warning('Bank balance unavailable', ['bank_account' => $account->id]);
                 $failed[] = $asset->name;
 
                 continue;

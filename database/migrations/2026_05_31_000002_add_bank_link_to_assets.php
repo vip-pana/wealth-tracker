@@ -11,15 +11,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assets', function (Blueprint $table): void {
-            $table->string('bank_account_uid')->nullable()->after('wallet_address');
-            $table->timestamp('bank_synced_at')->nullable()->after('bank_account_uid');
+            // When a bank account was last synced into this asset's value.
+            // The account→asset link itself lives in the bank_accounts table.
+            $table->timestamp('bank_synced_at')->nullable()->after('wallet_address');
         });
     }
 
     public function down(): void
     {
         Schema::table('assets', function (Blueprint $table): void {
-            $table->dropColumn(['bank_account_uid', 'bank_synced_at']);
+            $table->dropColumn('bank_synced_at');
         });
     }
 };

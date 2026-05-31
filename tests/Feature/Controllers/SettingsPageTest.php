@@ -9,11 +9,22 @@ use App\Models\AssetPrice;
 use App\Models\Category;
 use App\Models\Goal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SettingsPageTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Enable Banking is unconfigured in these tests; the bank list must
+        // resolve to empty without any outbound HTTP call.
+        config(['cache.default' => 'array']);
+        config(['services.enable_banking.application_id' => '', 'services.enable_banking.private_key_path' => '']);
+        Http::preventStrayRequests();
+    }
 
     public function test_lists_trashed_assets_categories_and_goals(): void
     {

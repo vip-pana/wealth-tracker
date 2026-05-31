@@ -21,7 +21,6 @@ class StoreAssetRequest extends FormRequest
             'name' => 'required|string|max:255',
             'ticker' => 'nullable|string|max:30',
             'wallet_address' => 'nullable|string|max:255',
-            'bank_account_uid' => 'nullable|string|max:255',
             'quantity' => 'nullable|numeric|min:0|required_with:ticker',
             'value' => 'required_without:ticker|nullable|numeric|min:0',
             'date' => 'required|date_format:Y-m-d',

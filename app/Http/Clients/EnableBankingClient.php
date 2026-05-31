@@ -157,6 +157,11 @@ class EnableBankingClient
 
     private function jwt(): ?string
     {
+        // Unconfigured (no credentials) → fully inert: no cache, no HTTP.
+        if ($this->applicationId === '' || $this->privateKeyPath === '') {
+            return null;
+        }
+
         /** @var string|null $cached */
         $cached = Cache::get(self::JWT_CACHE_KEY);
         if (is_string($cached)) {
