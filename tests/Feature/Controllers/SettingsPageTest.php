@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Controllers;
 
+use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\Category;
@@ -53,6 +54,28 @@ class SettingsPageTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Settings')
                 ->has('trashed', 0)
+            );
+    }
+
+    public function test_linkable_assets_are_only_manual_liquidity_of_the_current_month(): void
+    {
+        $liquidity = Category::factory()->create(['macro_category' => MacroCategory::Liquidita->value]);
+        $crypto = Category::factory()->create(['macro_category' => MacroCategory::Cripto->value]);
+
+        // Eligible: manual liquidity asset this month.
+        Asset::factory()->create(['category_id' => $liquidity->id, 'name' => 'Conto', 'ticker' => null, 'date' => now()->format('Y-m-01')]);
+        // Excluded: manual but in a crypto category (not a bank account).
+        Asset::factory()->create(['category_id' => $crypto->id, 'name' => 'Bitcoin a mano', 'ticker' => null, 'date' => now()->format('Y-m-01')]);
+        // Excluded: liquidity but priced via a ticker.
+        Asset::factory()->create(['category_id' => $liquidity->id, 'name' => 'Ticker', 'ticker' => 'XEON.MI', 'date' => now()->format('Y-m-01')]);
+        // Excluded: liquidity but last month.
+        Asset::factory()->create(['category_id' => $liquidity->id, 'name' => 'Vecchio', 'ticker' => null, 'date' => now()->subMonthNoOverflow()->format('Y-m-01')]);
+
+        $this->get('/settings')
+            ->assertInertia(fn ($page) => $page
+                ->component('Settings')
+                ->has('linkableAssets', 1)
+                ->where('linkableAssets.0.name', 'Conto')
             );
     }
 

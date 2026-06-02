@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Categories;
 
+use App\Enums\MacroCategory;
 use App\Http\Clients\EnableBankingClient;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
@@ -56,6 +57,7 @@ class IndexController extends Controller
             'linkableAssets' => Asset::query()
                 ->whereNull('ticker')
                 ->whereDate('date', now()->format('Y-m-01'))
+                ->whereHas('category', fn ($q) => $q->where('macro_category', MacroCategory::Liquidita->value))
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->map(fn (Asset $a): array => ['id' => $a->id, 'name' => $a->name])

@@ -149,8 +149,9 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                         <Select
                             value={data.category_id}
                             onValueChange={(v) => setData('category_id', v)}
+                            disabled={!!editAsset?.bank_linked}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className={editAsset?.bank_linked ? 'opacity-60 cursor-not-allowed' : ''}>
                                 <SelectValue placeholder="Seleziona categoria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -164,8 +165,13 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 ))}
                             </SelectContent>
                         </Select>
-                        {errors.category_id && (
-                            <p className="text-xs text-destructive">{errors.category_id}</p>
+                        {editAsset?.bank_linked ? (
+                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
+                                <span>Categoria gestita dal conto collegato. Per cambiarla, scollega il conto in Impostazioni → Conti bancari.</span>
+                            </p>
+                        ) : (
+                            errors.category_id && <p className="text-xs text-destructive">{errors.category_id}</p>
                         )}
                     </div>
 
