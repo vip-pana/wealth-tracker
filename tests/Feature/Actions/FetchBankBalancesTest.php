@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Actions;
 
+use App\Actions\Input\FetchAssetsByMonth;
 use App\Actions\Prices\FetchBankBalances;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\BankConnection;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,6 +107,22 @@ class FetchBankBalancesTest extends TestCase
             'date' => now()->format('Y-m-01'),
             'value' => 777.0,
         ]);
+    }
+
+    public function test_input_payload_flags_a_linked_asset_as_bank_linked(): void
+    {
+        $this->linkedAccount('acc-1'); // links logical asset "Conto" in $categoryId
+        $linked = Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Conto', 'date' => now()->format('Y-m-01'),
+        ]);
+        $other = Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Contanti', 'date' => now()->format('Y-m-01'),
+        ]);
+
+        $payload = app(FetchAssetsByMonth::class)->run(now()->format('Y-m-01'), AssetPrice::all()->keyBy('ticker'));
+
+        $this->assertTrue($payload->firstWhere('id', $linked->id)['bank_linked']);
+        $this->assertFalse($payload->firstWhere('id', $other->id)['bank_linked']);
     }
 
     public function test_follows_the_asset_into_a_new_month(): void
