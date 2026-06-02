@@ -59,8 +59,10 @@ class BankingFlowTest extends TestCase
         $this->assertDatabaseHas('bank_connections', ['aspsp_name' => 'Revolut', 'status' => 'pending']);
     }
 
-    public function test_reconnect_prunes_the_old_expired_connection_for_the_same_bank(): void
+    public function test_connect_keeps_the_old_expired_connection_until_callback(): void
     {
+        // Expired connections are kept through /connect so the callback can
+        // inherit their links; only stale pending attempts are pruned now.
         BankConnection::create([
             'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
         ]);
@@ -74,9 +76,47 @@ class BankingFlowTest extends TestCase
 
         $this->post('/banking/connect', ['aspsp_name' => 'Revolut', 'aspsp_country' => 'IT'])->assertRedirect();
 
+        $this->assertDatabaseHas('bank_connections', ['state' => 'old', 'status' => 'expired']);
+        $this->assertDatabaseHas('bank_connections', ['aspsp_name' => 'Revolut', 'status' => 'pending']);
+    }
+
+    public function test_reconnect_inherits_the_asset_link_by_iban_and_prunes_the_old_connection(): void
+    {
+        // An old expired connection whose account was linked to an asset.
+        $old = BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
+        ]);
+        $cat = Category::factory()->create();
+        $old->accounts()->create([
+            'uid' => 'old-uid',
+            'iban' => 'IT00REVOLUT0001',
+            'linked_name' => 'Conto Revolut',
+            'linked_category_id' => $cat->id,
+        ]);
+
+        // A fresh pending connection (as if /connect just ran) about to be confirmed.
+        BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'fresh', 'status' => 'pending',
+        ]);
+
+        // The bank returns the same IBAN but a NEW uid.
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-new',
+                'accounts' => [
+                    ['uid' => 'new-uid', 'account_id' => ['iban' => 'IT00REVOLUT0001'], 'name' => 'Main', 'currency' => 'EUR'],
+                ],
+            ]),
+        ]);
+
+        $this->get('/banking/callback?code=c&state=fresh')->assertRedirect();
+
+        // The new account inherited the link; the old connection is gone.
+        $this->assertDatabaseHas('bank_accounts', [
+            'uid' => 'new-uid', 'linked_name' => 'Conto Revolut', 'linked_category_id' => $cat->id,
+        ]);
         $this->assertDatabaseMissing('bank_connections', ['state' => 'old']);
         $this->assertSame(1, BankConnection::where('aspsp_name', 'Revolut')->count());
-        $this->assertDatabaseHas('bank_connections', ['aspsp_name' => 'Revolut', 'status' => 'pending']);
     }
 
     public function test_callback_exchanges_code_and_persists_session_and_accounts(): void

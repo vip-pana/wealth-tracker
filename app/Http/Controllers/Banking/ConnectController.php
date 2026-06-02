@@ -38,11 +38,12 @@ class ConnectController extends Controller
                 ->with('error', 'Impossibile avviare il collegamento bancario. Riprova.');
         }
 
-        // Reconnecting the same bank: drop its old expired/pending connections
-        // so we don't pile up stale rows (a fresh consent supersedes them).
+        // Drop only stale *pending* attempts for this bank (abandoned consents).
+        // Expired/active ones are kept until the callback succeeds, so it can
+        // inherit their account→asset links by IBAN, then prune them.
         BankConnection::where('aspsp_name', $bank)
             ->where('aspsp_country', $country)
-            ->whereIn('status', [BankConnection::STATUS_EXPIRED, BankConnection::STATUS_PENDING])
+            ->where('status', BankConnection::STATUS_PENDING)
             ->delete();
 
         BankConnection::create([
