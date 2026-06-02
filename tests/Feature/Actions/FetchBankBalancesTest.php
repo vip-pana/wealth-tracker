@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Actions;
 
-use App\Actions\Input\FetchAssetsByMonth;
 use App\Actions\Prices\FetchBankBalances;
 use App\Models\Asset;
-use App\Models\AssetPrice;
 use App\Models\BankConnection;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,6 +19,8 @@ class FetchBankBalancesTest extends TestCase
     use RefreshDatabase;
 
     private string $keyPath;
+
+    private int $categoryId;
 
     protected function setUp(): void
     {
@@ -36,6 +36,8 @@ class FetchBankBalancesTest extends TestCase
             'services.enable_banking.application_id' => 'app-uuid',
             'services.enable_banking.private_key_path' => $this->keyPath,
         ]);
+
+        $this->categoryId = Category::factory()->create()->id;
     }
 
     protected function tearDown(): void
@@ -45,14 +47,9 @@ class FetchBankBalancesTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * An asset linked, through an active connection, to a bank account uid.
-     */
-    private function linkedAsset(string $uid, float $value, string $status = BankConnection::STATUS_ACTIVE, ?Carbon $validUntil = null): Asset
+    /** A connected account linked to the logical asset "Conto" in the given category. */
+    private function linkedAccount(string $uid, string $status = BankConnection::STATUS_ACTIVE, ?Carbon $validUntil = null): void
     {
-        $cat = Category::factory()->create();
-        $asset = Asset::factory()->create(['category_id' => $cat->id, 'name' => 'Conto', 'value' => $value, 'date' => '2026-05-01']);
-
         $connection = BankConnection::create([
             'aspsp_name' => 'Revolut',
             'aspsp_country' => 'IT',
@@ -61,20 +58,30 @@ class FetchBankBalancesTest extends TestCase
             'status' => $status,
             'valid_until' => $validUntil ?? Carbon::now()->addDays(30),
         ]);
-        $connection->accounts()->create(['uid' => $uid, 'asset_id' => $asset->id]);
-
-        return $asset;
+        $connection->accounts()->create([
+            'uid' => $uid,
+            'linked_name' => 'Conto',
+            'linked_category_id' => $this->categoryId,
+        ]);
     }
 
-    public function test_overwrites_value_with_the_live_balance(): void
+    private function fakeBalance(string $uid, string $amount): void
     {
-        $asset = $this->linkedAsset('acc-1', 100);
-
         Http::fake([
-            'api.enablebanking.com/accounts/acc-1/balances' => Http::response([
-                'balances' => [['balance_amount' => ['amount' => '1500.50', 'currency' => 'EUR']]],
+            "api.enablebanking.com/accounts/{$uid}/balances" => Http::response([
+                'balances' => [['balance_amount' => ['amount' => $amount, 'currency' => 'EUR']]],
             ]),
         ]);
+    }
+
+    public function test_updates_the_current_month_row_of_the_linked_asset(): void
+    {
+        $this->linkedAccount('acc-1');
+        $asset = Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Conto', 'value' => 100,
+            'date' => now()->format('Y-m-01'),
+        ]);
+        $this->fakeBalance('acc-1', '1500.50');
 
         $result = app(FetchBankBalances::class)->run();
 
@@ -84,26 +91,50 @@ class FetchBankBalancesTest extends TestCase
         $this->assertNotNull($asset->bank_synced_at);
     }
 
-    public function test_input_payload_exposes_bank_synced_at(): void
+    public function test_creates_the_current_month_row_if_missing(): void
     {
-        $asset = $this->linkedAsset('acc-1', 100);
-        Http::fake([
-            'api.enablebanking.com/accounts/acc-1/balances' => Http::response([
-                'balances' => [['balance_amount' => ['amount' => '1500.50', 'currency' => 'EUR']]],
-            ]),
-        ]);
+        // No asset row for the current month yet — the sync should create it.
+        $this->linkedAccount('acc-1');
+        $this->fakeBalance('acc-1', '777.00');
+
         app(FetchBankBalances::class)->run();
 
-        $payload = app(FetchAssetsByMonth::class)->run($asset->date->format('Y-m-01'), AssetPrice::all()->keyBy('ticker'));
-        $row = $payload->firstWhere('id', $asset->id);
-
-        $this->assertNotNull($row['bank_synced_at']);
+        $this->assertDatabaseHas('assets', [
+            'name' => 'Conto',
+            'category_id' => $this->categoryId,
+            'date' => now()->format('Y-m-01'),
+            'value' => 777.0,
+        ]);
     }
 
-    public function test_failure_preserves_the_existing_value(): void
+    public function test_follows_the_asset_into_a_new_month(): void
     {
-        $asset = $this->linkedAsset('acc-1', 100);
+        // Last month's row exists and was synced; the current month has none.
+        $this->linkedAccount('acc-1');
+        Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Conto', 'value' => 500,
+            'date' => now()->subMonthNoOverflow()->format('Y-m-01'), 'bank_synced_at' => now()->subMonth(),
+        ]);
+        $this->fakeBalance('acc-1', '650.00');
 
+        app(FetchBankBalances::class)->run();
+
+        // A fresh current-month row carries the new balance; last month is untouched.
+        $this->assertDatabaseHas('assets', [
+            'name' => 'Conto', 'date' => now()->format('Y-m-01'), 'value' => 650.0,
+        ]);
+        $this->assertDatabaseHas('assets', [
+            'name' => 'Conto', 'date' => now()->subMonthNoOverflow()->format('Y-m-01'), 'value' => 500.0,
+        ]);
+    }
+
+    public function test_failure_preserves_any_existing_value(): void
+    {
+        $this->linkedAccount('acc-1');
+        $asset = Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Conto', 'value' => 100,
+            'date' => now()->format('Y-m-01'),
+        ]);
         Http::fake(['api.enablebanking.com/accounts/acc-1/balances' => Http::response('', 500)]);
 
         $result = app(FetchBankBalances::class)->run();
@@ -116,24 +147,22 @@ class FetchBankBalancesTest extends TestCase
 
     public function test_skips_expired_connections(): void
     {
-        $asset = $this->linkedAsset('acc-1', 100, BankConnection::STATUS_ACTIVE, Carbon::now()->subDay());
-
-        Http::fake(['api.enablebanking.com/*' => Http::response(['balances' => [['balance_amount' => ['amount' => '999', 'currency' => 'EUR']]]])]);
+        $this->linkedAccount('acc-1', BankConnection::STATUS_ACTIVE, Carbon::now()->subDay());
+        $this->fakeBalance('acc-1', '999.00');
 
         $result = app(FetchBankBalances::class)->run();
 
         $this->assertSame([], $result->updated);
-        $this->assertSame([], $result->failed);
-        $asset->refresh();
-        $this->assertEqualsWithDelta(100.0, (float) $asset->value, 0.001);
+        $this->assertDatabaseMissing('assets', ['name' => 'Conto', 'date' => now()->format('Y-m-01')]);
     }
 
-    public function test_skips_accounts_not_linked_to_an_asset(): void
+    public function test_skips_unlinked_accounts(): void
     {
         $connection = BankConnection::create([
-            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'st', 'session_id' => 's', 'status' => BankConnection::STATUS_ACTIVE, 'valid_until' => Carbon::now()->addDays(30),
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'st', 'session_id' => 's',
+            'status' => BankConnection::STATUS_ACTIVE, 'valid_until' => Carbon::now()->addDays(30),
         ]);
-        $connection->accounts()->create(['uid' => 'acc-x', 'asset_id' => null]);
+        $connection->accounts()->create(['uid' => 'acc-x']); // no linked_name/category
 
         $result = app(FetchBankBalances::class)->run();
 

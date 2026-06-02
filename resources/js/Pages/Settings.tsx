@@ -75,7 +75,8 @@ interface BankAccountEntry {
     id: number;
     iban: string | null;
     name: string | null;
-    asset_id: number | null;
+    linked_asset_id: number | null;
+    linked_name: string | null;
 }
 
 interface BankConnectionEntry {
@@ -439,9 +440,9 @@ function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; ass
     };
 
     return (
-        <Select value={account.asset_id ? String(account.asset_id) : '__none__'} onValueChange={link}>
+        <Select value={account.linked_asset_id ? String(account.linked_asset_id) : '__none__'} onValueChange={link}>
             <SelectTrigger className="h-8 w-48 text-xs">
-                <SelectValue placeholder="Collega a un asset" />
+                <SelectValue placeholder={account.linked_name ? `${account.linked_name} (questo mese non ancora creato)` : 'Collega a un asset'} />
             </SelectTrigger>
             <SelectContent>
                 <SelectItem value="__none__">Non collegato</SelectItem>

@@ -28,7 +28,11 @@ return new class extends Migration
             $table->string('iban')->nullable();
             $table->string('name')->nullable();
             $table->string('currency', 3)->nullable();
-            $table->foreignId('asset_id')->nullable()->constrained()->nullOnDelete();
+            // The asset this balance feeds, identified logically (name + category)
+            // so the sync follows the asset across monthly rows instead of being
+            // pinned to one month's id.
+            $table->string('linked_name')->nullable();
+            $table->foreignId('linked_category_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->timestamps();
         });
     }

@@ -21,29 +21,33 @@ class FetchBankBalances extends Action
     {
         // Linked accounts whose connection is still active and not expired.
         $accounts = BankAccount::query()
-            ->whereNotNull('asset_id')
+            ->whereNotNull('linked_name')
+            ->whereNotNull('linked_category_id')
             ->whereHas('connection', fn ($q) => $q
                 ->where('status', BankConnection::STATUS_ACTIVE)
                 ->where(fn ($q2) => $q2->whereNull('valid_until')->orWhere('valid_until', '>', Carbon::now()))
             )
-            ->with('asset')
             ->get();
 
         $updated = [];
         $failed = [];
 
         foreach ($accounts as $account) {
-            $asset = $account->asset;
-            if ($asset === null) {
-                continue;
-            }
+            $label = $account->linked_name ?? $account->iban ?? (string) $account->id;
 
             $balance = $this->enableBanking->accountBalance($account->uid);
 
             if ($balance === null) {
                 Log::warning('Bank balance unavailable', ['bank_account' => $account->id]);
-                $failed[] = $asset->name;
+                $failed[] = $label;
 
+                continue;
+            }
+
+            // Resolve (creating if needed) the linked asset's row for the current
+            // month, so the balance follows the asset across monthly rows.
+            $asset = $account->currentMonthAsset();
+            if ($asset === null) {
                 continue;
             }
 
@@ -52,7 +56,7 @@ class FetchBankBalances extends Action
             $asset->value = $balance['amount'];
             $asset->bank_synced_at = Carbon::now();
             $asset->save();
-            $updated[] = $asset->name;
+            $updated[] = $label;
         }
 
         return new PriceRefreshResult($updated, $failed);

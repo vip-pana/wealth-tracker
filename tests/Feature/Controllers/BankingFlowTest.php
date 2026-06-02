@@ -113,17 +113,20 @@ class BankingFlowTest extends TestCase
         $this->assertDatabaseCount('bank_accounts', 0);
     }
 
-    public function test_links_an_account_to_an_asset(): void
+    public function test_links_an_account_to_an_assets_logical_identity(): void
     {
         $cat = Category::factory()->create();
-        $asset = Asset::factory()->create(['category_id' => $cat->id, 'date' => '2026-05-01']);
+        $asset = Asset::factory()->create(['category_id' => $cat->id, 'name' => 'Conto', 'date' => '2026-05-01']);
         $connection = BankConnection::create(['aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 's', 'status' => 'active']);
         $account = $connection->accounts()->create(['uid' => 'acc-1']);
 
         $this->post("/banking/accounts/{$account->id}/link", ['asset_id' => $asset->id])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('bank_accounts', ['id' => $account->id, 'asset_id' => $asset->id]);
+        // Stored by name + category (logical), not by the row's id.
+        $this->assertDatabaseHas('bank_accounts', [
+            'id' => $account->id, 'linked_name' => 'Conto', 'linked_category_id' => $cat->id,
+        ]);
     }
 
     public function test_disconnect_removes_the_connection_and_its_accounts(): void
