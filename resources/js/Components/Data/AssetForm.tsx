@@ -165,13 +165,8 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 ))}
                             </SelectContent>
                         </Select>
-                        {editAsset?.bank_linked ? (
-                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
-                                <span>Categoria gestita dal conto collegato. Per cambiarla, scollega il conto in Impostazioni → Conti bancari.</span>
-                            </p>
-                        ) : (
-                            errors.category_id && <p className="text-xs text-destructive">{errors.category_id}</p>
+                        {!editAsset?.bank_linked && errors.category_id && (
+                            <p className="text-xs text-destructive">{errors.category_id}</p>
                         )}
                     </div>
 
@@ -182,8 +177,10 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             value={data.name}
                             onChange={(e) => setData('name', e.target.value)}
                             placeholder="es. Conto ING, Bitcoin, VWCE"
+                            disabled={!!editAsset?.bank_linked}
+                            className={editAsset?.bank_linked ? 'opacity-60 cursor-not-allowed' : ''}
                         />
-                        {errors.name && (
+                        {!editAsset?.bank_linked && errors.name && (
                             <p className="text-xs text-destructive">{errors.name}</p>
                         )}
                     </div>
@@ -205,7 +202,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             {editAsset?.bank_linked ? (
                                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                     <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
-                                    <span>Saldo sincronizzato da un conto bancario. Per modificarlo a mano, scollega il conto in Impostazioni → Conti bancari.</span>
+                                    <span>Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.</span>
                                 </p>
                             ) : (
                                 errors.value && <p className="text-xs text-destructive">{errors.value}</p>
