@@ -13,17 +13,17 @@ the account is linked in the Enable Banking portal (restricted mode).
 
 1. **Start the tunnel** (leave this terminal open for the whole flow):
    ```
-   cloudflared tunnel --url http://localhost:8080
+   ./scripts/tunnel.sh
    ```
-   It prints an HTTPS URL, e.g. `https://random-words.trycloudflare.com`.
+   It starts cloudflared, writes the https URL into `.env`
+   (`ENABLE_BANKING_REDIRECT_URL`), clears the app config, and prints the one
+   manual step + the URL to open.
 
-2. **Set the redirect in two places — they must match exactly:**
-   - Enable Banking portal → your app → *Allowed redirect URLs*: add
-     `https://random-words.trycloudflare.com/banking/callback`
-   - `.env`: `ENABLE_BANKING_REDIRECT_URL=https://random-words.trycloudflare.com/banking/callback`
-   - then `docker compose exec app php artisan config:clear`
+2. **Paste the printed redirect** into the Enable Banking portal (your app →
+   *Allowed redirect URLs*) and save. This is the only manual step — Enable
+   Banking has no API to set redirects, and the tunnel URL changes each run.
 
-3. **Open the app through the tunnel URL** (not localhost), go to
+3. **Open the app through the printed tunnel URL** (not localhost), go to
    Settings → *Conti bancari* → *Collega conto*, pick the bank, consent.
    The bank redirects back through the tunnel; the app stores the session and
    discovers the accounts.
@@ -32,13 +32,16 @@ the account is linked in the Enable Banking portal (restricted mode).
    From then on, the daily price refresh (and the manual "Aggiorna prezzi"
    button) syncs that asset's value from the bank balance.
 
-5. **Stop the tunnel** (Ctrl-C). Day-to-day use needs no tunnel — balances
-   refresh server-side using the stored session until it expires.
+5. **Stop the tunnel** (Ctrl-C in the script's terminal). Day-to-day use needs
+   no tunnel — balances refresh server-side using the stored session until it
+   expires.
 
 ## Renewal (~every 90 days)
 
-When a connection shows **Scaduto** in Settings, repeat steps 1–3 for that bank
-(a fresh tunnel URL each time). The account→asset links are kept.
+When a connection shows **Scaduto** in Settings, run `./scripts/tunnel.sh`
+again, paste the new redirect into the portal, and use the **Riconnetti** button
+on that connection. A fresh session issues new account uids, so re-link the
+accounts to their assets afterwards.
 
 ## Notes
 - The tunnel URL changes every restart; that's why the redirect is updated each
