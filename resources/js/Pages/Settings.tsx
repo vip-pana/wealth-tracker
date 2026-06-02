@@ -347,16 +347,17 @@ function RestoreButton({ url }: { url: string }) {
 
 function ConnectBankDialog({ open, onClose, banks, redirectReady }: { open: boolean; onClose: () => void; banks: BankOption[]; redirectReady: boolean }) {
     const [query, setQuery] = useState('');
-    const { data, setData, post, processing } = useForm({ aspsp_name: '', aspsp_country: 'IT' });
+    const [connecting, setConnecting] = useState<string | null>(null);
 
     const filtered = query.trim() === ''
         ? banks.slice(0, 30)
         : banks.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 30);
 
     const connect = (bank: BankOption) => {
-        setData({ aspsp_name: bank.name, aspsp_country: bank.country });
-        // Submitting redirects the browser to the bank's consent page.
-        post('/banking/connect');
+        // Post the chosen bank directly. (Using useForm + setData here would
+        // submit stale data on the first click — setData is async.)
+        setConnecting(bank.name);
+        router.post('/banking/connect', { aspsp_name: bank.name, aspsp_country: bank.country });
     };
 
     return (
@@ -398,7 +399,7 @@ function ConnectBankDialog({ open, onClose, banks, redirectReady }: { open: bool
                                     key={bank.name}
                                     type="button"
                                     onClick={() => connect(bank)}
-                                    disabled={processing}
+                                    disabled={connecting !== null}
                                     className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/40 transition-colors disabled:opacity-50"
                                 >
                                     <span>{bank.name}</span>
@@ -407,8 +408,8 @@ function ConnectBankDialog({ open, onClose, banks, redirectReady }: { open: bool
                             ))
                         )}
                     </div>
-                    {data.aspsp_name && processing && (
-                        <p className="text-xs text-muted-foreground">Reindirizzamento a {data.aspsp_name}…</p>
+                    {connecting && (
+                        <p className="text-xs text-muted-foreground">Reindirizzamento a {connecting}…</p>
                     )}
                 </div>
             </DialogContent>
