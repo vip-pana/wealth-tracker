@@ -459,7 +459,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
     const [connectOpen, setConnectOpen] = useState(false);
 
     const disconnect = (id: number, name: string) => {
-        if (confirm(`Rimuovere il collegamento con ${name}? Gli asset restano, ma non verranno più aggiornati automaticamente.`)) {
+        if (confirm(`Rimuovere il collegamento con ${name}?\n\nGli asset restano, ma vengono persi anche i collegamenti agli asset: dovrai rifarli a mano.\n\nSe vuoi solo rinnovare un consenso scaduto, usa "Riconnetti" invece di rimuovere — mantiene i collegamenti.`)) {
             router.delete(`/banking/connections/${id}`, { preserveScroll: true });
         }
     };
