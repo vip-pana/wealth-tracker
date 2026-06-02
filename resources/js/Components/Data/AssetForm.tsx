@@ -121,10 +121,11 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">
-                    {/* Mode segmented control — hidden for bank-linked assets:
-                       their value is owned by the connected account, so switching
-                       to ticker + quantity would silently detach it from the bank. */}
-                    {!editAsset?.bank_linked && (
+                    {/* Mode segmented control — only when creating. An existing
+                       asset already has a nature (manual or ticker); switching it
+                       in place wiped the other mode's fields and, for a bank-linked
+                       asset, would silently detach it from the account. */}
+                    {!isEdit && (
                         <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
                             <button
                                 type="button"
