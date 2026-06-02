@@ -36,7 +36,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
     const isEdit = !!editAsset;
 
     const initialMode = (): Mode =>
-        editAsset?.ticker ? 'ticker' : 'manual';
+        editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual';
 
     const [mode, setMode] = useState<Mode>(initialMode);
     const [showWallet, setShowWallet] = useState(!!editAsset?.wallet_address);
@@ -64,7 +64,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             date:           editAsset?.date ?? month,
             notes:          editAsset?.notes ?? '',
         });
-        setMode(editAsset?.ticker ? 'ticker' : 'manual');
+        setMode(editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual');
         setShowWallet(!!editAsset?.wallet_address);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, editAsset?.id, month]);
@@ -121,23 +121,27 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">
-                    {/* Mode segmented control */}
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
-                        <button
-                            type="button"
-                            onClick={() => switchMode('manual')}
-                            className={`flex-1 py-1.5 text-center transition-colors ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Valore manuale
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => switchMode('ticker')}
-                            className={`flex-1 py-1.5 text-center transition-colors ${mode === 'ticker' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Ticker + quantità
-                        </button>
-                    </div>
+                    {/* Mode segmented control — hidden for bank-linked assets:
+                       their value is owned by the connected account, so switching
+                       to ticker + quantity would silently detach it from the bank. */}
+                    {!editAsset?.bank_linked && (
+                        <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
+                            <button
+                                type="button"
+                                onClick={() => switchMode('manual')}
+                                className={`flex-1 py-1.5 text-center transition-colors ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Valore manuale
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => switchMode('ticker')}
+                                className={`flex-1 py-1.5 text-center transition-colors ${mode === 'ticker' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Ticker + quantità
+                            </button>
+                        </div>
+                    )}
 
                     {/* Category */}
                     <div className="space-y-1">
