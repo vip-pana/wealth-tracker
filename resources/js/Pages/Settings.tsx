@@ -714,7 +714,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                                         Aggiornato
                                                     </span>
                                                 )}
