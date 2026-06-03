@@ -65,7 +65,7 @@ class RefreshPriceControllerTest extends TestCase
 
         $this->post('/prices/refresh')
             ->assertRedirect()
-            ->assertSessionHas('error', 'Nessun prezzo aggiornato. Riprova più tardi.')
+            ->assertSessionHas('error', 'Nessun valore aggiornato. Riprova più tardi.')
             ->assertSessionMissing('success');
 
         // A failed fetch now records the attempt (no price) rather than nothing.

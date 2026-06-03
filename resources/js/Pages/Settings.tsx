@@ -435,21 +435,48 @@ function ReconnectButton({ connection }: { connection: BankConnectionEntry }) {
 }
 
 function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; assets: LinkableAsset[] }) {
+    const [processing, setProcessing] = useState(false);
+
     const link = (value: string) => {
-        const assetId = value === '__none__' ? null : value;
-        router.post(`/banking/accounts/${account.id}/link`, { asset_id: assetId }, { preserveScroll: true });
+        if (value.startsWith('__pending__')) return;
+        setProcessing(true);
+        router.post(
+            `/banking/accounts/${account.id}/link`,
+            { asset_id: value === '__none__' ? null : value },
+            { preserveScroll: true, onFinish: () => setProcessing(false) },
+        );
     };
 
+    // The account is linked but this month's row doesn't exist yet (created on
+    // the next sync), so there is no concrete asset id to select — show that as
+    // the current value rather than collapsing to "Non collegato".
+    const pendingThisMonth = account.linked_name !== null && account.linked_asset_id === null;
+    const pendingValue = `__pending__${account.id}`;
+    const currentValue = account.linked_asset_id
+        ? String(account.linked_asset_id)
+        : pendingThisMonth ? pendingValue : '__none__';
+
     return (
-        <Select value={account.linked_asset_id ? String(account.linked_asset_id) : '__none__'} onValueChange={link}>
+        <Select value={currentValue} onValueChange={link} disabled={processing}>
             <SelectTrigger className="h-8 w-48 text-xs">
-                <SelectValue placeholder={account.linked_name ? `${account.linked_name} (questo mese non ancora creato)` : 'Collega a un asset'} />
+                <SelectValue placeholder="Collega a un asset" />
             </SelectTrigger>
             <SelectContent>
                 <SelectItem value="__none__">Non collegato</SelectItem>
-                {assets.map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
-                ))}
+                {pendingThisMonth && (
+                    <SelectItem value={pendingValue} disabled>
+                        {account.linked_name} (sync in attesa)
+                    </SelectItem>
+                )}
+                {assets.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Nessun asset di liquidità questo mese — creane uno in Input.
+                    </div>
+                ) : (
+                    assets.map((a) => (
+                        <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                    ))
+                )}
             </SelectContent>
         </Select>
     );
@@ -457,22 +484,24 @@ function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; ass
 
 function BankConnectionsCard({ connections, banks, assets, redirectReady }: { connections: BankConnectionEntry[]; banks: BankOption[]; assets: LinkableAsset[]; redirectReady: boolean }) {
     const [connectOpen, setConnectOpen] = useState(false);
+    const [disconnecting, setDisconnecting] = useState<number | null>(null);
 
     const disconnect = (id: number, name: string) => {
         if (confirm(`Rimuovere il collegamento con ${name}?\n\nGli asset restano, ma vengono persi anche i collegamenti agli asset: dovrai rifarli a mano.\n\nSe vuoi solo rinnovare un consenso scaduto, usa "Riconnetti" invece di rimuovere — mantiene i collegamenti.`)) {
-            router.delete(`/banking/connections/${id}`, { preserveScroll: true });
+            setDisconnecting(id);
+            router.delete(`/banking/connections/${id}`, { preserveScroll: true, onFinish: () => setDisconnecting(null) });
         }
     };
 
     const statusBadge = (c: BankConnectionEntry) => {
+        const until = c.valid_until ? new Date(c.valid_until).toLocaleDateString('it-IT') : null;
         if (c.status === 'active') {
-            const until = c.valid_until ? new Date(c.valid_until).toLocaleDateString('it-IT') : null;
-            return <span className="text-xs text-green-500">Attivo{until ? ` · scade ${until}` : ''}</span>;
+            return <span className="text-xs text-emerald-400">Attivo{until ? ` · scade ${until}` : ''}</span>;
         }
         if (c.status === 'pending') {
             return <span className="text-xs text-amber-500">In attesa di consenso</span>;
         }
-        return <span className="text-xs text-destructive">Scaduto</span>;
+        return <span className="text-xs text-destructive">Scaduto{until ? ` il ${until}` : ''}</span>;
     };
 
     return (
@@ -481,7 +510,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
                 <div>
                     <CardTitle className="text-base">Conti bancari</CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Collega un conto via open banking (sola lettura) per sincronizzarne il saldo.
+                        Collega un conto via open banking (sola lettura) per sincronizzarne il saldo. I saldi si aggiornano con &laquo;Aggiorna ora&raquo; insieme ai prezzi.
                     </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)} disabled={banks.length === 0}>
@@ -515,6 +544,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
                                             size="icon"
                                             className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
                                             onClick={() => disconnect(c.id, c.aspsp_name)}
+                                            disabled={disconnecting === c.id}
                                             title="Rimuovi collegamento"
                                         >
                                             <Unlink className="w-4 h-4" />
