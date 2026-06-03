@@ -20,6 +20,7 @@ class CopyFromMonthController extends Controller
                     'category_id' => $asset->category_id,
                     'name' => $asset->name,
                     'ticker' => $asset->ticker,
+                    'isin' => $asset->isin,
                     'wallet_address' => $asset->wallet_address,
                     'quantity' => $asset->quantity,
                     'value' => $asset->value,

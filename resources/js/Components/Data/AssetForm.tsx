@@ -45,6 +45,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         category_id:    editAsset?.category_id?.toString() ?? '',
         name:           editAsset?.name ?? '',
         ticker:         editAsset?.ticker ?? '',
+        isin:           editAsset?.isin ?? '',
         wallet_address: editAsset?.wallet_address ?? '',
         quantity:       editAsset?.quantity?.toString() ?? '',
         value:          editAsset?.value?.toString() ?? '',
@@ -58,6 +59,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             category_id:    editAsset?.category_id?.toString() ?? '',
             name:           editAsset?.name ?? '',
             ticker:         editAsset?.ticker ?? '',
+            isin:           editAsset?.isin ?? '',
             wallet_address: editAsset?.wallet_address ?? '',
             quantity:       editAsset?.quantity?.toString() ?? '',
             value:          editAsset?.value?.toString() ?? '',
@@ -73,6 +75,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         setMode(m);
         if (m === 'manual') {
             setData('ticker', '');
+            setData('isin', '');
             setData('wallet_address', '');
             setData('quantity', '');
             setShowWallet(false);
@@ -246,6 +249,24 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                             <p className="text-xs text-destructive">{errors.quantity}</p>
                                         )}
                                     </div>
+                                )}
+                            </div>
+
+                            {/* ISIN — optional. Lets an external broker sync
+                               (e.g. Scalable Capital) match this holding by ISIN. */}
+                            <div className="space-y-1">
+                                <Label>
+                                    ISIN{' '}
+                                    <span className="text-muted-foreground font-normal">(opzionale)</span>
+                                </Label>
+                                <Input
+                                    value={data.isin}
+                                    onChange={(e) => setData('isin', e.target.value.toUpperCase())}
+                                    placeholder="es. IE00B4L5Y983"
+                                    className="font-mono text-xs"
+                                />
+                                {errors.isin && (
+                                    <p className="text-xs text-destructive">{errors.isin}</p>
                                 )}
                             </div>
 

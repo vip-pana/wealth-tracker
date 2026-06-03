@@ -23,6 +23,7 @@ class UpdateAssetRequest extends FormRequest
             'category_id' => 'sometimes|exists:categories,id',
             'name' => 'sometimes|string|max:255',
             'ticker' => 'nullable|string|max:30',
+            'isin' => 'nullable|string|max:12',
             'wallet_address' => 'nullable|string|max:255',
             'quantity' => 'nullable|numeric|min:0',
             'value' => 'nullable|numeric|min:0',
