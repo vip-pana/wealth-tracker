@@ -163,6 +163,26 @@ class FetchBankBalancesTest extends TestCase
         $this->assertNull($asset->bank_synced_at);
     }
 
+    public function test_restores_a_trashed_row_instead_of_creating_a_duplicate(): void
+    {
+        // A bank-linked asset whose current-month row was deleted by the user.
+        $this->linkedAccount('acc-1');
+        $asset = Asset::factory()->create([
+            'category_id' => $this->categoryId, 'name' => 'Conto', 'value' => 300,
+            'date' => now()->format('Y-m-01'),
+        ]);
+        $asset->delete();
+        $this->fakeBalance('acc-1', '450.00');
+
+        app(FetchBankBalances::class)->run();
+
+        // The same row is restored and updated — not duplicated.
+        $this->assertNotSoftDeleted('assets', ['id' => $asset->id]);
+        $this->assertSame(1, Asset::where('name', 'Conto')->where('category_id', $this->categoryId)->count());
+        $asset->refresh();
+        $this->assertEqualsWithDelta(450.0, (float) $asset->value, 0.001);
+    }
+
     public function test_skips_expired_connections(): void
     {
         $this->linkedAccount('acc-1', BankConnection::STATUS_ACTIVE, Carbon::now()->subDay());

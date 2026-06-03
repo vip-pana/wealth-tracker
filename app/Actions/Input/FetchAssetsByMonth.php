@@ -9,8 +9,6 @@ use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\BankAccount;
-use App\Models\BankConnection;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class FetchAssetsByMonth extends Action
@@ -22,7 +20,7 @@ class FetchAssetsByMonth extends Action
     public function run(string $month, Collection $prices): Collection
     {
         $illiquidMacros = MacroCategory::illiquidValues();
-        $bankLinks = $this->activeBankLinks();
+        $bankLinks = BankAccount::activeLinkKeys();
 
         return Asset::with('category')
             ->whereDate('date', $month)
@@ -61,31 +59,5 @@ class FetchAssetsByMonth extends Action
                     ],
                 ];
             });
-    }
-
-    /**
-     * Keys "name|category_id" of the logical assets currently managed by an
-     * active, non-expired bank connection. Used to lock their value field.
-     *
-     * @return list<string>
-     */
-    private function activeBankLinks(): array
-    {
-        $keys = [];
-
-        $accounts = BankAccount::query()
-            ->whereNotNull('linked_name')
-            ->whereNotNull('linked_category_id')
-            ->whereHas('connection', fn ($q) => $q
-                ->where('status', BankConnection::STATUS_ACTIVE)
-                ->where(fn ($q2) => $q2->whereNull('valid_until')->orWhere('valid_until', '>', Carbon::now()))
-            )
-            ->get();
-
-        foreach ($accounts as $b) {
-            $keys[] = $b->linked_name.'|'.$b->linked_category_id;
-        }
-
-        return $keys;
     }
 }
