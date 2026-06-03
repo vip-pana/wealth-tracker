@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
     Dialog,
@@ -109,6 +109,14 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                 // Drive the bank badge off the live link state (same signal as the
                 // edit-modal lock), and the freshness line off the last sync time.
                 const bankSync = asset.bank_linked ? bankFreshness(asset.bank_synced_at) : null;
+                // A broker-synced holding (e.g. Scalable) is not an open-banking
+                // link, but the sync still stamps bank_synced_at — the only way an
+                // asset gets that timestamp without being bank_linked. Surface its
+                // freshness so a stalled sync (proxy down / expired session) shows
+                // as stale.
+                const brokerSync = !asset.bank_linked && asset.bank_synced_at
+                    ? bankFreshness(asset.bank_synced_at)
+                    : null;
                 return (
                 <TableRow key={asset.id}>
                     <TableCell className="pl-10">
@@ -143,6 +151,20 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                         Banca
                                     </span>
                                 )}
+                                {brokerSync && (
+                                    <span
+                                        className={cn(
+                                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs',
+                                            brokerSync.stale ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-400',
+                                        )}
+                                        title={brokerSync.stale
+                                            ? 'Sincronizzazione Scalable ferma: il proxy potrebbe essere spento o la sessione scaduta'
+                                            : 'Valore sincronizzato dal broker Scalable'}
+                                    >
+                                        <CandlestickChart className="w-3 h-3" />
+                                        Scalable
+                                    </span>
+                                )}
                             </div>
                             {asset.ticker && asset.quantity !== null && (
                                 <p className="text-xs text-muted-foreground">
@@ -161,6 +183,11 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                             {bankSync && (
                                 <p className="text-xs text-muted-foreground">
                                     Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
+                                </p>
+                            )}
+                            {brokerSync && (
+                                <p className="text-xs text-muted-foreground">
+                                    Valore da Scalable · <span className={cn(brokerSync.stale && 'text-amber-500')}>{brokerSync.label}</span>
                                 </p>
                             )}
                             {asset.notes && !asset.ticker && (
