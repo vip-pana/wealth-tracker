@@ -30,6 +30,8 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { formatCurrency } from '@/lib/formatters';
+import { bankFreshness } from '@/lib/metrics';
+import { cn } from '@/lib/utils';
 import type { Category } from '@/types/models';
 
 const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto', 'Fondo Pensione'] as const;
@@ -77,6 +79,7 @@ interface BankAccountEntry {
     name: string | null;
     linked_asset_id: number | null;
     linked_name: string | null;
+    bank_synced_at: string | null;
 }
 
 interface BankConnectionEntry {
@@ -560,6 +563,14 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
                                             {acc.name && acc.iban && (
                                                 <span className="block text-xs text-muted-foreground truncate">{acc.name}</span>
                                             )}
+                                            {acc.linked_name && (() => {
+                                                const f = bankFreshness(acc.bank_synced_at);
+                                                return (
+                                                    <span className={cn('block text-xs', f.stale ? 'text-amber-500' : 'text-muted-foreground')}>
+                                                        Saldo {f.label}
+                                                    </span>
+                                                );
+                                            })()}
                                         </div>
                                         <LinkAccountSelect account={acc} assets={assets} />
                                     </div>

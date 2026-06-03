@@ -81,7 +81,7 @@ class IndexController extends Controller
             && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
-    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, linked_asset_id: int|null, linked_name: string|null}>}> */
+    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, linked_asset_id: int|null, linked_name: string|null, bank_synced_at: string|null}>}> */
     private function bankConnections(): array
     {
         $currentMonth = now()->format('Y-m-01');
@@ -90,15 +90,17 @@ class IndexController extends Controller
         foreach (BankConnection::with('accounts')->latest()->get() as $c) {
             $accounts = [];
             foreach ($c->accounts as $a) {
-                // Resolve the linked logical asset to its current-month row id so
-                // the dropdown shows the current selection.
+                // Resolve the linked logical asset to its current-month row so the
+                // dropdown shows the current selection and the last-sync time.
                 $linkedAssetId = null;
+                $bankSyncedAt = null;
                 if ($a->linked_name !== null && $a->linked_category_id !== null) {
-                    $found = Asset::where('name', $a->linked_name)
+                    $linkedRow = Asset::where('name', $a->linked_name)
                         ->where('category_id', $a->linked_category_id)
                         ->whereDate('date', $currentMonth)
-                        ->value('id');
-                    $linkedAssetId = is_numeric($found) ? (int) $found : null;
+                        ->first(['id', 'bank_synced_at']);
+                    $linkedAssetId = $linkedRow?->id;
+                    $bankSyncedAt = $linkedRow?->bank_synced_at?->toISOString();
                 }
 
                 $accounts[] = [
@@ -107,6 +109,7 @@ class IndexController extends Controller
                     'name' => $a->name,
                     'linked_asset_id' => $linkedAssetId,
                     'linked_name' => $a->linked_name,
+                    'bank_synced_at' => $bankSyncedAt,
                 ];
             }
 
