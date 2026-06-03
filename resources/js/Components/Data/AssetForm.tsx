@@ -203,7 +203,12 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             {editAsset?.bank_linked ? (
                                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                     <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
-                                    <span>Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.</span>
+                                    <span>
+                                        Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.
+                                        {editAsset.bank_synced_at && (
+                                            <> Saldo sincronizzato: {new Date(editAsset.bank_synced_at).toLocaleString('it-IT')}.</>
+                                        )}
+                                    </span>
                                 </p>
                             ) : (
                                 errors.value && <p className="text-xs text-destructive">{errors.value}</p>

@@ -163,7 +163,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                     Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
                                 </p>
                             )}
-                            {asset.notes && !asset.ticker && !bankSync && (
+                            {asset.notes && !asset.ticker && (
                                 <p className="text-xs text-muted-foreground">{asset.notes}</p>
                             )}
                         </div>
