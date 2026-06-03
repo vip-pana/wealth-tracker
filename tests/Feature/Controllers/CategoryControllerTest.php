@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Controllers;
 
 use App\Models\Asset;
+use App\Models\BankConnection;
 use App\Models\Category;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,5 +68,20 @@ class CategoryControllerTest extends TestCase
         $this->delete("/categories/{$category->id}")->assertRedirect()->assertSessionHasErrors('category');
 
         $this->assertDatabaseHas('categories', ['id' => $category->id]);
+    }
+
+    public function test_refuses_to_destroy_a_category_linked_to_a_bank_account(): void
+    {
+        $category = Category::factory()->create();
+        $connection = BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 's', 'status' => 'active',
+        ]);
+        $connection->accounts()->create([
+            'uid' => 'acc-1', 'linked_name' => 'Conto', 'linked_category_id' => $category->id,
+        ]);
+
+        $this->delete("/categories/{$category->id}")->assertRedirect()->assertSessionHasErrors('category');
+
+        $this->assertNotSoftDeleted('categories', ['id' => $category->id]);
     }
 }
