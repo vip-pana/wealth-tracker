@@ -7,6 +7,27 @@ RUN apt-get update && apt-get install -y \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Scalable CLI: official read-only broker access (sc broker overview --json).
+# Pinned + checksum-verified against the SHA256SUMS published with the release.
+ARG SCALABLE_CLI_VERSION=v0.2.0
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      arm64) target="aarch64" ;; \
+      amd64) target="x86_64" ;; \
+      *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac; \
+    base="https://github.com/ScalableCapital/scalable-cli/releases/download/${SCALABLE_CLI_VERSION}"; \
+    asset="sc-${SCALABLE_CLI_VERSION}-linux-${target}-gnu.tar.gz"; \
+    cd /tmp; \
+    curl -fsSL -o "$asset" "${base}/${asset}"; \
+    curl -fsSL -o SHA256SUMS "${base}/sc-${SCALABLE_CLI_VERSION}-SHA256SUMS"; \
+    grep -F "  ${asset}" SHA256SUMS | sha256sum -c -; \
+    tar -xzf "$asset"; \
+    install -m 0755 "sc-${SCALABLE_CLI_VERSION}-linux-${target}-gnu/sc" /usr/local/bin/sc; \
+    rm -rf /tmp/sc-* /tmp/SHA256SUMS; \
+    sc --version
+
 WORKDIR /app
 
 COPY composer.json composer.lock ./
