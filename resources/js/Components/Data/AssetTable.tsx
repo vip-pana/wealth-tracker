@@ -51,6 +51,12 @@ function DeleteButton({ asset }: { asset: Asset }) {
                     <p className="text-sm text-muted-foreground">
                         Stai per rimuovere <span className="font-medium text-foreground">{asset.name}</span> dal mese corrente. Gli altri mesi non vengono modificati.
                     </p>
+                    {asset.bank_linked && (
+                        <p className="flex items-start gap-1.5 text-sm text-amber-500">
+                            <Landmark className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>Questo asset è collegato a un conto bancario: verrà ricreato al prossimo aggiornamento dei saldi. Per rimuoverlo davvero, scollega prima il conto in Impostazioni → Conti bancari.</span>
+                        </p>
+                    )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={processing}>
                             Annulla

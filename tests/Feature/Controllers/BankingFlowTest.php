@@ -201,4 +201,19 @@ class BankingFlowTest extends TestCase
         $this->assertDatabaseMissing('bank_connections', ['id' => $connection->id]);
         $this->assertDatabaseMissing('bank_accounts', ['id' => $account->id]);
     }
+
+    public function test_disconnect_clears_bank_synced_at_on_the_linked_assets(): void
+    {
+        $category = Category::factory()->create();
+        $connection = BankConnection::create(['aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 's', 'status' => 'active']);
+        $connection->accounts()->create(['uid' => 'acc-1', 'linked_name' => 'Conto', 'linked_category_id' => $category->id]);
+        $asset = Asset::factory()->create([
+            'name' => 'Conto', 'category_id' => $category->id, 'bank_synced_at' => now(),
+        ]);
+
+        $this->delete("/banking/connections/{$connection->id}")->assertRedirect();
+
+        $asset->refresh();
+        $this->assertNull($asset->bank_synced_at);
+    }
 }
