@@ -89,9 +89,11 @@ class EnableBankingClient
 
     /**
      * Exchange the redirect `code` for a session and its accounts. Each account
-     * carries a `uid` used later to read balances.
+     * carries a `uid` used later to read balances. `valid_until` is the real
+     * session validity reported by the bank (which may be shorter than the 90
+     * days we requested), or null if the response omitted it.
      *
-     * @return array{session_id: string, accounts: list<array<int|string, mixed>>}|null
+     * @return array{session_id: string, accounts: list<array<int|string, mixed>>, valid_until: Carbon|null}|null
      */
     public function authorizeSession(string $code): ?array
     {
@@ -110,20 +112,34 @@ class EnableBankingClient
             return null;
         }
 
+        $validUntilRaw = $response->json('access.valid_until');
+        $validUntil = is_string($validUntilRaw) ? Carbon::parse($validUntilRaw) : null;
+
         return [
             'session_id' => $sessionId,
             'accounts' => array_values(array_filter($accounts, 'is_array')),
+            'valid_until' => $validUntil,
         ];
     }
 
     /**
-     * The current balance of an account (by its session uid), or null.
+     * The current balance of an account (by its session uid). Returns the
+     * balance on success, the string 'unauthorized' when the bank rejects the
+     * session (401/403 — consent revoked or expired), or null for any other
+     * failure (network, 5xx, unexpected shape). The caller distinguishes the
+     * 'unauthorized' case to expire the connection; a transient error does not.
      *
-     * @return array{amount: float, currency: string}|null
+     * @return array{amount: float, currency: string}|'unauthorized'|null
      */
-    public function accountBalance(string $accountUid): ?array
+    public function accountBalance(string $accountUid): array|string|null
     {
         $response = $this->request()?->get(self::BASE_URL.'/accounts/'.$accountUid.'/balances');
+
+        if ($response !== null && in_array($response->status(), [401, 403], true)) {
+            Log::warning('Enable Banking balance unauthorized', ['status' => $response->status(), 'account' => $accountUid]);
+
+            return 'unauthorized';
+        }
 
         if ($response === null || ! $response->successful()) {
             Log::warning('Enable Banking balance fetch failed', ['status' => $response?->status(), 'account' => $accountUid]);

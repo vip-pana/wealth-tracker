@@ -194,6 +194,19 @@ class FetchBankBalancesTest extends TestCase
         $this->assertDatabaseMissing('assets', ['name' => 'Conto', 'date' => now()->format('Y-m-01')]);
     }
 
+    public function test_expires_the_connection_when_the_bank_rejects_the_session(): void
+    {
+        $this->linkedAccount('acc-1');
+        Http::fake(['api.enablebanking.com/accounts/acc-1/balances' => Http::response('', 403)]);
+
+        $result = app(FetchBankBalances::class)->run();
+
+        $this->assertSame(['Conto'], $result->failed);
+        $this->assertDatabaseHas('bank_connections', [
+            'state' => 'state-acc-1', 'status' => BankConnection::STATUS_EXPIRED,
+        ]);
+    }
+
     public function test_skips_unlinked_accounts(): void
     {
         $connection = BankConnection::create([

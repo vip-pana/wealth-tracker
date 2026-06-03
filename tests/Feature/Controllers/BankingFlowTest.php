@@ -144,6 +144,28 @@ class BankingFlowTest extends TestCase
         $this->assertDatabaseHas('bank_accounts', ['uid' => 'acc-uid-1', 'iban' => 'IT60X0542811101000000123456']);
     }
 
+    public function test_callback_honours_the_banks_real_session_validity(): void
+    {
+        $connection = BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'st-validity', 'status' => 'pending',
+        ]);
+
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-v',
+                'accounts' => [['uid' => 'acc-v']],
+                // Bank caps the window well below the 90 days we requested.
+                'access' => ['valid_until' => now()->addDays(7)->toIso8601ZuluString()],
+            ]),
+        ]);
+
+        $this->get('/banking/callback?code=c&state=st-validity')->assertRedirect();
+
+        $connection->refresh();
+        $this->assertNotNull($connection->valid_until);
+        $this->assertSame(now()->addDays(7)->format('Y-m-d'), $connection->valid_until->format('Y-m-d'));
+    }
+
     public function test_callback_rejects_an_unknown_state(): void
     {
         $this->get('/banking/callback?code=x&state=nonexistent')

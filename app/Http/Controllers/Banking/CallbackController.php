@@ -40,8 +40,9 @@ class CallbackController extends Controller
         $connection->update([
             'session_id' => $session['session_id'],
             'status' => BankConnection::STATUS_ACTIVE,
-            // The access window we requested in /auth; banks cap it (often ~90 days).
-            'valid_until' => Carbon::now()->addDays(90),
+            // Prefer the real validity the bank reports; some cap it below the 90
+            // days we requested. Fall back to 90 days only if it's omitted.
+            'valid_until' => $session['valid_until'] ?? Carbon::now()->addDays(90),
         ]);
 
         // Reconnecting the same bank: the account uid changes each session but the

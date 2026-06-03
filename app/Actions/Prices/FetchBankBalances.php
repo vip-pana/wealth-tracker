@@ -21,6 +21,7 @@ class FetchBankBalances extends Action
     {
         // Linked accounts whose connection is still active and not expired.
         $accounts = BankAccount::query()
+            ->with('connection')
             ->whereNotNull('linked_name')
             ->whereNotNull('linked_category_id')
             ->whereHas('connection', fn ($q) => $q
@@ -36,6 +37,15 @@ class FetchBankBalances extends Action
             $label = $account->linked_name ?? $account->iban ?? (string) $account->id;
 
             $balance = $this->enableBanking->accountBalance($account->uid);
+
+            // The bank rejected the session: consent was revoked or lapsed early.
+            // Mark the connection expired so the UI surfaces "Riconnetti".
+            if ($balance === 'unauthorized') {
+                $account->connection->update(['status' => BankConnection::STATUS_EXPIRED]);
+                $failed[] = $label;
+
+                continue;
+            }
 
             if ($balance === null) {
                 Log::warning('Bank balance unavailable', ['bank_account' => $account->id]);

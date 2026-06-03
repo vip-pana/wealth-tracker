@@ -83,7 +83,7 @@ class EnableBankingClientTest extends TestCase
         $this->assertSame('auth-123', $result['authorization_id']);
     }
 
-    public function test_authorizes_a_session_and_returns_accounts(): void
+    public function test_authorizes_a_session_and_returns_accounts_with_real_validity(): void
     {
         Http::fake([
             'api.enablebanking.com/sessions' => Http::response([
@@ -91,6 +91,7 @@ class EnableBankingClientTest extends TestCase
                 'accounts' => [
                     ['uid' => 'acc-uid-1', 'name' => 'Main', 'currency' => 'EUR'],
                 ],
+                'access' => ['valid_until' => '2026-08-01T10:00:00Z'],
             ]),
         ]);
 
@@ -98,6 +99,22 @@ class EnableBankingClientTest extends TestCase
 
         $this->assertSame('sess-1', $result['session_id']);
         $this->assertSame('acc-uid-1', $result['accounts'][0]['uid']);
+        $this->assertNotNull($result['valid_until']);
+        $this->assertSame('2026-08-01', $result['valid_until']->format('Y-m-d'));
+    }
+
+    public function test_session_validity_is_null_when_the_bank_omits_it(): void
+    {
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-1',
+                'accounts' => [['uid' => 'acc-uid-1']],
+            ]),
+        ]);
+
+        $result = $this->client()->authorizeSession('code-abc');
+
+        $this->assertNull($result['valid_until']);
     }
 
     public function test_reads_an_account_balance(): void
@@ -119,6 +136,13 @@ class EnableBankingClientTest extends TestCase
         Http::fake(['api.enablebanking.com/accounts/*/balances' => Http::response(['balances' => [['wrong' => true]]])]);
 
         $this->assertNull($this->client()->accountBalance('acc-uid-1'));
+    }
+
+    public function test_balance_reports_unauthorized_on_a_rejected_session(): void
+    {
+        Http::fake(['api.enablebanking.com/accounts/*/balances' => Http::response('', 403)]);
+
+        $this->assertSame('unauthorized', $this->client()->accountBalance('acc-uid-1'));
     }
 
     public function test_returns_empty_when_the_private_key_is_missing(): void
