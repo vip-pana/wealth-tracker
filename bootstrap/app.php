@@ -18,11 +18,21 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
         ]);
 
-        // Behind the cloudflared tunnel that terminates TLS, trust the proxy so
-        // Laravel sees X-Forwarded-Proto: https and generates https URLs
-        // (otherwise Inertia emits http URLs and the browser blocks them as
-        // mixed content). Safe here: a local-only app behind a tunnel you run.
-        $middleware->trustProxies(at: '*');
+        // Only when a TLS tunnel is in use (the bank-consent redirect points at an
+        // https, non-localhost host) do we trust the proxy's X-Forwarded-* headers,
+        // so Laravel generates https URLs instead of mixed-content http ones. In
+        // normal local use the redirect is empty/localhost and no proxy is trusted.
+        // Uses env() because the config service isn't bootstrapped at this point;
+        // the tunnel is a dev-time flow where config is never cached anyway.
+        $redirect = (string) env('ENABLE_BANKING_REDIRECT_URL', '');
+        $host = parse_url($redirect, PHP_URL_HOST);
+        $behindTunnel = str_starts_with($redirect, 'https://')
+            && is_string($host)
+            && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+
+        if ($behindTunnel) {
+            $middleware->trustProxies(at: '*');
+        }
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
