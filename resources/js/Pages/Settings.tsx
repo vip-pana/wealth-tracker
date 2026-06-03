@@ -80,6 +80,8 @@ interface BankAccountEntry {
     linked_asset_id: number | null;
     linked_name: string | null;
     bank_synced_at: string | null;
+    last_sync_status: 'ok' | 'failed' | null;
+    last_sync_error: string | null;
 }
 
 interface BankConnectionEntry {
@@ -563,14 +565,20 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
                                             {acc.name && acc.iban && (
                                                 <span className="block text-xs text-muted-foreground truncate">{acc.name}</span>
                                             )}
-                                            {acc.linked_name && (() => {
-                                                const f = bankFreshness(acc.bank_synced_at);
-                                                return (
-                                                    <span className={cn('block text-xs', f.stale ? 'text-amber-500' : 'text-muted-foreground')}>
-                                                        Saldo {f.label}
+                                            {acc.linked_name && (
+                                                acc.last_sync_status === 'failed' ? (
+                                                    <span className="block text-xs text-destructive" title={acc.last_sync_error ?? undefined}>
+                                                        Ultimo sync fallito
                                                     </span>
-                                                );
-                                            })()}
+                                                ) : (() => {
+                                                    const f = bankFreshness(acc.bank_synced_at);
+                                                    return (
+                                                        <span className={cn('block text-xs', f.stale ? 'text-amber-500' : 'text-muted-foreground')}>
+                                                            Saldo {f.label}
+                                                        </span>
+                                                    );
+                                                })()
+                                            )}
                                         </div>
                                         <LinkAccountSelect account={acc} assets={assets} />
                                     </div>

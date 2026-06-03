@@ -81,7 +81,7 @@ class IndexController extends Controller
             && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
-    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, linked_asset_id: int|null, linked_name: string|null, bank_synced_at: string|null}>}> */
+    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, linked_asset_id: int|null, linked_name: string|null, bank_synced_at: string|null, last_sync_status: string|null, last_sync_error: string|null}>}> */
     private function bankConnections(): array
     {
         $currentMonth = now()->format('Y-m-01');
@@ -110,6 +110,8 @@ class IndexController extends Controller
                     'linked_asset_id' => $linkedAssetId,
                     'linked_name' => $a->linked_name,
                     'bank_synced_at' => $bankSyncedAt,
+                    'last_sync_status' => $a->last_sync_status,
+                    'last_sync_error' => $a->last_sync_error,
                 ];
             }
 

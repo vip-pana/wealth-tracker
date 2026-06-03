@@ -18,11 +18,22 @@ use Illuminate\Support\Carbon;
  * @property string|null $currency
  * @property string|null $linked_name
  * @property int|null $linked_category_id
+ * @property string|null $last_sync_status
+ * @property string|null $last_sync_error
+ * @property Carbon|null $last_sync_at
  * @property-read BankConnection $connection
  */
 class BankAccount extends Model
 {
-    protected $fillable = ['bank_connection_id', 'uid', 'iban', 'name', 'currency', 'linked_name', 'linked_category_id'];
+    public const SYNC_OK = 'ok';
+
+    public const SYNC_FAILED = 'failed';
+
+    protected $fillable = ['bank_connection_id', 'uid', 'iban', 'name', 'currency', 'linked_name', 'linked_category_id', 'last_sync_status', 'last_sync_error', 'last_sync_at'];
+
+    protected $casts = [
+        'last_sync_at' => 'datetime',
+    ];
 
     /** @return BelongsTo<BankConnection, $this> */
     public function connection(): BelongsTo
@@ -100,5 +111,24 @@ class BankAccount extends Model
         $asset->save();
 
         return $asset;
+    }
+
+    public function recordSyncSuccess(): void
+    {
+        $this->update([
+            'last_sync_status' => self::SYNC_OK,
+            'last_sync_at' => Carbon::now(),
+            'last_sync_error' => null,
+        ]);
+    }
+
+    public function recordSyncFailure(string $error): void
+    {
+        // Leaves the asset's last good value untouched; only records the attempt.
+        $this->update([
+            'last_sync_status' => self::SYNC_FAILED,
+            'last_sync_at' => Carbon::now(),
+            'last_sync_error' => $error,
+        ]);
     }
 }

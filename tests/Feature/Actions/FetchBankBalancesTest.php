@@ -91,6 +91,7 @@ class FetchBankBalancesTest extends TestCase
         $asset->refresh();
         $this->assertEqualsWithDelta(1500.50, (float) $asset->value, 0.001);
         $this->assertNotNull($asset->bank_synced_at);
+        $this->assertDatabaseHas('bank_accounts', ['uid' => 'acc-1', 'last_sync_status' => 'ok', 'last_sync_error' => null]);
     }
 
     public function test_creates_the_current_month_row_if_missing(): void
@@ -161,6 +162,8 @@ class FetchBankBalancesTest extends TestCase
         $asset->refresh();
         $this->assertEqualsWithDelta(100.0, (float) $asset->value, 0.001);
         $this->assertNull($asset->bank_synced_at);
+        // The failed attempt is recorded durably on the account.
+        $this->assertDatabaseHas('bank_accounts', ['uid' => 'acc-1', 'last_sync_status' => 'failed']);
     }
 
     public function test_restores_a_trashed_row_instead_of_creating_a_duplicate(): void

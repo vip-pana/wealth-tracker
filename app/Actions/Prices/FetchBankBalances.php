@@ -42,6 +42,7 @@ class FetchBankBalances extends Action
             // Mark the connection expired so the UI surfaces "Riconnetti".
             if ($balance === 'unauthorized') {
                 $account->connection->update(['status' => BankConnection::STATUS_EXPIRED]);
+                $account->recordSyncFailure('Consenso non più valido. Riconnetti il conto.');
                 $failed[] = $label;
 
                 continue;
@@ -49,6 +50,7 @@ class FetchBankBalances extends Action
 
             if ($balance === null) {
                 Log::warning('Bank balance unavailable', ['bank_account' => $account->id]);
+                $account->recordSyncFailure('Saldo non disponibile. Riprova più tardi.');
                 $failed[] = $label;
 
                 continue;
@@ -66,6 +68,7 @@ class FetchBankBalances extends Action
             $asset->value = $balance['amount'];
             $asset->bank_synced_at = Carbon::now();
             $asset->save();
+            $account->recordSyncSuccess();
             $updated[] = $label;
         }
 
