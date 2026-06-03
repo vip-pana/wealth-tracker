@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
     Dialog,
@@ -18,7 +18,7 @@ import {
     TableRow,
 } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/formatters';
-import { priceFreshness } from '@/lib/metrics';
+import { priceFreshness, bankFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
@@ -51,6 +51,12 @@ function DeleteButton({ asset }: { asset: Asset }) {
                     <p className="text-sm text-muted-foreground">
                         Stai per rimuovere <span className="font-medium text-foreground">{asset.name}</span> dal mese corrente. Gli altri mesi non vengono modificati.
                     </p>
+                    {asset.bank_linked && (
+                        <p className="flex items-start gap-1.5 text-sm text-amber-500">
+                            <Landmark className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>Questo asset è collegato a un conto bancario: verrà ricreato al prossimo aggiornamento dei saldi. Per rimuoverlo davvero, scollega prima il conto in Impostazioni → Conti bancari.</span>
+                        </p>
+                    )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={processing}>
                             Annulla
@@ -100,6 +106,9 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
             </TableRow>
             {open && assets.map((asset) => {
                 const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
+                // Drive the bank badge off the live link state (same signal as the
+                // edit-modal lock), and the freshness line off the last sync time.
+                const bankSync = asset.bank_linked ? bankFreshness(asset.bank_synced_at) : null;
                 return (
                 <TableRow key={asset.id}>
                     <TableCell className="pl-10">
@@ -125,6 +134,15 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                         {asset.ticker}
                                     </span>
                                 )}
+                                {bankSync && (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
+                                        title="Saldo sincronizzato dal conto bancario collegato"
+                                    >
+                                        <Landmark className="w-3 h-3" />
+                                        Banca
+                                    </span>
+                                )}
                             </div>
                             {asset.ticker && asset.quantity !== null && (
                                 <p className="text-xs text-muted-foreground">
@@ -138,6 +156,11 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                     {asset.wallet_address && (
                                         <> · <span className="font-mono" title={asset.wallet_address}>{asset.wallet_address.slice(0, 8)}…{asset.wallet_address.slice(-6)}</span></>
                                     )}
+                                </p>
+                            )}
+                            {bankSync && (
+                                <p className="text-xs text-muted-foreground">
+                                    Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
                                 </p>
                             )}
                             {asset.notes && !asset.ticker && (

@@ -59,6 +59,35 @@ export function priceFreshness(
     return { label: 'agg. ' + relativeAge(ageMs), stale };
 }
 
+/**
+ * A bank balance is considered stale later than a market price: Enable Banking
+ * consent lasts ~90 days and balances are read roughly daily, so a 1–2 day old
+ * balance is normal. Only flag it past this window.
+ */
+export const BANK_BALANCE_STALE_AFTER_MS = 4 * 24 * 60 * 60 * 1000;
+
+/**
+ * Describe how fresh a bank balance is. A null timestamp means the account is
+ * linked but not yet synced (reported as such, and treated as stale so the UI
+ * nudges a refresh). Unlike priceFreshness this never says "prezzo".
+ */
+export function bankFreshness(
+    syncedAt: string | null | undefined,
+    now: Date = new Date(),
+): PriceFreshness {
+    if (!syncedAt) {
+        return { label: 'in attesa di sincronizzazione', stale: true };
+    }
+
+    const synced = new Date(syncedAt);
+    if (Number.isNaN(synced.getTime())) {
+        return { label: 'in attesa di sincronizzazione', stale: true };
+    }
+
+    const ageMs = now.getTime() - synced.getTime();
+    return { label: 'agg. ' + relativeAge(ageMs), stale: ageMs >= BANK_BALANCE_STALE_AFTER_MS };
+}
+
 /** Render a non-negative age in milliseconds as a short Italian "... fa" label. */
 function relativeAge(ageMs: number): string {
     const minutes = Math.floor(ageMs / 60_000);

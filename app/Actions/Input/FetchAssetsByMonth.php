@@ -8,17 +8,19 @@ use App\Actions\Action;
 use App\Enums\MacroCategory;
 use App\Models\Asset;
 use App\Models\AssetPrice;
+use App\Models\BankAccount;
 use Illuminate\Support\Collection;
 
 class FetchAssetsByMonth extends Action
 {
     /**
      * @param  Collection<string, AssetPrice>  $prices
-     * @return Collection<int, array{id: int, name: string, ticker: string|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, icon: string|null, macro_category: string|null}}>
+     * @return Collection<int, array{id: int, name: string, ticker: string|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, bank_synced_at: string|null, bank_linked: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, icon: string|null, macro_category: string|null}}>
      */
     public function run(string $month, Collection $prices): Collection
     {
         $illiquidMacros = MacroCategory::illiquidValues();
+        $bankLinks = BankAccount::activeLinkKeys();
 
         return Asset::with('category')
             ->whereDate('date', $month)
@@ -30,7 +32,7 @@ class FetchAssetsByMonth extends Action
             })
             ->orderBy('created_at')
             ->get()
-            ->map(function (Asset $a) use ($prices) {
+            ->map(function (Asset $a) use ($prices, $bankLinks) {
                 /** @var AssetPrice|null $priceRecord */
                 $priceRecord = $a->ticker !== null ? $prices->get($a->ticker) : null;
                 $price = $priceRecord?->price;
@@ -43,6 +45,8 @@ class FetchAssetsByMonth extends Action
                     'quantity' => $a->quantity,
                     'price' => $price,
                     'value' => $a->currentValue($price),
+                    'bank_synced_at' => $a->bank_synced_at?->toISOString(),
+                    'bank_linked' => in_array($a->name.'|'.$a->category_id, $bankLinks, true),
                     'date' => $a->date->format('Y-m-d'),
                     'notes' => $a->notes,
                     'category_id' => $a->category_id,

@@ -19,7 +19,7 @@ class RefreshController extends Controller
         $result = $this->fetchAllPrices->run();
 
         if ($result->nothingUpdated() && $result->hasFailures()) {
-            return redirect()->back()->with('error', 'Nessun prezzo aggiornato. Riprova più tardi.');
+            return redirect()->back()->with('error', 'Nessun valore aggiornato. Riprova più tardi.');
         }
 
         if ($result->hasFailures()) {
@@ -30,6 +30,6 @@ class RefreshController extends Controller
             ));
         }
 
-        return redirect()->back()->with('success', sprintf('Prezzi aggiornati (%d).', $result->updatedCount()));
+        return redirect()->back()->with('success', sprintf('Saldi e prezzi aggiornati (%d).', $result->updatedCount()));
     }
 }

@@ -14,6 +14,10 @@ use App\Http\Controllers\Assets\RestoreController as RestoreAssetController;
 use App\Http\Controllers\Assets\StoreController as StoreAssetController;
 use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
 use App\Http\Controllers\Backup\StoreController as StoreBackupController;
+use App\Http\Controllers\Banking\CallbackController as BankingCallbackController;
+use App\Http\Controllers\Banking\ConnectController as BankingConnectController;
+use App\Http\Controllers\Banking\DisconnectController as BankingDisconnectController;
+use App\Http\Controllers\Banking\LinkAccountController as BankingLinkAccountController;
 use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
 use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
 use App\Http\Controllers\Categories\RestoreController as RestoreCategoryController;
@@ -80,6 +84,14 @@ Route::post('/backup', StoreBackupController::class)->name('backup.store');
 
 // ─── Prices ───────────────────────────────────────────────────────────────────
 Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
+
+// ─── Banking (Enable Banking open banking, read-only) ─────────────────────────
+Route::prefix('banking')->name('banking.')->group(function () {
+    Route::post('/connect', BankingConnectController::class)->name('connect');
+    Route::get('/callback', BankingCallbackController::class)->name('callback');
+    Route::post('/accounts/{account}/link', BankingLinkAccountController::class)->name('accounts.link');
+    Route::delete('/connections/{connection}', BankingDisconnectController::class)->name('connections.disconnect');
+});
 
 // ─── Export / Import (plain HTTP, not Inertia) ────────────────────────────────
 Route::get('/export/csv', ExportCsvController::class)->name('export.csv');

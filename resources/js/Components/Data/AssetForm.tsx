@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
+import { Landmark } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -35,7 +36,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
     const isEdit = !!editAsset;
 
     const initialMode = (): Mode =>
-        editAsset?.ticker ? 'ticker' : 'manual';
+        editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual';
 
     const [mode, setMode] = useState<Mode>(initialMode);
     const [showWallet, setShowWallet] = useState(!!editAsset?.wallet_address);
@@ -63,7 +64,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             date:           editAsset?.date ?? month,
             notes:          editAsset?.notes ?? '',
         });
-        setMode(editAsset?.ticker ? 'ticker' : 'manual');
+        setMode(editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual');
         setShowWallet(!!editAsset?.wallet_address);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, editAsset?.id, month]);
@@ -120,23 +121,28 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">
-                    {/* Mode segmented control */}
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
-                        <button
-                            type="button"
-                            onClick={() => switchMode('manual')}
-                            className={`flex-1 py-1.5 text-center transition-colors ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Valore manuale
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => switchMode('ticker')}
-                            className={`flex-1 py-1.5 text-center transition-colors ${mode === 'ticker' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                            Ticker + quantità
-                        </button>
-                    </div>
+                    {/* Mode segmented control — only when creating. An existing
+                       asset already has a nature (manual or ticker); switching it
+                       in place wiped the other mode's fields and, for a bank-linked
+                       asset, would silently detach it from the account. */}
+                    {!isEdit && (
+                        <div className="flex items-center rounded-lg border border-border overflow-hidden text-sm">
+                            <button
+                                type="button"
+                                onClick={() => switchMode('manual')}
+                                className={`flex-1 py-1.5 text-center transition-colors ${mode === 'manual' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Valore manuale
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => switchMode('ticker')}
+                                className={`flex-1 py-1.5 text-center transition-colors ${mode === 'ticker' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Ticker + quantità
+                            </button>
+                        </div>
+                    )}
 
                     {/* Category */}
                     <div className="space-y-1">
@@ -144,8 +150,9 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                         <Select
                             value={data.category_id}
                             onValueChange={(v) => setData('category_id', v)}
+                            disabled={!!editAsset?.bank_linked}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className={editAsset?.bank_linked ? 'opacity-60 cursor-not-allowed' : ''}>
                                 <SelectValue placeholder="Seleziona categoria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -159,7 +166,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 ))}
                             </SelectContent>
                         </Select>
-                        {errors.category_id && (
+                        {!editAsset?.bank_linked && errors.category_id && (
                             <p className="text-xs text-destructive">{errors.category_id}</p>
                         )}
                     </div>
@@ -171,14 +178,17 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             value={data.name}
                             onChange={(e) => setData('name', e.target.value)}
                             placeholder="es. Conto ING, Bitcoin, VWCE"
+                            disabled={!!editAsset?.bank_linked}
+                            className={editAsset?.bank_linked ? 'opacity-60 cursor-not-allowed' : ''}
                         />
-                        {errors.name && (
+                        {!editAsset?.bank_linked && errors.name && (
                             <p className="text-xs text-destructive">{errors.name}</p>
                         )}
                     </div>
 
                     {mode === 'manual' ? (
-                        /* Manual: value only */
+                        /* Manual: value only. A bank account can be linked from
+                           Settings → Conti bancari, which then auto-syncs this value. */
                         <div className="space-y-1">
                             <Label>Valore (€)</Label>
                             <Input
@@ -187,9 +197,21 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 value={data.value}
                                 onChange={(e) => setData('value', e.target.value)}
                                 placeholder="0.00"
+                                disabled={!!editAsset?.bank_linked}
+                                className={editAsset?.bank_linked ? 'opacity-60 cursor-not-allowed' : ''}
                             />
-                            {errors.value && (
-                                <p className="text-xs text-destructive">{errors.value}</p>
+                            {editAsset?.bank_linked ? (
+                                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                    <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
+                                    <span>
+                                        Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.
+                                        {editAsset.bank_synced_at && (
+                                            <> Saldo sincronizzato: {new Date(editAsset.bank_synced_at).toLocaleString('it-IT')}.</>
+                                        )}
+                                    </span>
+                                </p>
+                            ) : (
+                                errors.value && <p className="text-xs text-destructive">{errors.value}</p>
                             )}
                         </div>
                     ) : (

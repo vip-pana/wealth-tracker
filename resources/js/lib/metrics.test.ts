@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { netWorthChangePct, findForecastSplitDate, priceFreshness } from './metrics';
+import { netWorthChangePct, findForecastSplitDate, priceFreshness, bankFreshness } from './metrics';
 
 describe('netWorthChangePct', () => {
     it('computes a positive change', () => {
@@ -78,5 +78,24 @@ describe('priceFreshness', () => {
         expect(oneDay.stale).toBe(true);
         expect(oneDay.label).toBe('agg. 1 giorno fa');
         expect(priceFreshness(ago(3 * 24 * 60 * 60_000), now).label).toBe('agg. 3 giorni fa');
+    });
+});
+
+describe('bankFreshness', () => {
+    const now = new Date('2026-05-30T12:00:00Z');
+    const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+
+    it('reports a not-yet-synced balance distinctly from a missing price', () => {
+        expect(bankFreshness(null, now)).toEqual({ label: 'in attesa di sincronizzazione', stale: true });
+    });
+
+    it('tolerates a 1–2 day old balance, unlike a market price', () => {
+        // Same age that a price would already flag as stale at 24h.
+        expect(bankFreshness(ago(2 * 24 * 60 * 60_000), now).stale).toBe(false);
+        expect(bankFreshness(ago(2 * 24 * 60 * 60_000), now).label).toBe('agg. 2 giorni fa');
+    });
+
+    it('flags a balance older than four days', () => {
+        expect(bankFreshness(ago(4 * 24 * 60 * 60_000), now).stale).toBe(true);
     });
 });

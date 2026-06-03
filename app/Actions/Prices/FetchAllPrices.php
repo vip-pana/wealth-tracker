@@ -13,13 +13,15 @@ class FetchAllPrices extends Action
 
     public function __construct(
         private readonly FetchWalletBalances $fetchWalletBalances,
+        private readonly FetchBankBalances $fetchBankBalances,
         private readonly FetchCryptoPrices $fetchCryptoPrices,
         private readonly FetchEtfPrice $fetchEtfPrice,
     ) {}
 
     public function run(): PriceRefreshResult
     {
-        $result = $this->fetchWalletBalances->run();
+        $result = $this->fetchWalletBalances->run()
+            ->merge($this->fetchBankBalances->run());
 
         $tickers = Asset::whereNotNull('ticker')
             ->distinct()

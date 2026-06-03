@@ -4,16 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Categories;
 
+use App\Enums\MacroCategory;
+use App\Http\Clients\EnableBankingClient;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\AssetPrice;
+use App\Models\BankConnection;
 use App\Models\Category;
 use App\Models\Goal;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class IndexController extends Controller
 {
+    public function __construct(
+        private readonly EnableBankingClient $enableBanking,
+    ) {}
+
     public function __invoke(): Response
     {
         $categories = Category::orderBy('sort_order')
@@ -43,7 +52,105 @@ class IndexController extends Controller
             'categories' => $categories,
             'prices' => $prices,
             'trashed' => $this->trashedItems(),
+            'bankConnections' => $this->bankConnections(),
+            'bankRedirectReady' => $this->bankRedirectReady(),
+            'linkableAssets' => Asset::query()
+                ->whereNull('ticker')
+                ->whereDate('date', now()->format('Y-m-01'))
+                ->whereHas('category', fn ($q) => $q->where('macro_category', MacroCategory::Liquidita->value))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Asset $a): array => ['id' => $a->id, 'name' => $a->name])
+                ->all(),
+            'banks' => $this->banks(),
         ]);
+    }
+
+    /**
+     * Whether the configured consent redirect looks usable: an https URL on a
+     * public host. A localhost/placeholder value means no tunnel is set up yet,
+     * so starting a consent flow would fail — the UI warns about it.
+     */
+    private function bankRedirectReady(): bool
+    {
+        $url = Config::string('services.enable_banking.redirect_url', '');
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return str_starts_with($url, 'https://')
+            && is_string($host)
+            && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+    }
+
+    /** @return list<array{id: int, status: string, aspsp_name: string, aspsp_country: string, valid_until: string|null, accounts: list<array{id: int, iban: string|null, name: string|null, linked_asset_id: int|null, linked_name: string|null, bank_synced_at: string|null, last_sync_status: string|null, last_sync_error: string|null}>}> */
+    private function bankConnections(): array
+    {
+        $currentMonth = now()->format('Y-m-01');
+        $out = [];
+
+        foreach (BankConnection::with('accounts')->latest()->get() as $c) {
+            $accounts = [];
+            foreach ($c->accounts as $a) {
+                // Resolve the linked logical asset to its current-month row so the
+                // dropdown shows the current selection and the last-sync time.
+                $linkedAssetId = null;
+                $bankSyncedAt = null;
+                if ($a->linked_name !== null && $a->linked_category_id !== null) {
+                    $linkedRow = Asset::where('name', $a->linked_name)
+                        ->where('category_id', $a->linked_category_id)
+                        ->whereDate('date', $currentMonth)
+                        ->first(['id', 'bank_synced_at']);
+                    $linkedAssetId = $linkedRow?->id;
+                    $bankSyncedAt = $linkedRow?->bank_synced_at?->toISOString();
+                }
+
+                $accounts[] = [
+                    'id' => $a->id,
+                    'iban' => $a->iban,
+                    'name' => $a->name,
+                    'linked_asset_id' => $linkedAssetId,
+                    'linked_name' => $a->linked_name,
+                    'bank_synced_at' => $bankSyncedAt,
+                    'last_sync_status' => $a->last_sync_status,
+                    'last_sync_error' => $a->last_sync_error,
+                ];
+            }
+
+            $out[] = [
+                'id' => $c->id,
+                'status' => $c->isActive() ? 'active' : ($c->status === BankConnection::STATUS_PENDING ? 'pending' : 'expired'),
+                'aspsp_name' => $c->aspsp_name,
+                'aspsp_country' => $c->aspsp_country,
+                'valid_until' => $c->valid_until?->toISOString(),
+                'accounts' => $accounts,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The connectable banks for the user's country, cached (they rarely change)
+     * to avoid a live API call on every Settings load.
+     *
+     * @return list<array{name: string, country: string}>
+     */
+    private function banks(): array
+    {
+        /** @var list<array{name: string, country: string}> */
+        return Cache::remember('enable_banking.aspsps.IT', now()->addDay(), function (): array {
+            $out = [];
+            foreach ($this->enableBanking->aspsps('IT') as $a) {
+                $name = $a['name'] ?? null;
+                if (is_string($name) && $name !== '') {
+                    $out[] = [
+                        'name' => $name,
+                        'country' => is_string($a['country'] ?? null) ? $a['country'] : 'IT',
+                    ];
+                }
+            }
+
+            return $out;
+        });
     }
 
     /** @return list<array{type: string, label: string, deleted_at: string|null, restore_url: string}> */

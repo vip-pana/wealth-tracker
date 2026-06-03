@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -30,6 +30,8 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { formatCurrency } from '@/lib/formatters';
+import { bankFreshness } from '@/lib/metrics';
+import { cn } from '@/lib/utils';
 import type { Category } from '@/types/models';
 
 const MACRO_CATEGORIES = ['Liquidità', 'ETF', 'Cripto', 'Fondo Pensione'] as const;
@@ -48,6 +50,12 @@ const CATEGORY_PALETTE = [
     '#fcfcfc', // white
 ] as const;
 
+/** Mask an IBAN to first 4 + last 4 chars (e.g. IT09 ···· 0125); null if empty. */
+function maskIban(iban: string | null): string | null {
+    if (!iban || iban.length < 8) return iban || null;
+    return `${iban.slice(0, 4)} ···· ${iban.slice(-4)}`;
+}
+
 interface PriceEntry {
     ticker: string;
     price: number | null;
@@ -65,10 +73,44 @@ interface TrashedItem {
     restore_url: string;
 }
 
+interface BankAccountEntry {
+    id: number;
+    iban: string | null;
+    name: string | null;
+    linked_asset_id: number | null;
+    linked_name: string | null;
+    bank_synced_at: string | null;
+    last_sync_status: 'ok' | 'failed' | null;
+    last_sync_error: string | null;
+}
+
+interface BankConnectionEntry {
+    id: number;
+    status: 'active' | 'pending' | 'expired';
+    aspsp_name: string;
+    aspsp_country: string;
+    valid_until: string | null;
+    accounts: BankAccountEntry[];
+}
+
+interface BankOption {
+    name: string;
+    country: string;
+}
+
+interface LinkableAsset {
+    id: number;
+    name: string;
+}
+
 interface Props {
     categories: (Category & { assets_count: number })[];
     prices: PriceEntry[];
     trashed: TrashedItem[];
+    bankConnections: BankConnectionEntry[];
+    banks: BankOption[];
+    linkableAssets: LinkableAsset[];
+    bankRedirectReady: boolean;
 }
 
 type CategoryForm = {
@@ -308,7 +350,250 @@ function RestoreButton({ url }: { url: string }) {
     );
 }
 
-export default function Settings({ categories, prices, trashed }: Props) {
+function ConnectBankDialog({ open, onClose, banks, redirectReady }: { open: boolean; onClose: () => void; banks: BankOption[]; redirectReady: boolean }) {
+    const [query, setQuery] = useState('');
+    const [connecting, setConnecting] = useState<string | null>(null);
+
+    const filtered = query.trim() === ''
+        ? banks.slice(0, 30)
+        : banks.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 30);
+
+    const connect = (bank: BankOption) => {
+        // Post the chosen bank directly. (Using useForm + setData here would
+        // submit stale data on the first click — setData is async.)
+        setConnecting(bank.name);
+        router.post('/banking/connect', { aspsp_name: bank.name, aspsp_country: bank.country });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Collega un conto bancario</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                    {!redirectReady && (
+                        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>
+                                Serve un tunnel HTTPS attivo per il consenso. Avvia <code>cloudflared</code> e imposta <code>ENABLE_BANKING_REDIRECT_URL</code> (vedi <code>docs/enable-banking-usage.md</code>), altrimenti il collegamento fallirà.
+                            </span>
+                        </div>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                        Scegli la tua banca: ti porteremo sul <strong>sito della banca</strong> per autorizzare l&apos;accesso, poi tornerai qui.
+                    </p>
+                    <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                        <ShieldCheck className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                        <span>
+                            Solo lettura del saldo: non possiamo muovere denaro. Le credenziali le inserisci sulla banca, non qui. Puoi scollegare quando vuoi.
+                        </span>
+                    </div>
+                    <Input
+                        placeholder="Cerca la tua banca…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        autoFocus
+                    />
+                    <div className="max-h-72 overflow-y-auto divide-y divide-border rounded-md border border-border">
+                        {filtered.length === 0 ? (
+                            <p className="px-3 py-4 text-center text-sm text-muted-foreground">Nessuna banca trovata.</p>
+                        ) : (
+                            filtered.map((bank) => (
+                                <button
+                                    key={bank.name}
+                                    type="button"
+                                    onClick={() => connect(bank)}
+                                    disabled={connecting !== null}
+                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/40 transition-colors disabled:opacity-50"
+                                >
+                                    <span>{bank.name}</span>
+                                    <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
+                            ))
+                        )}
+                    </div>
+                    {connecting && (
+                        <p className="text-xs text-muted-foreground">Reindirizzamento a {connecting}…</p>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ReconnectButton({ connection }: { connection: BankConnectionEntry }) {
+    const { post, processing } = useForm({ aspsp_name: connection.aspsp_name, aspsp_country: connection.aspsp_country });
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => post('/banking/connect')}
+            disabled={processing}
+        >
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Riconnetti
+        </Button>
+    );
+}
+
+function LinkAccountSelect({ account, assets }: { account: BankAccountEntry; assets: LinkableAsset[] }) {
+    const [processing, setProcessing] = useState(false);
+
+    const link = (value: string) => {
+        if (value.startsWith('__pending__')) return;
+        setProcessing(true);
+        router.post(
+            `/banking/accounts/${account.id}/link`,
+            { asset_id: value === '__none__' ? null : value },
+            { preserveScroll: true, onFinish: () => setProcessing(false) },
+        );
+    };
+
+    // The account is linked but this month's row doesn't exist yet (created on
+    // the next sync), so there is no concrete asset id to select — show that as
+    // the current value rather than collapsing to "Non collegato".
+    const pendingThisMonth = account.linked_name !== null && account.linked_asset_id === null;
+    const pendingValue = `__pending__${account.id}`;
+    const currentValue = account.linked_asset_id
+        ? String(account.linked_asset_id)
+        : pendingThisMonth ? pendingValue : '__none__';
+
+    return (
+        <Select value={currentValue} onValueChange={link} disabled={processing}>
+            <SelectTrigger className="h-8 w-48 text-xs">
+                <SelectValue placeholder="Collega a un asset" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="__none__">Non collegato</SelectItem>
+                {pendingThisMonth && (
+                    <SelectItem value={pendingValue} disabled>
+                        {account.linked_name} (sync in attesa)
+                    </SelectItem>
+                )}
+                {assets.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Nessun asset di liquidità questo mese — creane uno in Input.
+                    </div>
+                ) : (
+                    assets.map((a) => (
+                        <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                    ))
+                )}
+            </SelectContent>
+        </Select>
+    );
+}
+
+function BankConnectionsCard({ connections, banks, assets, redirectReady }: { connections: BankConnectionEntry[]; banks: BankOption[]; assets: LinkableAsset[]; redirectReady: boolean }) {
+    const [connectOpen, setConnectOpen] = useState(false);
+    const [disconnecting, setDisconnecting] = useState<number | null>(null);
+
+    const disconnect = (id: number, name: string) => {
+        if (confirm(`Rimuovere il collegamento con ${name}?\n\nGli asset restano, ma vengono persi anche i collegamenti agli asset: dovrai rifarli a mano.\n\nSe vuoi solo rinnovare un consenso scaduto, usa "Riconnetti" invece di rimuovere — mantiene i collegamenti.`)) {
+            setDisconnecting(id);
+            router.delete(`/banking/connections/${id}`, { preserveScroll: true, onFinish: () => setDisconnecting(null) });
+        }
+    };
+
+    const statusBadge = (c: BankConnectionEntry) => {
+        const until = c.valid_until ? new Date(c.valid_until).toLocaleDateString('it-IT') : null;
+        if (c.status === 'active') {
+            return <span className="text-xs text-emerald-400">Attivo{until ? ` · scade ${until}` : ''}</span>;
+        }
+        if (c.status === 'pending') {
+            return <span className="text-xs text-amber-500">In attesa di consenso</span>;
+        }
+        return <span className="text-xs text-destructive">Scaduto{until ? ` il ${until}` : ''}</span>;
+    };
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
+                <div>
+                    <CardTitle className="text-base">Conti bancari</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Collega un conto via open banking (sola lettura) per sincronizzarne il saldo. I saldi si aggiornano con &laquo;Aggiorna ora&raquo; insieme ai prezzi.
+                    </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)} disabled={banks.length === 0}>
+                    <Landmark className="w-4 h-4 mr-1" />
+                    Collega conto
+                </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+                {banks.length === 0 && (
+                    <p className="px-4 py-3 text-xs text-amber-500">
+                        Enable Banking non configurato (chiave/credenziali mancanti).
+                    </p>
+                )}
+                {connections.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        Nessun conto collegato.
+                    </p>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {connections.map((c) => (
+                            <div key={c.id} className="px-4 py-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{c.aspsp_name}</span>
+                                        {statusBadge(c)}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {c.status === 'expired' && <ReconnectButton connection={c} />}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
+                                            onClick={() => disconnect(c.id, c.aspsp_name)}
+                                            disabled={disconnecting === c.id}
+                                            title="Rimuovi collegamento"
+                                        >
+                                            <Unlink className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                {c.accounts.map((acc) => (
+                                    <div key={acc.id} className="flex items-center justify-between gap-3 pl-2">
+                                        <div className="min-w-0">
+                                            <span className="block text-xs font-mono text-foreground truncate">
+                                                {maskIban(acc.iban) ?? acc.name ?? `Conto ${acc.id}`}
+                                            </span>
+                                            {acc.name && acc.iban && (
+                                                <span className="block text-xs text-muted-foreground truncate">{acc.name}</span>
+                                            )}
+                                            {acc.linked_name && (
+                                                acc.last_sync_status === 'failed' ? (
+                                                    <span className="block text-xs text-destructive" title={acc.last_sync_error ?? undefined}>
+                                                        Ultimo sync fallito
+                                                    </span>
+                                                ) : (() => {
+                                                    const f = bankFreshness(acc.bank_synced_at);
+                                                    return (
+                                                        <span className={cn('block text-xs', f.stale ? 'text-amber-500' : 'text-muted-foreground')}>
+                                                            Saldo {f.label}
+                                                        </span>
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
+                                        <LinkAccountSelect account={acc} assets={assets} />
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+            <ConnectBankDialog open={connectOpen} onClose={() => setConnectOpen(false)} banks={banks} redirectReady={redirectReady} />
+        </Card>
+    );
+}
+
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -429,7 +714,7 @@ export default function Settings({ categories, prices, trashed }: Props) {
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                                         Aggiornato
                                                     </span>
                                                 )}
@@ -444,6 +729,9 @@ export default function Settings({ categories, prices, trashed }: Props) {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Bank connections (open banking) */}
+                <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} redirectReady={bankRedirectReady} />
 
                 {/* Import / Export */}
                 <Card>
