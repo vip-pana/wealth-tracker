@@ -18,7 +18,7 @@ import {
     TableRow,
 } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/formatters';
-import { priceFreshness } from '@/lib/metrics';
+import { priceFreshness, bankFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
@@ -106,7 +106,9 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
             </TableRow>
             {open && assets.map((asset) => {
                 const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
-                const bankFreshness = !asset.ticker && asset.bank_synced_at ? priceFreshness(asset.bank_synced_at) : null;
+                // Drive the bank badge off the live link state (same signal as the
+                // edit-modal lock), and the freshness line off the last sync time.
+                const bankSync = asset.bank_linked ? bankFreshness(asset.bank_synced_at) : null;
                 return (
                 <TableRow key={asset.id}>
                     <TableCell className="pl-10">
@@ -132,7 +134,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                         {asset.ticker}
                                     </span>
                                 )}
-                                {bankFreshness && (
+                                {bankSync && (
                                     <span
                                         className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
                                         title="Saldo sincronizzato dal conto bancario collegato"
@@ -156,12 +158,12 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                     )}
                                 </p>
                             )}
-                            {bankFreshness && (
+                            {bankSync && (
                                 <p className="text-xs text-muted-foreground">
-                                    Saldo da banca · <span className={cn(bankFreshness.stale && 'text-amber-500')}>{bankFreshness.label}</span>
+                                    Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
                                 </p>
                             )}
-                            {asset.notes && !asset.ticker && !bankFreshness && (
+                            {asset.notes && !asset.ticker && !bankSync && (
                                 <p className="text-xs text-muted-foreground">{asset.notes}</p>
                             )}
                         </div>
