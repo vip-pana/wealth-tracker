@@ -29,8 +29,5 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="SCALABLE_BALANCE_URL" value=""/>
-        <env name="SCALABLE_GATEWAY_TOKEN" value=""/>
-        <env name="SCALABLE_CASH_CATEGORY_ID" value="0"/>
     </php>
 </phpunit>

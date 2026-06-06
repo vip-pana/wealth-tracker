@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Clients;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -32,7 +34,7 @@ class ScalableUnofficialClient
      */
     public function positions(): ?array
     {
-        $response = $this->request()?->get($this->url('/portfolio/inventory'));
+        $response = $this->get('/portfolio/inventory');
 
         if ($response === null || ! $response->successful()) {
             Log::warning('Scalable unofficial inventory fetch failed', ['status' => $response?->status()]);
@@ -84,7 +86,7 @@ class ScalableUnofficialClient
      */
     public function cashBalance(): ?float
     {
-        $response = $this->request()?->get($this->url('/portfolio/cash'));
+        $response = $this->get('/portfolio/cash');
 
         if ($response === null || ! $response->successful()) {
             Log::warning('Scalable unofficial cash fetch failed', ['status' => $response?->status()]);
@@ -103,6 +105,28 @@ class ScalableUnofficialClient
         return (float) $cash;
     }
 
+    /**
+     * GET a proxy path, or null if unconfigured or the proxy is unreachable.
+     * A down proxy (the common case when the host server isn't running) is a
+     * connection error, not an HTTP status — treat it the same as any other
+     * failure so the sync degrades instead of throwing.
+     */
+    private function get(string $path): ?Response
+    {
+        $request = $this->request();
+        if ($request === null) {
+            return null;
+        }
+
+        try {
+            return $request->get(rtrim($this->balanceUrl, '/').$path);
+        } catch (ConnectionException $e) {
+            Log::warning('Scalable unofficial proxy unreachable', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
     private function request(): ?PendingRequest
     {
         if ($this->balanceUrl === '' || $this->token === '') {
@@ -112,10 +136,5 @@ class ScalableUnofficialClient
         return Http::withHeaders(['X-Gateway-Token' => $this->token])
             ->timeout(15)
             ->retry(2, 200, throw: false);
-    }
-
-    private function url(string $path): string
-    {
-        return rtrim($this->balanceUrl, '/').$path;
     }
 }
