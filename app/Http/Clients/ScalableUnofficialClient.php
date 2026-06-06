@@ -106,6 +106,41 @@ class ScalableUnofficialClient
     }
 
     /**
+     * Start an interactive login on the proxy: it opens a browser on the host
+     * for the user to complete Scalable's login + 2FA, then captures the
+     * session. Blocks until the user finishes (the proxy waits up to ~120s), or
+     * returns immediately if a valid session already exists. Returns true on a
+     * live session, false if the proxy is unreachable, times out, or rejects.
+     *
+     * The user's credentials never touch this app — they are typed into the
+     * browser on the host. The proxy exempts /auth from the gateway token.
+     */
+    public function login(): bool
+    {
+        if ($this->balanceUrl === '') {
+            return false;
+        }
+
+        try {
+            $response = Http::withHeaders(['X-Gateway-Token' => $this->token])
+                ->timeout(130)
+                ->post(rtrim($this->balanceUrl, '/').'/auth/login');
+        } catch (ConnectionException $e) {
+            Log::warning('Scalable unofficial login proxy unreachable', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+
+        if (! $response->successful()) {
+            Log::warning('Scalable unofficial login failed', ['status' => $response->status()]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * GET a proxy path, or null if unconfigured or the proxy is unreachable.
      * A down proxy (the common case when the host server isn't running) is a
      * connection error, not an HTTP status — treat it the same as any other

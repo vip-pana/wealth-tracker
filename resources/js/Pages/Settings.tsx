@@ -603,8 +603,10 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
 
 function ScalableConnectionCard({ state }: { state: ScalableState }) {
     const refresh = useForm({});
+    const login = useForm({});
     const freshness = brokerFreshness(state.last_sync_at);
     const failed = state.last_sync_status === 'failed';
+    const needsLogin = failed || freshness.stale || state.last_sync_at === null;
 
     return (
         <Card>
@@ -619,15 +621,29 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                     </p>
                 </div>
                 {state.configured && (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => refresh.post('/scalable/refresh', { preserveScroll: true })}
-                        disabled={refresh.processing}
-                    >
-                        <RefreshCw className={`w-4 h-4 mr-1 ${refresh.processing ? 'animate-spin' : ''}`} />
-                        Sincronizza ora
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {needsLogin && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => login.post('/scalable/login', { preserveScroll: true })}
+                                disabled={login.processing}
+                                title="Apre una finestra del browser sul Mac per il login e il 2FA"
+                            >
+                                <Link2 className={`w-4 h-4 mr-1 ${login.processing ? 'animate-pulse' : ''}`} />
+                                {login.processing ? 'In attesa del login…' : 'Collega / Riconnetti'}
+                            </Button>
+                        )}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => refresh.post('/scalable/refresh', { preserveScroll: true })}
+                            disabled={refresh.processing}
+                        >
+                            <RefreshCw className={`w-4 h-4 mr-1 ${refresh.processing ? 'animate-spin' : ''}`} />
+                            Sincronizza ora
+                        </Button>
+                    </div>
                 )}
             </CardHeader>
             <CardContent className="space-y-2">
@@ -659,7 +675,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
                                 <span>
-                                    Se la sincronizzazione è ferma, avvia il proxy sul Mac e rifai il login (browser + 2FA): la sessione Scalable dura ~8 ore. La sincronizzazione automatica riprende da sola una volta riattivata.
+                                    La sessione Scalable dura ~8 ore. Clicca &laquo;Collega / Riconnetti&raquo;: si aprirà una finestra del browser sul Mac per il login e il 2FA. Poi la sincronizzazione automatica riprende da sola.
                                 </span>
                             </p>
                         )}
