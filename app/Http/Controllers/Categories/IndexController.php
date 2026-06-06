@@ -12,6 +12,7 @@ use App\Models\AssetPrice;
 use App\Models\BankConnection;
 use App\Models\Category;
 use App\Models\Goal;
+use App\Models\ScalableConnection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
@@ -54,6 +55,7 @@ class IndexController extends Controller
             'trashed' => $this->trashedItems(),
             'bankConnections' => $this->bankConnections(),
             'bankRedirectReady' => $this->bankRedirectReady(),
+            'scalable' => $this->scalableState(),
             'linkableAssets' => Asset::query()
                 ->whereNull('ticker')
                 ->whereDate('date', now()->format('Y-m-01'))
@@ -64,6 +66,25 @@ class IndexController extends Controller
                 ->all(),
             'banks' => $this->banks(),
         ]);
+    }
+
+    /**
+     * State of the Scalable broker sync for the Settings card: whether it's
+     * configured and the outcome of the last sync. Null timestamps/status mean
+     * never synced yet.
+     *
+     * @return array{configured: bool, last_sync_status: string|null, last_sync_error: string|null, last_sync_at: string|null}
+     */
+    private function scalableState(): array
+    {
+        $connection = ScalableConnection::current();
+
+        return [
+            'configured' => Config::string('services.scalable.balance_url', '') !== '',
+            'last_sync_status' => $connection->last_sync_status,
+            'last_sync_error' => $connection->last_sync_error,
+            'last_sync_at' => $connection->last_sync_at?->toISOString(),
+        ];
     }
 
     /**

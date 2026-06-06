@@ -33,6 +33,7 @@ use App\Http\Controllers\Pension\IndexController as IndexPensionController;
 use App\Http\Controllers\Pension\StoreController as StorePensionController;
 use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
+use App\Http\Controllers\Scalable\RefreshController as RefreshScalableController;
 use App\Http\Controllers\Snapshots\StoreController as StoreSnapshotController;
 use Illuminate\Support\Facades\Route;
 
@@ -84,6 +85,9 @@ Route::post('/backup', StoreBackupController::class)->name('backup.store');
 
 // ─── Prices ───────────────────────────────────────────────────────────────────
 Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
+
+// ─── Scalable (broker sync, stopgap via host proxy) ───────────────────────────
+Route::post('/scalable/refresh', RefreshScalableController::class)->name('scalable.refresh');
 
 // ─── Banking (Enable Banking open banking, read-only) ─────────────────────────
 Route::prefix('banking')->name('banking.')->group(function () {

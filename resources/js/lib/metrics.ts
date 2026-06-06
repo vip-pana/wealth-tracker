@@ -88,6 +88,35 @@ export function bankFreshness(
     return { label: 'agg. ' + relativeAge(ageMs), stale: ageMs >= BANK_BALANCE_STALE_AFTER_MS };
 }
 
+/**
+ * A broker sync (e.g. Scalable) goes stale sooner than a bank balance: it runs
+ * once a day through a local proxy whose session lasts only ~8h, so a missed
+ * day or two likely means the proxy is down or the session expired — surface it
+ * earlier than the bank window.
+ */
+export const BROKER_SYNC_STALE_AFTER_MS = 2 * 24 * 60 * 60 * 1000;
+
+/**
+ * Describe how fresh a broker sync is. Same shape as bankFreshness but with the
+ * shorter broker staleness window.
+ */
+export function brokerFreshness(
+    syncedAt: string | null | undefined,
+    now: Date = new Date(),
+): PriceFreshness {
+    if (!syncedAt) {
+        return { label: 'in attesa di sincronizzazione', stale: true };
+    }
+
+    const synced = new Date(syncedAt);
+    if (Number.isNaN(synced.getTime())) {
+        return { label: 'in attesa di sincronizzazione', stale: true };
+    }
+
+    const ageMs = now.getTime() - synced.getTime();
+    return { label: 'agg. ' + relativeAge(ageMs), stale: ageMs >= BROKER_SYNC_STALE_AFTER_MS };
+}
+
 /** Render a non-negative age in milliseconds as a short Italian "... fa" label. */
 function relativeAge(ageMs: number): string {
     const minutes = Math.floor(ageMs / 60_000);

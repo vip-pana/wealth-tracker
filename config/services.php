@@ -43,4 +43,17 @@ return [
         'redirect_url' => env('ENABLE_BANKING_REDIRECT_URL', ''),
     ],
 
+    // Stopgap: reads portfolio positions from the local unofficial Scalable
+    // Capital API proxy running on the host. Inert unless balance_url is set.
+    // Each position is matched to the asset carrying the same ISIN, so the sync
+    // updates that asset's current-month row; uninvested cash (no ISIN) is synced
+    // as its own asset. To be replaced by the official Scalable CLI once
+    // allowlisted.
+    'scalable' => [
+        'balance_url' => env('SCALABLE_BALANCE_URL', ''),
+        'token' => env('SCALABLE_GATEWAY_TOKEN', ''),
+        'cash_category_id' => (int) env('SCALABLE_CASH_CATEGORY_ID', 0),
+        'cash_asset_name' => env('SCALABLE_CASH_ASSET_NAME', 'Scalable Liquidità'),
+    ],
+
 ];

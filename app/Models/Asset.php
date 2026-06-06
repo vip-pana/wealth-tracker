@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property float $value
  * @property string|null $ticker
+ * @property string|null $isin
  * @property string|null $wallet_address
  * @property Carbon|null $bank_synced_at
  * @property float|null $quantity
@@ -32,7 +33,7 @@ class Asset extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'wallet_address', 'bank_synced_at', 'quantity', 'date', 'notes'];
+    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'isin', 'wallet_address', 'bank_synced_at', 'quantity', 'date', 'notes'];
 
     protected $casts = [
         'value' => 'float',

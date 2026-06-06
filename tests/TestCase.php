@@ -26,6 +26,13 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
 
+        // The container exports SCALABLE_* as real env vars (like DB_*), which
+        // override phpunit.xml. Force the broker sync off so tests never reach
+        // the host proxy; tests that exercise it set the config explicitly.
+        $app['config']->set('services.scalable.balance_url', '');
+        $app['config']->set('services.scalable.token', '');
+        $app['config']->set('services.scalable.cash_category_id', 0);
+
         return $app;
     }
 }
