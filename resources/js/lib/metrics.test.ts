@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { netWorthChangePct, findForecastSplitDate, priceFreshness, bankFreshness } from './metrics';
+import { netWorthChangePct, findForecastSplitDate, priceFreshness, bankFreshness, brokerFreshness } from './metrics';
 
 describe('netWorthChangePct', () => {
     it('computes a positive change', () => {
@@ -97,5 +97,24 @@ describe('bankFreshness', () => {
 
     it('flags a balance older than four days', () => {
         expect(bankFreshness(ago(4 * 24 * 60 * 60_000), now).stale).toBe(true);
+    });
+});
+
+describe('brokerFreshness', () => {
+    const now = new Date('2026-05-30T12:00:00Z');
+    const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+
+    it('reports a not-yet-synced balance', () => {
+        expect(brokerFreshness(null, now)).toEqual({ label: 'in attesa di sincronizzazione', stale: true });
+    });
+
+    it('stays fresh within a day', () => {
+        expect(brokerFreshness(ago(12 * 60 * 60_000), now).stale).toBe(false);
+    });
+
+    it('goes stale sooner than a bank balance — past two days', () => {
+        // Not stale at 4 days for a bank, but a broker sync flags it at two.
+        expect(brokerFreshness(ago(2 * 24 * 60 * 60_000), now).stale).toBe(true);
+        expect(bankFreshness(ago(2 * 24 * 60 * 60_000), now).stale).toBe(false);
     });
 });

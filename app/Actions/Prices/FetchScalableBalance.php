@@ -7,6 +7,7 @@ namespace App\Actions\Prices;
 use App\Actions\Action;
 use App\Http\Clients\ScalableUnofficialClient;
 use App\Models\Asset;
+use App\Models\ScalableConnection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 
@@ -60,6 +61,17 @@ class FetchScalableBalance extends Action
                 $this->writeCash($cashName, $cashCategoryId, $cash);
                 $updated[] = $cashName;
             }
+        }
+
+        // Persist the connection health so a failed sync stays visible in
+        // Settings after the one-time toast is gone. A reachable proxy with a
+        // valid session returns data (positions/cash); a down proxy or expired
+        // session fails every call.
+        $connection = ScalableConnection::current();
+        if ($failed !== []) {
+            $connection->recordSyncFailure('Sincronizzazione non riuscita. Verifica che il proxy sul Mac sia attivo e la sessione valida.');
+        } else {
+            $connection->recordSyncSuccess();
         }
 
         return new PriceRefreshResult($updated, $failed);

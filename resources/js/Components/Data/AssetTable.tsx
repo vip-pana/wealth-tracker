@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart, AlertTriangle } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
     Dialog,
@@ -18,7 +18,7 @@ import {
     TableRow,
 } from '@/Components/ui/table';
 import { formatCurrency } from '@/lib/formatters';
-import { priceFreshness, bankFreshness } from '@/lib/metrics';
+import { priceFreshness, bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
@@ -115,7 +115,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                 // freshness so a stalled sync (proxy down / expired session) shows
                 // as stale.
                 const brokerSync = !asset.bank_linked && asset.bank_synced_at
-                    ? bankFreshness(asset.bank_synced_at)
+                    ? brokerFreshness(asset.bank_synced_at)
                     : null;
                 return (
                 <TableRow key={asset.id}>
@@ -147,7 +147,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                         className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
                                         title="Saldo sincronizzato dal conto bancario collegato"
                                     >
-                                        <Landmark className="w-3 h-3" />
+                                        <Landmark className="w-3 h-3" aria-hidden />
                                         Banca
                                     </span>
                                 )}
@@ -155,14 +155,16 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                                     <span
                                         className={cn(
                                             'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs',
-                                            brokerSync.stale ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-400',
+                                            brokerSync.stale ? 'bg-amber-500/10 text-amber-500' : 'bg-indigo-500/10 text-indigo-400',
                                         )}
                                         title={brokerSync.stale
                                             ? 'Sincronizzazione Scalable ferma: il proxy potrebbe essere spento o la sessione scaduta'
                                             : 'Valore sincronizzato dal broker Scalable'}
                                     >
-                                        <CandlestickChart className="w-3 h-3" />
-                                        Scalable
+                                        {brokerSync.stale
+                                            ? <AlertTriangle className="w-3 h-3" aria-hidden />
+                                            : <CandlestickChart className="w-3 h-3" aria-hidden />}
+                                        {brokerSync.stale ? 'Scalable · non aggiornato' : 'Scalable'}
                                     </span>
                                 )}
                             </div>
@@ -188,6 +190,7 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                             {brokerSync && (
                                 <p className="text-xs text-muted-foreground">
                                     Valore da Scalable · <span className={cn(brokerSync.stale && 'text-amber-500')}>{brokerSync.label}</span>
+                                    {brokerSync.stale && <span className="text-amber-500"> · sincronizzazione ferma</span>}
                                 </p>
                             )}
                             {asset.notes && !asset.ticker && (

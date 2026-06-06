@@ -15,19 +15,27 @@ class StoreAssetRequest extends FormRequest
         return true;
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, string|list<string>> */
     public function rules(): array
     {
         return [
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
             'ticker' => 'nullable|string|max:30',
-            'isin' => 'nullable|string|max:12',
+            'isin' => ['nullable', 'string', 'regex:/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/'],
             'wallet_address' => 'nullable|string|max:255',
             'quantity' => 'nullable|numeric|min:0|required_with:ticker',
             'value' => 'required_without:ticker|nullable|numeric|min:0',
             'date' => 'required|date_format:Y-m-d',
             'notes' => 'nullable|string|max:1000',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'isin.regex' => "L'ISIN deve essere di 12 caratteri: 2 lettere del paese, 9 alfanumerici e 1 cifra di controllo (es. IE00B4L5Y983).",
         ];
     }
 

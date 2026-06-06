@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle, CandlestickChart } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -30,7 +30,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { formatCurrency } from '@/lib/formatters';
-import { bankFreshness } from '@/lib/metrics';
+import { bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types/models';
 
@@ -103,6 +103,13 @@ interface LinkableAsset {
     name: string;
 }
 
+interface ScalableState {
+    configured: boolean;
+    last_sync_status: 'ok' | 'failed' | null;
+    last_sync_error: string | null;
+    last_sync_at: string | null;
+}
+
 interface Props {
     categories: (Category & { assets_count: number })[];
     prices: PriceEntry[];
@@ -111,6 +118,7 @@ interface Props {
     banks: BankOption[];
     linkableAssets: LinkableAsset[];
     bankRedirectReady: boolean;
+    scalable: ScalableState;
 }
 
 type CategoryForm = {
@@ -593,7 +601,76 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
     );
 }
 
-export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady }: Props) {
+function ScalableConnectionCard({ state }: { state: ScalableState }) {
+    const refresh = useForm({});
+    const freshness = brokerFreshness(state.last_sync_at);
+    const failed = state.last_sync_status === 'failed';
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
+                <div>
+                    <CardTitle className="text-base flex items-center gap-1.5">
+                        <CandlestickChart className="w-4 h-4 text-indigo-400" aria-hidden />
+                        Scalable Capital
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Sincronizza saldi e posizioni dal broker (sola lettura) tramite il proxy locale sul Mac. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.
+                    </p>
+                </div>
+                {state.configured && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => refresh.post('/scalable/refresh', { preserveScroll: true })}
+                        disabled={refresh.processing}
+                    >
+                        <RefreshCw className={`w-4 h-4 mr-1 ${refresh.processing ? 'animate-spin' : ''}`} />
+                        Sincronizza ora
+                    </Button>
+                )}
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {!state.configured ? (
+                    <p className="text-xs text-amber-500">
+                        Sincronizzazione Scalable non configurata (manca SCALABLE_BALANCE_URL).
+                    </p>
+                ) : (
+                    <>
+                        <div className="flex items-center gap-1.5 text-sm">
+                            {failed ? (
+                                <span className="inline-flex items-center gap-1.5 text-destructive" title={state.last_sync_error ?? undefined}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                                    Ultimo sync fallito
+                                </span>
+                            ) : state.last_sync_at === null ? (
+                                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                                    Mai sincronizzato
+                                </span>
+                            ) : (
+                                <span className={cn('inline-flex items-center gap-1.5', freshness.stale ? 'text-amber-500' : 'text-emerald-400')}>
+                                    <span className={cn('w-1.5 h-1.5 rounded-full', freshness.stale ? 'bg-amber-500' : 'bg-emerald-500')} />
+                                    {freshness.stale ? 'Sincronizzazione ferma' : 'Connesso'} · {freshness.label}
+                                </span>
+                            )}
+                        </div>
+                        {(failed || freshness.stale) && (
+                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
+                                <span>
+                                    Se la sincronizzazione è ferma, avvia il proxy sul Mac e rifai il login (browser + 2FA): la sessione Scalable dura ~8 ore. La sincronizzazione automatica riprende da sola una volta riattivata.
+                                </span>
+                            </p>
+                        )}
+                    </>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady, scalable }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -732,6 +809,9 @@ export default function Settings({ categories, prices, trashed, bankConnections,
 
                 {/* Bank connections (open banking) */}
                 <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} redirectReady={bankRedirectReady} />
+
+                {/* Scalable broker sync (stopgap) */}
+                <ScalableConnectionCard state={scalable} />
 
                 {/* Import / Export */}
                 <Card>

@@ -7,6 +7,7 @@ namespace Tests\Feature\Actions;
 use App\Actions\Prices\FetchScalableBalance;
 use App\Models\Asset;
 use App\Models\Category;
+use App\Models\ScalableConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -74,6 +75,8 @@ class FetchScalableBalanceTest extends TestCase
         $this->assertNotNull($acwi->bank_synced_at);
         // The asset keeps its own display name; the API name is ignored.
         $this->assertSame('ACWI', $acwi->name);
+        // A successful sync records healthy connection state.
+        $this->assertSame(ScalableConnection::SYNC_OK, ScalableConnection::current()->last_sync_status);
     }
 
     public function test_skips_a_position_no_asset_carries(): void
@@ -122,6 +125,10 @@ class FetchScalableBalanceTest extends TestCase
         $acwi->refresh();
         $this->assertEqualsWithDelta(999.0, (float) $acwi->value, 0.001);
         $this->assertNull($acwi->bank_synced_at);
+        // A failed sync is recorded so Settings can surface it after the toast.
+        $connection = ScalableConnection::current();
+        $this->assertSame(ScalableConnection::SYNC_FAILED, $connection->last_sync_status);
+        $this->assertNotNull($connection->last_sync_error);
     }
 
     public function test_inert_when_unconfigured(): void

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
-import { Landmark } from 'lucide-react';
+import { Landmark, CandlestickChart } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -252,24 +252,6 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 )}
                             </div>
 
-                            {/* ISIN — optional. Lets an external broker sync
-                               (e.g. Scalable Capital) match this holding by ISIN. */}
-                            <div className="space-y-1">
-                                <Label>
-                                    ISIN{' '}
-                                    <span className="text-muted-foreground font-normal">(opzionale)</span>
-                                </Label>
-                                <Input
-                                    value={data.isin}
-                                    onChange={(e) => setData('isin', e.target.value.toUpperCase())}
-                                    placeholder="es. IE00B4L5Y983"
-                                    className="font-mono text-xs"
-                                />
-                                {errors.isin && (
-                                    <p className="text-xs text-destructive">{errors.isin}</p>
-                                )}
-                            </div>
-
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
@@ -335,6 +317,44 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 )}
                             </div>
                         </>
+                    )}
+
+                    {/* ISIN — links a holding to the Scalable broker sync by ISIN.
+                       Shown for any non-bank-linked asset (also when editing a
+                       manual asset, so it can be linked without recreating it). */}
+                    {(mode === 'ticker' || isEdit) && !editAsset?.bank_linked && (
+                        <div className="space-y-1">
+                            <Label>
+                                ISIN{' '}
+                                <span className="text-muted-foreground font-normal">(opzionale)</span>
+                            </Label>
+                            <Input
+                                value={data.isin}
+                                onChange={(e) => setData('isin', e.target.value.replace(/\s/g, '').toUpperCase())}
+                                placeholder="es. IE00B4L5Y983"
+                                maxLength={12}
+                                className="font-mono text-xs"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Compila l&apos;ISIN per collegare questa posizione alla sincronizzazione del broker Scalable: il valore verrà aggiornato automaticamente.
+                            </p>
+                            {isEdit && data.isin.trim() !== '' && !editAsset?.bank_synced_at && (
+                                <p className="text-xs text-muted-foreground">
+                                    Il collegamento verrà verificato alla prossima sincronizzazione.
+                                </p>
+                            )}
+                            {isEdit && editAsset?.bank_synced_at && !editAsset?.bank_linked && (
+                                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                    <CandlestickChart className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-400" aria-hidden />
+                                    <span>
+                                        Valore sincronizzato dal broker Scalable: {new Date(editAsset.bank_synced_at).toLocaleString('it-IT')}.
+                                    </span>
+                                </p>
+                            )}
+                            {errors.isin && (
+                                <p className="text-xs text-destructive">{errors.isin}</p>
+                            )}
+                        </div>
                     )}
 
                     {/* Notes */}
