@@ -30,6 +30,10 @@ No deploy pipeline. The quality gate (pre-push hook in `.githooks/pre-push`, mir
 <!-- exodia:section:variants -->
 Dev DB lives at `~/wealth-tracker-data/database.sqlite`, bind-mounted into the container. Backups are atomic `sqlite3 .backup` / `VACUUM INTO` snapshots synced to Proton Drive — nightly (launchd at 03:00), after every snapshot (queued `BackupDatabase` job), and on demand (Settings → "Backup ora", or `~/wealth-tracker-data/backup.sh`). Full restore procedure and the test-suite DB-safety override: [../../docs/database.md](../../docs/database.md). **Never overwrite the live DB without explicit confirmation.**
 
+## Integrations
+
+The Scalable Capital sync (stopgap) needs a Node proxy + always-on launchd agent on the macOS host. Set it up on a new machine with `./scripts/scalable-proxy-setup.sh` (templates in `scripts/scalable-proxy/`); full setup, daily use, and troubleshooting: [../../docs/scalable-proxy.md](../../docs/scalable-proxy.md).
+
 ## Localization / i18n
 
 <!-- exodia:section:i18n -->

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd template for the always-on Scalable proxy.
+  Installed to ~/Library/LaunchAgents/com.vincenzo.scalable-proxy.plist by
+  scripts/scalable-proxy-setup.sh, which replaces __HOME__ with the user's home.
+  RunAtLoad + KeepAlive keep the proxy up across login and crashes.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.vincenzo.scalable-proxy</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME__/scalable-unofficial/run.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>__HOME__/scalable-unofficial/proxy.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/scalable-unofficial/proxy.error.log</string>
+    <key>WorkingDirectory</key>
+    <string>__HOME__/scalable-unofficial</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>__HOME__</string>
+    </dict>
+</dict>
+</plist>

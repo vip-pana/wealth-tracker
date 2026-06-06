@@ -81,3 +81,9 @@ The hook (and CI, on every push/PR) runs, in order:
 6. `php artisan test` — PHPUnit (backend)
 
 To bypass once (discouraged): `git push --no-verify`.
+
+## Optional integrations
+
+- **Database & backups** — [docs/database.md](docs/database.md)
+- **Scalable Capital sync** (broker balances, stopgap proxy on macOS) —
+  [docs/scalable-proxy.md](docs/scalable-proxy.md); run `./scripts/scalable-proxy-setup.sh`.
