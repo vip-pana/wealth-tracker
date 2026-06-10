@@ -26,7 +26,9 @@ services:
       PNPM_HOME: /root/.local/share/pnpm
       CI: "true"
     command: >-
-      sh -c "touch /app/storage/app/database.sqlite &&
+      sh -c "mkdir -p /root/.config/scalable-cli &&
+      { [ -f /root/.config/scalable-cli/config.toml ] || printf '%s\n' '[auth]' 'session_backend = \"file\"' 'signing_key_backend = \"file\"' > /root/.config/scalable-cli/config.toml; } &&
+      touch /app/storage/app/database.sqlite &&
       sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
       php artisan migrate --force &&
       pnpm install --frozen-lockfile --ignore-scripts &&

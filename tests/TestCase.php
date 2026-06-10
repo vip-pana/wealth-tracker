@@ -28,10 +28,13 @@ abstract class TestCase extends BaseTestCase
 
         // The container exports SCALABLE_* as real env vars (like DB_*), which
         // override phpunit.xml. Force the broker sync off so tests never reach
-        // the host proxy; tests that exercise it set the config explicitly.
+        // the host proxy or run the CLI; tests that exercise either set the
+        // config explicitly.
         $app['config']->set('services.scalable.balance_url', '');
         $app['config']->set('services.scalable.token', '');
         $app['config']->set('services.scalable.cash_category_id', 0);
+        $app['config']->set('services.scalable.source', 'auto');
+        $app['config']->set('services.scalable.cli.enabled', false);
 
         return $app;
     }

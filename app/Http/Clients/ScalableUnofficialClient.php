@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * X-Gateway-Token header. This client only reads positions and the cash
  * balance; it never logs in or places orders.
  */
-class ScalableUnofficialClient
+class ScalableUnofficialClient implements ScalableSource
 {
     public function __construct(
         private readonly string $balanceUrl,
