@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * X-Gateway-Token header. This client only reads positions and the cash
  * balance; it never logs in or places orders.
  */
-class ScalableUnofficialClient
+class ScalableUnofficialClient implements ScalableSource
 {
     public function __construct(
         private readonly string $balanceUrl,
@@ -103,6 +103,41 @@ class ScalableUnofficialClient
         }
 
         return (float) $cash;
+    }
+
+    /**
+     * Start an interactive login on the proxy: it opens a browser on the host
+     * for the user to complete Scalable's login + 2FA, then captures the
+     * session. Blocks until the user finishes (the proxy waits up to ~120s), or
+     * returns immediately if a valid session already exists. Returns true on a
+     * live session, false if the proxy is unreachable, times out, or rejects.
+     *
+     * The user's credentials never touch this app — they are typed into the
+     * browser on the host. The proxy exempts /auth from the gateway token.
+     */
+    public function login(): bool
+    {
+        if ($this->balanceUrl === '') {
+            return false;
+        }
+
+        try {
+            $response = Http::withHeaders(['X-Gateway-Token' => $this->token])
+                ->timeout(130)
+                ->post(rtrim($this->balanceUrl, '/').'/auth/login');
+        } catch (ConnectionException $e) {
+            Log::warning('Scalable unofficial login proxy unreachable', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+
+        if (! $response->successful()) {
+            Log::warning('Scalable unofficial login failed', ['status' => $response->status()]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

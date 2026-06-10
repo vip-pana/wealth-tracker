@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Prices;
 
 use App\Actions\Action;
+use App\Http\Clients\ScalableCliClient;
+use App\Http\Clients\ScalableSource;
 use App\Http\Clients\ScalableUnofficialClient;
 use App\Models\Asset;
 use App\Models\ScalableConnection;
@@ -14,7 +16,8 @@ use Illuminate\Support\Facades\Config;
 class FetchScalableBalance extends Action
 {
     public function __construct(
-        private readonly ScalableUnofficialClient $scalable,
+        private readonly ScalableCliClient $cli,
+        private readonly ScalableUnofficialClient $proxy,
     ) {}
 
     public function run(): PriceRefreshResult
@@ -23,14 +26,25 @@ class FetchScalableBalance extends Action
 
         // Unconfigured: nothing to sync. (An asset carrying an ISIN is what opts
         // a holding in; cash is opted in by its category id.)
-        if (Config::string('services.scalable.balance_url', '') === '') {
+        if (Config::string('services.scalable.balance_url', '') === '' && ! Config::boolean('services.scalable.cli.enabled', false)) {
             return new PriceRefreshResult;
         }
+
+        // Pick one source for the whole run so positions and cash stay coherent.
+        $source = $this->source();
 
         $updated = [];
         $failed = [];
 
-        $positions = $this->scalable->positions();
+        // Configured but no live source (e.g. source=cli and the session lapsed):
+        // record the failure and leave stored values untouched.
+        if ($source === null) {
+            ScalableConnection::current()->recordSyncFailure('Sincronizzazione non riuscita. Verifica che la sessione Scalable sia valida.');
+
+            return new PriceRefreshResult([], ['Scalable']);
+        }
+
+        $positions = $source->positions();
 
         // Fetch failed (proxy down, session expired): leave stored values as is.
         if ($positions === null) {
@@ -52,7 +66,7 @@ class FetchScalableBalance extends Action
         }
 
         if ($cashCategoryId !== 0) {
-            $cash = $this->scalable->cashBalance();
+            $cash = $source->cashBalance();
             $cashName = Config::string('services.scalable.cash_asset_name', 'Scalable Liquidità');
 
             if ($cash === null) {
@@ -75,6 +89,26 @@ class FetchScalableBalance extends Action
         }
 
         return new PriceRefreshResult($updated, $failed);
+    }
+
+    /**
+     * The source to read this run from, or null when none is usable. 'auto'
+     * (the default) prefers a logged-in CLI and falls back to the proxy; 'cli'
+     * and 'proxy' pin one source with no fallback.
+     */
+    private function source(): ?ScalableSource
+    {
+        $mode = Config::string('services.scalable.source', 'auto');
+
+        if ($mode === 'cli') {
+            return $this->cli->isLoggedIn() ? $this->cli : null;
+        }
+
+        if ($mode === 'proxy') {
+            return $this->proxy;
+        }
+
+        return $this->cli->isLoggedIn() ? $this->cli : $this->proxy;
     }
 
     /**

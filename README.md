@@ -81,3 +81,53 @@ The hook (and CI, on every push/PR) runs, in order:
 6. `php artisan test` — PHPUnit (backend)
 
 To bypass once (discouraged): `git push --no-verify`.
+
+## Optional integrations
+
+- **Database & backups** — [docs/database.md](docs/database.md)
+- **Enable Banking** (open-banking bank balances) —
+  [docs/enable-banking-usage.md](docs/enable-banking-usage.md)
+
+### Scalable Capital sync (macOS)
+
+Syncs Scalable Capital broker balances into assets. **Stopgap** until the
+official Scalable CLI is allowlisted — it uses an unofficial local proxy that
+may break and may violate Scalable's ToS; use at your own risk. Optional: skip
+it entirely by leaving `SCALABLE_BALANCE_URL` blank.
+
+Scalable has no public API, so a small Node proxy runs **on the Mac** (kept
+alive by a launchd agent). You log in once through a real browser with 2FA; the
+proxy holds the ~8h session and the app reads balances from it. The 2FA login
+must happen on the Mac desktop — the container can't open a browser.
+
+**Setup on a new machine** (needs `git`, `node`, `corepack`, `openssl`, `curl`):
+
+```bash
+./scripts/scalable-proxy-setup.sh        # clones the proxy, installs deps +
+                                         # Chrome, starts a launchd agent, prints a token
+```
+
+Then set in `.env` (the installer prints the token) and clear the config:
+
+```
+SCALABLE_BALANCE_URL=http://host.docker.internal:3141
+SCALABLE_GATEWAY_TOKEN=<printed token>
+SCALABLE_CASH_CATEGORY_ID=<id of your "Liquidità" category>
+SCALABLE_CASH_ASSET_NAME=Scalable Liquidità
+```
+
+```bash
+docker compose exec app php artisan config:clear
+```
+
+Set each holding's **ISIN** in its asset (edit modal) so the sync can match it.
+
+**Daily use**: the proxy stays on; when the session expires, click
+**Impostazioni → Scalable Capital → "Collega / Riconnetti"** (opens a browser on
+the Mac for 2FA). Manage the agent with `launchctl load/unload
+~/Library/LaunchAgents/com.vincenzo.scalable-proxy.plist`.
+
+> Note: the default `pnpm` shim crashes under Node 23 (`node:sqlite`), so the
+> scripts use `corepack pnpm@9` and call `node`/`tsx` directly.
+
+Full guide & troubleshooting: [docs/scalable-proxy.md](docs/scalable-proxy.md).
