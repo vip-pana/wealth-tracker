@@ -19,7 +19,7 @@ class RefreshController extends Controller
         $result = $this->fetchScalableBalance->run();
 
         if ($result->hasFailures()) {
-            return redirect()->back()->with('error', 'Sincronizzazione Scalable non riuscita. Verifica che il proxy sul Mac sia attivo e la sessione valida.');
+            return redirect()->back()->with('error', 'Sincronizzazione Scalable non riuscita. Sessione scaduta: riconnetti.');
         }
 
         if ($result->nothingUpdated()) {

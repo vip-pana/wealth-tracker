@@ -43,18 +43,14 @@ return [
         'redirect_url' => env('ENABLE_BANKING_REDIRECT_URL', ''),
     ],
 
-    // Reads portfolio positions from Scalable Capital. Two sources: the official
-    // CLI (`sc`, headless in the container) and the unofficial proxy on the host
-    // (stopgap). `source` picks which — 'auto' prefers a logged-in CLI and falls
-    // back to the proxy. Each position is matched to the asset carrying the same
-    // ISIN, so the sync updates that asset's current-month row; uninvested cash
-    // (no ISIN) is synced as its own asset. Inert unless a source is configured.
+    // Reads portfolio positions from Scalable Capital via the official CLI
+    // (`sc`, headless in the container). Each position is matched to the asset
+    // carrying the same ISIN, so the sync updates that asset's current-month
+    // row; uninvested cash (no ISIN) is synced as its own asset. Inert unless
+    // the CLI is enabled.
     'scalable' => [
-        'balance_url' => env('SCALABLE_BALANCE_URL', ''),
-        'token' => env('SCALABLE_GATEWAY_TOKEN', ''),
         'cash_category_id' => (int) env('SCALABLE_CASH_CATEGORY_ID', 0),
         'cash_asset_name' => env('SCALABLE_CASH_ASSET_NAME', 'Scalable Liquidità'),
-        'source' => env('SCALABLE_SOURCE', 'auto'),
         'cli' => [
             'enabled' => (bool) env('SCALABLE_CLI_ENABLED', false),
             'binary' => env('SCALABLE_CLI_BINARY', 'sc'),

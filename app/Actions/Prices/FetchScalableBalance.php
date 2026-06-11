@@ -6,8 +6,6 @@ namespace App\Actions\Prices;
 
 use App\Actions\Action;
 use App\Http\Clients\ScalableCliClient;
-use App\Http\Clients\ScalableSource;
-use App\Http\Clients\ScalableUnofficialClient;
 use App\Models\Asset;
 use App\Models\ScalableConnection;
 use Illuminate\Support\Carbon;
@@ -17,7 +15,6 @@ class FetchScalableBalance extends Action
 {
     public function __construct(
         private readonly ScalableCliClient $cli,
-        private readonly ScalableUnofficialClient $proxy,
     ) {}
 
     public function run(): PriceRefreshResult
@@ -26,27 +23,23 @@ class FetchScalableBalance extends Action
 
         // Unconfigured: nothing to sync. (An asset carrying an ISIN is what opts
         // a holding in; cash is opted in by its category id.)
-        if (Config::string('services.scalable.balance_url', '') === '' && ! Config::boolean('services.scalable.cli.enabled', false)) {
+        if (! Config::boolean('services.scalable.cli.enabled', false)) {
             return new PriceRefreshResult;
         }
 
-        // Pick one source for the whole run so positions and cash stay coherent.
-        $source = $this->source();
-
-        $updated = [];
-        $failed = [];
-
-        // Configured but no live source (e.g. source=cli and the session lapsed):
-        // record the failure and leave stored values untouched.
-        if ($source === null) {
-            ScalableConnection::current()->recordSyncFailure('Sincronizzazione non riuscita. Verifica che la sessione Scalable sia valida.');
+        // No live CLI session: record the failure and leave stored values as is.
+        if (! $this->cli->isLoggedIn()) {
+            ScalableConnection::current()->recordSyncFailure('Sincronizzazione non riuscita. Sessione Scalable scaduta: riconnetti.');
 
             return new PriceRefreshResult([], ['Scalable']);
         }
 
-        $positions = $source->positions();
+        $updated = [];
+        $failed = [];
 
-        // Fetch failed (proxy down, session expired): leave stored values as is.
+        $positions = $this->cli->positions();
+
+        // Fetch failed (session expired mid-run): leave stored values as is.
         if ($positions === null) {
             $failed[] = 'Scalable';
         } else {
@@ -66,7 +59,7 @@ class FetchScalableBalance extends Action
         }
 
         if ($cashCategoryId !== 0) {
-            $cash = $source->cashBalance();
+            $cash = $this->cli->cashBalance();
             $cashName = Config::string('services.scalable.cash_asset_name', 'Scalable Liquidità');
 
             if ($cash === null) {
@@ -78,37 +71,15 @@ class FetchScalableBalance extends Action
         }
 
         // Persist the connection health so a failed sync stays visible in
-        // Settings after the one-time toast is gone. A reachable proxy with a
-        // valid session returns data (positions/cash); a down proxy or expired
-        // session fails every call.
+        // Settings after the one-time toast is gone.
         $connection = ScalableConnection::current();
         if ($failed !== []) {
-            $connection->recordSyncFailure('Sincronizzazione non riuscita. Verifica che il proxy sul Mac sia attivo e la sessione valida.');
+            $connection->recordSyncFailure('Sincronizzazione non riuscita. Sessione Scalable scaduta: riconnetti.');
         } else {
             $connection->recordSyncSuccess();
         }
 
         return new PriceRefreshResult($updated, $failed);
-    }
-
-    /**
-     * The source to read this run from, or null when none is usable. 'auto'
-     * (the default) prefers a logged-in CLI and falls back to the proxy; 'cli'
-     * and 'proxy' pin one source with no fallback.
-     */
-    private function source(): ?ScalableSource
-    {
-        $mode = Config::string('services.scalable.source', 'auto');
-
-        if ($mode === 'cli') {
-            return $this->cli->isLoggedIn() ? $this->cli : null;
-        }
-
-        if ($mode === 'proxy') {
-            return $this->proxy;
-        }
-
-        return $this->cli->isLoggedIn() ? $this->cli : $this->proxy;
     }
 
     /**

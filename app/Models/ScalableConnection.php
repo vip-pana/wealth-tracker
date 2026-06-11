@@ -9,8 +9,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Global state of the Scalable broker sync (a single row). The connection
- * health — host proxy reachable, 8h session valid — is not per-asset, so the
- * outcome of the last sync lives here and surfaces in Settings.
+ * health — CLI session valid — is not per-asset, so the outcome of the last
+ * sync lives here and surfaces in Settings.
  *
  * @property int $id
  * @property string|null $last_sync_status

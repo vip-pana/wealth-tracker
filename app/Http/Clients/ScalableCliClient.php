@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Process;
  * no session, non-zero exit, unexpected shape) so the caller leaves stored
  * values untouched.
  */
-class ScalableCliClient implements ScalableSource
+class ScalableCliClient
 {
     /**
      * The only commands this client may run. Callers pass a key, never raw argv,

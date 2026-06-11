@@ -32,7 +32,7 @@ Dev DB lives at `~/wealth-tracker-data/database.sqlite`, bind-mounted into the c
 
 ## Integrations
 
-The Scalable Capital sync (stopgap) needs a Node proxy + always-on launchd agent on the macOS host. Set it up on a new machine with `./scripts/scalable-proxy-setup.sh` (templates in `scripts/scalable-proxy/`); full setup, daily use, and troubleshooting: [../../docs/scalable-proxy.md](../../docs/scalable-proxy.md).
+The Scalable Capital sync uses the official `sc` CLI, installed in the image and run headless via a file-backed session (config.toml seeded into the `scalable-cli` volume by the dev compose command). Enable with `SCALABLE_CLI_ENABLED=true`; log in from Settings → "Collega" (in-app device code) or `docker exec -it wealth-tracker-app-1 sc login`. See the README "Scalable Capital sync" section.
 
 ## Localization / i18n
 
