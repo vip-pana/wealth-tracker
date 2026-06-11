@@ -88,30 +88,16 @@ To bypass once (discouraged): `git push --no-verify`.
 - **Enable Banking** (open-banking bank balances) —
   [docs/enable-banking-usage.md](docs/enable-banking-usage.md)
 
-### Scalable Capital sync (macOS)
+### Scalable Capital sync
 
-Syncs Scalable Capital broker balances into assets. **Stopgap** until the
-official Scalable CLI is allowlisted — it uses an unofficial local proxy that
-may break and may violate Scalable's ToS; use at your own risk. Optional: skip
-it entirely by leaving `SCALABLE_BALANCE_URL` blank.
+Syncs Scalable Capital broker balances into assets via the **official Scalable
+CLI** (`sc`), which runs headless in the container with a file-backed session.
+Optional: skip it entirely by leaving `SCALABLE_CLI_ENABLED` unset.
 
-Scalable has no public API, so a small Node proxy runs **on the Mac** (kept
-alive by a launchd agent). You log in once through a real browser with 2FA; the
-proxy holds the ~8h session and the app reads balances from it. The 2FA login
-must happen on the Mac desktop — the container can't open a browser.
-
-**Setup on a new machine** (needs `git`, `node`, `corepack`, `openssl`, `curl`):
-
-```bash
-./scripts/scalable-proxy-setup.sh        # clones the proxy, installs deps +
-                                         # Chrome, starts a launchd agent, prints a token
-```
-
-Then set in `.env` (the installer prints the token) and clear the config:
+Enable it in `.env`, then clear the config:
 
 ```
-SCALABLE_BALANCE_URL=http://host.docker.internal:3141
-SCALABLE_GATEWAY_TOKEN=<printed token>
+SCALABLE_CLI_ENABLED=true
 SCALABLE_CASH_CATEGORY_ID=<id of your "Liquidità" category>
 SCALABLE_CASH_ASSET_NAME=Scalable Liquidità
 ```
@@ -120,14 +106,12 @@ SCALABLE_CASH_ASSET_NAME=Scalable Liquidità
 docker compose exec app php artisan config:clear
 ```
 
-Set each holding's **ISIN** in its asset (edit modal) so the sync can match it.
+Set each holding's **ISIN** in its asset (edit modal) so the sync can match it;
+uninvested cash (derived as total − securities − crypto) is written to the asset
+named by `SCALABLE_CASH_ASSET_NAME` in the given category.
 
-**Daily use**: the proxy stays on; when the session expires, click
-**Impostazioni → Scalable Capital → "Collega / Riconnetti"** (opens a browser on
-the Mac for 2FA). Manage the agent with `launchctl load/unload
-~/Library/LaunchAgents/com.vincenzo.scalable-proxy.plist`.
-
-> Note: the default `pnpm` shim crashes under Node 23 (`node:sqlite`), so the
-> scripts use `corepack pnpm@9` and call `node`/`tsx` directly.
-
-Full guide & troubleshooting: [docs/scalable-proxy.md](docs/scalable-proxy.md).
+**Login**: from the app, **Impostazioni → Scalable Capital → "Collega /
+Riconnetti"** — a link and device code appear; open the link, enter the code and
+complete 2FA on any device. The session is long-lived; reconnect the same way
+when it lapses, or from a terminal with `docker exec -it wealth-tracker-app-1 sc
+login`. The daily 06:00 price job then reads balances automatically.

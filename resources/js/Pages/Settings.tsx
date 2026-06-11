@@ -112,9 +112,7 @@ interface ScalableLoginState {
 }
 
 interface ScalableState {
-    source: string;
     configured: boolean;
-    cli: boolean;
     cli_logged_in: boolean | null;
     last_sync_status: 'ok' | 'failed' | null;
     last_sync_error: string | null;
@@ -617,11 +615,9 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
     const refresh = useForm({});
     const login = useForm({});
     const logout = useForm({});
-    const usesCli = state.cli;
     const freshness = brokerFreshness(state.last_sync_at);
     const failed = state.last_sync_status === 'failed';
-    // CLI mode trusts the live whoami check; proxy mode falls back to freshness.
-    const needsLogin = usesCli ? state.cli_logged_in === false : failed || freshness.stale || state.last_sync_at === null;
+    const needsLogin = state.cli_logged_in === false;
 
     const [loginFlow, setLoginFlow] = useState<ScalableLoginState>(state.login);
     const inProgress = loginFlow.status === 'pending' || loginFlow.status === 'url_issued';
@@ -630,7 +626,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
     // Poll the CLI login status while a login is in flight; stop on a terminal
     // state. On completion, refresh the page props so the badge turns live.
     useEffect(() => {
-        if (!usesCli || !inProgress) {
+        if (!inProgress) {
             return;
         }
         const controller = new AbortController();
@@ -649,7 +645,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
             clearInterval(id);
             controller.abort();
         };
-    }, [usesCli, inProgress]);
+    }, [inProgress]);
 
     const startCliLogin = () => {
         setLoginFlow({ status: 'pending', url: null, user_code: null, error: null, started_at: null });
@@ -672,9 +668,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                         Scalable Capital
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        {usesCli
-                            ? 'Sincronizza saldi e posizioni dal broker (sola lettura) tramite la CLI ufficiale Scalable. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.'
-                            : 'Sincronizza saldi e posizioni dal broker (sola lettura) tramite il proxy locale sul Mac. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.'}
+                        Sincronizza saldi e posizioni dal broker (sola lettura) tramite la CLI ufficiale Scalable. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.
                     </p>
                 </div>
                 {state.configured && (
@@ -683,15 +677,15 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={usesCli ? startCliLogin : () => login.post('/scalable/login', { preserveScroll: true })}
+                                onClick={startCliLogin}
                                 disabled={login.processing}
-                                title={usesCli ? 'Avvia il login: apri il link mostrato e inserisci il codice + 2FA' : 'Apre una finestra del browser sul Mac per il login e il 2FA'}
+                                title="Avvia il login: apri il link mostrato e inserisci il codice + 2FA"
                             >
                                 <Link2 className={`w-4 h-4 mr-1 ${login.processing ? 'animate-pulse' : ''}`} />
                                 {login.processing ? 'Avvio…' : 'Collega / Riconnetti'}
                             </Button>
                         )}
-                        {(!usesCli || state.cli_logged_in === true) && (
+                        {state.cli_logged_in === true && (
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -702,7 +696,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                                 Sincronizza ora
                             </Button>
                         )}
-                        {usesCli && state.cli_logged_in === true && (
+                        {state.cli_logged_in === true && (
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -720,12 +714,12 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
             <CardContent className="space-y-2">
                 {!state.configured ? (
                     <p className="text-xs text-amber-500">
-                        Sincronizzazione Scalable non configurata (abilita SCALABLE_CLI_ENABLED o imposta SCALABLE_BALANCE_URL).
+                        Sincronizzazione Scalable non configurata (abilita SCALABLE_CLI_ENABLED).
                     </p>
                 ) : (
                     <>
                         <div className="flex items-center gap-1.5 text-sm">
-                            {usesCli && state.cli_logged_in === false ? (
+                            {state.cli_logged_in === false ? (
                                 <span className="inline-flex items-center gap-1.5 text-amber-500">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                     Sessione scaduta, riconnetti
@@ -748,7 +742,7 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                             )}
                         </div>
 
-                        {usesCli && inProgress && (
+                        {inProgress && (
                             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
                                 {loginFlow.status === 'url_issued' && loginFlow.url ? (
                                     <>
@@ -789,27 +783,18 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                             </div>
                         )}
 
-                        {usesCli && loginFlow.status === 'failed' && (
+                        {loginFlow.status === 'failed' && (
                             <p className="flex items-start gap-1.5 text-xs text-destructive">
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden />
                                 <span>{loginFlow.error ?? 'Login non riuscito.'} Riprova, oppure da terminale: <code className="font-mono">docker exec -it wealth-tracker-app-1 sc login</code></span>
                             </p>
                         )}
 
-                        {usesCli && !inProgress && state.cli_logged_in === false && loginFlow.status !== 'failed' && (
+                        {!inProgress && state.cli_logged_in === false && loginFlow.status !== 'failed' && (
                             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
                                 <span>
                                     Clicca &laquo;Collega / Riconnetti&raquo;: comparirà un link da aprire nel browser e un codice da inserire (con 2FA). Poi la sincronizzazione automatica riprende da sola.
-                                </span>
-                            </p>
-                        )}
-
-                        {!usesCli && (failed || freshness.stale) && (
-                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
-                                <span>
-                                    La sessione Scalable dura ~8 ore. Clicca &laquo;Collega / Riconnetti&raquo;: si aprirà una finestra del browser sul Mac per il login e il 2FA. Poi la sincronizzazione automatica riprende da sola.
                                 </span>
                             </p>
                         )}

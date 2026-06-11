@@ -9,7 +9,6 @@ use App\Models\Asset;
 use App\Models\Category;
 use App\Models\ScalableConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
 
@@ -29,32 +28,9 @@ class FetchScalableBalanceTest extends TestCase
         $this->cashId = Category::factory()->create()->id;
 
         config([
-            'services.scalable.balance_url' => 'http://scalable.test',
-            'services.scalable.token' => 'tok',
+            'services.scalable.cli.enabled' => true,
             'services.scalable.cash_category_id' => $this->cashId,
             'services.scalable.cash_asset_name' => 'Scalable Liquidità',
-        ]);
-    }
-
-    /**
-     * @param  list<array{isin: string, name: string, qty: float, mid: float}>  $positions
-     */
-    private function fakeProxy(array $positions, float $cash): void
-    {
-        $items = array_map(fn (array $p): array => [
-            'isin' => $p['isin'],
-            'name' => $p['name'],
-            'inventory' => ['position' => ['filled' => $p['qty']]],
-            'quoteTick' => ['midPrice' => $p['mid']],
-        ], $positions);
-
-        Http::fake([
-            'scalable.test/portfolio/inventory' => Http::response([
-                'account' => ['brokerPortfolio' => ['inventory' => ['ungroupedInventoryItems' => ['items' => $items]]]],
-            ]),
-            'scalable.test/portfolio/cash' => Http::response([
-                'account' => ['brokerPortfolio' => ['payments' => ['buyingPower' => ['cashBalance' => $cash]]]],
-            ]),
         ]);
     }
 
@@ -92,9 +68,9 @@ class FetchScalableBalanceTest extends TestCase
     {
         $acwi = Asset::factory()->create(['category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 1, 'date' => now()->format('Y-m-01')]);
         $cash = Asset::factory()->create(['category_id' => $this->cashId, 'name' => 'Scalable Liquidità', 'value' => 1, 'date' => now()->format('Y-m-01')]);
-        $this->fakeProxy([
-            ['isin' => 'IE00B6R52259', 'name' => 'iShares MSCI ACWI (Acc)', 'qty' => 10.0, 'mid' => 100.0],
-        ], 500.0);
+        $this->fakeCli([
+            ['isin' => 'IE00B6R52259', 'name' => 'iShares MSCI ACWI (Acc)', 'value' => 1000.0],
+        ], total: 1500.0);
 
         $result = app(FetchScalableBalance::class)->run();
 
@@ -102,9 +78,10 @@ class FetchScalableBalanceTest extends TestCase
         $acwi->refresh();
         $cash->refresh();
         $this->assertEqualsWithDelta(1000.0, (float) $acwi->value, 0.001);
+        // Cash is derived as total - securities - crypto.
         $this->assertEqualsWithDelta(500.0, (float) $cash->value, 0.001);
         $this->assertNotNull($acwi->bank_synced_at);
-        // The asset keeps its own display name; the API name is ignored.
+        // The asset keeps its own display name; the CLI name is ignored.
         $this->assertSame('ACWI', $acwi->name);
         // A successful sync records healthy connection state.
         $this->assertSame(ScalableConnection::SYNC_OK, ScalableConnection::current()->last_sync_status);
@@ -112,9 +89,9 @@ class FetchScalableBalanceTest extends TestCase
 
     public function test_skips_a_position_no_asset_carries(): void
     {
-        $this->fakeProxy([
-            ['isin' => 'UNTRACKED', 'name' => 'Mystery', 'qty' => 5.0, 'mid' => 10.0],
-        ], 0.0);
+        $this->fakeCli([
+            ['isin' => 'UNTRACKED', 'name' => 'Mystery', 'value' => 50.0],
+        ], total: 50.0);
 
         $result = app(FetchScalableBalance::class)->run();
 
@@ -129,9 +106,9 @@ class FetchScalableBalanceTest extends TestCase
             'category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 500,
             'date' => now()->subMonthNoOverflow()->format('Y-m-01'),
         ]);
-        $this->fakeProxy([
-            ['isin' => 'IE00B6R52259', 'name' => 'ACWI', 'qty' => 10.0, 'mid' => 65.0],
-        ], 0.0);
+        $this->fakeCli([
+            ['isin' => 'IE00B6R52259', 'name' => 'ACWI', 'value' => 650.0],
+        ], total: 650.0);
 
         app(FetchScalableBalance::class)->run();
 
@@ -142,13 +119,10 @@ class FetchScalableBalanceTest extends TestCase
         $this->assertSame(2, Asset::where('isin', 'IE00B6R52259')->count());
     }
 
-    public function test_failure_preserves_existing_values(): void
+    public function test_fails_when_the_session_lapsed(): void
     {
         $acwi = Asset::factory()->create(['category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 999, 'date' => now()->format('Y-m-01')]);
-        Http::fake([
-            'scalable.test/portfolio/inventory' => Http::response('', 500),
-            'scalable.test/portfolio/cash' => Http::response('', 500),
-        ]);
+        $this->fakeCli([], total: 0, loggedIn: false);
 
         $result = app(FetchScalableBalance::class)->run();
 
@@ -160,82 +134,22 @@ class FetchScalableBalanceTest extends TestCase
         $connection = ScalableConnection::current();
         $this->assertSame(ScalableConnection::SYNC_FAILED, $connection->last_sync_status);
         $this->assertNotNull($connection->last_sync_error);
+        // A lapsed session is detected by whoami, before any broker command runs.
+        Process::assertNotRan(fn ($process): bool => str_contains(
+            is_array($process->command) ? implode(' ', $process->command) : (string) $process->command,
+            'broker',
+        ));
     }
 
-    public function test_inert_when_unconfigured(): void
+    public function test_inert_when_the_cli_is_disabled(): void
     {
-        config(['services.scalable.balance_url' => '']);
-        Http::fake();
+        config(['services.scalable.cli.enabled' => false]);
         Process::fake();
 
         $result = app(FetchScalableBalance::class)->run();
 
         $this->assertSame([], $result->updated);
         $this->assertSame([], $result->failed);
-        Http::assertNothingSent();
         Process::assertNothingRan();
-    }
-
-    public function test_auto_prefers_the_cli_when_logged_in(): void
-    {
-        config(['services.scalable.cli.enabled' => true]);
-        $acwi = Asset::factory()->create(['category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 1, 'date' => now()->format('Y-m-01')]);
-        $cash = Asset::factory()->create(['category_id' => $this->cashId, 'name' => 'Scalable Liquidità', 'value' => 1, 'date' => now()->format('Y-m-01')]);
-        Http::fake();
-        $this->fakeCli([
-            ['isin' => 'IE00B6R52259', 'name' => 'iShares MSCI ACWI (Acc)', 'value' => 15497.4],
-        ], total: 19075.4);
-
-        $result = app(FetchScalableBalance::class)->run();
-
-        $this->assertSame([], $result->failed);
-        $acwi->refresh();
-        $cash->refresh();
-        $this->assertEqualsWithDelta(15497.4, (float) $acwi->value, 0.001);
-        $this->assertEqualsWithDelta(3578.0, (float) $cash->value, 0.001);
-        $this->assertSame(ScalableConnection::SYNC_OK, ScalableConnection::current()->last_sync_status);
-        // The CLI is the source, so the proxy is never contacted.
-        Http::assertNothingSent();
-    }
-
-    public function test_auto_falls_back_to_the_proxy_when_the_cli_session_lapsed(): void
-    {
-        config(['services.scalable.cli.enabled' => true]);
-        $acwi = Asset::factory()->create(['category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 1, 'date' => now()->format('Y-m-01')]);
-        // CLI reports no session; the proxy is reachable and supplies the data.
-        $this->fakeCli([], total: 0, loggedIn: false);
-        $this->fakeProxy([
-            ['isin' => 'IE00B6R52259', 'name' => 'ACWI', 'qty' => 10.0, 'mid' => 100.0],
-        ], 0.0);
-
-        $result = app(FetchScalableBalance::class)->run();
-
-        $this->assertSame([], $result->failed);
-        $acwi->refresh();
-        $this->assertEqualsWithDelta(1000.0, (float) $acwi->value, 0.001);
-        // Only whoami ran on the CLI; the portfolio came from the proxy.
-        Process::assertNotRan(fn ($process): bool => str_contains(
-            is_array($process->command) ? implode(' ', $process->command) : (string) $process->command,
-            'broker',
-        ));
-        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'portfolio/inventory'));
-    }
-
-    public function test_source_cli_pinned_fails_when_session_lapsed(): void
-    {
-        config(['services.scalable.cli.enabled' => true, 'services.scalable.source' => 'cli']);
-        $acwi = Asset::factory()->create(['category_id' => $this->stocksId, 'name' => 'ACWI', 'isin' => 'IE00B6R52259', 'value' => 999, 'date' => now()->format('Y-m-01')]);
-        $this->fakeCli([], total: 0, loggedIn: false);
-        Http::fake();
-
-        $result = app(FetchScalableBalance::class)->run();
-
-        $this->assertContains('Scalable', $result->failed);
-        $acwi->refresh();
-        $this->assertEqualsWithDelta(999.0, (float) $acwi->value, 0.001);
-        $connection = ScalableConnection::current();
-        $this->assertSame(ScalableConnection::SYNC_FAILED, $connection->last_sync_status);
-        // Pinned to the CLI: the proxy is never tried.
-        Http::assertNothingSent();
     }
 }
