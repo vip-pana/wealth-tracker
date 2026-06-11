@@ -19,7 +19,8 @@ export interface Asset {
     quantity: number | null;
     price: number | null;   // current price fetched from API
     value: number;          // quantity * price for live assets, manual value otherwise
-    bank_synced_at: string | null;  // ISO; set when value came from an open-banking balance
+    synced_at: string | null;  // ISO; set when value came from a bank or broker sync
+    sync_source: 'bank' | 'broker' | null;  // which sync stamped synced_at
     bank_linked: boolean;   // true while an active bank connection manages this asset's value
     date: string;           // "YYYY-MM-DD"
     notes: string | null;

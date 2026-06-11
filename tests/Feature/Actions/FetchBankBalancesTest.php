@@ -90,7 +90,8 @@ class FetchBankBalancesTest extends TestCase
         $this->assertSame(['Conto'], $result->updated);
         $asset->refresh();
         $this->assertEqualsWithDelta(1500.50, (float) $asset->value, 0.001);
-        $this->assertNotNull($asset->bank_synced_at);
+        $this->assertNotNull($asset->synced_at);
+        $this->assertSame(Asset::SYNC_SOURCE_BANK, $asset->sync_source);
         $this->assertDatabaseHas('bank_accounts', ['uid' => 'acc-1', 'last_sync_status' => 'ok', 'last_sync_error' => null]);
     }
 
@@ -132,7 +133,7 @@ class FetchBankBalancesTest extends TestCase
         $this->linkedAccount('acc-1');
         Asset::factory()->create([
             'category_id' => $this->categoryId, 'name' => 'Conto', 'value' => 500,
-            'date' => now()->subMonthNoOverflow()->format('Y-m-01'), 'bank_synced_at' => now()->subMonth(),
+            'date' => now()->subMonthNoOverflow()->format('Y-m-01'), 'synced_at' => now()->subMonth(), 'sync_source' => Asset::SYNC_SOURCE_BANK,
         ]);
         $this->fakeBalance('acc-1', '650.00');
 
@@ -161,7 +162,7 @@ class FetchBankBalancesTest extends TestCase
         $this->assertSame(['Conto'], $result->failed);
         $asset->refresh();
         $this->assertEqualsWithDelta(100.0, (float) $asset->value, 0.001);
-        $this->assertNull($asset->bank_synced_at);
+        $this->assertNull($asset->synced_at);
         // The failed attempt is recorded durably on the account.
         $this->assertDatabaseHas('bank_accounts', ['uid' => 'acc-1', 'last_sync_status' => 'failed']);
     }

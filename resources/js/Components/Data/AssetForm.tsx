@@ -208,8 +208,8 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                     <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
                                     <span>
                                         Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.
-                                        {editAsset.bank_synced_at && (
-                                            <> Saldo sincronizzato: {new Date(editAsset.bank_synced_at).toLocaleString('it-IT')}.</>
+                                        {editAsset.synced_at && (
+                                            <> Saldo sincronizzato: {new Date(editAsset.synced_at).toLocaleString('it-IT')}.</>
                                         )}
                                     </span>
                                 </p>
@@ -338,16 +338,16 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             <p className="text-xs text-muted-foreground">
                                 Compila l&apos;ISIN per collegare questa posizione alla sincronizzazione del broker Scalable: il valore verrà aggiornato automaticamente.
                             </p>
-                            {isEdit && data.isin.trim() !== '' && !editAsset?.bank_synced_at && (
+                            {isEdit && data.isin.trim() !== '' && !editAsset?.synced_at && (
                                 <p className="text-xs text-muted-foreground">
                                     Il collegamento verrà verificato alla prossima sincronizzazione.
                                 </p>
                             )}
-                            {isEdit && editAsset?.bank_synced_at && !editAsset?.bank_linked && (
+                            {isEdit && editAsset?.sync_source === 'broker' && (
                                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                     <CandlestickChart className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-400" aria-hidden />
                                     <span>
-                                        Valore sincronizzato dal broker Scalable: {new Date(editAsset.bank_synced_at).toLocaleString('it-IT')}.
+                                        Valore sincronizzato dal broker Scalable: {new Date(editAsset.synced_at!).toLocaleString('it-IT')}.
                                     </span>
                                 </p>
                             )}

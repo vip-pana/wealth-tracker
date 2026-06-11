@@ -52,7 +52,8 @@ class FetchScalableBalance extends Action
                 }
 
                 $asset->value = $position['value'];
-                $asset->bank_synced_at = Carbon::now();
+                $asset->synced_at = Carbon::now();
+                $asset->sync_source = Asset::SYNC_SOURCE_BROKER;
                 $asset->save();
                 $updated[] = $asset->name;
             }
@@ -122,7 +123,8 @@ class FetchScalableBalance extends Action
 
         $asset->deleted_at = null;
         $asset->value = $value;
-        $asset->bank_synced_at = Carbon::now();
+        $asset->synced_at = Carbon::now();
+        $asset->sync_source = Asset::SYNC_SOURCE_BROKER;
         $asset->save();
     }
 }

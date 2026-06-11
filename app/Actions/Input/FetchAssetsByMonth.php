@@ -15,7 +15,7 @@ class FetchAssetsByMonth extends Action
 {
     /**
      * @param  Collection<string, AssetPrice>  $prices
-     * @return Collection<int, array{id: int, name: string, ticker: string|null, isin: string|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, bank_synced_at: string|null, bank_linked: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, icon: string|null, macro_category: string|null}}>
+     * @return Collection<int, array{id: int, name: string, ticker: string|null, isin: string|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, synced_at: string|null, sync_source: string|null, bank_linked: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, icon: string|null, macro_category: string|null}}>
      */
     public function run(string $month, Collection $prices): Collection
     {
@@ -46,7 +46,8 @@ class FetchAssetsByMonth extends Action
                     'quantity' => $a->quantity,
                     'price' => $price,
                     'value' => $a->currentValue($price),
-                    'bank_synced_at' => $a->bank_synced_at?->toISOString(),
+                    'synced_at' => $a->synced_at?->toISOString(),
+                    'sync_source' => $a->sync_source,
                     'bank_linked' => in_array($a->name.'|'.$a->category_id, $bankLinks, true),
                     'date' => $a->date->format('Y-m-d'),
                     'notes' => $a->notes,

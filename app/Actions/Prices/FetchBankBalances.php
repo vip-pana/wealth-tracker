@@ -6,6 +6,7 @@ namespace App\Actions\Prices;
 
 use App\Actions\Action;
 use App\Http\Clients\EnableBankingClient;
+use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
 use Illuminate\Support\Carbon;
@@ -66,7 +67,8 @@ class FetchBankBalances extends Action
             // Overwrite the stored value with the live balance; a failed fetch
             // above leaves the previous value untouched.
             $asset->value = $balance['amount'];
-            $asset->bank_synced_at = Carbon::now();
+            $asset->synced_at = Carbon::now();
+            $asset->sync_source = Asset::SYNC_SOURCE_BANK;
             $asset->save();
             $account->recordSyncSuccess();
             $updated[] = $label;

@@ -108,14 +108,11 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                 const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
                 // Drive the bank badge off the live link state (same signal as the
                 // edit-modal lock), and the freshness line off the last sync time.
-                const bankSync = asset.bank_linked ? bankFreshness(asset.bank_synced_at) : null;
-                // A broker-synced holding (e.g. Scalable) is not an open-banking
-                // link, but the sync still stamps bank_synced_at — the only way an
-                // asset gets that timestamp without being bank_linked. Surface its
-                // freshness so a stalled sync (proxy down / expired session) shows
-                // as stale.
-                const brokerSync = !asset.bank_linked && asset.bank_synced_at
-                    ? brokerFreshness(asset.bank_synced_at)
+                const bankSync = asset.bank_linked ? bankFreshness(asset.synced_at) : null;
+                // A broker-synced holding (e.g. Scalable) surfaces its own freshness
+                // so a stalled sync (expired session) shows as stale.
+                const brokerSync = asset.sync_source === 'broker'
+                    ? brokerFreshness(asset.synced_at)
                     : null;
                 return (
                 <TableRow key={asset.id}>

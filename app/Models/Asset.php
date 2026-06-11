@@ -19,7 +19,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $ticker
  * @property string|null $isin
  * @property string|null $wallet_address
- * @property Carbon|null $bank_synced_at
+ * @property Carbon|null $synced_at
+ * @property string|null $sync_source
  * @property float|null $quantity
  * @property Carbon $date
  * @property string|null $notes
@@ -33,13 +34,17 @@ class Asset extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'isin', 'wallet_address', 'bank_synced_at', 'quantity', 'date', 'notes'];
+    public const SYNC_SOURCE_BANK = 'bank';
+
+    public const SYNC_SOURCE_BROKER = 'broker';
+
+    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'isin', 'wallet_address', 'synced_at', 'sync_source', 'quantity', 'date', 'notes'];
 
     protected $casts = [
         'value' => 'float',
         'quantity' => 'float',
         'date' => 'date:Y-m-d',
-        'bank_synced_at' => 'datetime',
+        'synced_at' => 'datetime',
     ];
 
     public function currentValue(?float $price = null): float
