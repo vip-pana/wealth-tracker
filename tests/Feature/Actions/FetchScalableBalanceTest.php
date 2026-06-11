@@ -80,7 +80,8 @@ class FetchScalableBalanceTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, (float) $acwi->value, 0.001);
         // Cash is derived as total - securities - crypto.
         $this->assertEqualsWithDelta(500.0, (float) $cash->value, 0.001);
-        $this->assertNotNull($acwi->bank_synced_at);
+        $this->assertNotNull($acwi->synced_at);
+        $this->assertSame(Asset::SYNC_SOURCE_BROKER, $acwi->sync_source);
         // The asset keeps its own display name; the CLI name is ignored.
         $this->assertSame('ACWI', $acwi->name);
         // A successful sync records healthy connection state.
@@ -129,7 +130,7 @@ class FetchScalableBalanceTest extends TestCase
         $this->assertContains('Scalable', $result->failed);
         $acwi->refresh();
         $this->assertEqualsWithDelta(999.0, (float) $acwi->value, 0.001);
-        $this->assertNull($acwi->bank_synced_at);
+        $this->assertNull($acwi->synced_at);
         // A failed sync is recorded so Settings can surface it after the toast.
         $connection = ScalableConnection::current();
         $this->assertSame(ScalableConnection::SYNC_FAILED, $connection->last_sync_status);

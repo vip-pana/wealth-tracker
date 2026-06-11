@@ -14,7 +14,7 @@ class DisconnectController extends Controller
     public function __invoke(BankConnection $connection): RedirectResponse
     {
         // The assets stay but stop being auto-synced and become manual again.
-        // Clear bank_synced_at on their rows so the "Banca" badge/freshness no
+        // Clear the sync state on their rows so the "Banca" badge/freshness no
         // longer implies a live link that no longer exists.
         $connection->loadMissing('accounts');
         foreach ($connection->accounts as $account) {
@@ -23,8 +23,8 @@ class DisconnectController extends Controller
             }
             Asset::where('name', $account->linked_name)
                 ->where('category_id', $account->linked_category_id)
-                ->whereNotNull('bank_synced_at')
-                ->update(['bank_synced_at' => null]);
+                ->whereNotNull('synced_at')
+                ->update(['synced_at' => null, 'sync_source' => null]);
         }
 
         // Cascades to the linked bank_accounts.

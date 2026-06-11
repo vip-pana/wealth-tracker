@@ -79,7 +79,7 @@ interface BankAccountEntry {
     name: string | null;
     linked_asset_id: number | null;
     linked_name: string | null;
-    bank_synced_at: string | null;
+    synced_at: string | null;
     last_sync_status: 'ok' | 'failed' | null;
     last_sync_error: string | null;
 }
@@ -589,7 +589,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
                                                         Ultimo sync fallito
                                                     </span>
                                                 ) : (() => {
-                                                    const f = bankFreshness(acc.bank_synced_at);
+                                                    const f = bankFreshness(acc.synced_at);
                                                     return (
                                                         <span className={cn('block text-xs', f.stale ? 'text-amber-500' : 'text-muted-foreground')}>
                                                             Saldo {f.label}
