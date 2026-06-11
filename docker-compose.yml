@@ -32,7 +32,7 @@ services:
       sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
       php artisan migrate --force &&
       pnpm install --frozen-lockfile --ignore-scripts &&
-      pnpm dlx concurrently -c '#93c5fd,#c4b5fd,#a78bfa,#fb7185,#fdba74' 'php artisan serve --host=0.0.0.0' 'php artisan queue:listen --tries=1' 'php artisan schedule:work' 'php artisan pail --timeout=0' 'pnpm dev --host' --names=server,queue,scheduler,logs,vite"
+      pnpm dlx concurrently -c '#93c5fd,#c4b5fd,#a78bfa,#fb7185,#fdba74' 'php artisan serve --host=0.0.0.0' 'php artisan queue:listen --tries=1 --timeout=910' 'php artisan schedule:work' 'php artisan pail --timeout=0' 'pnpm dev --host' --names=server,queue,scheduler,logs,vite"
 
 volumes:
   scalable-cli:
