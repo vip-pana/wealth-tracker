@@ -59,6 +59,7 @@ return [
             'enabled' => (bool) env('SCALABLE_CLI_ENABLED', false),
             'binary' => env('SCALABLE_CLI_BINARY', 'sc'),
             'timeout' => (int) env('SCALABLE_CLI_TIMEOUT', 30),
+            'login_timeout' => (int) env('SCALABLE_CLI_LOGIN_TIMEOUT', 900),
         ],
     ],
 

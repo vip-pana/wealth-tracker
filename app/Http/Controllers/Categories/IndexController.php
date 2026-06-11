@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Categories;
 
 use App\Enums\MacroCategory;
 use App\Http\Clients\EnableBankingClient;
+use App\Http\Clients\ScalableCliClient;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\AssetPrice;
@@ -13,6 +14,7 @@ use App\Models\BankConnection;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\ScalableConnection;
+use App\Services\Scalable\ScalableLoginState;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
@@ -22,6 +24,8 @@ class IndexController extends Controller
 {
     public function __construct(
         private readonly EnableBankingClient $enableBanking,
+        private readonly ScalableCliClient $scalableCli,
+        private readonly ScalableLoginState $scalableLogin,
     ) {}
 
     public function __invoke(): Response
@@ -69,21 +73,35 @@ class IndexController extends Controller
     }
 
     /**
-     * State of the Scalable broker sync for the Settings card: whether it's
-     * configured and the outcome of the last sync. Null timestamps/status mean
-     * never synced yet.
+     * State of the Scalable broker sync for the Settings card: which source is
+     * active, whether it's configured, the live CLI session state, the outcome
+     * of the last sync, and any in-flight in-app login. Null timestamps/status
+     * mean never synced yet.
      *
-     * @return array{configured: bool, last_sync_status: string|null, last_sync_error: string|null, last_sync_at: string|null}
+     * @return array{source: string, configured: bool, cli: bool, cli_logged_in: bool|null, last_sync_status: string|null, last_sync_error: string|null, last_sync_at: string|null, login: array{status: string, url: string|null, user_code: string|null, error: string|null, started_at: string|null}}
      */
     private function scalableState(): array
     {
         $connection = ScalableConnection::current();
+        $source = Config::string('services.scalable.source', 'auto');
+        $cliEnabled = Config::boolean('services.scalable.cli.enabled', false);
+        $proxyConfigured = Config::string('services.scalable.balance_url', '') !== '';
+        $usesCli = $cliEnabled && $source !== 'proxy';
 
         return [
-            'configured' => Config::string('services.scalable.balance_url', '') !== '',
+            'source' => $source,
+            'configured' => $proxyConfigured || $cliEnabled,
+            'cli' => $usesCli,
+            // Live session check, but only when the CLI is the active source —
+            // otherwise it's irrelevant and we skip the extra CLI call. Cached
+            // briefly so rapid Settings reloads don't each spawn a `sc whoami`.
+            'cli_logged_in' => $usesCli
+                ? Cache::remember('scalable.cli.logged_in', now()->addSeconds(30), fn (): bool => $this->scalableCli->isLoggedIn())
+                : null,
             'last_sync_status' => $connection->last_sync_status,
             'last_sync_error' => $connection->last_sync_error,
             'last_sync_at' => $connection->last_sync_at?->toISOString(),
+            'login' => $this->scalableLogin->snapshot(),
         ];
     }
 
