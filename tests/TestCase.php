@@ -26,6 +26,11 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
 
+        // The container exports CACHE_STORE=database as a real env var (like
+        // DB_*), overriding phpunit.xml. Force the array store so tests that use
+        // the cache don't need the cache table migrated.
+        $app['config']->set('cache.default', 'array');
+
         // The container exports SCALABLE_* as real env vars (like DB_*), which
         // override phpunit.xml. Force the broker sync off so tests never reach
         // the host proxy or run the CLI; tests that exercise either set the

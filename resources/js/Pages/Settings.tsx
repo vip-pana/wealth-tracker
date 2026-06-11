@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle, CandlestickChart } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle, CandlestickChart, ExternalLink, Copy, Check } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -103,11 +103,23 @@ interface LinkableAsset {
     name: string;
 }
 
+interface ScalableLoginState {
+    status: 'idle' | 'pending' | 'url_issued' | 'complete' | 'failed';
+    url: string | null;
+    user_code: string | null;
+    error: string | null;
+    started_at: string | null;
+}
+
 interface ScalableState {
+    source: string;
     configured: boolean;
+    cli: boolean;
+    cli_logged_in: boolean | null;
     last_sync_status: 'ok' | 'failed' | null;
     last_sync_error: string | null;
     last_sync_at: string | null;
+    login: ScalableLoginState;
 }
 
 interface Props {
@@ -604,9 +616,51 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
 function ScalableConnectionCard({ state }: { state: ScalableState }) {
     const refresh = useForm({});
     const login = useForm({});
+    const usesCli = state.cli;
     const freshness = brokerFreshness(state.last_sync_at);
     const failed = state.last_sync_status === 'failed';
-    const needsLogin = failed || freshness.stale || state.last_sync_at === null;
+    // CLI mode trusts the live whoami check; proxy mode falls back to freshness.
+    const needsLogin = usesCli ? state.cli_logged_in === false : failed || freshness.stale || state.last_sync_at === null;
+
+    const [loginFlow, setLoginFlow] = useState<ScalableLoginState>(state.login);
+    const inProgress = loginFlow.status === 'pending' || loginFlow.status === 'url_issued';
+    const [copied, setCopied] = useState(false);
+
+    // Poll the CLI login status while a login is in flight; stop on a terminal
+    // state. On completion, refresh the page props so the badge turns live.
+    useEffect(() => {
+        if (!usesCli || !inProgress) {
+            return;
+        }
+        const controller = new AbortController();
+        const id = setInterval(() => {
+            void fetch('/scalable/cli/login/status', { signal: controller.signal, headers: { Accept: 'application/json' } })
+                .then((r) => r.json())
+                .then((next: ScalableLoginState) => {
+                    setLoginFlow(next);
+                    if (next.status === 'complete') {
+                        router.reload({ only: ['scalable'] });
+                    }
+                })
+                .catch(() => undefined);
+        }, 2000);
+        return () => {
+            clearInterval(id);
+            controller.abort();
+        };
+    }, [usesCli, inProgress]);
+
+    const startCliLogin = () => {
+        setLoginFlow({ status: 'pending', url: null, user_code: null, error: null, started_at: null });
+        login.post('/scalable/cli/login', { preserveScroll: true });
+    };
+
+    const copyCode = (code: string) => {
+        void navigator.clipboard.writeText(code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        });
+    };
 
     return (
         <Card>
@@ -617,21 +671,23 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                         Scalable Capital
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Sincronizza saldi e posizioni dal broker (sola lettura) tramite il proxy locale sul Mac. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.
+                        {usesCli
+                            ? 'Sincronizza saldi e posizioni dal broker (sola lettura) tramite la CLI ufficiale Scalable. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.'
+                            : 'Sincronizza saldi e posizioni dal broker (sola lettura) tramite il proxy locale sul Mac. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.'}
                     </p>
                 </div>
                 {state.configured && (
                     <div className="flex items-center gap-2">
-                        {needsLogin && (
+                        {needsLogin && !inProgress && (
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => login.post('/scalable/login', { preserveScroll: true })}
+                                onClick={usesCli ? startCliLogin : () => login.post('/scalable/login', { preserveScroll: true })}
                                 disabled={login.processing}
-                                title="Apre una finestra del browser sul Mac per il login e il 2FA"
+                                title={usesCli ? 'Avvia il login: apri il link mostrato e inserisci il codice + 2FA' : 'Apre una finestra del browser sul Mac per il login e il 2FA'}
                             >
                                 <Link2 className={`w-4 h-4 mr-1 ${login.processing ? 'animate-pulse' : ''}`} />
-                                {login.processing ? 'In attesa del login…' : 'Collega / Riconnetti'}
+                                {login.processing ? 'Avvio…' : 'Collega / Riconnetti'}
                             </Button>
                         )}
                         <Button
@@ -649,12 +705,17 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
             <CardContent className="space-y-2">
                 {!state.configured ? (
                     <p className="text-xs text-amber-500">
-                        Sincronizzazione Scalable non configurata (manca SCALABLE_BALANCE_URL).
+                        Sincronizzazione Scalable non configurata (abilita SCALABLE_CLI_ENABLED o imposta SCALABLE_BALANCE_URL).
                     </p>
                 ) : (
                     <>
                         <div className="flex items-center gap-1.5 text-sm">
-                            {failed ? (
+                            {usesCli && state.cli_logged_in === false ? (
+                                <span className="inline-flex items-center gap-1.5 text-amber-500">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Sessione scaduta, riconnetti
+                                </span>
+                            ) : failed ? (
                                 <span className="inline-flex items-center gap-1.5 text-destructive" title={state.last_sync_error ?? undefined}>
                                     <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
                                     Ultimo sync fallito
@@ -671,7 +732,65 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                                 </span>
                             )}
                         </div>
-                        {(failed || freshness.stale) && (
+
+                        {usesCli && inProgress && (
+                            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                                {loginFlow.status === 'url_issued' && loginFlow.url ? (
+                                    <>
+                                        <a
+                                            href={loginFlow.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm text-indigo-400 hover:underline"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+                                            Apri Scalable per confermare
+                                        </a>
+                                        {loginFlow.user_code && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">Codice:</span>
+                                                <code className="rounded bg-background px-2 py-0.5 font-mono text-sm tracking-wider">{loginFlow.user_code}</code>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyCode(loginFlow.user_code as string)}
+                                                    className="text-muted-foreground hover:text-foreground"
+                                                    title="Copia il codice"
+                                                >
+                                                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden /> : <Copy className="w-3.5 h-3.5" aria-hidden />}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <RefreshCw className="w-3 h-3 animate-spin" aria-hidden />
+                                            In attesa di conferma…
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <RefreshCw className="w-3 h-3 animate-spin" aria-hidden />
+                                        Avvio del login in corso…
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {usesCli && loginFlow.status === 'failed' && (
+                            <p className="flex items-start gap-1.5 text-xs text-destructive">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden />
+                                <span>{loginFlow.error ?? 'Login non riuscito.'} Riprova, oppure da terminale: <code className="font-mono">docker exec -it wealth-tracker-app-1 sc login</code></span>
+                            </p>
+                        )}
+
+                        {usesCli && !inProgress && state.cli_logged_in === false && loginFlow.status !== 'failed' && (
+                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
+                                <span>
+                                    Clicca &laquo;Collega / Riconnetti&raquo;: comparirà un link da aprire nel browser e un codice da inserire (con 2FA). Poi la sincronizzazione automatica riprende da sola.
+                                </span>
+                            </p>
+                        )}
+
+                        {!usesCli && (failed || freshness.stale) && (
                             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
                                 <span>
