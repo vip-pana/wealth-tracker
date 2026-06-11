@@ -35,6 +35,7 @@ use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
 use App\Http\Controllers\Scalable\LoginController as LoginScalableController;
 use App\Http\Controllers\Scalable\LoginStatusController as LoginStatusScalableController;
+use App\Http\Controllers\Scalable\LogoutController as LogoutScalableController;
 use App\Http\Controllers\Scalable\RefreshController as RefreshScalableController;
 use App\Http\Controllers\Scalable\StartLoginController as StartLoginScalableController;
 use App\Http\Controllers\Snapshots\StoreController as StoreSnapshotController;
@@ -94,6 +95,7 @@ Route::post('/scalable/refresh', RefreshScalableController::class)->name('scalab
 Route::post('/scalable/login', LoginScalableController::class)->name('scalable.login');
 Route::post('/scalable/cli/login', StartLoginScalableController::class)->name('scalable.cli.login');
 Route::get('/scalable/cli/login/status', LoginStatusScalableController::class)->name('scalable.cli.login.status');
+Route::post('/scalable/cli/logout', LogoutScalableController::class)->name('scalable.cli.logout');
 
 // ─── Banking (Enable Banking open banking, read-only) ─────────────────────────
 Route::prefix('banking')->name('banking.')->group(function () {

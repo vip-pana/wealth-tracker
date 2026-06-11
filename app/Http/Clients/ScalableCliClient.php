@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Clients;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
 /**
- * Read-only client for the official Scalable Capital CLI (`sc`).
+ * Client for the official Scalable Capital CLI (`sc`).
  *
  * The CLI runs headless in the container with a file-backed session (config.toml
- * `[auth] session_backend = "file"`). This client only ever invokes the read
- * commands in self::COMMANDS — there is no code path that builds a `trade`
- * command. Every method returns null on any failure (disabled, no session,
- * non-zero exit, unexpected shape) so the caller leaves stored values untouched.
+ * `[auth] session_backend = "file"`). This client only ever invokes the commands
+ * in self::COMMANDS — read queries plus logout — there is no code path that
+ * builds a `trade` command. Read methods return null on any failure (disabled,
+ * no session, non-zero exit, unexpected shape) so the caller leaves stored
+ * values untouched.
  */
 class ScalableCliClient implements ScalableSource
 {
@@ -28,6 +30,7 @@ class ScalableCliClient implements ScalableSource
         'overview' => ['broker', 'overview', '--json'],
         'holdings' => ['broker', 'holdings', '--json'],
         'whoami' => ['whoami', '--json'],
+        'logout' => ['logout', '--json'],
     ];
 
     public function __construct(
@@ -120,6 +123,19 @@ class ScalableCliClient implements ScalableSource
     public function isLoggedIn(): bool
     {
         return $this->runJson('whoami') !== null;
+    }
+
+    /**
+     * Remove the saved session via `logout --json`. Returns true if the CLI
+     * cleared it. Forgets the cached isLoggedIn() result so the UI reflects the
+     * change immediately rather than after the cache window.
+     */
+    public function logout(): bool
+    {
+        $cleared = $this->runJson('logout') !== null;
+        Cache::forget('scalable.cli.logged_in');
+
+        return $cleared;
     }
 
     /**

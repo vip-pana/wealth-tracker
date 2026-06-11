@@ -100,4 +100,20 @@ class ScalableCliClientTest extends TestCase
 
         $this->assertTrue($this->client()->isLoggedIn());
     }
+
+    public function test_logout_clears_the_session(): void
+    {
+        Process::fake([
+            '*logout*' => Process::result($this->envelope(['logged_out' => true])),
+        ]);
+
+        $this->assertTrue($this->client()->logout());
+    }
+
+    public function test_logout_reports_failure_on_a_non_zero_exit(): void
+    {
+        Process::fake(['*logout*' => Process::result('', '', 1)]);
+
+        $this->assertFalse($this->client()->logout());
+    }
 }
