@@ -616,6 +616,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
 function ScalableConnectionCard({ state }: { state: ScalableState }) {
     const refresh = useForm({});
     const login = useForm({});
+    const logout = useForm({});
     const usesCli = state.cli;
     const freshness = brokerFreshness(state.last_sync_at);
     const failed = state.last_sync_status === 'failed';
@@ -690,15 +691,29 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                                 {login.processing ? 'Avvio…' : 'Collega / Riconnetti'}
                             </Button>
                         )}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => refresh.post('/scalable/refresh', { preserveScroll: true })}
-                            disabled={refresh.processing}
-                        >
-                            <RefreshCw className={`w-4 h-4 mr-1 ${refresh.processing ? 'animate-spin' : ''}`} />
-                            Sincronizza ora
-                        </Button>
+                        {(!usesCli || state.cli_logged_in === true) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => refresh.post('/scalable/refresh', { preserveScroll: true })}
+                                disabled={refresh.processing}
+                            >
+                                <RefreshCw className={`w-4 h-4 mr-1 ${refresh.processing ? 'animate-spin' : ''}`} />
+                                Sincronizza ora
+                            </Button>
+                        )}
+                        {usesCli && state.cli_logged_in === true && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => logout.post('/scalable/cli/logout', { preserveScroll: true })}
+                                disabled={logout.processing}
+                                title="Rimuove la sessione Scalable salvata dalla CLI"
+                            >
+                                <Unlink className={`w-4 h-4 mr-1 ${logout.processing ? 'animate-pulse' : ''}`} />
+                                Scollega
+                            </Button>
+                        )}
                     </div>
                 )}
             </CardHeader>
