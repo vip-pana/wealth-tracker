@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle, CandlestickChart, ExternalLink, Copy, Check } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, RotateCcw, Landmark, Link2, Unlink, ShieldCheck, AlertTriangle, CandlestickChart, ExternalLink, Copy, Check, X } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -619,12 +619,17 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
     const failed = state.last_sync_status === 'failed';
     const needsLogin = state.cli_logged_in === false;
 
+    const cancel = useForm({});
     const [loginFlow, setLoginFlow] = useState<ScalableLoginState>(state.login);
-    const inProgress = loginFlow.status === 'pending' || loginFlow.status === 'url_issued';
+    const [timedOut, setTimedOut] = useState(false);
+    const inProgress = !timedOut && (loginFlow.status === 'pending' || loginFlow.status === 'url_issued');
     const [copied, setCopied] = useState(false);
 
     // Poll the CLI login status while a login is in flight; stop on a terminal
     // state. On completion, refresh the page props so the badge turns live.
+    // A device code expires after a few minutes, so cap the wait: if no
+    // confirmation lands, stop polling and surface a retry instead of spinning
+    // forever on an orphaned "In attesa di conferma…".
     useEffect(() => {
         if (!inProgress) {
             return;
@@ -641,15 +646,24 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                 })
                 .catch(() => undefined);
         }, 2000);
+        const giveUp = setTimeout(() => setTimedOut(true), 5 * 60 * 1000);
         return () => {
             clearInterval(id);
+            clearTimeout(giveUp);
             controller.abort();
         };
     }, [inProgress]);
 
     const startCliLogin = () => {
+        setTimedOut(false);
         setLoginFlow({ status: 'pending', url: null, user_code: null, error: null, started_at: null });
         login.post('/scalable/cli/login', { preserveScroll: true });
+    };
+
+    const cancelCliLogin = () => {
+        setTimedOut(false);
+        setLoginFlow({ status: 'idle', url: null, user_code: null, error: null, started_at: null });
+        cancel.post('/scalable/cli/login/cancel', { preserveScroll: true });
     };
 
     const copyCode = (code: string) => {
@@ -769,10 +783,23 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                                                 </button>
                                             </div>
                                         )}
-                                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                            <RefreshCw className="w-3 h-3 animate-spin" aria-hidden />
-                                            In attesa di conferma…
-                                        </p>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                <RefreshCw className="w-3 h-3 animate-spin" aria-hidden />
+                                                In attesa di conferma…
+                                            </p>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={cancelCliLogin}
+                                                disabled={cancel.processing}
+                                                title="Annulla il login in corso"
+                                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                            >
+                                                <X className="w-3.5 h-3.5 mr-1" aria-hidden />
+                                                Annulla
+                                            </Button>
+                                        </div>
                                     </>
                                 ) : (
                                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -781,6 +808,13 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                                     </p>
                                 )}
                             </div>
+                        )}
+
+                        {timedOut && (
+                            <p className="flex items-start gap-1.5 text-xs text-amber-500">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden />
+                                <span>Codice scaduto o login non confermato. Clicca &laquo;Collega / Riconnetti&raquo; per riprovare.</span>
+                            </p>
                         )}
 
                         {loginFlow.status === 'failed' && (

@@ -33,6 +33,7 @@ use App\Http\Controllers\Pension\IndexController as IndexPensionController;
 use App\Http\Controllers\Pension\StoreController as StorePensionController;
 use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
+use App\Http\Controllers\Scalable\CancelLoginController as CancelLoginScalableController;
 use App\Http\Controllers\Scalable\LoginStatusController as LoginStatusScalableController;
 use App\Http\Controllers\Scalable\LogoutController as LogoutScalableController;
 use App\Http\Controllers\Scalable\RefreshController as RefreshScalableController;
@@ -93,6 +94,7 @@ Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refr
 Route::post('/scalable/refresh', RefreshScalableController::class)->name('scalable.refresh');
 Route::post('/scalable/cli/login', StartLoginScalableController::class)->name('scalable.cli.login');
 Route::get('/scalable/cli/login/status', LoginStatusScalableController::class)->name('scalable.cli.login.status');
+Route::post('/scalable/cli/login/cancel', CancelLoginScalableController::class)->name('scalable.cli.login.cancel');
 Route::post('/scalable/cli/logout', LogoutScalableController::class)->name('scalable.cli.logout');
 
 // ─── Banking (Enable Banking open banking, read-only) ─────────────────────────

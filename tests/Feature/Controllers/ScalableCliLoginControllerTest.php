@@ -52,4 +52,13 @@ class ScalableCliLoginControllerTest extends TestCase
                 'user_code' => 'ABCD-1234',
             ]);
     }
+
+    public function test_cancel_clears_an_in_progress_login_back_to_idle(): void
+    {
+        app(ScalableLoginState::class)->markUrlIssued('https://secure.scalable.capital/activate?user_code=ABCD-1234', 'ABCD-1234');
+
+        $this->post('/scalable/cli/login/cancel')->assertRedirect();
+
+        $this->assertSame('idle', app(ScalableLoginState::class)->snapshot()['status']);
+    }
 }
