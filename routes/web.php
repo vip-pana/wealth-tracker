@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Analytics\AnalysisController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
 use App\Http\Controllers\Analytics\ImportCsvController;
+use App\Http\Controllers\Analytics\InvestmentsController;
 use App\Http\Controllers\Assets\CopyFromMonthController;
 use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
@@ -46,7 +46,7 @@ use Illuminate\Support\Facades\Route;
 // ─── Pages ────────────────────────────────────────────────────────────────────
 Route::get('/', DashboardController::class)->name('dashboard');
 Route::get('/input', IndexAssetController::class)->name('input.index');
-Route::get('/analysis', AnalysisController::class)->name('analysis.index');
+Route::get('/investments', InvestmentsController::class)->name('investments.index');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
 Route::get('/pension', IndexPensionController::class)->name('pension.index');

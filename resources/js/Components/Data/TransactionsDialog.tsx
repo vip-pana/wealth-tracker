@@ -16,10 +16,17 @@ import {
 import { formatDateLabel } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { Money } from '@/Components/ui/Money';
-import type { Asset, PositionSummary, TransactionRow } from '@/types/models';
+import type { PositionSummary, TransactionRow } from '@/types/models';
+
+// Only id (to fetch) and name (for the title) are needed, so any asset-like
+// object works — an Asset row from the table or a position from Investimenti.
+interface AssetRef {
+    id: number;
+    name: string;
+}
 
 interface Props {
-    asset: Asset | null;
+    asset: AssetRef | null;
     onClose: () => void;
 }
 
@@ -66,7 +73,9 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
         return () => {
             cancelled = true;
         };
-    }, [asset]);
+        // Re-fetch only when the asset identity changes, not on every new object ref.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [asset?.id]);
 
     const pos = data?.position;
     const pnlTone = pos?.unrealised_pnl == null ? undefined : pos.unrealised_pnl >= 0 ? 'pos' : 'neg';

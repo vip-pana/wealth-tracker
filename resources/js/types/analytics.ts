@@ -75,7 +75,10 @@ export interface GoalEta {
 }
 
 export interface PositionReturn {
+    id: number;
     name: string;
+    shares: number;
+    average_cost: number;
     cost_basis: number;
     current_value: number | null;
     unrealised_pnl: number | null;

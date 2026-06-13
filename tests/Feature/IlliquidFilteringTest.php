@@ -54,36 +54,6 @@ class IlliquidFilteringTest extends TestCase
             );
     }
 
-    public function test_analysis_excludes_illiquid_assets(): void
-    {
-        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF]);
-        $pension = Category::factory()->create(['macro_category' => MacroCategory::FondoPensione]);
-
-        Asset::factory()->create(['category_id' => $etf->id, 'name' => 'ETF Asset', 'value' => 1000, 'date' => '2026-01-31']);
-        Asset::factory()->create(['category_id' => $pension->id, 'name' => 'Pension Asset', 'value' => 5000, 'date' => '2026-01-31']);
-
-        $this->get('/analysis')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Analysis')
-                ->has('assets', 1)
-                ->where('assets.0.name', 'ETF Asset')
-            );
-    }
-
-    public function test_analysis_categories_exclude_illiquid_macros(): void
-    {
-        Category::factory()->create(['name' => 'My ETF', 'macro_category' => MacroCategory::ETF]);
-        Category::factory()->create(['name' => 'My Pension', 'macro_category' => MacroCategory::FondoPensione]);
-
-        $this->get('/analysis')
-            ->assertInertia(fn ($page) => $page
-                ->component('Analysis')
-                ->has('categories', 1)
-                ->where('categories.0.name', 'My ETF')
-            );
-    }
-
     public function test_input_excludes_illiquid_categories_and_assets(): void
     {
         $etf = Category::factory()->create(['name' => 'My ETF', 'macro_category' => MacroCategory::ETF]);

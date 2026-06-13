@@ -27,7 +27,7 @@ class ComputePositionReturns extends Action
      * the section entirely rather than show empty zeros.
      *
      * @return array{
-     *     positions: list<array{name: string, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}>,
+     *     positions: list<array{id: int, name: string, shares: float, average_cost: float, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}>,
      *     aggregate: array{cost_basis: float, current_value: float, unrealised_pnl: float, unrealised_pnl_pct: float|null, realised_pnl: float},
      * }|null
      */
@@ -62,7 +62,10 @@ class ComputePositionReturns extends Action
             );
 
             $positions[] = [
+                'id' => $asset->id,
                 'name' => $asset->name,
+                'shares' => $position['shares'],
+                'average_cost' => $position['average_cost'],
                 'cost_basis' => $position['cost_basis'],
                 'current_value' => $position['current_value'],
                 'unrealised_pnl' => $position['unrealised_pnl'],

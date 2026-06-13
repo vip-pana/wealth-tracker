@@ -37,6 +37,8 @@ class ComputePositionReturnsTest extends TestCase
 
         $pos = $result['positions'][0];
         $this->assertSame('ACWI', $pos['name']);
+        $this->assertSame(20.0, $pos['shares']);
+        $this->assertSame(100.0, $pos['average_cost']);
         $this->assertSame(2000.0, $pos['cost_basis']);
         $this->assertSame(2400.0, $pos['current_value']);       // 20 * 120
         $this->assertSame(400.0, $pos['unrealised_pnl']);       // 2400 - 2000
