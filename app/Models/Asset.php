@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\AssetFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property Carbon|null $deleted_at
  * @property-read Category $category
+ * @property-read Collection<int, Transaction> $transactions
  */
 class Asset extends Model
 {
@@ -60,5 +63,11 @@ class Asset extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return HasMany<Transaction, $this> */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }
