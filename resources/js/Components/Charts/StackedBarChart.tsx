@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
+import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
 import type { StackedBarPoint } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function StackedBarChart({ data, categories }: Props) {
+    const hidden = useValuesHidden();
     const visibleCategories = categories.filter((cat) =>
         data.some((point) => (point[cat.name] as number ?? 0) > 0)
     );
@@ -38,10 +40,11 @@ export default function StackedBarChart({ data, categories }: Props) {
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
-                            tickFormatter={formatCurrencyCompact}
+                            tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11 }}
                             width={70}
                         />
+                        {!hidden && (
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
                             labelFormatter={(d) => formatDateLabel(d as string)}
@@ -54,6 +57,7 @@ export default function StackedBarChart({ data, categories }: Props) {
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        )}
                         <Legend iconType="circle" iconSize={8} />
                         {visibleCategories.map((cat) => (
                             <Bar

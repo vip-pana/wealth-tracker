@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
+import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
 import type { MonthComparisonPoint } from '@/types/analytics';
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function MonthComparisonChart({ data, months, title = 'Confronto tra snapshot' }: Props) {
+    const hidden = useValuesHidden();
     const [prevDate, currDate] = months ?? ['Prec.', 'Attuale'];
 
     const prevLabel = prevDate.length > 7 ? formatDateLabel(prevDate) : prevDate;
@@ -40,10 +42,11 @@ export default function MonthComparisonChart({ data, months, title = 'Confronto 
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis dataKey="category" tick={{ fontSize: 11 }} />
                         <YAxis
-                            tickFormatter={formatCurrencyCompact}
+                            tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11 }}
                             width={70}
                         />
+                        {!hidden && (
                         <Tooltip
                             formatter={(v) => [formatCurrency((v as number) ?? 0)]}
                             contentStyle={{
@@ -55,6 +58,7 @@ export default function MonthComparisonChart({ data, months, title = 'Confronto 
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        )}
                         <Bar dataKey="previous" name={prevLabel} fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.7} />
                         <Bar dataKey="current" name={currLabel} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>

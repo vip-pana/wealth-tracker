@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrency, formatCurrencyCompact, formatDateLabel } from '@/lib/formatters';
+import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
 import type { NetWorthPoint } from '@/types/analytics';
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function NetWorthLineChart({ data, goalTarget, goalName }: Props) {
+    const hidden = useValuesHidden();
     return (
         <Card className="flex flex-col h-full">
             <CardHeader className="pb-1 pt-3 px-3">
@@ -35,11 +37,12 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
                             stroke="hsl(var(--border))"
                         />
                         <YAxis
-                            tickFormatter={formatCurrencyCompact}
+                            tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                             stroke="hsl(var(--border))"
                             width={70}
                         />
+                        {!hidden && (
                         <Tooltip
                             formatter={(v) => [formatCurrency((v as number) ?? 0), 'Totale']}
                             labelFormatter={(d) => formatDateLabel(d as string)}
@@ -52,6 +55,7 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        )}
                         {goalTarget != null && (
                             <ReferenceLine
                                 y={goalTarget}

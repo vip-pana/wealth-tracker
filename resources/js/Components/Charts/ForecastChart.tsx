@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
 import { formatCurrencyCompact, formatCurrency, formatDateLabel } from '@/lib/formatters';
+import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
 import { findForecastSplitDate } from '@/lib/metrics';
 import type { ForecastPoint } from '@/types/analytics';
 
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function ForecastChart({ data }: Props) {
+    const hidden = useValuesHidden();
     // Find the split point between historical and forecast
     const splitDate = findForecastSplitDate(data);
 
@@ -41,10 +43,11 @@ export default function ForecastChart({ data }: Props) {
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
-                            tickFormatter={formatCurrencyCompact}
+                            tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11 }}
                             width={70}
                         />
+                        {!hidden && (
                         <Tooltip
                             formatter={(v, name) => [formatCurrency((v as number) ?? 0), name]}
                             labelFormatter={(d) => formatDateLabel(d as string)}
@@ -57,6 +60,7 @@ export default function ForecastChart({ data }: Props) {
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        )}
                         <Legend iconType="line" />
                         {splitDate && (
                             <ReferenceLine

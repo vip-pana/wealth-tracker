@@ -11,3 +11,6 @@ export const PrivacyContext = createContext(false);
 export function useValuesHidden(): boolean {
     return useContext(PrivacyContext);
 }
+
+/** Masked placeholder for a chart Y-axis tick when values are hidden. */
+export const MASKED_TICK = '•••';
