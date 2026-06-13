@@ -6,6 +6,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
+import { useValuesHidden } from '@/lib/privacy';
 import type { AllocationSlice } from '@/types/analytics';
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export default function AllocationDonutChart({ data }: Props) {
+    const hidden = useValuesHidden();
     const total = data.reduce((s, d) => s + d.value, 0);
     const visible = data.filter((d) => d.value > 0);
 
@@ -43,6 +46,7 @@ export default function AllocationDonutChart({ data }: Props) {
                                     <Cell key={entry.name} fill={entry.color} stroke="hsl(var(--card))" strokeWidth={2} tabIndex={-1} style={{ outline: 'none' }} />
                                 ))}
                             </Pie>
+                            {!hidden && (
                             <Tooltip
                                 formatter={(v, name) => [
                                     `${formatCurrencyNoDecimals((v as number) ?? 0)} (${total > 0 ? ((((v as number) ?? 0) / total) * 100).toFixed(1) : 0}%)`,
@@ -57,6 +61,7 @@ export default function AllocationDonutChart({ data }: Props) {
                                 labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                                 itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                             />
+                            )}
                         </PieChart>
                     </div>
 
@@ -79,7 +84,7 @@ export default function AllocationDonutChart({ data }: Props) {
                                         </div>
                                     </td>
                                     <td className="py-1 text-right font-mono font-medium whitespace-nowrap">
-                                        {formatCurrencyNoDecimals(entry.value)}
+                                        <Money value={entry.value} variant="no-decimals" />
                                     </td>
                                     <td className="py-1 pl-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                                         {total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%
