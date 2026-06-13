@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart, AlertTriangle } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart, AlertTriangle, ReceiptText } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
     Dialog,
@@ -20,6 +20,7 @@ import {
 import { formatCurrency } from '@/lib/formatters';
 import { priceFreshness, bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
+import TransactionsDialog from '@/Components/Data/TransactionsDialog';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
 interface Props {
@@ -75,7 +76,7 @@ function DeleteButton({ asset }: { asset: Asset }) {
     );
 }
 
-function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a: Asset) => void; prices: Record<string, AssetPriceInfo> }) {
+function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets: Asset[]; onEdit: (a: Asset) => void; onViewTransactions: (a: Asset) => void; prices: Record<string, AssetPriceInfo> }) {
     const [open, setOpen] = useState(true);
     const cat = assets[0].category;
     const total = assets.reduce((sum, a) => sum + a.value, 0);
@@ -200,6 +201,17 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
                     </TableCell>
                     <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                            {asset.transaction_managed && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                    title="Vedi transazioni"
+                                    onClick={() => onViewTransactions(asset)}
+                                >
+                                    <ReceiptText className="w-4 h-4" />
+                                </Button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -219,6 +231,8 @@ function CategoryGroup({ assets, onEdit, prices }: { assets: Asset[]; onEdit: (a
 }
 
 export default function AssetTable({ assets, onEdit, prices }: Props) {
+    const [txAsset, setTxAsset] = useState<Asset | null>(null);
+
     if (assets.length === 0) {
         return (
             <div className="py-12 text-center text-muted-foreground text-sm">
@@ -248,7 +262,7 @@ export default function AssetTable({ assets, onEdit, prices }: Props) {
                 </TableHeader>
                 <TableBody>
                     {[...groups.entries()].map(([categoryId, groupAssets]) => (
-                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} prices={prices} />
+                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} onViewTransactions={setTxAsset} prices={prices} />
                     ))}
                 </TableBody>
             </Table>
@@ -257,6 +271,8 @@ export default function AssetTable({ assets, onEdit, prices }: Props) {
                 <span className="text-sm font-medium text-muted-foreground">Totale mese</span>
                 <span className="font-bold text-base font-mono">{formatCurrency(total)}</span>
             </div>
+
+            <TransactionsDialog asset={txAsset} onClose={() => setTxAsset(null)} />
         </div>
     );
 }

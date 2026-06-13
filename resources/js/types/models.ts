@@ -22,8 +22,29 @@ export interface Asset {
     synced_at: string | null;  // ISO; set when value came from a bank or broker sync
     sync_source: 'bank' | 'broker' | null;  // which sync stamped synced_at
     bank_linked: boolean;   // true while an active bank connection manages this asset's value
+    transaction_managed?: boolean;  // true when shares are derived from a transaction history
     date: string;           // "YYYY-MM-DD"
     notes: string | null;
+}
+
+export interface TransactionRow {
+    id: number;
+    type: 'buy' | 'sell';
+    shares: number;
+    price_per_share: number;
+    fees: number | null;
+    date: string;           // "YYYY-MM-DD"
+    notes: string | null;
+}
+
+export interface PositionSummary {
+    shares: number;
+    average_cost: number;
+    cost_basis: number;
+    realised_pnl: number;
+    current_value: number | null;
+    unrealised_pnl: number | null;
+    unrealised_pnl_pct: number | null;
 }
 
 export interface AssetPriceInfo {

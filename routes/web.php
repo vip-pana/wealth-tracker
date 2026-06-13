@@ -12,6 +12,7 @@ use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
 use App\Http\Controllers\Assets\RestoreController as RestoreAssetController;
 use App\Http\Controllers\Assets\StoreController as StoreAssetController;
+use App\Http\Controllers\Assets\TransactionsController as TransactionsAssetController;
 use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
 use App\Http\Controllers\Backup\StoreController as StoreBackupController;
 use App\Http\Controllers\Banking\CallbackController as BankingCallbackController;
@@ -55,6 +56,7 @@ Route::prefix('assets')->name('assets.')->group(function () {
     Route::put('/{asset}', UpdateAssetController::class)->name('update');
     Route::delete('/{asset}', DestroyAssetController::class)->name('destroy');
     Route::post('/{asset}/restore', RestoreAssetController::class)->name('restore');
+    Route::get('/{asset}/transactions', TransactionsAssetController::class)->name('transactions');
     Route::post('/copy-from-month', CopyFromMonthController::class)->name('copy-from-month');
 });
 
