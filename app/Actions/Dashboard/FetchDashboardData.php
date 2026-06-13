@@ -50,6 +50,8 @@ class FetchDashboardData extends Action
         $liquidSnapshots = $this->stripIlliquid($allSnapshots, $illiquidCategoryIds);
         $liquidCategories = $allCategories->reject(fn (Category $c): bool => in_array($c->id, $illiquidCategoryIds, true))->values();
 
+        $monthlySnapshots = $this->collapseToMonthly($liquidSnapshots);
+
         return [
             'netWorthSeries' => $this->buildNetWorthSeries->run($liquidSnapshots),
             'allocationData' => $this->buildAllocationData->run($liquidSnapshots, $liquidCategories),
@@ -60,6 +62,13 @@ class FetchDashboardData extends Action
             'macroAllocationData' => $this->buildMacroAllocationData->run($liquidSnapshots),
             'macroStackedBar' => $this->buildMacroStackedBar->run($liquidSnapshots),
             'macroMonthComparison' => $this->buildMacroMonthComparison->run($liquidSnapshots),
+            'momNetWorthSeries' => $this->buildNetWorthSeries->run($monthlySnapshots),
+            'momStackedBar' => $this->buildStackedBar->run($monthlySnapshots, $liquidCategories),
+            'momGrowthRates' => $this->computeGrowthRates->run($monthlySnapshots),
+            'momMonthComparison' => $this->computeMonthComparison->run($monthlySnapshots, $liquidCategories),
+            'momForecast' => $this->computeForecast->run($monthlySnapshots),
+            'momMacroStackedBar' => $this->buildMacroStackedBar->run($monthlySnapshots),
+            'momMacroMonthComparison' => $this->buildMacroMonthComparison->run($monthlySnapshots),
             'categories' => $liquidCategories->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -79,6 +88,21 @@ class FetchDashboardData extends Action
                 'target_date' => $goal->target_date?->format('Y-m-d'),
             ] : null,
         ];
+    }
+
+    /**
+     * Collapse a date-ordered collection to one snapshot per calendar month,
+     * keeping the last snapshot of each month as that month's value.
+     *
+     * @param  Collection<int, Snapshot>  $snapshots
+     * @return Collection<int, Snapshot>
+     */
+    private function collapseToMonthly(Collection $snapshots): Collection
+    {
+        return $snapshots
+            ->keyBy(fn (Snapshot $s): string => $s->date->format('Y-m'))
+            ->sortKeys()
+            ->values();
     }
 
     /**

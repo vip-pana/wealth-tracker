@@ -13,7 +13,7 @@ entities:
     definition: High-level class — Liquidità, ETF, Cripto, Fondo Pensione (the last is illiquid).
     relationship: "enum on Category; see app/Enums/MacroCategory.php"
   Snapshot:
-    definition: A dated photo of net worth, created manually, never auto-computed.
+    definition: A dated photo of net worth, created manually, never auto-computed. Per-event, not per-month — several snapshots can share a calendar month. The dashboard's MoM toggle collapses each month to its last snapshot (see FetchDashboardData::collapseToMonthly); the per-snapshot mode keeps every one.
     relationship: "has many SnapshotCategoryValue; see app/Models/Snapshot.php"
   SnapshotCategoryValue:
     definition: Per-category value frozen into a snapshot.

@@ -34,6 +34,13 @@ interface Props {
     macroAllocationData: MacroAllocationSlice[];
     macroStackedBar: MacroStackedBarPoint[];
     macroMonthComparison: MacroComparisonPoint[];
+    momNetWorthSeries: NetWorthPoint[];
+    momStackedBar: StackedBarPoint[];
+    momGrowthRates: GrowthRatePoint[];
+    momMonthComparison: MonthComparisonPoint[];
+    momForecast: ForecastPoint[];
+    momMacroStackedBar: MacroStackedBarPoint[];
+    momMacroMonthComparison: MacroComparisonPoint[];
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     latestSnapshot: string | null;
@@ -44,10 +51,12 @@ function SummaryCard({
     label,
     value,
     change,
+    changeLabel,
 }: {
     label: string;
     value: string;
     change?: number | null;
+    changeLabel?: string;
 }) {
     const Icon = change == null ? null : change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
     const color = change == null ? '' : change > 0 ? 'text-green-500' : change < 0 ? 'text-red-500' : 'text-muted-foreground';
@@ -60,7 +69,7 @@ function SummaryCard({
                 {change != null && Icon && (
                     <p className={`text-xs flex items-center gap-1 mt-0.5 ${color}`}>
                         <Icon className="w-3 h-3" />
-                        {formatPercent(change)} vs mese prec.
+                        {formatPercent(change)} {changeLabel}
                     </p>
                 )}
             </CardContent>
@@ -78,12 +87,20 @@ export default function Dashboard({
     macroAllocationData,
     macroStackedBar,
     macroMonthComparison,
+    momNetWorthSeries,
+    momStackedBar,
+    momGrowthRates,
+    momMonthComparison,
+    momForecast,
+    momMacroStackedBar,
+    momMacroMonthComparison,
     categories,
     hasData,
     latestSnapshot,
     goal,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
+    const [momMode, setMomMode] = useState(false);
     if (!hasData) {
         return (
             <>
@@ -107,17 +124,15 @@ export default function Dashboard({
         );
     }
 
-    const lastPoint = netWorthSeries[netWorthSeries.length - 1];
-    const prevPoint = netWorthSeries[netWorthSeries.length - 2];
+    const series = momMode ? momNetWorthSeries : netWorthSeries;
+    const lastPoint = series[series.length - 1];
+    const prevPoint = series[series.length - 2];
     const totalChange = netWorthChangePct(prevPoint?.total_value, lastPoint?.total_value);
 
-    // Get the two most recent snapshot dates for comparison chart
+    // Get the two most recent dates for the comparison chart
     const snapshotMonths: [string, string] | null =
-        netWorthSeries.length >= 2
-            ? [
-                netWorthSeries[netWorthSeries.length - 2].date,
-                netWorthSeries[netWorthSeries.length - 1].date,
-              ]
+        series.length >= 2
+            ? [series[series.length - 2].date, series[series.length - 1].date]
             : null;
 
     const macroAllocationWithColor: AllocationSlice[] = macroAllocationData.map((s) => ({
@@ -131,7 +146,7 @@ export default function Dashboard({
         color,
     }));
 
-    const macroComparisonPoints: MonthComparisonPoint[] = macroMonthComparison.map((p) => ({
+    const macroComparisonPoints: MonthComparisonPoint[] = (momMode ? momMacroMonthComparison : macroMonthComparison).map((p) => ({
         category: p.macro,
         color: MACRO_COLORS[p.macro] ?? '#94a3b8',
         current: p.current,
@@ -147,14 +162,24 @@ export default function Dashboard({
                     title="Dashboard"
                     subtitle={latestSnapshot ? `Ultimo aggiornamento: ${formatDateLong(latestSnapshot)}` : undefined}
                     actions={
-                        <SegmentedToggle
-                            options={[
-                                { value: 'category', label: 'Categorie' },
-                                { value: 'macro', label: 'Macro' },
-                            ]}
-                            value={macroMode ? 'macro' : 'category'}
-                            onChange={(v) => setMacroMode(v === 'macro')}
-                        />
+                        <div className="flex gap-2">
+                            <SegmentedToggle
+                                options={[
+                                    { value: 'snapshot', label: 'Snapshot' },
+                                    { value: 'mom', label: 'Mese' },
+                                ]}
+                                value={momMode ? 'mom' : 'snapshot'}
+                                onChange={(v) => setMomMode(v === 'mom')}
+                            />
+                            <SegmentedToggle
+                                options={[
+                                    { value: 'category', label: 'Categorie' },
+                                    { value: 'macro', label: 'Macro' },
+                                ]}
+                                value={macroMode ? 'macro' : 'category'}
+                                onChange={(v) => setMacroMode(v === 'macro')}
+                            />
+                        </div>
                     }
                 />
 
@@ -164,6 +189,7 @@ export default function Dashboard({
                         label="Patrimonio attuale"
                         value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
                         change={totalChange}
+                        changeLabel={momMode ? 'vs mese prec.' : 'vs snapshot prec.'}
                     />
                     {goal && lastPoint ? (
                         <Link href="/goal" className="contents">
@@ -204,14 +230,14 @@ export default function Dashboard({
 
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                    <NetWorthLineChart data={netWorthSeries} goalTarget={goal?.target_value} goalName={goal?.name} />
+                    <NetWorthLineChart data={series} goalTarget={goal?.target_value} goalName={goal?.name} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
-                    <GrowthRateChart data={growthRates} />
+                    <GrowthRateChart data={momMode ? momGrowthRates : growthRates} title={momMode ? 'Variazione mensile (%)' : 'Variazione tra snapshot (%)'} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                    <StackedBarChart data={macroMode ? macroStackedBar : stackedBar} categories={macroMode ? macroCategories : categories} />
-                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : monthComparison} months={snapshotMonths} />
-                    <ForecastChart data={forecast} />
+                    <StackedBarChart data={macroMode ? (momMode ? momMacroStackedBar : macroStackedBar) : (momMode ? momStackedBar : stackedBar)} categories={macroMode ? macroCategories : categories} />
+                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : (momMode ? momMonthComparison : monthComparison)} months={snapshotMonths} title={momMode ? 'Confronto tra mesi' : 'Confronto tra snapshot'} />
+                    <ForecastChart data={momMode ? momForecast : forecast} />
                 </div>
             </div>
         </>

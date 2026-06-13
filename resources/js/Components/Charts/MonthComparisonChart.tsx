@@ -5,7 +5,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
@@ -16,9 +15,10 @@ import type { MonthComparisonPoint } from '@/types/analytics';
 interface Props {
     data: MonthComparisonPoint[];
     months: [string, string] | null; // [prev, current] as YYYY-MM-DD
+    title?: string;
 }
 
-export default function MonthComparisonChart({ data, months }: Props) {
+export default function MonthComparisonChart({ data, months, title = 'Confronto tra snapshot' }: Props) {
     const [prevDate, currDate] = months ?? ['Prec.', 'Attuale'];
 
     const prevLabel = prevDate.length > 7 ? formatDateLabel(prevDate) : prevDate;
@@ -29,7 +29,7 @@ export default function MonthComparisonChart({ data, months }: Props) {
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
-                <CardTitle className="text-sm">Confronto tra snapshot</CardTitle>
+                <CardTitle className="text-sm">{title}</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 {!months || visibleData.length === 0 ? (
@@ -55,11 +55,22 @@ export default function MonthComparisonChart({ data, months }: Props) {
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
-                        <Legend iconType="rect" />
                         <Bar dataKey="previous" name={prevLabel} fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.7} />
                         <Bar dataKey="current" name={currLabel} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
+                )}
+                {months && visibleData.length > 0 && (
+                    <div className="flex justify-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--muted-foreground))', opacity: 0.7 }} />
+                            {prevLabel}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+                            {currLabel}
+                        </span>
+                    </div>
                 )}
             </CardContent>
         </Card>

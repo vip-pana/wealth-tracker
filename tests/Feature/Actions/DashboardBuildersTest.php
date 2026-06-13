@@ -7,6 +7,7 @@ namespace Tests\Feature\Actions;
 use App\Actions\Dashboard\BuildMacroAllocationData;
 use App\Actions\Dashboard\BuildMacroStackedBar;
 use App\Actions\Dashboard\ComputeMonthComparison;
+use App\Actions\Dashboard\FetchDashboardData;
 use App\Enums\MacroCategory;
 use App\Models\Category;
 use App\Models\Snapshot;
@@ -127,5 +128,22 @@ class DashboardBuildersTest extends TestCase
         $this->assertEqualsWithDelta(300.0, $result[0]['ETF'], 0.01);
         $this->assertSame('2026-02-01', $result[1]['date']);
         $this->assertEqualsWithDelta(400.0, $result[1]['ETF'], 0.01);
+    }
+
+    public function test_mom_series_collapses_same_month_snapshots_to_last(): void
+    {
+        $cat = Category::factory()->create();
+        $this->snapshot('2026-01-05', [$cat->id => 100]);
+        $this->snapshot('2026-01-20', [$cat->id => 130]);
+        $this->snapshot('2026-02-10', [$cat->id => 150]);
+
+        $data = app(FetchDashboardData::class)->run();
+
+        // Per-snapshot keeps all three points; MoM collapses January to its last (130).
+        $this->assertCount(3, $data['netWorthSeries']);
+        $this->assertCount(2, $data['momNetWorthSeries']);
+        $this->assertSame('2026-01-20', $data['momNetWorthSeries'][0]['date']);
+        $this->assertEqualsWithDelta(130.0, $data['momNetWorthSeries'][0]['total_value'], 0.01);
+        $this->assertSame('2026-02-10', $data['momNetWorthSeries'][1]['date']);
     }
 }

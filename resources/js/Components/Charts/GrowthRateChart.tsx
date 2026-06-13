@@ -16,13 +16,14 @@ import type { GrowthRatePoint } from '@/types/analytics';
 
 interface Props {
     data: GrowthRatePoint[];
+    title?: string;
 }
 
-export default function GrowthRateChart({ data }: Props) {
+export default function GrowthRateChart({ data, title = 'Variazione tra snapshot (%)' }: Props) {
     return (
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
-                <CardTitle className="text-sm">Variazione tra snapshot (%)</CardTitle>
+                <CardTitle className="text-sm">{title}</CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 {data.length === 0 ? (
