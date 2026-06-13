@@ -9,13 +9,14 @@ import StackedBarChart from '@/Components/Charts/StackedBarChart';
 import GrowthRateChart from '@/Components/Charts/GrowthRateChart';
 import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
+import PortfolioInsights from '@/Components/Dashboard/PortfolioInsights';
 import { Card, CardContent } from '@/Components/ui/card';
 import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
 import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
-import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint } from '@/types/analytics';
+import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint, PortfolioMetrics } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
 const MACRO_COLORS: Record<string, string> = {
@@ -45,6 +46,7 @@ interface Props {
     hasData: boolean;
     latestSnapshot: string | null;
     goal: { name: string; target_value: number; target_date: string | null } | null;
+    portfolioMetrics: PortfolioMetrics;
 }
 
 function SummaryCard({
@@ -98,6 +100,7 @@ export default function Dashboard({
     hasData,
     latestSnapshot,
     goal,
+    portfolioMetrics,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
     const [momMode, setMomMode] = useState(false);
@@ -227,6 +230,9 @@ export default function Dashboard({
                         ))
                     )}
                 </div>
+
+                {/* Portfolio reading (rule-based today; AI advisor builds on these metrics) */}
+                <PortfolioInsights metrics={portfolioMetrics} />
 
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

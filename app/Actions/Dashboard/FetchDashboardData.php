@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
+use App\Actions\Advisor\ComputePortfolioMetrics;
 use App\Enums\MacroCategory;
 use App\Models\Category;
 use App\Models\Goal;
@@ -24,6 +25,7 @@ class FetchDashboardData extends Action
         private readonly BuildMacroAllocationData $buildMacroAllocationData,
         private readonly BuildMacroStackedBar $buildMacroStackedBar,
         private readonly BuildMacroMonthComparison $buildMacroMonthComparison,
+        private readonly ComputePortfolioMetrics $computePortfolioMetrics,
     ) {}
 
     /** @return array<string, mixed> */
@@ -51,6 +53,8 @@ class FetchDashboardData extends Action
         $liquidCategories = $allCategories->reject(fn (Category $c): bool => in_array($c->id, $illiquidCategoryIds, true))->values();
 
         $monthlySnapshots = $this->collapseToMonthly($liquidSnapshots);
+
+        $goal = Goal::first();
 
         return [
             'netWorthSeries' => $this->buildNetWorthSeries->run($liquidSnapshots),
@@ -82,11 +86,12 @@ class FetchDashboardData extends Action
             'illiquidNetWorth' => $illiquidTotal,
             'hasIlliquid' => $illiquidTotal > 0,
             'illiquidMacros' => MacroCategory::illiquidValues(),
-            'goal' => ($goal = Goal::first()) ? [
+            'goal' => $goal ? [
                 'name' => $goal->name,
                 'target_value' => $goal->target_value,
                 'target_date' => $goal->target_date?->format('Y-m-d'),
             ] : null,
+            'portfolioMetrics' => $this->computePortfolioMetrics->run($monthlySnapshots, $liquidCategories, $goal),
         ];
     }
 

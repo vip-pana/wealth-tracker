@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Allocation donut: lay out the chart and its legend side-by-side only when
+ * the card itself is wide enough — not the viewport. Inside the 3-column
+ * dashboard grid each card is narrow on mid-size desktops (~1024–1280px),
+ * where a viewport breakpoint would still force a row and squash the legend.
+ * A container query keys the switch to the card's own width instead.
+ */
+@layer components {
+    .donut-container {
+        container-type: inline-size;
+    }
+
+    @container (min-width: 20rem) {
+        .donut-layout {
+            flex-direction: row;
+            gap: 1.5rem;
+        }
+
+        .donut-legend {
+            flex: 1 1 0%;
+        }
+    }
+}
+
 @layer base {
     :root {
         --background: 0 0% 100%;
