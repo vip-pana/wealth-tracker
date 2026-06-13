@@ -13,7 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { formatCurrency, formatDateLabel } from '@/lib/formatters';
+import { formatDateLabel } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { Money } from '@/Components/ui/Money';
 import type { Asset, PositionSummary, TransactionRow } from '@/types/models';
@@ -28,7 +28,7 @@ interface Payload {
     position: PositionSummary;
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: 'pos' | 'neg' }) {
+function Stat({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'pos' | 'neg' }) {
     return (
         <div>
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -85,22 +85,22 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                         {/* Position summary */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-md bg-muted/40 p-3">
                             <Stat label="Quote" value={String(pos!.shares)} />
-                            <Stat label="Prezzo medio di carico" value={formatCurrency(pos!.average_cost)} />
-                            <Stat label="Costo totale" value={formatCurrency(pos!.cost_basis)} />
+                            <Stat label="Prezzo medio di carico" value={<Money value={pos!.average_cost} />} />
+                            <Stat label="Costo totale" value={<Money value={pos!.cost_basis} />} />
                             {pos!.current_value !== null && (
-                                <Stat label="Valore attuale" value={formatCurrency(pos!.current_value)} />
+                                <Stat label="Valore attuale" value={<Money value={pos!.current_value} />} />
                             )}
                             {pos!.unrealised_pnl !== null && (
                                 <Stat
                                     label="Plus/minus latente"
-                                    value={`${formatCurrency(pos!.unrealised_pnl)}${pos!.unrealised_pnl_pct !== null ? ` (${pos!.unrealised_pnl_pct.toFixed(2)}%)` : ''}`}
+                                    value={<><Money value={pos!.unrealised_pnl} />{pos!.unrealised_pnl_pct !== null ? ` (${pos!.unrealised_pnl_pct.toFixed(2)}%)` : ''}</>}
                                     tone={pnlTone}
                                 />
                             )}
                             {pos!.realised_pnl !== 0 && (
                                 <Stat
                                     label="Realizzato"
-                                    value={formatCurrency(pos!.realised_pnl)}
+                                    value={<Money value={pos!.realised_pnl} />}
                                     tone={pos!.realised_pnl >= 0 ? 'pos' : 'neg'}
                                 />
                             )}

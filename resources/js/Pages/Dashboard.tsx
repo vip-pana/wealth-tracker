@@ -12,7 +12,7 @@ import ForecastChart from '@/Components/Charts/ForecastChart';
 import PortfolioInsights from '@/Components/Dashboard/PortfolioInsights';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Money } from '@/Components/ui/Money';
-import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
+import { formatPercent, formatDateLong } from '@/lib/formatters';
 import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
@@ -57,7 +57,7 @@ function SummaryCard({
     changeLabel,
 }: {
     label: string;
-    value: string;
+    value: React.ReactNode;
     change?: number | null;
     changeLabel?: string;
 }) {
@@ -191,7 +191,7 @@ export default function Dashboard({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                     <SummaryCard
                         label="Patrimonio attuale"
-                        value={lastPoint ? formatCurrency(lastPoint.total_value) : '—'}
+                        value={lastPoint ? <Money value={lastPoint.total_value} /> : '—'}
                         change={totalChange}
                         changeLabel={momMode ? 'vs mese prec.' : 'vs snapshot prec.'}
                     />
@@ -226,7 +226,7 @@ export default function Dashboard({
                             <SummaryCard
                                 key={slice.name}
                                 label={slice.name}
-                                value={formatCurrency(slice.value)}
+                                value={<Money value={slice.value} />}
                             />
                         ))
                     )}

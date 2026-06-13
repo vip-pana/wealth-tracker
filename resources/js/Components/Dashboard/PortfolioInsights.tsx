@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
+import { formatPercent, formatDateLong } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import { Lightbulb, PieChart, Coins, Activity, Target } from 'lucide-react';
 import type { PortfolioMetrics } from '@/types/analytics';
 
@@ -11,7 +12,7 @@ function Row({
 }: {
     icon: typeof PieChart;
     label: string;
-    value: string;
+    value: React.ReactNode;
     hint?: string;
 }) {
     return (
@@ -88,7 +89,7 @@ export default function PortfolioInsights({ metrics }: { metrics: PortfolioMetri
                 <Row
                     icon={Coins}
                     label="Liquidità ferma"
-                    value={`${formatCurrency(liquidity.value)} (${liquidity.share_pct.toFixed(1)}%)`}
+                    value={<><Money value={liquidity.value} /> ({liquidity.share_pct.toFixed(1)}%)</>}
                     hint={
                         liquidity.share_pct >= 30
                             ? 'Quota di liquidità alta: valuta se sta perdendo terreno sull\'inflazione.'
