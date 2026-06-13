@@ -24,6 +24,13 @@ class UpdateController extends Controller
             unset($data['name'], $data['category_id'], $data['value']);
         }
 
+        // Same lock for share assets driven by a transaction history: quantity
+        // (and the value derived from it) is owned by the transactions, not the
+        // form. Editing it by hand would be overwritten on the next sync.
+        if ($asset->isTransactionManaged()) {
+            unset($data['quantity'], $data['value']);
+        }
+
         $asset->update($data);
 
         return redirect()->back()->with('success', 'Asset aggiornato.');

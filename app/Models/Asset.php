@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Category $category
  * @property-read Collection<int, Transaction> $transactions
+ * @property-read int|null $transactions_count
  */
 class Asset extends Model
 {
@@ -69,5 +70,15 @@ class Asset extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Whether this asset's shares are derived from a transaction history. When
+     * true, quantity is owned by the transactions and is read-only by hand —
+     * the same edit-lock an active bank link applies to a synced balance.
+     */
+    public function isTransactionManaged(): bool
+    {
+        return $this->transactions()->exists();
     }
 }
