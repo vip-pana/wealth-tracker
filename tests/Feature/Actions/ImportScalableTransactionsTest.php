@@ -33,7 +33,7 @@ class ImportScalableTransactionsTest extends TestCase
     }
 
     /**
-     * @param  list<array{id: string, isin: string, quantity: float, amount: float, side: string}>  $items
+     * @param  list<array{id: string, isin: string, quantity: float, amount: float, side: string, stt?: string}>  $items
      */
     private function transactionsResult(array $items, ?string $cursor = null): string
     {
@@ -47,7 +47,7 @@ class ImportScalableTransactionsTest extends TestCase
                     'quantity' => $i['quantity'],
                     'amount' => $i['amount'],
                     'side' => $i['side'],
-                    'security_transaction_type' => 'SAVINGS_PLAN',
+                    'security_transaction_type' => $i['stt'] ?? 'SAVINGS_PLAN',
                     'status' => 'SETTLED',
                     'last_event_datetime' => '2026-06-04T10:27:57.666Z',
                 ], $items),
@@ -87,6 +87,7 @@ class ImportScalableTransactionsTest extends TestCase
             'external_id' => 'tx-1',
             'asset_id' => $asset->id,
             'type' => 'buy',
+            'source' => 'savings_plan',
         ]);
 
         $tx = Transaction::where('external_id', 'tx-1')->firstOrFail();
@@ -95,6 +96,24 @@ class ImportScalableTransactionsTest extends TestCase
 
         // The asset's quantity is synced from the imported transactions.
         $this->assertSame(3.0, $asset->fresh()->quantity);
+    }
+
+    public function test_maps_single_orders_to_the_single_source(): void
+    {
+        $this->acwi();
+
+        Process::fake([
+            '*whoami*' => Process::result($this->cliEnvelope(['result' => ['personOverview' => ['id' => 'x']]])),
+            '*broker*transactions*' => Process::result($this->transactionsResult([
+                ['id' => 'tx-pac', 'isin' => 'IE00B6R52259', 'quantity' => 3.0, 'amount' => -300.0, 'side' => 'BUY', 'stt' => 'SAVINGS_PLAN'],
+                ['id' => 'tx-one', 'isin' => 'IE00B6R52259', 'quantity' => 26.0, 'amount' => -2713.88, 'side' => 'BUY', 'stt' => 'SINGLE'],
+            ])),
+        ]);
+
+        app(ImportScalableTransactions::class)->run();
+
+        $this->assertSame('savings_plan', Transaction::where('external_id', 'tx-pac')->value('source'));
+        $this->assertSame('single', Transaction::where('external_id', 'tx-one')->value('source'));
     }
 
     public function test_skips_isins_no_asset_carries(): void

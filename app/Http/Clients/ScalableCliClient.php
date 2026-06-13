@@ -102,7 +102,7 @@ class ScalableCliClient
      * Returns null on any failure. `cursor` (null = first page) and the returned
      * `next_cursor` (null = no more pages) drive pagination by the caller.
      *
-     * @return array{items: list<array{external_id: string, isin: string, name: string, type: string, shares: float, price_per_share: float, date: string}>, next_cursor: string|null}|null
+     * @return array{items: list<array{external_id: string, isin: string, name: string, type: string, source: string, shares: float, price_per_share: float, date: string}>, next_cursor: string|null}|null
      */
     public function transactions(?string $cursor = null): ?array
     {
@@ -158,7 +158,7 @@ class ScalableCliClient
      * buy outflow; price per share is the absolute amount over the quantity.
      *
      * @param  mixed  $item
-     * @return array{external_id: string, isin: string, name: string, type: string, shares: float, price_per_share: float, date: string}|null
+     * @return array{external_id: string, isin: string, name: string, type: string, source: string, shares: float, price_per_share: float, date: string}|null
      */
     private function normaliseTransaction($item): ?array
     {
@@ -199,11 +199,18 @@ class ScalableCliClient
             return null;
         }
 
+        // SAVINGS_PLAN is the recurring PAC order; everything else (SINGLE, …)
+        // is a one-off buy/sell. Anything unrecognised falls back to single.
+        $source = $item['security_transaction_type'] === 'SAVINGS_PLAN'
+            ? Transaction::SOURCE_SAVINGS_PLAN
+            : Transaction::SOURCE_SINGLE;
+
         return [
             'external_id' => $id,
             'isin' => $isin,
             'name' => $name,
             'type' => $type,
+            'source' => $source,
             'shares' => $shares,
             'price_per_share' => abs((float) $amount) / $shares,
             'date' => substr($datetime, 0, 10),

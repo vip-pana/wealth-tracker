@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $asset_id
  * @property string $type
+ * @property string|null $source
  * @property float $shares
  * @property float $price_per_share
  * @property float|null $fees
@@ -35,7 +36,13 @@ class Transaction extends Model
 
     public const TYPE_SELL = 'sell';
 
-    protected $fillable = ['asset_id', 'type', 'shares', 'price_per_share', 'fees', 'date', 'external_id', 'notes'];
+    public const SOURCE_SAVINGS_PLAN = 'savings_plan';
+
+    public const SOURCE_SINGLE = 'single';
+
+    public const SOURCE_MANUAL = 'manual';
+
+    protected $fillable = ['asset_id', 'type', 'source', 'shares', 'price_per_share', 'fees', 'date', 'external_id', 'notes'];
 
     protected $casts = [
         'shares' => 'float',

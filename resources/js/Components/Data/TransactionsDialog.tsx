@@ -136,11 +136,18 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                                             <TableRow key={t.id}>
                                                 <TableCell className="text-sm">{formatDateLabel(t.date)}</TableCell>
                                                 <TableCell>
-                                                    <span className={cn(
-                                                        'inline-flex rounded-full px-1.5 py-0.5 text-xs font-medium',
-                                                        t.type === 'buy' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500',
-                                                    )}>
-                                                        {t.type === 'buy' ? 'Acquisto' : 'Vendita'}
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <span className={cn(
+                                                            'inline-flex rounded-full px-1.5 py-0.5 text-xs font-medium',
+                                                            t.type === 'buy' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500',
+                                                        )}>
+                                                            {t.type === 'buy' ? 'Acquisto' : 'Vendita'}
+                                                        </span>
+                                                        {t.source === 'savings_plan' && (
+                                                            <span className="inline-flex rounded-full bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-400" title="Acquisto automatico del piano di accumulo">
+                                                                PAC
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-sm">{t.shares}</TableCell>

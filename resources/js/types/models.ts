@@ -30,6 +30,7 @@ export interface Asset {
 export interface TransactionRow {
     id: number;
     type: 'buy' | 'sell';
+    source: 'savings_plan' | 'single' | 'manual' | null;
     shares: number;
     price_per_share: number;
     fees: number | null;

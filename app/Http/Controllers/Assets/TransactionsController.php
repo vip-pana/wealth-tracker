@@ -42,6 +42,7 @@ class TransactionsController extends Controller
             'transactions' => $transactions->map(fn (Transaction $t): array => [
                 'id' => $t->id,
                 'type' => $t->type,
+                'source' => $t->source,
                 'shares' => $t->shares,
                 'price_per_share' => $t->price_per_share,
                 'fees' => $t->fees,

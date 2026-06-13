@@ -144,6 +144,7 @@ class ScalableCliClientTest extends TestCase
         $this->assertSame('tx-1', $item['external_id']);
         $this->assertSame('IE00B6R52259', $item['isin']);
         $this->assertSame('buy', $item['type']);
+        $this->assertSame('savings_plan', $item['source']); // SAVINGS_PLAN → PAC
         $this->assertSame(3.069249, $item['shares']);
         $this->assertEqualsWithDelta(104.26, $item['price_per_share'], 0.01); // 319.9999 / 3.069249
         $this->assertSame('2026-06-04', $item['date']);

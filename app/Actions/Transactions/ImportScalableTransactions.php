@@ -70,6 +70,7 @@ class ImportScalableTransactions extends Action
                     [
                         'asset_id' => $asset->id,
                         'type' => $item['type'],
+                        'source' => $item['source'],
                         'shares' => $item['shares'],
                         'price_per_share' => $item['price_per_share'],
                         'date' => $item['date'],
