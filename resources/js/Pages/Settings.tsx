@@ -129,6 +129,14 @@ interface Props {
     linkableAssets: LinkableAsset[];
     bankRedirectReady: boolean;
     scalable: ScalableState;
+    transactionAssets: TransactionAsset[];
+}
+
+interface TransactionAsset {
+    id: number;
+    name: string;
+    quantity: number | null;
+    transactions_count: number;
 }
 
 type CategoryForm = {
@@ -839,7 +847,59 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
     );
 }
 
-export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady, scalable }: Props) {
+function TransactionAssetsCard({ assets }: { assets: TransactionAsset[] }) {
+    const unlink = useForm({});
+
+    if (assets.length === 0) {
+        return null;
+    }
+
+    const handleUnlink = (asset: TransactionAsset) => {
+        if (!confirm(`Scollegare "${asset.name}" dalle transazioni? Le ${asset.transactions_count} transazioni importate verranno rimosse e la quantità (${asset.quantity ?? 0}) tornerà modificabile a mano.`)) {
+            return;
+        }
+        unlink.delete(`/assets/${asset.id}/transactions`, { preserveScroll: true });
+    };
+
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-1.5">
+                    <CandlestickChart className="w-4 h-4" />
+                    Asset da transazioni
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                    La quantità di questi asset è calcolata dalle transazioni importate dal broker e non è modificabile a mano. Scollega per rimuovere le transazioni e riprendere il controllo manuale — l&apos;ultima quantità calcolata resta.
+                </p>
+                <div className="divide-y divide-border rounded-md border border-border">
+                    {assets.map((asset) => (
+                        <div key={asset.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <div className="min-w-0">
+                                <p className="font-medium truncate">{asset.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {asset.quantity ?? 0} quote · {asset.transactions_count} transazioni
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={unlink.processing}
+                                onClick={() => handleUnlink(asset)}
+                            >
+                                <Unlink className="w-4 h-4 mr-1" />
+                                Scollega
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady, scalable, transactionAssets }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -981,6 +1041,9 @@ export default function Settings({ categories, prices, trashed, bankConnections,
 
                 {/* Scalable broker sync (stopgap) */}
                 <ScalableConnectionCard state={scalable} />
+
+                {/* Assets whose quantity is managed by imported transactions */}
+                <TransactionAssetsCard assets={transactionAssets} />
 
                 {/* Import / Export */}
                 <Card>

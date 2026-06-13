@@ -69,7 +69,34 @@ class IndexController extends Controller
                 ->map(fn (Asset $a): array => ['id' => $a->id, 'name' => $a->name])
                 ->all(),
             'banks' => $this->banks(),
+            'transactionAssets' => $this->transactionAssets(),
         ]);
+    }
+
+    /**
+     * Assets whose quantity is managed by imported transactions, for the
+     * Settings "unlink" list — the same role the bank-connections list plays.
+     * One row per logical asset (latest dated row carrying transactions).
+     *
+     * @return list<array{id: int, name: string, quantity: float|null, transactions_count: int}>
+     */
+    private function transactionAssets(): array
+    {
+        $rows = Asset::query()
+            ->has('transactions')
+            ->withCount('transactions')
+            ->orderByDesc('date')
+            ->get()
+            ->unique('isin')
+            ->map(fn (Asset $a): array => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'quantity' => $a->quantity,
+                'transactions_count' => (int) $a->transactions_count,
+            ])
+            ->all();
+
+        return array_values($rows);
     }
 
     /**
