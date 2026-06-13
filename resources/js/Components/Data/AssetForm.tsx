@@ -18,7 +18,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/Components/ui/dialog';
-import { formatCurrency } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 type Mode = 'manual' | 'ticker';
@@ -302,13 +302,13 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Prezzo corrente</span>
                                             <span className="font-mono">
-                                                {currentPrice.price !== null ? formatCurrency(currentPrice.price) : 'non disponibile'}
+                                                {currentPrice.price !== null ? <Money value={currentPrice.price} /> : 'non disponibile'}
                                             </span>
                                         </div>
                                         {computedValue !== null && (
                                             <div className="flex justify-between">
                                                 <span className="text-muted-foreground">Valore calcolato</span>
-                                                <span className="font-mono font-semibold">{formatCurrency(computedValue)}</span>
+                                                <Money value={computedValue} className="font-mono font-semibold" />
                                             </div>
                                         )}
                                         {currentPrice.fetched_at && (

@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -140,11 +140,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<'dark' | 'light'>(() =>
         localStorage.getItem('theme') === 'light' ? 'light' : 'dark',
     );
+    const [valuesHidden, setValuesHidden] = useState(() => localStorage.getItem('values-hidden') === 'true');
 
     useEffect(() => {
         document.documentElement.classList.toggle('dark', theme === 'dark');
         localStorage.setItem('theme', theme);
     }, [theme]);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('values-hidden', valuesHidden);
+        localStorage.setItem('values-hidden', String(valuesHidden));
+    }, [valuesHidden]);
 
     // Only honor the collapsed width on desktop; the mobile drawer always shows labels.
     const [isDesktop, setIsDesktop] = useState(true);
@@ -239,6 +245,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             <Moon className="w-4 h-4 flex-shrink-0" />
                         )}
                         {!showCollapsed && <span>{theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}</span>}
+                    </button>
+                    <button
+                        onClick={() => setValuesHidden((h) => !h)}
+                        className={cn(
+                            'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
+                            showCollapsed ? 'justify-center' : '',
+                        )}
+                        title={valuesHidden ? 'Mostra valori' : 'Nascondi valori'}
+                    >
+                        {valuesHidden ? (
+                            <EyeOff className="w-4 h-4 flex-shrink-0" />
+                        ) : (
+                            <Eye className="w-4 h-4 flex-shrink-0" />
+                        )}
+                        {!showCollapsed && <span>{valuesHidden ? 'Mostra valori' : 'Nascondi valori'}</span>}
                     </button>
                     <button
                         onClick={() => setCollapsed((c) => { localStorage.setItem('sidebar-collapsed', String(!c)); return !c; })}

@@ -17,10 +17,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { formatCurrency } from '@/lib/formatters';
 import { priceFreshness, bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import TransactionsDialog from '@/Components/Data/TransactionsDialog';
+import { Money } from '@/Components/ui/Money';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
 interface Props {
@@ -101,7 +101,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                             </span>
                             <span className="text-xs text-muted-foreground">({assets.length})</span>
                         </div>
-                        <span className="text-sm font-mono font-semibold">{formatCurrency(total)}</span>
+                        <Money value={total} className="text-sm font-mono font-semibold" />
                     </div>
                 </TableCell>
             </TableRow>
@@ -170,7 +170,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                                 <p className="text-xs text-muted-foreground">
                                     {asset.quantity} unità
                                     {asset.price !== null && (
-                                        <> · {formatCurrency(asset.price)}/unità</>
+                                        <> · <Money value={asset.price} />/unità</>
                                     )}
                                     {freshness && (
                                         <> · <span className={cn(freshness.stale && 'text-amber-500')}>{freshness.label}</span></>
@@ -197,7 +197,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                         </div>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                        {formatCurrency(asset.value)}
+                        <Money value={asset.value} />
                     </TableCell>
                     <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -269,7 +269,7 @@ export default function AssetTable({ assets, onEdit, prices }: Props) {
 
             <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted/40 rounded-b-md">
                 <span className="text-sm font-medium text-muted-foreground">Totale mese</span>
-                <span className="font-bold text-base font-mono">{formatCurrency(total)}</span>
+                <Money value={total} className="font-bold text-base font-mono" />
             </div>
 
             <TransactionsDialog asset={txAsset} onClose={() => setTxAsset(null)} />

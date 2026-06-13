@@ -11,7 +11,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
-import { formatCurrencyNoDecimals } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import { allocationSum, monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth, formatPct, pctOfTotal, allocationDeviation } from '@/lib/goalMath';
 import type { Category } from '@/types/models';
 import type { Goal } from '@/types/models';
@@ -194,9 +194,11 @@ function MilestoneFormRow({
                             className="font-mono pr-24 text-sm"
                         />
                         {item.target_value && !isNaN(parseFloat(item.target_value)) && (
-                            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
-                                {formatCurrencyNoDecimals(parseFloat(item.target_value))}
-                            </span>
+                            <Money
+                                value={parseFloat(item.target_value)}
+                                variant="no-decimals"
+                                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono"
+                            />
                         )}
                     </div>
                     <div className="flex gap-2 items-center">
@@ -397,7 +399,7 @@ function GoalFormDialog({
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono pointer-events-none">
                                     {data.target_value && !isNaN(parseFloat(data.target_value))
-                                        ? formatCurrencyNoDecimals(parseFloat(data.target_value))
+                                        ? <Money value={parseFloat(data.target_value)} variant="no-decimals" />
                                         : ''}
                                 </span>
                             </div>
@@ -523,7 +525,7 @@ function MilestoneAccordionItem({
                     <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 )}
                 <span className={`flex-1 text-sm font-semibold ${achieved ? 'line-through text-muted-foreground' : ''}`}>
-                    {formatCurrencyNoDecimals(milestone.target_value)}
+                    <Money value={milestone.target_value} variant="no-decimals" />
                     <span className="ml-2 text-xs font-normal text-muted-foreground">{milestone.target_date.slice(0, 4)}</span>
                 </span>
                 {milestone.notes && (
@@ -650,8 +652,8 @@ function GoalProgress({
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex justify-between text-sm">
-                        <span className="font-medium">{formatCurrencyNoDecimals(current)}</span>
-                        <span className="text-muted-foreground">{formatCurrencyNoDecimals(target)}</span>
+                        <Money value={current} variant="no-decimals" className="font-medium" />
+                        <Money value={target} variant="no-decimals" className="text-muted-foreground" />
                     </div>
                     <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
                         <div
@@ -661,7 +663,7 @@ function GoalProgress({
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{progressPct.toFixed(1)}% raggiunto</span>
-                        <span>{formatCurrencyNoDecimals(remaining)} mancanti</span>
+                        <span><Money value={remaining} variant="no-decimals" /> mancanti</span>
                     </div>
 
                     {/* Growth rate */}

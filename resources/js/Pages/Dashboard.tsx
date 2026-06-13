@@ -11,6 +11,7 @@ import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
 import PortfolioInsights from '@/Components/Dashboard/PortfolioInsights';
 import { Card, CardContent } from '@/Components/ui/card';
+import { Money } from '@/Components/ui/Money';
 import { formatCurrency, formatPercent, formatDateLong } from '@/lib/formatters';
 import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
@@ -203,7 +204,7 @@ export default function Dashboard({
                                         <div className="flex items-center justify-between mb-1.5">
                                             <span className="text-sm font-medium truncate">{goal.name}</span>
                                             <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                                                {formatCurrency(lastPoint.total_value)} / {formatCurrency(goal.target_value)}
+                                                <Money value={lastPoint.total_value} /> / <Money value={goal.target_value} />
                                                 {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
                                             </span>
                                         </div>

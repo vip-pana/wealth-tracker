@@ -15,6 +15,7 @@ import {
 } from '@/Components/ui/table';
 import { formatCurrency, formatDateLabel } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { Money } from '@/Components/ui/Money';
 import type { Asset, PositionSummary, TransactionRow } from '@/types/models';
 
 interface Props {
@@ -134,7 +135,7 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-sm">{t.shares}</TableCell>
-                                                <TableCell className="text-right font-mono text-sm">{formatCurrency(t.price_per_share)}</TableCell>
+                                                <TableCell className="text-right font-mono text-sm"><Money value={t.price_per_share} /></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

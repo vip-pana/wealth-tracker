@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { PiggyBank, Pencil, Trash2, Plus, ChevronDown, Info } from 'lucide-react';
 import { formatCurrencyNoDecimals, formatCurrencyCompact } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 
 interface PensionCategory {
     id: number;
@@ -292,7 +293,7 @@ export default function PensionPage({ categories, entries, availableYears, total
                             <CardTitle className="text-sm text-muted-foreground">Valore attuale</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-2xl font-bold">{formatCurrencyNoDecimals(totalCurrent)}</p>
+                            <p className="text-2xl font-bold"><Money value={totalCurrent} variant="no-decimals" /></p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Somma dell&apos;ultimo valore di ogni fondo
                             </p>
@@ -373,7 +374,7 @@ export default function PensionPage({ categories, entries, availableYears, total
                                         </TableCell>
                                         <TableCell>{entry.name}</TableCell>
                                         <TableCell className="text-right font-mono">
-                                            {formatCurrencyNoDecimals(entry.value)}
+                                            <Money value={entry.value} variant="no-decimals" />
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
                                             {entry.notes ?? '—'}

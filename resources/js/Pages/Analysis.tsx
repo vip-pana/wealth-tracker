@@ -22,7 +22,8 @@ import {
 } from '@/Components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Download, Filter, X, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
-import { formatCurrency, formatMonthLong } from '@/lib/formatters';
+import { formatMonthLong } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import type { Asset, Category } from '@/types/models';
 
 interface Filters {
@@ -240,7 +241,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono">
-                                                        {formatCurrency(asset.value)}
+                                                        <Money value={asset.value} />
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -257,7 +258,7 @@ export default function Analysis({ assets, categories, availableMonths, filters 
                                                     <p className="font-medium truncate">{asset.name}</p>
                                                     <p className="text-xs text-muted-foreground">{formatMonthLong(asset.date)}</p>
                                                 </div>
-                                                <span className="font-mono font-semibold whitespace-nowrap">{formatCurrency(asset.value)}</span>
+                                                <Money value={asset.value} className="font-mono font-semibold whitespace-nowrap" />
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
                                                 <Badge

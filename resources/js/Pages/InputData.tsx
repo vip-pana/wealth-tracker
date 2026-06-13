@@ -21,7 +21,8 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Plus, ChevronLeft, ChevronRight, Copy, Camera, PlusSquare } from 'lucide-react';
-import { formatMonthLong, formatDateLong, formatCurrency, today } from '@/lib/formatters';
+import { formatMonthLong, formatDateLong, today } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 interface Props {
@@ -126,7 +127,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                     </Button>
                                 </div>
                             </div>
-                            <p className="text-2xl font-bold">{formatCurrency(total)}</p>
+                            <p className="text-2xl font-bold"><Money value={total} /></p>
                             <p className="text-xs text-muted-foreground">
                                 Aggiorna qui il valore corrente di ogni asset. Questi numeri non finiscono nei grafici finché non scatti uno snapshot.
                             </p>
@@ -152,7 +153,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 )}
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{formatCurrency(currentNetWorth)}</p>
+                                <p className="text-2xl font-bold"><Money value={currentNetWorth} /></p>
                                 <p className="text-xs text-muted-foreground">
                                     Patrimonio attuale ·{' '}
                                     {lastSnapshotDate
@@ -190,7 +191,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                         className="text-base font-bold"
                                         style={{ color: cat.color }}
                                     >
-                                        {formatCurrency(cat.total)}
+                                        <Money value={cat.total} />
                                     </p>
                                 </CardContent>
                             </Card>

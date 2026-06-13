@@ -29,7 +29,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { formatCurrency } from '@/lib/formatters';
+import { Money } from '@/Components/ui/Money';
 import { bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types/models';
@@ -1026,7 +1026,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right font-mono">
-                                                {p.price !== null ? formatCurrency(p.price) : '—'}
+                                                {p.price !== null ? <Money value={p.price} /> : '—'}
                                             </TableCell>
                                         </TableRow>
                                     ))}
