@@ -74,6 +74,26 @@ export interface GoalEta {
     low_confidence?: boolean;
 }
 
+export interface PositionReturn {
+    name: string;
+    cost_basis: number;
+    current_value: number | null;
+    unrealised_pnl: number | null;
+    unrealised_pnl_pct: number | null;
+    realised_pnl: number;
+}
+
+export interface PositionReturns {
+    positions: PositionReturn[];
+    aggregate: {
+        cost_basis: number;
+        current_value: number;
+        unrealised_pnl: number;
+        unrealised_pnl_pct: number | null;
+        realised_pnl: number;
+    };
+}
+
 export type PortfolioMetrics =
     | { hasData: false }
     | {

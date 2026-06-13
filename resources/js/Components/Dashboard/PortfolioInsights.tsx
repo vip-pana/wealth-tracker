@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatPercent, formatDateLong } from '@/lib/formatters';
 import { Money } from '@/Components/ui/Money';
-import { Lightbulb, PieChart, Coins, Activity, Target } from 'lucide-react';
-import type { PortfolioMetrics } from '@/types/analytics';
+import { Lightbulb, PieChart, Coins, Activity, Target, TrendingUp } from 'lucide-react';
+import type { PortfolioMetrics, PositionReturns } from '@/types/analytics';
 
 function Row({
     icon: Icon,
@@ -13,7 +13,7 @@ function Row({
     icon: typeof PieChart;
     label: string;
     value: React.ReactNode;
-    hint?: string;
+    hint?: React.ReactNode;
 }) {
     return (
         <div className="flex items-start gap-3">
@@ -29,7 +29,7 @@ function Row({
     );
 }
 
-export default function PortfolioInsights({ metrics }: { metrics: PortfolioMetrics }) {
+export default function PortfolioInsights({ metrics, positionReturns }: { metrics: PortfolioMetrics; positionReturns: PositionReturns | null }) {
     if (!metrics.hasData) {
         return null;
     }
@@ -74,6 +74,29 @@ export default function PortfolioInsights({ metrics }: { metrics: PortfolioMetri
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+                {positionReturns && (
+                    <Row
+                        icon={TrendingUp}
+                        label="Rendimento investimenti"
+                        value={
+                            <>
+                                <Money value={positionReturns.aggregate.unrealised_pnl} />
+                                {positionReturns.aggregate.unrealised_pnl_pct !== null && (
+                                    <> ({formatPercent(positionReturns.aggregate.unrealised_pnl_pct)})</>
+                                )}
+                            </>
+                        }
+                        hint={
+                            <>
+                                Versato <Money value={positionReturns.aggregate.cost_basis} />, ora vale{' '}
+                                <Money value={positionReturns.aggregate.current_value} />
+                                {positionReturns.aggregate.realised_pnl !== 0 && (
+                                    <> · realizzato <Money value={positionReturns.aggregate.realised_pnl} /></>
+                                )}
+                            </>
+                        }
+                    />
+                )}
                 <Row
                     icon={PieChart}
                     label="Concentrazione"

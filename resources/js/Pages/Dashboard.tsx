@@ -17,7 +17,7 @@ import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
-import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint, PortfolioMetrics } from '@/types/analytics';
+import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint, PortfolioMetrics, PositionReturns } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
 const MACRO_COLORS: Record<string, string> = {
@@ -48,6 +48,7 @@ interface Props {
     latestSnapshot: string | null;
     goal: { name: string; target_value: number; target_date: string | null } | null;
     portfolioMetrics: PortfolioMetrics;
+    positionReturns: PositionReturns | null;
 }
 
 function SummaryCard({
@@ -102,6 +103,7 @@ export default function Dashboard({
     latestSnapshot,
     goal,
     portfolioMetrics,
+    positionReturns,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
     const [momMode, setMomMode] = useState(false);
@@ -233,7 +235,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Portfolio reading (rule-based today; AI advisor builds on these metrics) */}
-                <PortfolioInsights metrics={portfolioMetrics} />
+                <PortfolioInsights metrics={portfolioMetrics} positionReturns={positionReturns} />
 
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

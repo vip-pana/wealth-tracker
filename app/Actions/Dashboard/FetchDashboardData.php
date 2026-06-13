@@ -6,6 +6,7 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Action;
 use App\Actions\Advisor\ComputePortfolioMetrics;
+use App\Actions\Advisor\ComputePositionReturns;
 use App\Enums\MacroCategory;
 use App\Models\Category;
 use App\Models\Goal;
@@ -26,6 +27,7 @@ class FetchDashboardData extends Action
         private readonly BuildMacroStackedBar $buildMacroStackedBar,
         private readonly BuildMacroMonthComparison $buildMacroMonthComparison,
         private readonly ComputePortfolioMetrics $computePortfolioMetrics,
+        private readonly ComputePositionReturns $computePositionReturns,
     ) {}
 
     /** @return array<string, mixed> */
@@ -92,6 +94,7 @@ class FetchDashboardData extends Action
                 'target_date' => $goal->target_date?->format('Y-m-d'),
             ] : null,
             'portfolioMetrics' => $this->computePortfolioMetrics->run($monthlySnapshots, $liquidCategories, $goal),
+            'positionReturns' => $this->computePositionReturns->run(),
         ];
     }
 
