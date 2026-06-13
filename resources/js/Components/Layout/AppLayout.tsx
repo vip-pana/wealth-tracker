@@ -1,6 +1,7 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import { LayoutDashboard, PlusSquare, BarChart2, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PrivacyContext } from '@/lib/privacy';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
@@ -148,7 +149,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, [theme]);
 
     useEffect(() => {
-        document.documentElement.classList.toggle('values-hidden', valuesHidden);
         localStorage.setItem('values-hidden', String(valuesHidden));
     }, [valuesHidden]);
 
@@ -169,6 +169,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     return (
+        <PrivacyContext.Provider value={valuesHidden}>
         <div className="flex h-screen overflow-hidden bg-background">
             {/* Mobile top bar */}
             <div className="lg:hidden fixed top-0 inset-x-0 z-30 h-[56px] flex items-center gap-2 px-4 border-b border-border bg-background">
@@ -287,5 +288,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             <FlashMessage />
         </div>
+        </PrivacyContext.Provider>
     );
 }

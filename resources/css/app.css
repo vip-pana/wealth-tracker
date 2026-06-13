@@ -10,22 +10,6 @@
  * A container query keys the switch to the card's own width instead.
  */
 @layer components {
-    /*
-     * Privacy toggle: when the root carries .values-hidden, every monetary
-     * amount (rendered via the <Money> component) is blurred so figures aren't
-     * readable over the user's shoulder. Hovering a value reveals it briefly.
-     */
-    .values-hidden .money-value {
-        filter: blur(7px);
-        transition: filter 0.12s ease;
-        user-select: none;
-        cursor: default;
-    }
-
-    .values-hidden .money-value:hover {
-        filter: none;
-    }
-
     .donut-container {
         container-type: inline-size;
     }
