@@ -10,6 +10,25 @@
  * A container query keys the switch to the card's own width instead.
  */
 @layer components {
+    /*
+     * Privacy toggle: <Money> adds .money-hidden when amounts are hidden. A
+     * light blur keeps the figure unreadable over the shoulder while still
+     * reading as "an amount is here". Hover reveals it briefly.
+     */
+    .money-hidden {
+        /* em-based so the blur scales with font size: a large total blurs
+           proportionally more than a small table figure, which a fixed px
+           blur leaves too legible. */
+        filter: blur(0.3em);
+        transition: filter 0.12s ease;
+        user-select: none;
+        cursor: default;
+    }
+
+    .money-hidden:hover {
+        filter: none;
+    }
+
     .donut-container {
         container-type: inline-size;
     }

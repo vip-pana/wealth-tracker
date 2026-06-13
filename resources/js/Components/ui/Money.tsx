@@ -9,23 +9,16 @@ const FORMATTERS: Record<Variant, (v: number) => string> = {
     'compact': formatCurrencyCompact,
 };
 
-// Fixed-width mask so the number of dots never hints at the magnitude.
-const MASK = '€ ••••••';
-
 /**
  * A monetary amount in EUR. When the privacy toggle is on (provided via
- * PrivacyContext from AppLayout), the figure is replaced by a fixed-width
- * masked placeholder keeping the € sign — so amounts read as hidden without
- * leaking their size. Use this instead of formatCurrency directly wherever a
- * euro figure is shown to the user.
+ * PrivacyContext from AppLayout), the amount keeps its real text but gets the
+ * `.money-hidden` class, which applies a light blur (see app.css) — readable
+ * as "an amount is here" without leaking the figure; hover to peek. Use this
+ * instead of formatCurrency directly wherever a euro figure is shown.
  */
 export function Money({ value, variant = 'default', className }: { value: number; variant?: Variant; className?: string }) {
     const hidden = useValuesHidden();
-    const cls = className ? `money-value ${className}` : 'money-value';
+    const cls = [hidden ? 'money-hidden' : '', className].filter(Boolean).join(' ');
 
-    if (hidden) {
-        return <span className={cls}>{MASK}</span>;
-    }
-
-    return <span className={cls}>{FORMATTERS[variant](value)}</span>;
+    return <span className={cls || undefined}>{FORMATTERS[variant](value)}</span>;
 }
