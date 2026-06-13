@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
-import { Landmark, CandlestickChart } from 'lucide-react';
+import { Landmark, CandlestickChart, ReceiptText } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -244,9 +244,18 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                             value={data.quantity}
                                             onChange={(e) => setData('quantity', e.target.value)}
                                             placeholder="es. 0.5"
+                                            disabled={!!editAsset?.transaction_managed}
+                                            className={editAsset?.transaction_managed ? 'opacity-60 cursor-not-allowed' : ''}
                                         />
-                                        {errors.quantity && (
-                                            <p className="text-xs text-destructive">{errors.quantity}</p>
+                                        {editAsset?.transaction_managed ? (
+                                            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                                <ReceiptText className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-400" />
+                                                <span>
+                                                    La quantità è calcolata dalle transazioni importate dal broker. Per cambiarla, modifica le transazioni alla fonte e re-importa.
+                                                </span>
+                                            </p>
+                                        ) : (
+                                            errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>
                                         )}
                                     </div>
                                 )}
