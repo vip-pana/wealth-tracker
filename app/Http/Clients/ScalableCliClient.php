@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Clients;
 
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -29,9 +30,13 @@ class ScalableCliClient
     private const COMMANDS = [
         'overview' => ['broker', 'overview', '--json'],
         'holdings' => ['broker', 'holdings', '--json'],
+        'transactions' => ['broker', 'transactions', '--json'],
         'whoami' => ['whoami', '--json'],
         'logout' => ['logout', '--json'],
     ];
+
+    /** Maximum page size the CLI accepts for `broker transactions`. */
+    private const TRANSACTIONS_PAGE_SIZE = 100;
 
     public function __construct(
         private readonly bool $enabled,
@@ -90,6 +95,122 @@ class ScalableCliClient
     }
 
     /**
+     * One page of settled buy/sell transactions from `broker transactions`,
+     * newest first, each normalised for import. Only BUY, SELL and SAVINGS_PLAN
+     * (the PAC) types are requested; the per-share price is derived as
+     * |amount| / quantity since the CLI gives a EUR amount, not a unit price.
+     * Returns null on any failure. `cursor` (null = first page) and the returned
+     * `next_cursor` (null = no more pages) drive pagination by the caller.
+     *
+     * @return array{items: list<array{external_id: string, isin: string, name: string, type: string, shares: float, price_per_share: float, date: string}>, next_cursor: string|null}|null
+     */
+    public function transactions(?string $cursor = null): ?array
+    {
+        $args = [
+            '--type-filter', 'BUY',
+            '--type-filter', 'SELL',
+            '--type-filter', 'SAVINGS_PLAN',
+            '--status', 'SETTLED',
+            '--page-size', (string) self::TRANSACTIONS_PAGE_SIZE,
+        ];
+
+        if ($cursor !== null) {
+            $args[] = '--cursor';
+            $args[] = $cursor;
+        }
+
+        $data = $this->runJson('transactions', $args);
+
+        if ($data === null) {
+            return null;
+        }
+
+        $result = $data['result'] ?? null;
+        $items = is_array($result) ? ($result['items'] ?? null) : null;
+
+        if (! is_array($items)) {
+            Log::warning('Scalable CLI unexpected transactions shape');
+
+            return null;
+        }
+
+        $nextCursor = is_array($result) ? ($result['cursor'] ?? null) : null;
+
+        $normalised = [];
+
+        foreach ($items as $item) {
+            $transaction = $this->normaliseTransaction($item);
+
+            if ($transaction !== null) {
+                $normalised[] = $transaction;
+            }
+        }
+
+        return [
+            'items' => $normalised,
+            'next_cursor' => is_string($nextCursor) ? $nextCursor : null,
+        ];
+    }
+
+    /**
+     * Map one raw transaction item to our shape, or null if it can't be used
+     * (missing fields, zero quantity, unknown side). A negative `amount` is a
+     * buy outflow; price per share is the absolute amount over the quantity.
+     *
+     * @param  mixed  $item
+     * @return array{external_id: string, isin: string, name: string, type: string, shares: float, price_per_share: float, date: string}|null
+     */
+    private function normaliseTransaction($item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        $id = $item['id'] ?? null;
+        $isin = $item['isin'] ?? null;
+        $name = $item['description'] ?? null;
+        $quantity = $item['quantity'] ?? null;
+        $amount = $item['amount'] ?? null;
+        $side = $item['side'] ?? null;
+        $datetime = $item['last_event_datetime'] ?? null;
+
+        if (! is_string($id) || ! is_string($isin) || ! is_string($name)
+            || ! is_numeric($quantity) || ! is_numeric($amount) || ! is_string($datetime)) {
+            Log::warning('Scalable CLI unexpected transaction shape');
+
+            return null;
+        }
+
+        $shares = (float) $quantity;
+
+        if ($shares <= 0.0) {
+            return null;
+        }
+
+        $type = match ($side) {
+            'BUY' => Transaction::TYPE_BUY,
+            'SELL' => Transaction::TYPE_SELL,
+            default => null,
+        };
+
+        if ($type === null) {
+            Log::warning('Scalable CLI unknown transaction side', ['side' => $side]);
+
+            return null;
+        }
+
+        return [
+            'external_id' => $id,
+            'isin' => $isin,
+            'name' => $name,
+            'type' => $type,
+            'shares' => $shares,
+            'price_per_share' => abs((float) $amount) / $shares,
+            'date' => substr($datetime, 0, 10),
+        ];
+    }
+
+    /**
      * The uninvested cash balance in EUR, derived from `broker overview --json`
      * as total minus securities minus crypto (cash is not a line item). Returns
      * null on any failure.
@@ -144,16 +265,19 @@ class ScalableCliClient
      * scenario, like the proxy's unreachable host — so the Process call is
      * guarded; an expired session surfaces as `ok:false` with `no_session`.
      *
+     * @param  list<string>  $extraArgs  filters/pagination this client builds itself;
+     *                                   callers pass a command key, never raw argv,
+     *                                   so a `trade` command stays unreachable
      * @return array<mixed>|null
      */
-    private function runJson(string $command): ?array
+    private function runJson(string $command, array $extraArgs = []): ?array
     {
         if (! $this->enabled) {
             return null;
         }
 
         try {
-            $result = Process::timeout($this->timeout)->run([$this->binary, ...self::COMMANDS[$command]]);
+            $result = Process::timeout($this->timeout)->run([$this->binary, ...self::COMMANDS[$command], ...$extraArgs]);
         } catch (\Throwable $e) {
             Log::warning('Scalable CLI invocation failed', ['command' => $command, 'message' => $e->getMessage()]);
 

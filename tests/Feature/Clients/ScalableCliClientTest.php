@@ -116,4 +116,50 @@ class ScalableCliClientTest extends TestCase
 
         $this->assertFalse($this->client()->logout());
     }
+
+    public function test_transactions_normalises_items_and_derives_unit_price(): void
+    {
+        Process::fake([
+            '*broker*transactions*' => Process::result($this->envelope([
+                'result' => [
+                    'cursor' => 'next-page',
+                    'items' => [
+                        [
+                            'id' => 'tx-1', 'isin' => 'IE00B6R52259', 'description' => 'iShares MSCI ACWI (Acc)',
+                            'quantity' => 3.069249, 'amount' => -319.9999, 'side' => 'BUY',
+                            'security_transaction_type' => 'SAVINGS_PLAN', 'status' => 'SETTLED',
+                            'last_event_datetime' => '2026-06-04T10:27:57.666Z',
+                        ],
+                    ],
+                ],
+            ])),
+        ]);
+
+        $page = $this->client()->transactions();
+
+        $this->assertSame('next-page', $page['next_cursor']);
+        $this->assertCount(1, $page['items']);
+
+        $item = $page['items'][0];
+        $this->assertSame('tx-1', $item['external_id']);
+        $this->assertSame('IE00B6R52259', $item['isin']);
+        $this->assertSame('buy', $item['type']);
+        $this->assertSame(3.069249, $item['shares']);
+        $this->assertEqualsWithDelta(104.26, $item['price_per_share'], 0.01); // 319.9999 / 3.069249
+        $this->assertSame('2026-06-04', $item['date']);
+    }
+
+    public function test_transactions_reports_no_more_pages_with_a_null_cursor(): void
+    {
+        Process::fake([
+            '*broker*transactions*' => Process::result($this->envelope([
+                'result' => ['cursor' => null, 'items' => []],
+            ])),
+        ]);
+
+        $page = $this->client()->transactions();
+
+        $this->assertNull($page['next_cursor']);
+        $this->assertSame([], $page['items']);
+    }
 }
