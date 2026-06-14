@@ -1,0 +1,222 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Advisor;
+
+use App\Actions\Action;
+
+class RenderAdvisorContext extends Action
+{
+    /**
+     * Turn the structured advisor context into an annotated Italian briefing.
+     *
+     * Local models reason far better over natural-language labels than over a
+     * raw JSON payload with `low_confidence: true` / `null` fields, which they
+     * misread (e.g. taking a noisy goal-projection figure as "you're losing
+     * money"). So here we lead with the TRUE return, spell out which figures
+     * are unreliable, and omit the misleading ones — the model never sees a
+     * number it would draw the wrong conclusion from.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public function run(array $context): string
+    {
+        $lines = [];
+
+        /** @var array<string, mixed> $portfolio */
+        $portfolio = is_array($context['portfolio'] ?? null) ? $context['portfolio'] : [];
+
+        if (($portfolio['hasData'] ?? false) !== true) {
+            return 'Non ci sono ancora dati di portafoglio sufficienti per un\'analisi.';
+        }
+
+        $lines[] = $this->returnsSection($context['positionReturns'] ?? null);
+        $lines[] = $this->allocationSection($portfolio);
+        $lines[] = $this->liquiditySection($portfolio);
+        $lines[] = $this->volatilitySection($portfolio);
+        $lines[] = $this->goalSection($portfolio);
+        $lines[] = $this->profileSection($context['investorProfile'] ?? null);
+
+        return implode("\n\n", array_filter($lines));
+    }
+
+    private function returnsSection(mixed $returns): string
+    {
+        if (! is_array($returns) || ! is_array($returns['aggregate'] ?? null)) {
+            return '';
+        }
+
+        /** @var array<string, mixed> $agg */
+        $agg = $returns['aggregate'];
+        $pct = $agg['unrealised_pnl_pct'];
+
+        $out = "RENDIMENTO REALE DEGLI INVESTIMENTI (il dato più affidabile, al netto di quanto versato):\n";
+        $out .= '- Versato: '.$this->eur($agg['cost_basis']).', valore attuale: '.$this->eur($agg['current_value']).'.';
+
+        if (is_numeric($pct)) {
+            $out .= "\n- Guadagno/perdita non realizzato: ".$this->eur($agg['unrealised_pnl']).' ('.$this->pct($pct).').';
+        }
+        if (is_numeric($agg['realised_pnl'] ?? null) && (float) $agg['realised_pnl'] !== 0.0) {
+            $out .= "\n- Già realizzato da vendite: ".$this->eur($agg['realised_pnl']).'.';
+        }
+
+        if (is_array($returns['positions'] ?? null)) {
+            foreach ($returns['positions'] as $p) {
+                if (is_array($p) && is_numeric($p['unrealised_pnl_pct'] ?? null)) {
+                    $out .= "\n- ".$this->s($p['name'] ?? '').': '.$this->pct($p['unrealised_pnl_pct']).' (valore '.$this->eur($p['current_value'] ?? null).').';
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $portfolio
+     */
+    private function allocationSection(array $portfolio): string
+    {
+        if (! is_array($portfolio['allocation'] ?? null)) {
+            return '';
+        }
+
+        $out = 'ALLOCAZIONE ATTUALE:';
+        foreach ($portfolio['allocation'] as $slice) {
+            if (is_array($slice)) {
+                $out .= "\n- ".$this->s($slice['name'] ?? '').': '.$this->pct($slice['share_pct'] ?? null).' ('.$this->eur($slice['value'] ?? null).').';
+            }
+        }
+
+        if (is_array($portfolio['concentration'] ?? null)) {
+            /** @var array<string, mixed> $c */
+            $c = $portfolio['concentration'];
+            $hhi = is_numeric($c['hhi'] ?? null) ? (float) $c['hhi'] : 0.0;
+            $level = $hhi >= 5000 ? 'molto concentrato' : ($hhi >= 3000 ? 'concentrazione moderata' : 'ben distribuito');
+            $out .= "\nConcentrazione: ".$level.' (voce maggiore: '.$this->s($c['top_category'] ?? '').' al '.$this->pct($c['top_share_pct'] ?? null).').';
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $portfolio
+     */
+    private function liquiditySection(array $portfolio): string
+    {
+        if (! is_array($portfolio['liquidity'] ?? null)) {
+            return '';
+        }
+
+        /** @var array<string, mixed> $l */
+        $l = $portfolio['liquidity'];
+
+        return 'LIQUIDITÀ FERMA: '.$this->eur($l['value']).' ('.$this->pct($l['share_pct']).' del totale).';
+    }
+
+    /**
+     * @param  array<string, mixed>  $portfolio
+     */
+    private function volatilitySection(array $portfolio): string
+    {
+        if (! is_array($portfolio['volatility'] ?? null)) {
+            return '';
+        }
+
+        /** @var array<string, mixed> $v */
+        $v = $portfolio['volatility'];
+
+        if (! is_numeric($v['monthly_stddev_pct'] ?? null)) {
+            return 'VOLATILITÀ: non ancora calcolabile (servono più mesi di dati). Non trarne conclusioni.';
+        }
+
+        return 'VOLATILITÀ mensile: ±'.$this->pct($v['monthly_stddev_pct'])
+            .' (miglior mese '.$this->pct($v['best_month_pct']).', peggiore '.$this->pct($v['worst_month_pct']).').';
+    }
+
+    /**
+     * @param  array<string, mixed>  $portfolio
+     */
+    private function goalSection(array $portfolio): string
+    {
+        if (! is_array($portfolio['goalEta'] ?? null)) {
+            return '';
+        }
+
+        /** @var array<string, mixed> $g */
+        $g = $portfolio['goalEta'];
+
+        if (($g['reached'] ?? false) === true) {
+            return 'OBIETTIVO: già raggiunto.';
+        }
+
+        // The projection is the noisy part. When it's low-confidence, say so in
+        // words and DO NOT surface the misleading monthly figure at all.
+        if (($g['low_confidence'] ?? false) === true) {
+            return 'PROIEZIONE OBIETTIVO: non affidabile — troppo pochi mesi di dati per stimare quando sarà raggiunto. NON interpretare questo come una perdita: il rendimento reale è quello indicato sopra.';
+        }
+
+        if (is_numeric($g['months_to_goal'] ?? null)) {
+            $track = ($g['on_track'] ?? null) === true ? 'in linea con la data obiettivo' : 'oltre la data obiettivo';
+
+            return 'PROIEZIONE OBIETTIVO: al ritmo attuale circa '.$g['months_to_goal'].' mesi ('.$track.').';
+        }
+
+        return '';
+    }
+
+    private function profileSection(mixed $profile): string
+    {
+        if (! is_array($profile)) {
+            return "PROFILO INVESTITORE: non compilato. Non assumere orizzonte, rischio o obiettivo: invita l'utente a compilarlo per un'analisi più mirata.";
+        }
+
+        $out = 'PROFILO INVESTITORE:';
+        $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
+        $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
+        $out .= "\n- Obiettivo: ".$this->sourced($profile['objective'] ?? null);
+        $out .= "\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null);
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, string>  $map
+     */
+    private function labelOr(mixed $value, array $map): string
+    {
+        return is_string($value) && isset($map[$value]) ? $map[$value] : 'non indicato';
+    }
+
+    private function sourced(mixed $field): string
+    {
+        if (! is_array($field) || ! is_string($field['value'] ?? null)) {
+            return 'non indicato';
+        }
+
+        $from = ($field['source'] ?? null) === 'goal' ? ' (dalla sezione Obiettivo)' : '';
+
+        return $field['value'].$from;
+    }
+
+    private function s(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
+    }
+
+    private function eur(mixed $value): string
+    {
+        return is_numeric($value) ? number_format((float) $value, 0, ',', '.').'€' : 'n/d';
+    }
+
+    private function pct(mixed $value): string
+    {
+        if (! is_numeric($value)) {
+            return 'n/d';
+        }
+
+        $v = (float) $value;
+
+        return ($v > 0 ? '+' : '').rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.').'%';
+    }
+}

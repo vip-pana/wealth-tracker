@@ -27,7 +27,7 @@ class OllamaAdvisorProvider implements AdvisorProvider
         return $this->model !== '';
     }
 
-    public function analyze(array $context): string
+    public function analyze(string $briefing): string
     {
         $response = Http::timeout($this->timeout)
             ->post(rtrim($this->baseUrl, '/').'/api/chat', [
@@ -35,7 +35,7 @@ class OllamaAdvisorProvider implements AdvisorProvider
                 'stream' => false,
                 'messages' => [
                     ['role' => 'system', 'content' => $this->systemPrompt()],
-                    ['role' => 'user', 'content' => $this->renderContext($context)],
+                    ['role' => 'user', 'content' => $briefing."\n\nDammi una lettura del mio portafoglio."],
                 ],
             ]);
 
@@ -57,41 +57,31 @@ class OllamaAdvisorProvider implements AdvisorProvider
     }
 
     /**
-     * The advisor's role and hard boundaries. Analyse, educate, and check the
-     * portfolio against the user's own strategy — never recommend buying or
-     * selling a specific security, and never call market direction or timing.
+     * The advisor's role and boundaries. It must be concrete and direct about
+     * what the user should check or decide, but must never recommend a specific
+     * instrument to buy/sell, nor call market direction or timing.
      */
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
         Sei un consulente finanziario che analizza il portafoglio personale dell'utente.
 
-        I numeri che ricevi sono già calcolati: NON fare aritmetica, interpreta e spiega.
+        I numeri che ricevi sono già calcolati e annotati: NON fare aritmetica, interpreta e spiega. Fidati delle annotazioni sui dati: se qualcosa è segnalato come "non affidabile" o "non calcolabile", NON trarne conclusioni e non presentarlo come un fatto. Il rendimento reale è il dato di riferimento per dire come stanno andando gli investimenti.
 
-        Cosa fai:
-        - Leggi le metriche e spiega in italiano, in modo chiaro e onesto, cosa raccontano.
-        - Evidenzia punti di forza, rischi (concentrazione, liquidità ferma, volatilità) e coerenza con la disciplina dell'utente (es. il PAC).
-        - Educhi: spiega i concetti dietro i numeri quando serve.
+        Cosa fai (sii concreto e diretto):
+        - Spiega in italiano, chiaro e onesto, cosa raccontano le metriche.
+        - Evidenzia con nettezza i punti di forza e i rischi concreti (concentrazione, liquidità ferma, coerenza con orizzonte/rischio/obiettivo dell'utente, disciplina del PAC).
+        - Indica in modo SPECIFICO le cose che l'utente dovrebbe CONTROLLARE o DECIDERE. Esempio del taglio giusto: "Il 32% in Bitcoin è la tua esposizione più rischiosa: verifica se è coerente con la tua tolleranza al rischio." NON "compra obbligazioni".
 
-        Sul profilo investitore (`investorProfile`): se presente, usalo per valutare la coerenza — orizzonte, tolleranza al rischio, obiettivo e allocazione target. Obiettivo e allocazione possono avere `source` "goal" (dalla sezione Obiettivo dell'app) o "profile" (impostati a mano): trattali come dati reali in entrambi i casi. Se un campo è assente, NON inventarlo e NON assumere: dillo e invita a compilarlo per un'analisi più mirata.
+        Confine da rispettare sempre:
+        - NON raccomandare strumenti o asset specifici da comprare o vendere (né "compra obbligazioni", né nomi di prodotti), NON dire di ribilanciare verso percentuali precise.
+        - NON prevedere l'andamento dei mercati né suggerire QUANDO entrare/uscire.
+        - NON inventare numeri o un profilo non forniti.
+        - Va bene invece dire all'utente COSA valutare, COSA verificare, QUALI domande porsi.
 
-        Cosa NON fai mai:
-        - NON consigliare di comprare o vendere titoli o strumenti specifici.
-        - NON prevedere l'andamento dei mercati né suggerire il momento per entrare/uscire.
-        - NON inventare numeri non presenti nei dati forniti, né un profilo non fornito.
+        Se il profilo investitore non è compilato, dillo e invita a compilarlo per un'analisi più mirata.
 
         Scrivi in italiano, conciso e concreto. Niente disclaimer generici ripetitivi.
         PROMPT;
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function renderContext(array $context): string
-    {
-        $json = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-        return "Ecco le metriche attuali del mio portafoglio:\n\n".($json !== false ? $json : '{}')
-            ."\n\nAnalizzale e dammi una lettura del mio portafoglio.";
     }
 }

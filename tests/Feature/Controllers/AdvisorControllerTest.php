@@ -30,8 +30,7 @@ class AdvisorControllerTest extends TestCase
                 return $this->configured;
             }
 
-            /** @param array<string, mixed> $context */
-            public function analyze(array $context): string
+            public function analyze(string $briefing): string
             {
                 if ($this->throws) {
                     throw new \RuntimeException('Il modello locale non ha risposto.');

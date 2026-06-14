@@ -24,8 +24,7 @@ class GenerateAdvisorReportTest extends TestCase
                 return $this->configured;
             }
 
-            /** @param array<string, mixed> $context */
-            public function analyze(array $context): string
+            public function analyze(string $briefing): string
             {
                 return $this->reply;
             }

@@ -30,7 +30,7 @@ class OllamaAdvisorProviderTest extends TestCase
             ]),
         ]);
 
-        $text = $this->provider()->analyze(['totalNetWorth' => 32666.39]);
+        $text = $this->provider()->analyze('Rendimento reale: +22%.');
 
         $this->assertSame('Il tuo portafoglio è ben distribuito.', $text); // trimmed
     }
@@ -41,7 +41,7 @@ class OllamaAdvisorProviderTest extends TestCase
             '*/api/chat' => Http::response(['message' => ['content' => 'ok']]),
         ]);
 
-        $this->provider()->analyze(['concentration' => ['top_category' => 'Azioni']]);
+        $this->provider()->analyze('ALLOCAZIONE: Azioni 47%.');
 
         Http::assertSent(function ($request): bool {
             $body = $request->data();
@@ -50,7 +50,7 @@ class OllamaAdvisorProviderTest extends TestCase
             return $body['model'] === 'qwen2.5:14b'
                 && $body['stream'] === false
                 && $messages[0]['role'] === 'system'
-                && str_contains($messages[0]['content'], 'NON consigliare di comprare o vendere')
+                && str_contains($messages[0]['content'], 'NON raccomandare strumenti')
                 && str_contains($messages[1]['content'], 'Azioni');
         });
     }
@@ -60,7 +60,7 @@ class OllamaAdvisorProviderTest extends TestCase
         Http::fake(['*/api/chat' => Http::response('', 500)]);
 
         $this->expectException(\RuntimeException::class);
-        $this->provider()->analyze([]);
+        $this->provider()->analyze('briefing');
     }
 
     public function test_throws_on_an_empty_response(): void
@@ -68,6 +68,6 @@ class OllamaAdvisorProviderTest extends TestCase
         Http::fake(['*/api/chat' => Http::response(['message' => ['content' => '']])]);
 
         $this->expectException(\RuntimeException::class);
-        $this->provider()->analyze([]);
+        $this->provider()->analyze('briefing');
     }
 }
