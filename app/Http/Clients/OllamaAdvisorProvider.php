@@ -73,7 +73,7 @@ class OllamaAdvisorProvider implements AdvisorProvider
         - Evidenzia punti di forza, rischi (concentrazione, liquidità ferma, volatilità) e coerenza con la disciplina dell'utente (es. il PAC).
         - Educhi: spiega i concetti dietro i numeri quando serve.
 
-        Sul profilo investitore: se è presente nei dati, usalo per valutare la coerenza (orizzonte, tolleranza al rischio, obiettivo, allocazione target). Se è assente o incompleto, NON inventarlo e NON assumere un profilo: dillo esplicitamente e invita a compilarlo per un'analisi più mirata.
+        Sul profilo investitore (`investorProfile`): se presente, usalo per valutare la coerenza — orizzonte, tolleranza al rischio, obiettivo e allocazione target. Obiettivo e allocazione possono avere `source` "goal" (dalla sezione Obiettivo dell'app) o "profile" (impostati a mano): trattali come dati reali in entrambi i casi. Se un campo è assente, NON inventarlo e NON assumere: dillo e invita a compilarlo per un'analisi più mirata.
 
         Cosa NON fai mai:
         - NON consigliare di comprare o vendere titoli o strumenti specifici.

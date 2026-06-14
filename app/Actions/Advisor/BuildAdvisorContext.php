@@ -6,6 +6,8 @@ namespace App\Actions\Advisor;
 
 use App\Actions\Action;
 use App\Actions\Dashboard\FetchDashboardData;
+use App\Models\Goal;
+use App\Models\GoalCategoryAllocation;
 use App\Models\InvestorProfile;
 
 class BuildAdvisorContext extends Action
@@ -36,21 +38,86 @@ class BuildAdvisorContext extends Action
     }
 
     /**
-     * @return array<string, string|null>|null
+     * The user context the data can't reveal. Horizon and risk tolerance come
+     * only from the profile. Objective and target allocation default to the
+     * Goal section (their structured home) and are overridden by the profile's
+     * free-text fields when filled — each carries its resolved source so the
+     * model treats it as real, not inferred.
+     *
+     * @return array<string, mixed>|null null only when there's nothing at all
      */
     private function profile(): ?array
     {
         $profile = InvestorProfile::query()->first();
+        $goal = Goal::query()->with('categoryAllocations.category')->first();
 
-        if ($profile === null) {
+        $objective = $this->resolveObjective($profile?->objective, $goal);
+        $allocation = $this->resolveAllocation($profile?->target_allocation, $goal);
+
+        $horizon = $profile?->horizon;
+        $risk = $profile?->risk_tolerance;
+
+        if ($horizon === null && $risk === null && $objective === null && $allocation === null) {
             return null;
         }
 
         return [
-            'horizon' => $profile->horizon,
-            'risk_tolerance' => $profile->risk_tolerance,
-            'objective' => $profile->objective,
-            'target_allocation' => $profile->target_allocation,
+            'horizon' => $horizon,
+            'risk_tolerance' => $risk,
+            'objective' => $objective,
+            'target_allocation' => $allocation,
         ];
+    }
+
+    /**
+     * @return array{value: string, source: string}|null
+     */
+    private function resolveObjective(?string $override, ?Goal $goal): ?array
+    {
+        if ($override !== null && $override !== '') {
+            return ['value' => $override, 'source' => 'profile'];
+        }
+
+        if ($goal !== null) {
+            $value = $goal->name;
+            if ($goal->target_value > 0.0) {
+                $value .= ' (target '.number_format($goal->target_value, 0, ',', '.').'€'
+                    .($goal->target_date !== null ? ' entro il '.$goal->target_date->format('Y') : '').')';
+            }
+
+            return ['value' => $value, 'source' => 'goal'];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{value: string, source: string}|null
+     */
+    private function resolveAllocation(?string $override, ?Goal $goal): ?array
+    {
+        if ($override !== null && $override !== '') {
+            return ['value' => $override, 'source' => 'profile'];
+        }
+
+        if ($goal === null) {
+            return null;
+        }
+
+        $parts = $goal->categoryAllocations
+            ->map(function (GoalCategoryAllocation $a): string {
+                $label = $a->category_id !== null
+                    ? ($a->category->name ?? 'Sconosciuta')
+                    : ($a->macro_category ?? 'Sconosciuta');
+
+                return $label.' '.rtrim(rtrim(number_format($a->percentage, 1, '.', ''), '0'), '.').'%';
+            })
+            ->all();
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return ['value' => implode(', ', $parts), 'source' => 'goal'];
     }
 }

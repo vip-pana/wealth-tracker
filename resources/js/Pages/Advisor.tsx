@@ -25,9 +25,10 @@ interface InvestorProfile {
 interface Props {
     configured: boolean;
     profile: InvestorProfile | null;
+    goalObjective: string | null;
 }
 
-function ProfileForm({ profile }: { profile: InvestorProfile | null }) {
+function ProfileForm({ profile, goalObjective }: { profile: InvestorProfile | null; goalObjective: string | null }) {
     const form = useForm({
         horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
@@ -78,19 +79,22 @@ function ProfileForm({ profile }: { profile: InvestorProfile | null }) {
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <Label className="text-xs">Obiettivo principale</Label>
+                        <Label className="text-xs">Obiettivo principale <span className="text-muted-foreground">(opzionale)</span></Label>
                         <Input
                             value={form.data.objective}
                             onChange={(e) => form.setData('objective', e.target.value)}
-                            placeholder="es. indipendenza finanziaria, pensione, casa"
+                            placeholder={goalObjective ? `Da Obiettivo: ${goalObjective}` : 'es. indipendenza finanziaria, pensione, casa'}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Se vuoto, il consulente usa l&apos;obiettivo dalla sezione Obiettivo. Compila qui solo per sovrascriverlo.
+                        </p>
                     </div>
                     <div className="space-y-1">
                         <Label className="text-xs">Allocazione target <span className="text-muted-foreground">(opzionale)</span></Label>
                         <Input
                             value={form.data.target_allocation}
                             onChange={(e) => form.setData('target_allocation', e.target.value)}
-                            placeholder="es. 80% azioni, 20% liquidità"
+                            placeholder="Se vuoto, usa le percentuali della sezione Obiettivo"
                         />
                     </div>
                     <Button type="submit" size="sm" disabled={form.processing}>
@@ -102,7 +106,7 @@ function ProfileForm({ profile }: { profile: InvestorProfile | null }) {
     );
 }
 
-export default function Advisor({ configured, profile }: Props) {
+export default function Advisor({ configured, profile, goalObjective }: Props) {
     const [report, setReport] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -154,7 +158,7 @@ export default function Advisor({ configured, profile }: Props) {
                     </Card>
                 ) : (
                     <>
-                        <ProfileForm profile={profile} />
+                        <ProfileForm profile={profile} goalObjective={goalObjective} />
 
                         <div className="flex items-center gap-3">
                             <Button onClick={generate} disabled={loading}>
