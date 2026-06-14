@@ -38,6 +38,7 @@ interface Props {
 
 const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
 const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+const REPORT_KEY = 'advisor-report';
 
 function ProfileDialog({
     open,
@@ -150,10 +151,22 @@ function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile | null; 
 }
 
 export default function Advisor({ configured, profile, goalObjective }: Props) {
-    const [report, setReport] = useState<string | null>(null);
+    // Persist the last report in localStorage so it survives a refresh — a
+    // simple stopgap until chat sessions give it a proper home. Kept per
+    // browser; shown with its generation date so its age is clear.
+    const [saved, setSaved] = useState<{ text: string; generatedAt: string } | null>(() => {
+        try {
+            const raw = localStorage.getItem(REPORT_KEY);
+            return raw ? (JSON.parse(raw) as { text: string; generatedAt: string }) : null;
+        } catch {
+            return null;
+        }
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [profileOpen, setProfileOpen] = useState(false);
+
+    const report = saved?.text ?? null;
 
     const generate = async () => {
         setLoading(true);
@@ -172,7 +185,13 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
             if (!res.ok) {
                 setError(data.error ?? 'Generazione non riuscita.');
             } else {
-                setReport(data.report);
+                const entry = { text: data.report as string, generatedAt: new Date().toISOString() };
+                setSaved(entry);
+                try {
+                    localStorage.setItem(REPORT_KEY, JSON.stringify(entry));
+                } catch {
+                    // Storage full or unavailable — keep it in memory at least.
+                }
             }
         } catch {
             setError('Errore di rete durante la generazione.');
@@ -237,6 +256,13 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
                         {report && (
                             <Card>
                                 <CardContent className="py-2">
+                                    {saved?.generatedAt && (
+                                        <p className="text-xs text-muted-foreground pt-2">
+                                            Analisi generata il {new Date(saved.generatedAt).toLocaleString('it-IT', {
+                                                day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                                            })}
+                                        </p>
+                                    )}
                                     <Markdown content={report} />
                                 </CardContent>
                             </Card>
