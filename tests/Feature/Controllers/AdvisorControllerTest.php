@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Controllers;
 
+use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Contracts\AdvisorProvider;
+use App\Jobs\GenerateAdvisorReportJob;
+use App\Models\AdvisorReport;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AdvisorControllerTest extends TestCase
@@ -50,26 +54,86 @@ class AdvisorControllerTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Advisor')->where('configured', true));
     }
 
-    public function test_generate_returns_the_report(): void
+    public function test_generate_queues_a_job_and_returns_pending(): void
     {
-        $this->bindProvider(configured: true, reply: 'Il tuo portafoglio è solido.');
+        $this->bindProvider(configured: true);
+        Queue::fake();
 
         $this->postJson('/advisor/generate')
             ->assertOk()
-            ->assertJson(['report' => 'Il tuo portafoglio è solido.']);
+            ->assertJson(['status' => 'pending']);
+
+        Queue::assertPushed(GenerateAdvisorReportJob::class);
+        $this->assertDatabaseHas('advisor_reports', ['status' => 'pending']);
     }
 
     public function test_generate_422_when_not_configured(): void
     {
         $this->bindProvider(configured: false);
+        Queue::fake();
 
         $this->postJson('/advisor/generate')->assertStatus(422);
+        Queue::assertNothingPushed();
     }
 
-    public function test_generate_502_on_provider_error(): void
+    public function test_generate_replaces_the_previous_report(): void
     {
-        $this->bindProvider(configured: true, throws: true);
+        $this->bindProvider(configured: true);
+        AdvisorReport::create(['status' => 'done', 'content' => 'vecchia']);
+        Queue::fake();
 
-        $this->postJson('/advisor/generate')->assertStatus(502);
+        $this->postJson('/advisor/generate')->assertOk();
+
+        // Single-row: the old report is gone, replaced by a fresh pending one.
+        $this->assertDatabaseCount('advisor_reports', 1);
+        $this->assertDatabaseMissing('advisor_reports', ['content' => 'vecchia']);
+    }
+
+    public function test_generate_does_not_queue_a_second_job_while_pending(): void
+    {
+        $this->bindProvider(configured: true);
+        AdvisorReport::create(['status' => 'pending']);
+        Queue::fake();
+
+        $this->postJson('/advisor/generate')->assertOk()->assertJson(['status' => 'pending']);
+
+        Queue::assertNothingPushed();
+        $this->assertDatabaseCount('advisor_reports', 1);
+    }
+
+    public function test_status_is_idle_with_no_report(): void
+    {
+        $this->getJson('/advisor/status')->assertOk()->assertJson(['status' => 'idle']);
+    }
+
+    public function test_status_returns_the_done_report(): void
+    {
+        AdvisorReport::create(['status' => 'done', 'content' => 'Analisi pronta.']);
+
+        $this->getJson('/advisor/status')
+            ->assertOk()
+            ->assertJson(['status' => 'done', 'content' => 'Analisi pronta.']);
+    }
+
+    public function test_job_generates_and_marks_the_report_done(): void
+    {
+        $this->bindProvider(configured: true, reply: 'Il tuo portafoglio è solido.');
+        $report = AdvisorReport::create(['status' => 'pending']);
+
+        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class));
+
+        $report->refresh();
+        $this->assertSame('done', $report->status);
+        $this->assertSame('Il tuo portafoglio è solido.', $report->content);
+    }
+
+    public function test_job_marks_failed_when_not_configured(): void
+    {
+        $this->bindProvider(configured: false);
+        $report = AdvisorReport::create(['status' => 'pending']);
+
+        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class));
+
+        $this->assertSame('failed', $report->fresh()->status);
     }
 }

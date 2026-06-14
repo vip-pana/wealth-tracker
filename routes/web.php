@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Advisor\GenerateController as AdvisorGenerateController;
 use App\Http\Controllers\Advisor\IndexController as AdvisorIndexController;
+use App\Http\Controllers\Advisor\StatusController as AdvisorStatusController;
 use App\Http\Controllers\Advisor\StoreProfileController as AdvisorStoreProfileController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
@@ -52,6 +53,7 @@ Route::get('/input', IndexAssetController::class)->name('input.index');
 Route::get('/investments', InvestmentsController::class)->name('investments.index');
 Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
 Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
+Route::get('/advisor/status', AdvisorStatusController::class)->name('advisor.status');
 Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
