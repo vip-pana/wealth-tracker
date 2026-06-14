@@ -1,16 +1,108 @@
 import { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
-import { Card, CardContent } from '@/Components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
-import { Sparkles, AlertTriangle, Loader2 } from 'lucide-react';
+import { Label } from '@/Components/ui/label';
+import { Input } from '@/Components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
+import { Sparkles, AlertTriangle, Loader2, UserCog } from 'lucide-react';
+
+interface InvestorProfile {
+    horizon: string | null;
+    risk_tolerance: string | null;
+    objective: string | null;
+    target_allocation: string | null;
+}
 
 interface Props {
     configured: boolean;
+    profile: InvestorProfile | null;
 }
 
-export default function Advisor({ configured }: Props) {
+function ProfileForm({ profile }: { profile: InvestorProfile | null }) {
+    const form = useForm({
+        horizon: profile?.horizon ?? '',
+        risk_tolerance: profile?.risk_tolerance ?? '',
+        objective: profile?.objective ?? '',
+        target_allocation: profile?.target_allocation ?? '',
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.post('/advisor/profile', { preserveScroll: true });
+    };
+
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                    <UserCog className="w-4 h-4" />
+                    Il tuo profilo investitore
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                    Questo contesto rende l&apos;analisi tua, non generica. L&apos;allocazione target è opzionale: se non ce l&apos;hai, lascia vuoto e il consulente può aiutarti a ragionarci.
+                </p>
+                <form onSubmit={submit} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Orizzonte temporale</Label>
+                            <Select value={form.data.horizon} onValueChange={(v) => form.setData('horizon', v)}>
+                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="short">Breve (&lt; 3 anni)</SelectItem>
+                                    <SelectItem value="medium">Medio (3-10 anni)</SelectItem>
+                                    <SelectItem value="long">Lungo (10+ anni)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Tolleranza al rischio</Label>
+                            <Select value={form.data.risk_tolerance} onValueChange={(v) => form.setData('risk_tolerance', v)}>
+                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="low">Bassa</SelectItem>
+                                    <SelectItem value="medium">Media</SelectItem>
+                                    <SelectItem value="high">Alta</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Obiettivo principale</Label>
+                        <Input
+                            value={form.data.objective}
+                            onChange={(e) => form.setData('objective', e.target.value)}
+                            placeholder="es. indipendenza finanziaria, pensione, casa"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Allocazione target <span className="text-muted-foreground">(opzionale)</span></Label>
+                        <Input
+                            value={form.data.target_allocation}
+                            onChange={(e) => form.setData('target_allocation', e.target.value)}
+                            placeholder="es. 80% azioni, 20% liquidità"
+                        />
+                    </div>
+                    <Button type="submit" size="sm" disabled={form.processing}>
+                        {form.processing ? 'Salvataggio…' : 'Salva profilo'}
+                    </Button>
+                </form>
+            </CardContent>
+        </Card>
+    );
+}
+
+export default function Advisor({ configured, profile }: Props) {
     const [report, setReport] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -62,6 +154,8 @@ export default function Advisor({ configured }: Props) {
                     </Card>
                 ) : (
                     <>
+                        <ProfileForm profile={profile} />
+
                         <div className="flex items-center gap-3">
                             <Button onClick={generate} disabled={loading}>
                                 {loading ? (
