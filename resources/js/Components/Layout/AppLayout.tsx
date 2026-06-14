@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff, CandlestickChart } from 'lucide-react';
+import { LayoutDashboard, PlusSquare, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff, CandlestickChart, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { useEffect, useRef, useState } from 'react';
@@ -12,6 +12,7 @@ const navItems = [
     { href: '/input',    label: 'Input Dati',   icon: PlusSquare },
     { href: '/pension',  label: 'Fondo Pensione', icon: PiggyBank },
     { href: '/investments', label: 'Investimenti', icon: CandlestickChart },
+    { href: '/advisor', label: 'Consulente AI', icon: Sparkles },
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];
 

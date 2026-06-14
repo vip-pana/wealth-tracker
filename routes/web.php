@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Advisor\GenerateController as AdvisorGenerateController;
+use App\Http\Controllers\Advisor\IndexController as AdvisorIndexController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
@@ -47,6 +49,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', DashboardController::class)->name('dashboard');
 Route::get('/input', IndexAssetController::class)->name('input.index');
 Route::get('/investments', InvestmentsController::class)->name('investments.index');
+Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
+Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
 Route::get('/pension', IndexPensionController::class)->name('pension.index');
