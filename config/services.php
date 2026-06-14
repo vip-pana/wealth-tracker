@@ -59,4 +59,16 @@ return [
         ],
     ],
 
+    // AI advisor backend. Swappable by `driver`: a local model via Ollama for
+    // development (no cloud cost), a cloud model (Claude) later. Inert until a
+    // model is configured.
+    'advisor' => [
+        'driver' => env('ADVISOR_DRIVER', 'ollama'),
+        'ollama' => [
+            'base_url' => env('OLLAMA_BASE_URL', 'http://host.docker.internal:11434'),
+            'model' => env('OLLAMA_MODEL', ''),
+            'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
+        ],
+    ],
+
 ];
