@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
@@ -172,29 +173,22 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
         setLoading(true);
         setError(null);
         try {
-            // Inertia/Laravel issues an XSRF-TOKEN cookie; echo it back as the
-            // X-XSRF-TOKEN header so the POST passes CSRF (no Blade meta tag).
-            const xsrf = decodeURIComponent(
-                document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '',
-            );
-            const res = await fetch('/advisor/generate', {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                setError(data.error ?? 'Generazione non riuscita.');
-            } else {
-                const entry = { text: data.report as string, generatedAt: new Date().toISOString() };
-                setSaved(entry);
-                try {
-                    localStorage.setItem(REPORT_KEY, JSON.stringify(entry));
-                } catch {
-                    // Storage full or unavailable — keep it in memory at least.
-                }
+            // Use axios (configured globally in bootstrap.js): it reads the
+            // XSRF-TOKEN cookie and sets the header automatically, so the POST
+            // passes CSRF the same way Inertia's own requests do.
+            const { data } = await axios.post('/advisor/generate');
+            const entry = { text: data.report as string, generatedAt: new Date().toISOString() };
+            setSaved(entry);
+            try {
+                localStorage.setItem(REPORT_KEY, JSON.stringify(entry));
+            } catch {
+                // Storage full or unavailable — keep it in memory at least.
             }
-        } catch {
-            setError('Errore di rete durante la generazione.');
+        } catch (e) {
+            const message = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
+                ? e.response.data.error
+                : 'Generazione non riuscita.';
+            setError(message);
         } finally {
             setLoading(false);
         }
