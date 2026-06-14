@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
 import { Input } from '@/Components/ui/input';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/Components/ui/dialog';
 import {
     Select,
     SelectContent,
@@ -13,6 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
+import { Markdown } from '@/Components/ui/Markdown';
 import { Sparkles, AlertTriangle, Loader2, UserCog } from 'lucide-react';
 
 interface InvestorProfile {
@@ -28,7 +36,20 @@ interface Props {
     goalObjective: string | null;
 }
 
-function ProfileForm({ profile, goalObjective }: { profile: InvestorProfile | null; goalObjective: string | null }) {
+const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
+const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+
+function ProfileDialog({
+    open,
+    onClose,
+    profile,
+    goalObjective,
+}: {
+    open: boolean;
+    onClose: () => void;
+    profile: InvestorProfile | null;
+    goalObjective: string | null;
+}) {
     const form = useForm({
         horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
@@ -38,20 +59,17 @@ function ProfileForm({ profile, goalObjective }: { profile: InvestorProfile | nu
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.post('/advisor/profile', { preserveScroll: true });
+        form.post('/advisor/profile', { preserveScroll: true, onSuccess: onClose });
     };
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                    <UserCog className="w-4 h-4" />
-                    Il tuo profilo investitore
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-xs text-muted-foreground mb-3">
-                    Questo contesto rende l&apos;analisi tua, non generica. L&apos;allocazione target è opzionale: se non ce l&apos;hai, lascia vuoto e il consulente può aiutarti a ragionarci.
+        <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Il tuo profilo investitore</DialogTitle>
+                </DialogHeader>
+                <p className="text-xs text-muted-foreground">
+                    Questo contesto rende l&apos;analisi tua, non generica. Obiettivo e allocazione sono opzionali: se vuoti, il consulente usa quelli della sezione Obiettivo.
                 </p>
                 <form onSubmit={submit} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -85,24 +103,49 @@ function ProfileForm({ profile, goalObjective }: { profile: InvestorProfile | nu
                             onChange={(e) => form.setData('objective', e.target.value)}
                             placeholder={goalObjective ? `Da Obiettivo: ${goalObjective}` : 'es. indipendenza finanziaria, pensione, casa'}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Se vuoto, il consulente usa l&apos;obiettivo dalla sezione Obiettivo. Compila qui solo per sovrascriverlo.
-                        </p>
                     </div>
                     <div className="space-y-1">
                         <Label className="text-xs">Allocazione target <span className="text-muted-foreground">(opzionale)</span></Label>
-                        <Input
+                        <textarea
                             value={form.data.target_allocation}
                             onChange={(e) => form.setData('target_allocation', e.target.value)}
-                            placeholder="Se vuoto, usa le percentuali della sezione Obiettivo"
+                            placeholder="Se vuoto, usa le percentuali della sezione Obiettivo. Es: 60% azioni, 20% obbligazioni, 20% liquidità"
+                            rows={2}
+                            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>
-                    <Button type="submit" size="sm" disabled={form.processing}>
-                        {form.processing ? 'Salvataggio…' : 'Salva profilo'}
-                    </Button>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={form.processing}>
+                            Annulla
+                        </Button>
+                        <Button type="submit" disabled={form.processing}>
+                            {form.processing ? 'Salvataggio…' : 'Salva profilo'}
+                        </Button>
+                    </DialogFooter>
                 </form>
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile | null; onEdit: () => void }) {
+    const parts: string[] = [];
+    if (profile?.horizon) parts.push(`Orizzonte: ${HORIZON_LABELS[profile.horizon] ?? profile.horizon}`);
+    if (profile?.risk_tolerance) parts.push(`Rischio: ${RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}`);
+    if (profile?.objective) parts.push(`Obiettivo: ${profile.objective}`);
+
+    return (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
+                <UserCog className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">
+                    {parts.length > 0 ? parts.join(' · ') : 'Profilo non compilato — l’analisi sarà più mirata se lo imposti.'}
+                </span>
+            </div>
+            <Button variant="ghost" size="sm" className="flex-shrink-0 h-7 text-xs" onClick={onEdit}>
+                {parts.length > 0 ? 'Modifica' : 'Compila'}
+            </Button>
+        </div>
     );
 }
 
@@ -110,6 +153,7 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
     const [report, setReport] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [profileOpen, setProfileOpen] = useState(false);
 
     const generate = async () => {
         setLoading(true);
@@ -158,7 +202,7 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
                     </Card>
                 ) : (
                     <>
-                        <ProfileForm profile={profile} goalObjective={goalObjective} />
+                        <ProfileSummary profile={profile} onEdit={() => setProfileOpen(true)} />
 
                         <div className="flex items-center gap-3">
                             <Button onClick={generate} disabled={loading}>
@@ -192,8 +236,8 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
 
                         {report && (
                             <Card>
-                                <CardContent className="py-5">
-                                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{report}</div>
+                                <CardContent className="py-2">
+                                    <Markdown content={report} />
                                 </CardContent>
                             </Card>
                         )}
@@ -206,6 +250,13 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
                     </>
                 )}
             </div>
+
+            <ProfileDialog
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                profile={profile}
+                goalObjective={goalObjective}
+            />
         </>
     );
 }
