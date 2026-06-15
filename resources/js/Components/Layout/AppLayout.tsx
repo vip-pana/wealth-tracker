@@ -2,7 +2,8 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { LayoutDashboard, PlusSquare, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff, CandlestickChart, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
-import { useEffect, useRef, useState } from 'react';
+import { ToastContext, type ToastType } from '@/lib/toast';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
 
@@ -16,65 +17,94 @@ const navItems = [
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];
 
-function FlashMessage() {
-    const { flash } = usePage<{ flash: SharedProps['flash'] }>().props;
-    const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error'; undo?: string | null }[]>([]);
-    const counterRef = useRef(0);
+interface Toast {
+    id: number;
+    message: string;
+    type: ToastType;
+    undo?: string | null;
+}
 
-    useEffect(() => {
-        const msg = flash.success ?? flash.error ?? null;
-        if (!msg) return;
+// Owns the single global toast stack and renders it. Two sources feed it:
+// Inertia flash messages (success/error after a request) and imperative
+// pushes from anywhere in the tree via the ToastContext (useToast). Keeping
+// one stack means one visual language and one position for every toast.
+function ToastProvider({ children }: { children: React.ReactNode }) {
+    const { flash } = usePage<{ flash: SharedProps['flash'] }>().props;
+    const [toasts, setToasts] = useState<Toast[]>([]);
+    const counterRef = useRef(0);
+    const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+    const dismiss = useCallback((id: number) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+        const timer = timersRef.current.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            timersRef.current.delete(id);
+        }
+    }, []);
+
+    const push = useCallback((message: string, type: ToastType = 'success', undo: string | null = null) => {
         const id = ++counterRef.current;
-        const type = flash.success ? 'success' : 'error';
-        const undo = flash.success ? flash.undo : null;
-        setToasts((prev) => [...prev, { id, message: msg, type, undo }]);
+        setToasts((prev) => [...prev, { id, message, type, undo }]);
         const timeout = undo ? 6000 : type === 'success' ? 3000 : 4000;
-        const t = setTimeout(() => {
-            setToasts((prev) => prev.filter((toast) => toast.id !== id));
-        }, timeout);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => dismiss(id), timeout);
+        timersRef.current.set(id, timer);
+    }, [dismiss]);
+
+    // Surface Inertia flash messages through the same stack.
+    useEffect(() => {
+        if (flash.success) {
+            push(flash.success, 'success', flash.undo);
+        } else if (flash.error) {
+            push(flash.error, 'error');
+        }
+        // `flash` is a fresh object per page response; pushing once per change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [flash]);
 
-    const dismiss = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
-
-    const handleUndo = (toast: { id: number; undo?: string | null }) => {
+    const handleUndo = (toast: Toast) => {
         if (toast.undo) {
             router.post(toast.undo, {}, { preserveScroll: true });
         }
         dismiss(toast.id);
     };
 
+    const pushMessage = useCallback((message: string, type: ToastType = 'success') => push(message, type), [push]);
+
     return (
-        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
-            {toasts.map((toast) => (
-                <div
-                    key={toast.id}
-                    className={cn(
-                        'flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium shadow-lg',
-                        toast.type === 'success'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-destructive text-destructive-foreground',
-                    )}
-                >
-                    <span>{toast.message}</span>
-                    {toast.undo && (
-                        <button
-                            onClick={() => handleUndo(toast)}
-                            className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
-                        >
-                            Annulla
-                        </button>
-                    )}
-                    <button
-                        onClick={() => dismiss(toast.id)}
-                        className="ml-auto opacity-70 hover:opacity-100"
-                        aria-label="Chiudi"
+        <ToastContext.Provider value={pushMessage}>
+            {children}
+            <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+                {toasts.map((toast) => (
+                    <div
+                        key={toast.id}
+                        className={cn(
+                            'flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium shadow-lg animate-page-enter',
+                            toast.type === 'success'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-destructive text-destructive-foreground',
+                        )}
                     >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-            ))}
-        </div>
+                        <span>{toast.message}</span>
+                        {toast.undo && (
+                            <button
+                                onClick={() => handleUndo(toast)}
+                                className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
+                            >
+                                Annulla
+                            </button>
+                        )}
+                        <button
+                            onClick={() => dismiss(toast.id)}
+                            className="ml-auto opacity-70 hover:opacity-100"
+                            aria-label="Chiudi"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </ToastContext.Provider>
     );
 }
 
@@ -171,6 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <PrivacyContext.Provider value={valuesHidden}>
+        <ToastProvider>
         <div className="flex h-screen overflow-hidden bg-background">
             {/* Mobile top bar */}
             <div className="lg:hidden fixed top-0 inset-x-0 z-30 h-[56px] flex items-center gap-2 px-4 border-b border-border bg-background">
@@ -287,8 +318,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {children}
             </main>
 
-            <FlashMessage />
         </div>
+        </ToastProvider>
         </PrivacyContext.Provider>
     );
 }

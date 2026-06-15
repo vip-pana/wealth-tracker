@@ -8,6 +8,7 @@ use App\Actions\Action;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\Snapshot;
+use Illuminate\Support\Carbon;
 
 class FetchGoalData extends Action
 {
@@ -94,6 +95,7 @@ class FetchGoalData extends Action
             'currentNetWorth' => $currentNetWorth,
             'currentAllocation' => $currentAllocation,
             'currentMacroAllocation' => $currentMacroAllocation,
+            'today' => Carbon::today()->format('Y-m-d'),
         ];
     }
 }

@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Markdown } from '@/Components/ui/Markdown';
+import { useToast } from '@/lib/toast';
 import { Sparkles, AlertTriangle, Loader2, UserCog } from 'lucide-react';
 
 interface InvestorProfile {
@@ -160,12 +161,12 @@ interface StatusResponse {
 }
 
 export default function Advisor({ configured, profile, goalObjective }: Props) {
+    const pushToast = useToast();
     const [status, setStatus] = useState<Status>('idle');
     const [report, setReport] = useState<string | null>(null);
     const [generatedAt, setGeneratedAt] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [profileOpen, setProfileOpen] = useState(false);
-    const [toast, setToast] = useState<string | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
     const loading = status === 'pending';
@@ -205,30 +206,21 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
 
     // Toast on a real pending→done/failed transition. Driven by the rendered
     // `status` state (not the poll closure) so it's immune to the effect
-    // restarting and to Strict Mode double-mounts. Setting the toast here is
-    // the intended effect — reacting to a state transition — hence the rule
-    // exception.
+    // restarting and to Strict Mode double-mounts. Uses the global toast stack
+    // so it looks and lives like every other toast in the app.
     const prevStatus = useRef<Status>(status);
     useEffect(() => {
         const from = prevStatus.current;
         prevStatus.current = status;
         if (from === 'pending' && status === 'done') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setToast('Analisi completata.');
+            pushToast('Analisi completata.', 'success');
         } else if (from === 'pending' && status === 'failed') {
-            setToast('Generazione non riuscita.');
+            pushToast('Generazione non riuscita.', 'error');
         }
-    }, [status]);
-
-    useEffect(() => {
-        if (toast === null) return;
-        const t = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(t);
-    }, [toast]);
+    }, [status, pushToast]);
 
     const generate = async () => {
         setError(null);
-        setToast(null);
         try {
             await axios.post('/advisor/generate');
             setStatus('pending');
@@ -325,14 +317,6 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
                 profile={profile}
                 goalObjective={goalObjective}
             />
-
-            {toast && (
-                <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2.5 text-sm text-white shadow-lg animate-page-enter">
-                    <Sparkles className="w-4 h-4" />
-                    {toast}
-                    <button className="ml-2 opacity-70 hover:opacity-100" onClick={() => setToast(null)}>✕</button>
-                </div>
-            )}
         </>
     );
 }

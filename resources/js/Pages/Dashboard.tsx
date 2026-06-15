@@ -10,6 +10,7 @@ import GrowthRateChart from '@/Components/Charts/GrowthRateChart';
 import MonthComparisonChart from '@/Components/Charts/MonthComparisonChart';
 import ForecastChart from '@/Components/Charts/ForecastChart';
 import PortfolioInsights from '@/Components/Dashboard/PortfolioInsights';
+import { EmptyState } from '@/Components/ui/EmptyState';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Money } from '@/Components/ui/Money';
 import { formatPercent, formatDateLong } from '@/lib/formatters';
@@ -111,21 +112,19 @@ export default function Dashboard({
         return (
             <>
                 <Head title="Dashboard" />
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-                    <div className="rounded-full bg-muted p-6">
-                        <TrendingUp className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                    <h2 className="text-xl font-semibold">Nessun dato ancora</h2>
-                    <p className="text-muted-foreground max-w-sm">
-                        Aggiungi i tuoi asset e salva il primo snapshot mensile per visualizzare i grafici.
-                    </p>
-                    <Link href="/input">
-                        <Button>
-                            <PlusSquare className="w-4 h-4 mr-2" />
-                            Aggiungi dati
-                        </Button>
-                    </Link>
-                </div>
+                <EmptyState
+                    icon={TrendingUp}
+                    title="Nessun dato ancora"
+                    description="Aggiungi i tuoi asset e salva il primo snapshot mensile per visualizzare i grafici."
+                    action={
+                        <Link href="/input">
+                            <Button>
+                                <PlusSquare className="w-4 h-4 mr-2" />
+                                Aggiungi dati
+                            </Button>
+                        </Link>
+                    }
+                />
             </>
         );
     }

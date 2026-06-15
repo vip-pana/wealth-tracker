@@ -8,6 +8,7 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
+import { EmptyState } from '@/Components/ui/EmptyState';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { PiggyBank, Pencil, Trash2, Plus, ChevronDown, Info } from 'lucide-react';
 import { formatCurrencyNoDecimals, formatCurrencyCompact } from '@/lib/formatters';
@@ -76,7 +77,9 @@ function PensionFormDialog({
     entry: PensionEntry | null;
 }) {
     const isEdit = entry !== null;
-    const defaultYear = availableYears[0] ?? new Date().getFullYear();
+    // availableYears is server-built (current year first), so trust it rather
+    // than reading the browser clock.
+    const defaultYear = availableYears[0];
     const defaultCategoryId = categories[0]?.id;
 
     const { data, setData, post, put, processing, errors, reset } = useForm<PensionFormData>(
@@ -203,25 +206,21 @@ function PensionFormDialog({
     );
 }
 
-function EmptyState({ onCreate, hasCategories }: { onCreate: () => void; hasCategories: boolean }) {
+function PensionEmptyState({ onCreate, hasCategories }: { onCreate: () => void; hasCategories: boolean }) {
     return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-            <div className="rounded-full bg-muted p-6">
-                <PiggyBank className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold">Nessun valore registrato</h2>
-            <p className="text-muted-foreground max-w-md">
-                {hasCategories
-                    ? 'Inserisci il valore del tuo fondo pensione dal report annuale. Verrà conteggiato nel patrimonio totale ma escluso dai grafici di analisi mensile.'
-                    : 'Crea una categoria con macro "Fondo Pensione" dalle Impostazioni per iniziare.'}
-            </p>
-            {hasCategories && (
+        <EmptyState
+            icon={PiggyBank}
+            title="Nessun valore registrato"
+            description={hasCategories
+                ? 'Inserisci il valore del tuo fondo pensione dal report annuale. Verrà conteggiato nel patrimonio totale ma escluso dai grafici di analisi mensile.'
+                : 'Crea una categoria con macro "Fondo Pensione" dalle Impostazioni per iniziare.'}
+            action={hasCategories && (
                 <Button onClick={onCreate}>
                     <Plus className="w-4 h-4 mr-2" />
                     Aggiungi valore
                 </Button>
             )}
-        </div>
+        />
     );
 }
 
@@ -250,7 +249,7 @@ export default function PensionPage({ categories, entries, availableYears, total
         return (
             <>
                 <Head title="Fondo Pensione" />
-                <EmptyState onCreate={openCreate} hasCategories={categories.length > 0} />
+                <PensionEmptyState onCreate={openCreate} hasCategories={categories.length > 0} />
                 <PensionFormDialog
                     open={formOpen}
                     onClose={() => setFormOpen(false)}

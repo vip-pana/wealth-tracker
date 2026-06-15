@@ -9,6 +9,8 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Badge } from '@/Components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
+import { EmptyState } from '@/Components/ui/EmptyState';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Target, Pencil, Trash2, Plus, CheckCircle2, Circle, CalendarClock, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
@@ -38,6 +40,7 @@ interface Props {
     currentNetWorth: number | null;
     currentAllocation: CurrentAllocationItem[];
     currentMacroAllocation: CurrentMacroAllocationItem[];
+    today: string;
 }
 
 // ─── Form types ───────────────────────────────────────────────────────────────
@@ -549,6 +552,7 @@ function GoalProgress({
     currentNetWorth,
     currentAllocation,
     currentMacroAllocation,
+    today,
     onEdit,
     onDelete,
 }: {
@@ -557,6 +561,7 @@ function GoalProgress({
     currentNetWorth: number | null;
     currentAllocation: CurrentAllocationItem[];
     currentMacroAllocation: CurrentMacroAllocationItem[];
+    today: string;
     onEdit: () => void;
     onDelete: () => void;
 }) {
@@ -603,7 +608,6 @@ function GoalProgress({
 
     // Milestones sorted
     const sortedMilestones = [...goal.milestones].sort((a, b) => a.target_date.localeCompare(b.target_date));
-    const today = new Date().toISOString().slice(0, 10);
 
     return (
         <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
@@ -733,29 +737,32 @@ function GoalProgress({
                                     <SmallDonut data={targetDonut} title="Target" />
                                 </div>
 
-                                {/* Deviation table */}
-                                <div className="flex-1 self-center overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="text-muted-foreground font-medium">
-                                                <th className="text-left pb-2 font-medium">Categoria</th>
-                                                <th className="text-right pb-2 font-medium px-4">Attuale</th>
-                                                <th className="text-right pb-2 font-medium px-4">Target</th>
-                                                <th className="text-right pb-2 font-medium pl-4">Delta</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="space-y-1">
+                                {/* Deviation table — uses the shared Table
+                                    primitives with compact overrides (the
+                                    default h-12/p-4 spacing is too airy for
+                                    this dense comparison). */}
+                                <div className="flex-1 self-center">
+                                    <Table className="text-xs">
+                                        <TableHeader>
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead className="h-auto pb-2 px-0 text-xs">Categoria</TableHead>
+                                                <TableHead className="h-auto pb-2 px-4 text-xs text-right">Attuale</TableHead>
+                                                <TableHead className="h-auto pb-2 px-4 text-xs text-right">Target</TableHead>
+                                                <TableHead className="h-auto pb-2 pl-4 pr-0 text-xs text-right">Delta</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
                                             {deviations.map((d) => (
-                                                <tr key={d.name}>
-                                                    <td className="py-1">
+                                                <TableRow key={d.name} className="border-0 hover:bg-transparent">
+                                                    <TableCell className="py-1 px-0">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
                                                             <span className="font-medium text-sm">{d.name}</span>
                                                         </div>
-                                                    </td>
-                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.currentPct)}</td>
-                                                    <td className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.targetPct)}</td>
-                                                    <td className="text-right py-1 pl-4">
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.currentPct)}</TableCell>
+                                                    <TableCell className="text-right font-mono text-muted-foreground py-1 px-4">{formatPct(d.targetPct)}</TableCell>
+                                                    <TableCell className="text-right py-1 pl-4 pr-0">
                                                         <Badge
                                                             variant="outline"
                                                             className={`font-mono text-xs ${
@@ -768,11 +775,11 @@ function GoalProgress({
                                                         >
                                                             {d.delta > 0 ? '+' : ''}{formatPct(d.delta)}
                                                         </Badge>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </div>
                         )}
@@ -788,25 +795,23 @@ function GoalProgress({
 
 function EmptyGoal({ onCreate }: { onCreate: () => void }) {
     return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-            <div className="rounded-full bg-muted p-6">
-                <Target className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold">Nessun obiettivo</h2>
-            <p className="text-muted-foreground max-w-sm">
-                Definisci il tuo obiettivo finanziario: valore target, composizione del portafoglio e milestone intermedie.
-            </p>
-            <Button onClick={onCreate}>
-                <Plus className="w-4 h-4 mr-2" />
-                Crea obiettivo
-            </Button>
-        </div>
+        <EmptyState
+            icon={Target}
+            title="Nessun obiettivo"
+            description="Definisci il tuo obiettivo finanziario: valore target, composizione del portafoglio e milestone intermedie."
+            action={
+                <Button onClick={onCreate}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crea obiettivo
+                </Button>
+            }
+        />
     );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function GoalPage({ goal, categories, currentNetWorth, currentAllocation, currentMacroAllocation }: Props) {
+export default function GoalPage({ goal, categories, currentNetWorth, currentAllocation, currentMacroAllocation, today }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const { delete: destroy, processing: deleting } = useForm({});
 
@@ -828,6 +833,7 @@ export default function GoalPage({ goal, categories, currentNetWorth, currentAll
                         currentNetWorth={currentNetWorth}
                         currentAllocation={currentAllocation}
                         currentMacroAllocation={currentMacroAllocation}
+                        today={today}
                         onEdit={() => setFormOpen(true)}
                         onDelete={handleDelete}
                     />

@@ -29,6 +29,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
+import { Separator } from '@/Components/ui/separator';
 import { Money } from '@/Components/ui/Money';
 import { bankFreshness, brokerFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
@@ -619,7 +620,7 @@ function BankConnectionsCard({ connections, banks, assets, redirectReady }: { co
     );
 }
 
-function ScalableConnectionCard({ state }: { state: ScalableState }) {
+function ScalableConnectionCard({ state, transactionAssets }: { state: ScalableState; transactionAssets: TransactionAsset[] }) {
     const refresh = useForm({});
     const login = useForm({});
     const logout = useForm({});
@@ -842,12 +843,40 @@ function ScalableConnectionCard({ state }: { state: ScalableState }) {
                         )}
                     </>
                 )}
+
+                <TransactionAssetsBlock assets={transactionAssets} />
             </CardContent>
         </Card>
     );
 }
 
-function TransactionAssetsCard({ assets }: { assets: TransactionAsset[] }) {
+function SectionHeading({
+    icon: Icon,
+    title,
+    subtitle,
+    className,
+}: {
+    icon: React.ElementType;
+    title: string;
+    subtitle: string;
+    className?: string;
+}) {
+    return (
+        <div className={cn('px-1 pt-2', className)}>
+            <div className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+            <Separator className="mt-2" />
+        </div>
+    );
+}
+
+// Rendered as a subordinate block inside the broker card, not a peer card:
+// these assets are the *result* of imported transactions (today from Scalable,
+// but source-agnostic). Returns null when there are none.
+function TransactionAssetsBlock({ assets }: { assets: TransactionAsset[] }) {
     const unlink = useForm({});
 
     if (assets.length === 0) {
@@ -862,40 +891,36 @@ function TransactionAssetsCard({ assets }: { assets: TransactionAsset[] }) {
     };
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-1.5">
-                    <CandlestickChart className="w-4 h-4" />
-                    Asset da transazioni
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                    La quantità di questi asset è calcolata dalle transazioni importate dal broker e non è modificabile a mano. Scollega per rimuovere le transazioni e riprendere il controllo manuale — l&apos;ultima quantità calcolata resta.
-                </p>
-                <div className="divide-y divide-border rounded-md border border-border">
-                    {assets.map((asset) => (
-                        <div key={asset.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                            <div className="min-w-0">
-                                <p className="font-medium truncate">{asset.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    {asset.quantity ?? 0} quote · {asset.transactions_count} transazioni
-                                </p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={unlink.processing}
-                                onClick={() => handleUnlink(asset)}
-                            >
-                                <Unlink className="w-4 h-4 mr-1" />
-                                Scollega
-                            </Button>
+        <div className="mt-1 rounded-md border border-border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <CandlestickChart className="w-3.5 h-3.5" />
+                Asset con quantità da transazioni
+            </div>
+            <p className="text-xs text-muted-foreground">
+                La quantità di questi asset è calcolata dalle transazioni importate e non è modificabile a mano. Scollega per rimuovere le transazioni e riprendere il controllo manuale — l&apos;ultima quantità calcolata resta.
+            </p>
+            <div className="divide-y divide-border rounded-md border border-border bg-background">
+                {assets.map((asset) => (
+                    <div key={asset.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{asset.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {asset.quantity ?? 0} quote · {asset.transactions_count} transazioni
+                            </p>
                         </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={unlink.processing}
+                            onClick={() => handleUnlink(asset)}
+                        >
+                            <Unlink className="w-4 h-4 mr-1" />
+                            Scollega
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -918,58 +943,12 @@ export default function Settings({ categories, prices, trashed, bankConnections,
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader icon={SettingsIcon} title="Impostazioni" />
 
-                {/* Categories */}
-                <Card>
-                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
-                        <CardTitle className="text-base">Categorie</CardTitle>
-                        <Button
-                            size="sm"
-                            onClick={() => {
-                                setEditCategory(null);
-                                setDialogOpen(true);
-                            }}
-                        >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Nuova
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="divide-y divide-border">
-                            {categories.map((cat) => (
-                                <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                                    <span className="text-sm font-medium flex-1 flex items-center gap-1.5">
-                                        {cat.icon && <span>{cat.icon}</span>}
-                                        {cat.name}
-                                    </span>
-                                    {cat.macro_category && (
-                                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                            <Layers className="w-3 h-3" />
-                                            {cat.macro_category}
-                                        </span>
-                                    )}
-                                    <span className="text-xs text-muted-foreground w-16 text-right">
-                                        {cat.assets_count} asset
-                                    </span>
-                                    <div className="flex gap-1 flex-shrink-0">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                                            onClick={() => {
-                                                setEditCategory(cat);
-                                                setDialogOpen(true);
-                                            }}
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </Button>
-                                        <DeleteCategoryButton category={cat} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* ── Connessioni: integrazioni e dati live ── */}
+                <SectionHeading
+                    icon={Link2}
+                    title="Connessioni"
+                    subtitle="Integrazioni e dati live: prezzi, banca, broker."
+                />
 
                 {/* Prices */}
                 <Card>
@@ -1039,81 +1018,151 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                 {/* Bank connections (open banking) */}
                 <BankConnectionsCard connections={bankConnections} banks={banks} assets={linkableAssets} redirectReady={bankRedirectReady} />
 
-                {/* Scalable broker sync (stopgap) */}
-                <ScalableConnectionCard state={scalable} />
+                {/* Scalable broker sync (stopgap), with the transaction-driven
+                    assets it produces as a subordinate block. */}
+                <ScalableConnectionCard state={scalable} transactionAssets={transactionAssets} />
 
-                {/* Assets whose quantity is managed by imported transactions */}
-                <TransactionAssetsCard assets={transactionAssets} />
+                {/* ── Dati: import/export, backup, ripristino ── */}
+                <SectionHeading
+                    icon={Database}
+                    title="Dati"
+                    subtitle="Import/export, backup del database e ripristino."
+                    className="pt-4"
+                />
 
-                {/* Import / Export */}
                 <Card>
-                    <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
-                        <CardTitle className="text-base">Dati</CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                                <Upload className="w-4 h-4 mr-2" />
-                                Importa CSV
-                            </Button>
-                            <a href="/export/csv" download>
-                                <Button variant="outline" size="sm">
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Esporta CSV
+                    <CardContent className="p-0 divide-y divide-border">
+                        {/* Import / Export */}
+                        <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium">Import / Export</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Carica o scarica i tuoi dati in formato CSV.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Importa CSV
                                 </Button>
-                            </a>
+                                <a href="/export/csv" download>
+                                    <Button variant="outline" size="sm">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Esporta CSV
+                                    </Button>
+                                </a>
+                            </div>
                         </div>
-                    </CardHeader>
+
+                        {/* Backup */}
+                        <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium">Backup database</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Snapshot atomico verso il cloud. Backup automatico ogni notte alle 03:00.
+                                </p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-shrink-0"
+                                onClick={() => backupForm.post('/backup', { preserveScroll: true })}
+                                disabled={backupForm.processing}
+                            >
+                                <Database className={`w-4 h-4 mr-1 ${backupForm.processing ? 'animate-pulse' : ''}`} />
+                                Backup ora
+                            </Button>
+                        </div>
+
+                        {/* Trash / restore */}
+                        <div>
+                            <div className="px-4 py-3">
+                                <p className="text-sm font-medium">Elementi eliminati</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Asset, categorie e obiettivi eliminati. Puoi ripristinarli da qui.
+                                </p>
+                            </div>
+                            {trashed.length === 0 ? (
+                                <p className="px-4 pb-4 text-sm text-muted-foreground">
+                                    Nessun elemento eliminato.
+                                </p>
+                            ) : (
+                                <div className="border-t border-border divide-y divide-border">
+                                    {trashed.map((item) => (
+                                        <div key={`${item.type}-${item.label}-${item.deleted_at}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                                            <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{item.type}</span>
+                                            <span className="text-sm font-medium flex-1 truncate">{item.label}</span>
+                                            {item.deleted_at && (
+                                                <span className="text-xs text-muted-foreground hidden sm:block">
+                                                    {new Date(item.deleted_at).toLocaleDateString('it-IT')}
+                                                </span>
+                                            )}
+                                            <RestoreButton url={item.restore_url} />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
                 </Card>
 
-                {/* Backup */}
+                {/* ── Categorie: tassonomia degli asset ── */}
+                <SectionHeading
+                    icon={Layers}
+                    title="Categorie"
+                    subtitle="La tassonomia con cui classifichi gli asset."
+                    className="pt-4"
+                />
+
                 <Card>
                     <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
-                        <div>
-                            <CardTitle className="text-base">Backup database</CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                Snapshot atomico verso il cloud. Backup automatico ogni notte alle 03:00.
-                            </p>
-                        </div>
+                        <CardTitle className="text-base">Categorie</CardTitle>
                         <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => backupForm.post('/backup', { preserveScroll: true })}
-                            disabled={backupForm.processing}
+                            onClick={() => {
+                                setEditCategory(null);
+                                setDialogOpen(true);
+                            }}
                         >
-                            <Database className={`w-4 h-4 mr-1 ${backupForm.processing ? 'animate-pulse' : ''}`} />
-                            Backup ora
+                            <Plus className="w-4 h-4 mr-1" />
+                            Nuova
                         </Button>
                     </CardHeader>
-                </Card>
-
-                {/* Trash / restore */}
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Elementi eliminati</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            Asset, categorie e obiettivi eliminati. Puoi ripristinarli da qui.
-                        </p>
-                    </CardHeader>
                     <CardContent className="p-0">
-                        {trashed.length === 0 ? (
-                            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-                                Nessun elemento eliminato.
-                            </p>
-                        ) : (
-                            <div className="divide-y divide-border">
-                                {trashed.map((item) => (
-                                    <div key={`${item.type}-${item.label}-${item.deleted_at}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                        <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{item.type}</span>
-                                        <span className="text-sm font-medium flex-1 truncate">{item.label}</span>
-                                        {item.deleted_at && (
-                                            <span className="text-xs text-muted-foreground hidden sm:block">
-                                                {new Date(item.deleted_at).toLocaleDateString('it-IT')}
-                                            </span>
-                                        )}
-                                        <RestoreButton url={item.restore_url} />
+                        <div className="divide-y divide-border">
+                            {categories.map((cat) => (
+                                <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                                    <span className="text-sm font-medium flex-1 flex items-center gap-1.5">
+                                        {cat.icon && <span>{cat.icon}</span>}
+                                        {cat.name}
+                                    </span>
+                                    {cat.macro_category && (
+                                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Layers className="w-3 h-3" />
+                                            {cat.macro_category}
+                                        </span>
+                                    )}
+                                    <span className="text-xs text-muted-foreground w-16 text-right">
+                                        {cat.assets_count} asset
+                                    </span>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                                            onClick={() => {
+                                                setEditCategory(cat);
+                                                setDialogOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <DeleteCategoryButton category={cat} />
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                </div>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
