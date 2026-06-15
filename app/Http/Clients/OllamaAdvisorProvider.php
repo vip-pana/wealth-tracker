@@ -29,14 +29,34 @@ class OllamaAdvisorProvider implements AdvisorProvider
 
     public function analyze(string $briefing): string
     {
+        return $this->send([
+            ['role' => 'system', 'content' => $this->systemPrompt()],
+            ['role' => 'user', 'content' => $briefing."\n\nDammi una lettura del mio portafoglio."],
+        ]);
+    }
+
+    /**
+     * @param  list<array{role: string, content: string}>  $messages
+     */
+    public function chat(array $messages): string
+    {
+        return $this->send($messages);
+    }
+
+    /**
+     * Send a full message list to Ollama's /api/chat and return the assistant
+     * reply. The single transport for both analyze() (system + one user turn)
+     * and chat() (a whole conversation).
+     *
+     * @param  list<array{role: string, content: string}>  $messages
+     */
+    private function send(array $messages): string
+    {
         $response = Http::timeout($this->timeout)
             ->post(rtrim($this->baseUrl, '/').'/api/chat', [
                 'model' => $this->model,
                 'stream' => false,
-                'messages' => [
-                    ['role' => 'system', 'content' => $this->systemPrompt()],
-                    ['role' => 'user', 'content' => $briefing."\n\nDammi una lettura del mio portafoglio."],
-                ],
+                'messages' => $messages,
             ]);
 
         if ($response->failed()) {

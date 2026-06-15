@@ -6,16 +6,18 @@ namespace App\Jobs;
 
 use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
-use App\Models\AdvisorReport;
+use App\Models\AdvisorMessage;
+use App\Models\AdvisorSession;
 use App\Models\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Generates the advisor report in the background so the web request returns
- * immediately and the user can navigate away (or close the tab) while a local
- * model takes its time. The result is persisted on the report row — the UI
- * polls its status. One attempt: a stale half-analysis isn't worth retrying.
+ * Generates a report session's opening analysis in the background, so the web
+ * request returns immediately and the user can navigate away (or close the
+ * tab) while a local model takes its time. The analysis is stored as the
+ * session's first assistant message and the session status flips to done; the
+ * UI polls it. One attempt: a stale half-analysis isn't worth retrying.
  */
 class GenerateAdvisorReportJob implements ShouldQueue
 {
@@ -26,21 +28,21 @@ class GenerateAdvisorReportJob implements ShouldQueue
     public int $timeout = 600;
 
     public function __construct(
-        private readonly int $reportId,
+        private readonly int $sessionId,
     ) {}
 
     public function handle(GenerateAdvisorReport $generate, PushNotification $notify): void
     {
-        $report = AdvisorReport::find($this->reportId);
+        $session = AdvisorSession::find($this->sessionId);
 
-        if ($report === null) {
+        if ($session === null) {
             return;
         }
 
         $content = $generate->run();
 
         if ($content === null) {
-            $report->update(['status' => AdvisorReport::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);
+            $session->update(['status' => AdvisorSession::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);
             $notify->run(
                 type: Notification::TYPE_ADVISOR_REPORT_FAILED,
                 level: Notification::LEVEL_WARNING,
@@ -52,20 +54,26 @@ class GenerateAdvisorReportJob implements ShouldQueue
             return;
         }
 
-        $report->update(['status' => AdvisorReport::STATUS_DONE, 'content' => $content]);
+        AdvisorMessage::create([
+            'session_id' => $session->id,
+            'role' => AdvisorMessage::ROLE_ASSISTANT,
+            'content' => $content,
+        ]);
+        $session->update(['status' => AdvisorSession::STATUS_DONE]);
+
         $notify->run(
             type: Notification::TYPE_ADVISOR_REPORT_READY,
             level: Notification::LEVEL_SUCCESS,
             title: 'Analisi completata',
             body: 'Il consulente AI ha generato una nuova lettura del tuo portafoglio.',
-            actionUrl: '/advisor',
+            actionUrl: '/advisor/'.$session->id,
         );
     }
 
     public function failed(\Throwable $exception): void
     {
-        AdvisorReport::find($this->reportId)?->update([
-            'status' => AdvisorReport::STATUS_FAILED,
+        AdvisorSession::find($this->sessionId)?->update([
+            'status' => AdvisorSession::STATUS_FAILED,
             'error' => 'Generazione non riuscita. Verifica che il modello locale sia in esecuzione.',
         ]);
 

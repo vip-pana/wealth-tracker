@@ -28,6 +28,12 @@ class GenerateAdvisorReportTest extends TestCase
             {
                 return $this->reply;
             }
+
+            /** @param  list<array{role: string, content: string}>  $messages */
+            public function chat(array $messages): string
+            {
+                return $this->reply;
+            }
         };
     }
 

@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Advisor\DestroyController as AdvisorDestroyController;
 use App\Http\Controllers\Advisor\GenerateController as AdvisorGenerateController;
 use App\Http\Controllers\Advisor\IndexController as AdvisorIndexController;
+use App\Http\Controllers\Advisor\MessageController as AdvisorMessageController;
+use App\Http\Controllers\Advisor\StartChatController as AdvisorStartChatController;
 use App\Http\Controllers\Advisor\StatusController as AdvisorStatusController;
 use App\Http\Controllers\Advisor\StoreProfileController as AdvisorStoreProfileController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
@@ -55,8 +58,14 @@ Route::get('/input', IndexAssetController::class)->name('input.index');
 Route::get('/investments', InvestmentsController::class)->name('investments.index');
 Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
 Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
-Route::get('/advisor/status', AdvisorStatusController::class)->name('advisor.status');
+Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
 Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
+// Session-scoped routes — the {session} wildcard goes last so it can't shadow
+// the static segments above.
+Route::get('/advisor/{session}', AdvisorIndexController::class)->name('advisor.show');
+Route::get('/advisor/{session}/status', AdvisorStatusController::class)->name('advisor.status');
+Route::post('/advisor/{session}/message', AdvisorMessageController::class)->name('advisor.message');
+Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advisor.destroy');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
 Route::get('/pension', IndexPensionController::class)->name('pension.index');

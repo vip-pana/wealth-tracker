@@ -1,247 +1,316 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
-import { Label } from '@/Components/ui/label';
-import { Input } from '@/Components/ui/input';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/Components/ui/dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/Components/ui/select';
 import { Markdown } from '@/Components/ui/Markdown';
 import { useToast } from '@/lib/toast';
-import { Sparkles, AlertTriangle, Loader2, UserCog } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ProfileDialog, ProfileSummary, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
+import {
+    Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog,
+} from 'lucide-react';
 
-interface InvestorProfile {
-    horizon: string | null;
-    risk_tolerance: string | null;
-    objective: string | null;
-    target_allocation: string | null;
+type Status = 'pending' | 'done' | 'failed';
+type Kind = 'report' | 'chat' | string;
+
+interface SessionSummary {
+    id: number;
+    kind: Kind;
+    title: string | null;
+    status: Status;
+    created_at: string | null;
+}
+
+interface Message {
+    id: number;
+    role: 'assistant' | 'user';
+    content: string;
+    created_at: string | null;
+}
+
+interface ActiveSession {
+    id: number;
+    kind: Kind;
+    title: string | null;
+    status: Status;
+    error: string | null;
+    messages: Message[];
 }
 
 interface Props {
     configured: boolean;
     profile: InvestorProfile | null;
     goalObjective: string | null;
+    sessions: SessionSummary[];
+    activeSession: ActiveSession | null;
 }
 
-const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
-const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+function KindIcon({ kind, className }: { kind: Kind; className?: string }) {
+    const Icon = kind === 'report' ? FileText : MessageCircle;
+    return <Icon className={className} />;
+}
 
-function ProfileDialog({
-    open,
-    onClose,
-    profile,
-    goalObjective,
+function SessionList({
+    sessions,
+    activeId,
+    onGenerate,
+    onNewChat,
+    generating,
 }: {
-    open: boolean;
-    onClose: () => void;
-    profile: InvestorProfile | null;
-    goalObjective: string | null;
+    sessions: SessionSummary[];
+    activeId: number | null;
+    onGenerate: () => void;
+    onNewChat: () => void;
+    generating: boolean;
 }) {
-    const form = useForm({
-        horizon: profile?.horizon ?? '',
-        risk_tolerance: profile?.risk_tolerance ?? '',
-        objective: profile?.objective ?? '',
-        target_allocation: profile?.target_allocation ?? '',
-    });
-
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        form.post('/advisor/profile', { preserveScroll: true, onSuccess: onClose });
-    };
-
     return (
-        <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Il tuo profilo investitore</DialogTitle>
-                </DialogHeader>
-                <p className="text-xs text-muted-foreground">
-                    Questo contesto rende l&apos;analisi tua, non generica. Obiettivo e allocazione sono opzionali: se vuoti, il consulente usa quelli della sezione Obiettivo.
-                </p>
-                <form onSubmit={submit} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <Label className="text-xs">Orizzonte temporale</Label>
-                            <Select value={form.data.horizon} onValueChange={(v) => form.setData('horizon', v)}>
-                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="short">Breve (&lt; 3 anni)</SelectItem>
-                                    <SelectItem value="medium">Medio (3-10 anni)</SelectItem>
-                                    <SelectItem value="long">Lungo (10+ anni)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Tolleranza al rischio</Label>
-                            <Select value={form.data.risk_tolerance} onValueChange={(v) => form.setData('risk_tolerance', v)}>
-                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="low">Bassa</SelectItem>
-                                    <SelectItem value="medium">Media</SelectItem>
-                                    <SelectItem value="high">Alta</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-xs">Obiettivo principale <span className="text-muted-foreground">(opzionale)</span></Label>
-                        <Input
-                            value={form.data.objective}
-                            onChange={(e) => form.setData('objective', e.target.value)}
-                            placeholder={goalObjective ? `Da Obiettivo: ${goalObjective}` : 'es. indipendenza finanziaria, pensione, casa'}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <Label className="text-xs">Allocazione target <span className="text-muted-foreground">(opzionale)</span></Label>
-                        <textarea
-                            value={form.data.target_allocation}
-                            onChange={(e) => form.setData('target_allocation', e.target.value)}
-                            placeholder="Se vuoto, usa le percentuali della sezione Obiettivo. Es: 60% azioni, 20% obbligazioni, 20% liquidità"
-                            rows={2}
-                            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose} disabled={form.processing}>
-                            Annulla
-                        </Button>
-                        <Button type="submit" disabled={form.processing}>
-                            {form.processing ? 'Salvataggio…' : 'Salva profilo'}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile | null; onEdit: () => void }) {
-    const parts: string[] = [];
-    if (profile?.horizon) parts.push(`Orizzonte: ${HORIZON_LABELS[profile.horizon] ?? profile.horizon}`);
-    if (profile?.risk_tolerance) parts.push(`Rischio: ${RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}`);
-    if (profile?.objective) parts.push(`Obiettivo: ${profile.objective}`);
-
-    return (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
-                <UserCog className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">
-                    {parts.length > 0 ? parts.join(' · ') : 'Profilo non compilato — l’analisi sarà più mirata se lo imposti.'}
-                </span>
+        <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+                <Button size="sm" className="flex-1" onClick={onGenerate} disabled={generating}>
+                    {generating ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                    Genera analisi
+                </Button>
+                <Button size="sm" variant="outline" onClick={onNewChat} title="Nuova conversazione">
+                    <MessageSquarePlus className="w-4 h-4" />
+                </Button>
             </div>
-            <Button variant="ghost" size="sm" className="flex-shrink-0 h-7 text-xs" onClick={onEdit}>
-                {parts.length > 0 ? 'Modifica' : 'Compila'}
-            </Button>
+
+            {sessions.length === 0 ? (
+                <p className="px-1 py-4 text-center text-xs text-muted-foreground">
+                    Nessuna sessione. Genera un&apos;analisi o avvia una chat.
+                </p>
+            ) : (
+                <div className="flex flex-col gap-1">
+                    {sessions.map((s) => (
+                        <button
+                            key={s.id}
+                            onClick={() => router.visit(`/advisor/${s.id}`)}
+                            className={cn(
+                                'flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                                s.id === activeId ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                            )}
+                        >
+                            <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="flex-1 min-w-0 truncate">{s.title ?? 'Sessione'}</span>
+                            {s.status === 'pending' && <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />}
+                            {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-type Status = 'idle' | 'pending' | 'done' | 'failed';
-
-interface StatusResponse {
-    status: Status;
-    content?: string | null;
-    error?: string | null;
-    generated_at?: string | null;
+function MessageBubble({ message }: { message: Message }) {
+    if (message.role === 'user') {
+        return (
+            <div className="flex justify-end">
+                <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground whitespace-pre-wrap">
+                    {message.content}
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="flex items-start gap-2">
+            <div className="mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <Markdown content={message.content} />
+            </div>
+        </div>
+    );
 }
 
-export default function Advisor({ configured, profile, goalObjective }: Props) {
+function Conversation({
+    session,
+    configured,
+    onSent,
+}: {
+    session: ActiveSession;
+    configured: boolean;
+    onSent: () => void;
+}) {
+    const [messages, setMessages] = useState<Message[]>(session.messages);
+    const [status, setStatus] = useState<Status>(session.status);
+    const [error, setError] = useState<string | null>(session.error);
+    const [input, setInput] = useState('');
+    const [sending, setSending] = useState(false);
     const pushToast = useToast();
-    const [status, setStatus] = useState<Status>('idle');
-    const [report, setReport] = useState<string | null>(null);
-    const [generatedAt, setGeneratedAt] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [profileOpen, setProfileOpen] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(0);
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const prevStatus = useRef<Status>(session.status);
 
-    const loading = status === 'pending';
-
-    // Source of truth is the server: the report is generated by a queued job
-    // and persisted, so it survives navigating away or closing the tab. On
-    // mount we read the current state; while pending we poll until it resolves.
     useEffect(() => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        let cancelled = false;
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, sending]);
 
+    // Poll while a report session's opening analysis is generating.
+    useEffect(() => {
+        if (status !== 'pending') return;
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         const tick = async () => {
             try {
-                const { data } = await axios.get<StatusResponse>('/advisor/status');
+                const { data } = await axios.get<{ status: Status; error: string | null; messages: Message[] }>(`/advisor/${session.id}/status`);
                 if (cancelled) return;
-
                 setStatus(data.status);
-                setReport(data.content ?? null);
-                setGeneratedAt(data.generated_at ?? null);
-                setError(data.status === 'failed' ? (data.error ?? 'Generazione non riuscita.') : null);
-
-                if (data.status === 'pending') {
-                    timer = setTimeout(tick, 2500);
-                }
+                setMessages(data.messages);
+                setError(data.error);
+                if (data.status === 'pending') timer = setTimeout(tick, 2500);
             } catch {
-                // Transient poll failure: stop quietly, the user can retry.
+                // transient; stop quietly
             }
         };
-
         void tick();
+        return () => { cancelled = true; if (timer) clearTimeout(timer); };
+    }, [status, session.id]);
 
-        return () => {
-            cancelled = true;
-            if (timer) clearTimeout(timer);
-        };
-    }, [refreshKey]);
-
-    // Toast on a real pending→done/failed transition. Driven by the rendered
-    // `status` state (not the poll closure) so it's immune to the effect
-    // restarting and to Strict Mode double-mounts. Uses the global toast stack
-    // so it looks and lives like every other toast in the app.
-    const prevStatus = useRef<Status>(status);
+    // Toast on a real pending→done/failed transition for the report.
     useEffect(() => {
         const from = prevStatus.current;
         prevStatus.current = status;
-        if (from === 'pending' && status === 'done') {
-            pushToast('Analisi completata.', 'success');
-        } else if (from === 'pending' && status === 'failed') {
-            pushToast('Generazione non riuscita.', 'error');
-        }
+        if (from === 'pending' && status === 'done') pushToast('Analisi completata.', 'success');
+        else if (from === 'pending' && status === 'failed') pushToast('Generazione non riuscita.', 'error');
     }, [status, pushToast]);
 
-    const generate = async () => {
-        setError(null);
+    const send = async () => {
+        const text = input.trim();
+        if (text === '' || sending) return;
+        setInput('');
+        setSending(true);
+        const optimisticId = -Date.now();
+        setMessages((m) => [...m, { id: optimisticId, role: 'user', content: text, created_at: null }]);
         try {
-            await axios.post('/advisor/generate');
-            setStatus('pending');
-            setReport(null);
-            setRefreshKey((k) => k + 1); // restart the poll loop
+            const { data } = await axios.post<{ message: Message }>(`/advisor/${session.id}/message`, { message: text });
+            setMessages((m) => [...m, data.message]);
+            onSent();
         } catch (e) {
-            const message = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
+            const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
+                ? e.response.data.error
+                : 'Il consulente non ha risposto. Riprova.';
+            pushToast(msg, 'error');
+            setMessages((m) => m.filter((x) => x.id !== optimisticId));
+            setInput(text);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const pending = status === 'pending';
+
+    return (
+        <Card className="flex flex-col h-[calc(100vh-13rem)]">
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+                {pending && messages.length === 0 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Analisi in corso… il modello locale può impiegare qualche decina di secondi.
+                    </div>
+                )}
+                {status === 'failed' && (
+                    <div className="flex items-start gap-2 text-sm text-red-500">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>{error ?? 'Generazione non riuscita.'}</span>
+                    </div>
+                )}
+                {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+                {sending && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Il consulente sta scrivendo…
+                    </div>
+                )}
+                <div ref={bottomRef} />
+            </CardContent>
+
+            {configured && !pending && (
+                <div className="border-t border-border p-3">
+                    <div className="flex items-end gap-2">
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    void send();
+                                }
+                            }}
+                            placeholder="Chiedi al tuo consulente… (es. la mia liquidità è troppa?)"
+                            rows={1}
+                            className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <Button size="icon" onClick={() => void send()} disabled={sending || input.trim() === ''}>
+                            <Send className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </Card>
+    );
+}
+
+export default function Advisor({ configured, profile, goalObjective, sessions, activeSession }: Props) {
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [generating, setGenerating] = useState(false);
+    const [chatMode, setChatMode] = useState(false);
+    const [firstChat, setFirstChat] = useState('');
+    const [startingChat, setStartingChat] = useState(false);
+    const pushToast = useToast();
+
+    const generate = async () => {
+        setGenerating(true);
+        try {
+            const { data } = await axios.post<{ session_id: number }>('/advisor/generate');
+            router.visit(`/advisor/${data.session_id}`);
+        } catch (e) {
+            const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
                 ? e.response.data.error
                 : 'Generazione non riuscita.';
-            setError(message);
+            pushToast(msg, 'error');
+            setGenerating(false);
         }
+    };
+
+    const startChat = async () => {
+        const text = firstChat.trim();
+        if (text === '' || startingChat) return;
+        setStartingChat(true);
+        try {
+            const { data } = await axios.post<{ session_id: number }>('/advisor/chat', { message: text });
+            router.visit(`/advisor/${data.session_id}`);
+        } catch (e) {
+            const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
+                ? e.response.data.error
+                : 'Il consulente non ha risposto. Riprova.';
+            pushToast(msg, 'error');
+            setStartingChat(false);
+        }
+    };
+
+    const deleteSession = (id: number) => {
+        if (!confirm('Eliminare questa sessione e la sua conversazione?')) return;
+        router.delete(`/advisor/${id}`, { preserveScroll: true });
     };
 
     return (
         <>
             <Head title="Consulente AI" />
-            <div className="p-4 space-y-4 max-w-[900px] mx-auto w-full animate-page-enter">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={Sparkles}
                     title="Consulente AI"
-                    subtitle="Una lettura del tuo portafoglio basata sulle tue metriche"
+                    subtitle="Genera un'analisi o parla col tuo consulente — le sessioni restano salvate"
+                    actions={
+                        <Button variant="outline" size="sm" onClick={() => setProfileOpen(true)}>
+                            <UserCog className="w-4 h-4 mr-1" />
+                            Profilo
+                        </Button>
+                    }
                 />
 
                 {!configured ? (
@@ -249,65 +318,88 @@ export default function Advisor({ configured, profile, goalObjective }: Props) {
                         <CardContent className="py-8 text-center space-y-2">
                             <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
                             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                                Il consulente AI non è configurato. Imposta un modello locale (Ollama) tramite <code>OLLAMA_MODEL</code> per generare l&apos;analisi.
+                                Il consulente AI non è configurato. Imposta un modello locale (Ollama) tramite <code>OLLAMA_MODEL</code> per usarlo.
                             </p>
                         </CardContent>
                     </Card>
                 ) : (
-                    <>
-                        <ProfileSummary profile={profile} onEdit={() => setProfileOpen(true)} />
-
-                        <div className="flex items-center gap-3">
-                            <Button onClick={generate} disabled={loading}>
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Analisi in corso…
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="w-4 h-4 mr-2" />
-                                        {report ? 'Rigenera analisi' : 'Genera analisi'}
-                                    </>
-                                )}
-                            </Button>
-                            {loading && (
-                                <span className="text-xs text-muted-foreground">
-                                    Il modello locale può impiegare qualche decina di secondi.
-                                </span>
-                            )}
+                    <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
+                        <div className="space-y-3">
+                            <ProfileSummary profile={profile} onEdit={() => setProfileOpen(true)} />
+                            <SessionList
+                                sessions={sessions}
+                                activeId={activeSession?.id ?? null}
+                                onGenerate={generate}
+                                onNewChat={() => setChatMode(true)}
+                                generating={generating}
+                            />
                         </div>
 
-                        {error && (
-                            <Card>
-                                <CardContent className="py-4 flex items-start gap-2 text-sm text-red-500">
-                                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                    <span>{error}</span>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {report && (
-                            <Card>
-                                <CardContent className="py-2">
-                                    {generatedAt && (
-                                        <p className="text-xs text-muted-foreground pt-2">
-                                            Analisi generata il {new Date(generatedAt).toLocaleString('it-IT', {
-                                                day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-                                            })}
+                        <div>
+                            {activeSession ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-sm font-medium truncate flex items-center gap-2">
+                                            <KindIcon kind={activeSession.kind} className="w-4 h-4 text-primary" />
+                                            {activeSession.title ?? 'Sessione'}
+                                        </h2>
+                                        <Button
+                                            variant="ghost" size="icon"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                            onClick={() => deleteSession(activeSession.id)}
+                                            title="Elimina sessione"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    <Conversation
+                                        key={activeSession.id}
+                                        session={activeSession}
+                                        configured={configured}
+                                        onSent={() => router.reload({ only: ['sessions'] })}
+                                    />
+                                </div>
+                            ) : chatMode ? (
+                                <Card>
+                                    <CardContent className="p-4 space-y-3">
+                                        <p className="text-sm font-medium">Nuova conversazione</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Chiedi quello che vuoi sul tuo portafoglio, una decisione, la tua strategia o l&apos;obiettivo.
                                         </p>
-                                    )}
-                                    <Markdown content={report} />
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {!report && !loading && !error && (
-                            <p className="text-sm text-muted-foreground">
-                                Premi «Genera analisi» per ottenere una lettura del tuo portafoglio.
-                            </p>
-                        )}
-                    </>
+                                        <textarea
+                                            value={firstChat}
+                                            onChange={(e) => setFirstChat(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void startChat(); }
+                                            }}
+                                            placeholder="es. Ho troppa liquidità ferma? Mi conviene aumentare il PAC?"
+                                            rows={3}
+                                            autoFocus
+                                            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => { setChatMode(false); setFirstChat(''); }}>
+                                                Annulla
+                                            </Button>
+                                            <Button size="sm" onClick={() => void startChat()} disabled={startingChat || firstChat.trim() === ''}>
+                                                {startingChat ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
+                                                Invia
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <Card>
+                                    <CardContent className="py-12 text-center space-y-2">
+                                        <Sparkles className="w-8 h-8 text-primary/60 mx-auto" />
+                                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                                            Genera un&apos;analisi del tuo portafoglio o avvia una conversazione. Le sessioni restano salvate qui a sinistra.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
 

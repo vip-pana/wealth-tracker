@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Advisor;
 
 use App\Contracts\AdvisorProvider;
 use App\Http\Controllers\Controller;
+use App\Models\AdvisorMessage;
+use App\Models\AdvisorSession;
 use App\Models\Goal;
 use App\Models\InvestorProfile;
 use Inertia\Inertia;
@@ -17,16 +19,11 @@ class IndexController extends Controller
         private readonly AdvisorProvider $provider,
     ) {}
 
-    public function __invoke(): Response
+    public function __invoke(?AdvisorSession $session = null): Response
     {
         $profile = InvestorProfile::query()->first();
         $goal = Goal::query()->first();
 
-        // The report is generated on demand (it can take tens of seconds on a
-        // local model), so the page loads instantly and only reports whether
-        // the advisor is available to generate one. The profile feeds the form;
-        // objective/allocation default to the Goal section, shown as a hint so
-        // the user knows what they'd inherit by leaving the fields blank.
         return Inertia::render('Advisor', [
             'configured' => $this->provider->isConfigured(),
             'profile' => $profile ? [
@@ -36,6 +33,57 @@ class IndexController extends Controller
                 'target_allocation' => $profile->target_allocation,
             ] : null,
             'goalObjective' => $goal?->name,
+            'sessions' => $this->sessionList(),
+            'activeSession' => $session !== null ? $this->serializeSession($session) : null,
         ]);
+    }
+
+    /**
+     * The session history for the sidebar list (no message bodies — light).
+     *
+     * @return list<array{id: int, kind: string, title: string|null, status: string, created_at: string|null}>
+     */
+    private function sessionList(): array
+    {
+        $rows = AdvisorSession::query()
+            ->latest('id')
+            ->get()
+            ->map(fn (AdvisorSession $s): array => [
+                'id' => $s->id,
+                'kind' => $s->kind,
+                'title' => $s->title,
+                'status' => $s->status,
+                'created_at' => $s->created_at?->toISOString(),
+            ])
+            ->all();
+
+        return array_values($rows);
+    }
+
+    /**
+     * A full session with its messages, for the conversation view.
+     *
+     * @return array{id: int, kind: string, title: string|null, status: string, error: string|null, messages: list<array{id: int, role: string, content: string, created_at: string|null}>}
+     */
+    private function serializeSession(AdvisorSession $session): array
+    {
+        $messages = $session->messages()
+            ->get()
+            ->map(fn (AdvisorMessage $m): array => [
+                'id' => $m->id,
+                'role' => $m->role,
+                'content' => $m->content,
+                'created_at' => $m->created_at?->toISOString(),
+            ])
+            ->all();
+
+        return [
+            'id' => $session->id,
+            'kind' => $session->kind,
+            'title' => $session->title,
+            'status' => $session->status,
+            'error' => $session->error,
+            'messages' => array_values($messages),
+        ];
     }
 }

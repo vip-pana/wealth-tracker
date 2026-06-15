@@ -8,7 +8,7 @@ use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
 use App\Contracts\AdvisorProvider;
 use App\Jobs\GenerateAdvisorReportJob;
-use App\Models\AdvisorReport;
+use App\Models\AdvisorSession;
 use App\Models\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -32,15 +32,21 @@ class AdvisorReportNotificationTest extends TestCase
             {
                 return $this->reply;
             }
+
+            /** @param  list<array{role: string, content: string}>  $messages */
+            public function chat(array $messages): string
+            {
+                return $this->reply;
+            }
         });
     }
 
     public function test_a_done_report_produces_a_success_notification(): void
     {
         $this->bindProvider(configured: true, reply: 'Portafoglio solido.');
-        $report = AdvisorReport::create(['status' => 'pending']);
+        $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($report->id))->handle(
+        (new GenerateAdvisorReportJob($session->id))->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
         );
@@ -54,9 +60,9 @@ class AdvisorReportNotificationTest extends TestCase
     public function test_an_unconfigured_provider_produces_a_warning_notification(): void
     {
         $this->bindProvider(configured: false);
-        $report = AdvisorReport::create(['status' => 'pending']);
+        $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($report->id))->handle(
+        (new GenerateAdvisorReportJob($session->id))->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
         );

@@ -55,6 +55,27 @@ class OllamaAdvisorProviderTest extends TestCase
         });
     }
 
+    public function test_chat_sends_the_full_message_list_verbatim(): void
+    {
+        Http::fake([
+            '*/api/chat' => Http::response(['message' => ['content' => 'risposta']]),
+        ]);
+
+        $messages = [
+            ['role' => 'system', 'content' => 'sei un consulente'],
+            ['role' => 'user', 'content' => 'ho troppa liquidità?'],
+        ];
+
+        $reply = $this->provider()->chat($messages);
+
+        $this->assertSame('risposta', $reply);
+        Http::assertSent(function ($request) use ($messages): bool {
+            $body = $request->data();
+
+            return $body['stream'] === false && $body['messages'] === $messages;
+        });
+    }
+
     public function test_throws_on_a_failed_request(): void
     {
         Http::fake(['*/api/chat' => Http::response('', 500)]);
