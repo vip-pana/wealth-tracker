@@ -39,9 +39,13 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
+            // WAL lets reads (e.g. the advisor status poll) proceed during a
+            // write (the queued report job), and busy_timeout makes a writer
+            // wait for the lock instead of failing with "database is locked".
+            // Standard config for SQLite with a queue + concurrent web access.
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
         ],
 
         'mysql' => [
