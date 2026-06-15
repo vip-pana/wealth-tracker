@@ -49,7 +49,9 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    // Encrypt session payloads at rest by default in production; harmless in
+    // dev but avoids storing them in clear there. Explicit env always wins.
+    'encrypt' => env('SESSION_ENCRYPT', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
@@ -171,7 +173,10 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Send the session cookie only over HTTPS in production by default, so an
+    // exposed deploy is hardened even if the env var is forgotten. Stays false
+    // in local http dev. Explicit SESSION_SECURE_COOKIE always wins.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

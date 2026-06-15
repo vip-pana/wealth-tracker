@@ -221,7 +221,7 @@ class EnableBankingClient
     private function loadPrivateKey(): ?\OpenSSLAsymmetricKey
     {
         if ($this->privateKeyPath === '' || ! is_file($this->privateKeyPath)) {
-            Log::warning('Enable Banking private key missing', ['path' => $this->privateKeyPath]);
+            Log::warning('Enable Banking private key file not accessible');
 
             return null;
         }
