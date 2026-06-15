@@ -2,9 +2,17 @@ import React from 'react';
 
 /**
  * Minimal markdown renderer for the advisor report — no dependency, since the
- * model only emits a small subset: ## / ### headings, **bold**, and "- " lists.
- * Renders that subset to styled elements; anything else passes through as text.
+ * model only emits a small subset: # headings (any level), **bold**, and "- "
+ * lists. Renders that subset to styled elements; anything else passes as text.
  */
+
+// Heading styling by level; h4+ collapse to the smallest style.
+const HEADING_CLASS: Record<number, string> = {
+    1: 'text-lg font-bold mt-4 mb-2',
+    2: 'text-base font-semibold mt-4 mb-1.5',
+    3: 'text-sm font-semibold mt-4 mb-1',
+    4: 'text-sm font-semibold mt-3 mb-1',
+};
 
 function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
     // Split on **bold** spans, keeping the delimiters' content.
@@ -36,13 +44,17 @@ export function Markdown({ content }: { content: string }) {
 
     lines.forEach((raw, idx) => {
         const line = raw.trimEnd();
+        const heading = /^(#{1,6})\s+(.*)$/.exec(line);
 
-        if (line.startsWith('### ')) {
+        if (heading) {
             flushList();
-            blocks.push(<h3 key={idx} className="text-sm font-semibold mt-4 mb-1">{renderInline(line.slice(4), `h3-${idx}`)}</h3>);
-        } else if (line.startsWith('## ')) {
-            flushList();
-            blocks.push(<h2 key={idx} className="text-base font-semibold mt-4 mb-1.5">{renderInline(line.slice(3), `h2-${idx}`)}</h2>);
+            const level = Math.min(heading[1].length, 4);
+            const Tag = (`h${Math.min(heading[1].length, 6)}`) as keyof React.JSX.IntrinsicElements;
+            blocks.push(
+                <Tag key={idx} className={HEADING_CLASS[level]}>
+                    {renderInline(heading[2], `h-${idx}`)}
+                </Tag>,
+            );
         } else if (/^[-*]\s+/.test(line)) {
             list.push(line.replace(/^[-*]\s+/, ''));
         } else if (line.trim() === '') {
