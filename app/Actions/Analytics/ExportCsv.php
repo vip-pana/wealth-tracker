@@ -28,7 +28,21 @@ class ExportCsv extends Action
             'Cache-Control' => 'no-cache, no-store',
         ];
 
-        $callback = function () use ($assets, $categories): void {
+        // Neutralise spreadsheet formula injection: a text cell whose first
+        // non-blank character is one of = + - @ (or a tab/CR) is treated as a
+        // formula by Excel/Calc. Prefix it with a single quote so it stays a
+        // literal string. Only text labels need this; our numeric cells are
+        // number_format()ed and never start with a trigger.
+        $sanitize = function (string $value): string {
+            $trimmed = ltrim($value);
+            if ($trimmed !== '' && in_array($trimmed[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+                return "'".$value;
+            }
+
+            return $value;
+        };
+
+        $callback = function () use ($assets, $categories, $sanitize): void {
             /** @var resource $handle */
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
@@ -75,9 +89,9 @@ class ExportCsv extends Action
             }
 
             // Helper: build a full row with empty cells for missing months
-            $valueRow = function (string $label, string $type, array $valuesByMonth) use ($months, $handle): void {
+            $valueRow = function (string $label, string $type, array $valuesByMonth) use ($months, $handle, $sanitize): void {
                 /** @var array<string, float|null> $valuesByMonth */
-                $row = [$label, $type, ''];
+                $row = [$sanitize($label), $type, ''];
                 foreach ($months as $m) {
                     $v = $valuesByMonth[$m] ?? null;
                     $row[] = $v !== null ? number_format($v, 2, ',', '.') : '';

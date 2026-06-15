@@ -106,6 +106,26 @@ class ExportCsvTest extends TestCase
         $this->assertSame("\xEF\xBB\xBF", $content);
     }
 
+    public function test_formula_injection_in_asset_name_is_neutralised(): void
+    {
+        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF, 'sort_order' => 1]);
+        Asset::factory()->create(['category_id' => $etf->id, 'name' => '=SUM(A1:A9)', 'value' => 100, 'date' => '2026-01-01']);
+
+        // The label cell must be prefixed with a single quote so spreadsheets
+        // treat it as text, not a formula. The quote goes at the very front,
+        // before the two-space indent the export adds to asset names.
+        $label = "'  =SUM(A1:A9)";
+        $found = false;
+        foreach ($this->exportRows() as $row) {
+            if (isset($row[0]) && $row[0] === $label) {
+                $found = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($found, 'Asset name starting with = must be single-quote prefixed in the export.');
+    }
+
     public function test_month_labels_use_mm_yy_format(): void
     {
         $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF, 'sort_order' => 1]);

@@ -196,12 +196,28 @@ class RenderAdvisorContext extends Action
 
         $from = ($field['source'] ?? null) === 'goal' ? ' (dalla sezione Obiettivo)' : '';
 
-        return $field['value'].$from;
+        return $this->userText($field['value']).$from;
     }
 
     private function s(mixed $value): string
     {
-        return is_string($value) ? $value : '';
+        return is_string($value) ? $this->userText($value) : '';
+    }
+
+    /**
+     * Render a user-controlled string (asset/category/goal name, profile text)
+     * as inert data inside the briefing. Newlines and control characters are
+     * collapsed so a crafted value can't open a fake new line/section, and the
+     * value is wrapped in guillemets as an explicit "this is data" delimiter
+     * the system prompt is told to respect. Defense against prompt injection;
+     * matters most once input is multi-user or the provider becomes cloud.
+     */
+    private function userText(string $value): string
+    {
+        $clean = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? $value;
+        $clean = trim($clean);
+
+        return '«'.$clean.'»';
     }
 
     private function eur(mixed $value): string

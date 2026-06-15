@@ -18,6 +18,7 @@ pnpm-debug.log
 yarn-error.log
 /auth.json
 /storage/app/database.sqlite
+/storage/database.sqlite
 /.fleet
 /.idea
 /.nova
