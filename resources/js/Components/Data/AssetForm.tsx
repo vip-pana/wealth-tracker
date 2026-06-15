@@ -46,6 +46,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         name:           editAsset?.name ?? '',
         ticker:         editAsset?.ticker ?? '',
         isin:           editAsset?.isin ?? '',
+        expense_ratio:  editAsset?.expense_ratio?.toString() ?? '',
         wallet_address: editAsset?.wallet_address ?? '',
         quantity:       editAsset?.quantity?.toString() ?? '',
         value:          editAsset?.value?.toString() ?? '',
@@ -60,6 +61,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             name:           editAsset?.name ?? '',
             ticker:         editAsset?.ticker ?? '',
             isin:           editAsset?.isin ?? '',
+            expense_ratio:  editAsset?.expense_ratio?.toString() ?? '',
             wallet_address: editAsset?.wallet_address ?? '',
             quantity:       editAsset?.quantity?.toString() ?? '',
             value:          editAsset?.value?.toString() ?? '',
@@ -363,6 +365,29 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             {errors.isin && (
                                 <p className="text-xs text-destructive">{errors.isin}</p>
                             )}
+
+                            {/* TER — annual management cost, fed to the advisor
+                               so it can reason about cost drag on net return. */}
+                            <div className="space-y-1 pt-1">
+                                <Label>
+                                    Costo annuo (TER){' '}
+                                    <span className="text-muted-foreground font-normal">(opzionale, %)</span>
+                                </Label>
+                                <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={data.expense_ratio}
+                                    onChange={(e) => setData('expense_ratio', e.target.value)}
+                                    placeholder="es. 0.20"
+                                    className="font-mono"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Spese di gestione annue dello strumento, in percentuale (es. <strong>0.20</strong> = 0,20%/anno). Usato dal consulente per valutare l&apos;impatto dei costi sul rendimento.
+                                </p>
+                                {errors.expense_ratio && (
+                                    <p className="text-xs text-destructive">{errors.expense_ratio}</p>
+                                )}
+                            </div>
                         </div>
                     )}
 

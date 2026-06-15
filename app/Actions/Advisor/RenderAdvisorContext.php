@@ -35,6 +35,8 @@ class RenderAdvisorContext extends Action
         $lines[] = $this->allocationSection($portfolio);
         $lines[] = $this->liquiditySection($portfolio);
         $lines[] = $this->volatilitySection($portfolio);
+        $lines[] = $this->costsSection($context['costs'] ?? null);
+        $lines[] = $this->contributionSection($context['contribution'] ?? null);
         $lines[] = $this->goalSection($portfolio);
         $lines[] = $this->profileSection($context['investorProfile'] ?? null);
 
@@ -132,6 +134,32 @@ class RenderAdvisorContext extends Action
 
         return 'VOLATILITÀ mensile: ±'.$this->pct($v['monthly_stddev_pct'])
             .' (miglior mese '.$this->pct($v['best_month_pct']).', peggiore '.$this->pct($v['worst_month_pct']).').';
+    }
+
+    private function costsSection(mixed $costs): string
+    {
+        if (! is_array($costs)) {
+            return 'COSTI DI GESTIONE: nessun TER inserito sugli asset. Non puoi valutare il peso dei costi: invita l\'utente a inserire il TER degli strumenti.';
+        }
+
+        $out = 'COSTI DI GESTIONE (TER): costo medio ponderato '.$this->pct($costs['weighted_ter_pct'] ?? null)
+            .' all\'anno, pari a circa '.$this->eur($costs['annual_cost'] ?? null).'/anno';
+        $out .= ' sui '.$this->eur($costs['covered_value'] ?? null).' di asset con TER indicato.';
+        $out .= ' (Il TER non è inserito su tutti gli asset: il dato copre solo quelli indicati.)';
+
+        return $out;
+    }
+
+    private function contributionSection(mixed $contribution): string
+    {
+        if (! is_array($contribution)) {
+            return '';
+        }
+
+        $months = is_numeric($contribution['months'] ?? null) ? (int) $contribution['months'] : 0;
+
+        return 'CONTRIBUTO MENSILE (PAC): in media '.$this->eur($contribution['monthly_avg'] ?? null)
+            .' al mese versati tramite piano di accumulo (media degli ultimi '.$months.' mesi, calcolata dalle transazioni).';
     }
 
     /**

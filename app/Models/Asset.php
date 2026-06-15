@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property float $value
  * @property string|null $ticker
  * @property string|null $isin
+ * @property float|null $expense_ratio
  * @property string|null $wallet_address
  * @property Carbon|null $synced_at
  * @property string|null $sync_source
@@ -42,11 +43,12 @@ class Asset extends Model
 
     public const SYNC_SOURCE_BROKER = 'broker';
 
-    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'isin', 'wallet_address', 'synced_at', 'sync_source', 'quantity', 'date', 'notes'];
+    protected $fillable = ['category_id', 'name', 'value', 'ticker', 'isin', 'expense_ratio', 'wallet_address', 'synced_at', 'sync_source', 'quantity', 'date', 'notes'];
 
     protected $casts = [
         'value' => 'float',
         'quantity' => 'float',
+        'expense_ratio' => 'float',
         'date' => 'date:Y-m-d',
         'synced_at' => 'datetime',
     ];

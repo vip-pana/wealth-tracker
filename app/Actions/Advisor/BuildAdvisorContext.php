@@ -14,6 +14,7 @@ class BuildAdvisorContext extends Action
 {
     public function __construct(
         private readonly FetchDashboardData $fetchDashboardData,
+        private readonly ComputeAdvisorExtras $computeExtras,
     ) {}
 
     /**
@@ -29,11 +30,14 @@ class BuildAdvisorContext extends Action
     public function run(): array
     {
         $dashboard = $this->fetchDashboardData->run();
+        $extras = $this->computeExtras->run();
 
         return [
             'portfolio' => $dashboard['portfolioMetrics'] ?? ['hasData' => false],
             'positionReturns' => $dashboard['positionReturns'] ?? null,
             'investorProfile' => $this->profile(),
+            'contribution' => $extras['contribution'] ?? null,
+            'costs' => $extras['costs'] ?? null,
         ];
     }
 

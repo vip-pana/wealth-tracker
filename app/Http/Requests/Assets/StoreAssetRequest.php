@@ -23,6 +23,7 @@ class StoreAssetRequest extends FormRequest
             'name' => 'required|string|max:255',
             'ticker' => 'nullable|string|max:30',
             'isin' => ['nullable', 'string', 'regex:/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/'],
+            'expense_ratio' => 'nullable|numeric|min:0|max:100',
             'wallet_address' => 'nullable|string|max:255',
             'quantity' => 'nullable|numeric|min:0|required_with:ticker',
             'value' => 'required_without:ticker|nullable|numeric|min:0',

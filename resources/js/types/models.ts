@@ -15,6 +15,7 @@ export interface Asset {
     name: string;
     ticker: string | null;
     isin: string | null;
+    expense_ratio: number | null;  // annual management cost (TER) as a percentage
     wallet_address: string | null;
     quantity: number | null;
     price: number | null;   // current price fetched from API

@@ -73,4 +73,46 @@ class PriceClientRobustnessTest extends TestCase
 
         $this->assertNull($btc);
     }
+
+    public function test_yahoo_expense_ratio_reads_the_funds_ter_as_percent(): void
+    {
+        Http::fake([
+            'fc.yahoo.com' => Http::response('', 200, ['Set-Cookie' => 'A1=token; Domain=.yahoo.com']),
+            '*/v1/test/getcrumb' => Http::response('abc123', 200),
+            '*/v10/finance/quoteSummary/*' => Http::response([
+                'quoteSummary' => ['result' => [[
+                    'fundProfile' => ['feesExpensesInvestment' => [
+                        'annualReportExpenseRatio' => ['raw' => 0.002, 'fmt' => '0.20%'],
+                    ]],
+                ]]],
+            ], 200),
+        ]);
+
+        // 0.002 fraction → 0.20 percent.
+        $this->assertEqualsWithDelta(0.20, app(YahooFinanceClient::class)->getExpenseRatio('ISAC.MI'), 0.0001);
+    }
+
+    public function test_yahoo_expense_ratio_is_null_when_the_crumb_handshake_fails(): void
+    {
+        // No cookie issued → no crumb → graceful null, never throws.
+        Http::fake([
+            'fc.yahoo.com' => Http::response('', 500),
+            '*/v1/test/getcrumb' => Http::response('', 500),
+        ]);
+
+        $this->assertNull(app(YahooFinanceClient::class)->getExpenseRatio('ISAC.MI'));
+    }
+
+    public function test_yahoo_expense_ratio_is_null_when_the_fund_lacks_a_ter(): void
+    {
+        Http::fake([
+            'fc.yahoo.com' => Http::response('', 200, ['Set-Cookie' => 'A1=token; Domain=.yahoo.com']),
+            '*/v1/test/getcrumb' => Http::response('abc123', 200),
+            '*/v10/finance/quoteSummary/*' => Http::response([
+                'quoteSummary' => ['result' => [['fundProfile' => ['feesExpensesInvestment' => []]]]],
+            ], 200),
+        ]);
+
+        $this->assertNull(app(YahooFinanceClient::class)->getExpenseRatio('BTC'));
+    }
 }

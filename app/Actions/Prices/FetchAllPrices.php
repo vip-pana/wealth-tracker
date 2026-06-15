@@ -6,6 +6,7 @@ namespace App\Actions\Prices;
 
 use App\Actions\Action;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 
 class FetchAllPrices extends Action
 {
@@ -25,10 +26,17 @@ class FetchAllPrices extends Action
             ->merge($this->fetchBankBalances->run())
             ->merge($this->fetchScalableBalance->run());
 
+        // Active (non-trashed) tickers only — SoftDeletes hides deleted assets.
         $tickers = Asset::whereNotNull('ticker')
             ->distinct()
             ->pluck('ticker')
             ->all();
+
+        // Drop stored prices for tickers no asset uses any more (e.g. a holding
+        // that was deleted): they'd otherwise linger as stale rows in the prices
+        // table without ever being refreshed. Only touches the derived price
+        // cache, never assets.
+        AssetPrice::whereNotIn('ticker', $tickers)->delete();
 
         if (empty($tickers)) {
             return $result;

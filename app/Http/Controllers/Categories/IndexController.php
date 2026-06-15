@@ -43,10 +43,21 @@ class IndexController extends Controller
                 'assets_count' => $c->assets_count,
             ]);
 
+        // TER per ticker, from the assets that carry it (the price table itself
+        // has no cost data). Keyed by ticker so the prices table can show it.
+        $expenseByTicker = Asset::query()
+            ->whereNotNull('ticker')
+            ->whereNotNull('expense_ratio')
+            ->orderByDesc('date')
+            ->get(['ticker', 'expense_ratio'])
+            ->keyBy('ticker')
+            ->map(fn (Asset $a): float => (float) $a->expense_ratio);
+
         $prices = AssetPrice::orderBy('ticker')->get()->map(fn (AssetPrice $p) => [
             'ticker' => $p->ticker,
             'price' => $p->price,
             'currency' => $p->currency,
+            'expense_ratio' => $expenseByTicker[$p->ticker] ?? null,
             'fetched_at' => $p->fetched_at?->toISOString(),
             'last_status' => $p->last_status,
             'last_attempt_at' => $p->last_attempt_at?->toISOString(),

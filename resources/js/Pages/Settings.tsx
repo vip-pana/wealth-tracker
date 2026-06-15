@@ -61,6 +61,7 @@ interface PriceEntry {
     ticker: string;
     price: number | null;
     currency: string;
+    expense_ratio: number | null;
     fetched_at: string | null;
     last_status: 'ok' | 'failed' | null;
     last_attempt_at: string | null;
@@ -981,6 +982,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                     <TableRow>
                                         <TableHead>Ticker</TableHead>
                                         <TableHead>Stato</TableHead>
+                                        <TableHead className="text-right">Costo (TER)</TableHead>
                                         <TableHead className="text-right">Prezzo</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -1003,6 +1005,11 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                                         Aggiornato
                                                     </span>
                                                 )}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-muted-foreground">
+                                                {p.expense_ratio !== null
+                                                    ? `${p.expense_ratio.toLocaleString('it-IT', { maximumFractionDigits: 2 })}%`
+                                                    : '—'}
                                             </TableCell>
                                             <TableCell className="text-right font-mono">
                                                 {p.price !== null ? <Money value={p.price} /> : '—'}
