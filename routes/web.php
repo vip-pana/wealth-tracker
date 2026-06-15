@@ -34,6 +34,8 @@ use App\Http\Controllers\Goals\IndexController as IndexGoalController;
 use App\Http\Controllers\Goals\RestoreController as RestoreGoalController;
 use App\Http\Controllers\Goals\StoreController as StoreGoalController;
 use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
+use App\Http\Controllers\Notifications\ReadAllController as NotificationReadAllController;
+use App\Http\Controllers\Notifications\ReadController as NotificationReadController;
 use App\Http\Controllers\Pension\DestroyController as DestroyPensionController;
 use App\Http\Controllers\Pension\IndexController as IndexPensionController;
 use App\Http\Controllers\Pension\StoreController as StorePensionController;
@@ -95,6 +97,10 @@ Route::prefix('pension')->name('pension.')->group(function () {
     Route::put('/{asset}', UpdatePensionController::class)->name('update');
     Route::delete('/{asset}', DestroyPensionController::class)->name('destroy');
 });
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+Route::post('/notifications/read-all', NotificationReadAllController::class)->name('notifications.read-all');
+Route::post('/notifications/{notification}/read', NotificationReadController::class)->name('notifications.read');
 
 // ─── Backup ───────────────────────────────────────────────────────────────────
 Route::post('/backup', StoreBackupController::class)->name('backup.store');

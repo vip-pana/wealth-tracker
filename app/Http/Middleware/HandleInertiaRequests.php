@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,6 +45,22 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'undo' => fn () => $request->session()->get('undo'),
             ],
+            // The bell shows only unread notifications (read = dismissed), most
+            // recent first. Lazy closures so the query runs once per response.
+            'notifications' => fn () => Notification::query()
+                ->unread()
+                ->latest('id')
+                ->get()
+                ->map(fn (Notification $n) => [
+                    'id' => $n->id,
+                    'type' => $n->type,
+                    'level' => $n->level,
+                    'title' => $n->title,
+                    'body' => $n->body,
+                    'action_url' => $n->action_url,
+                    'created_at' => $n->created_at?->toIso8601String(),
+                ])
+                ->all(),
         ];
     }
 }

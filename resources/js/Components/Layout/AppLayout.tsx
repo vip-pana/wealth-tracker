@@ -3,6 +3,7 @@ import { LayoutDashboard, PlusSquare, Settings, Target, TrendingUp, X, ChevronLe
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { ToastContext, type ToastType } from '@/lib/toast';
+import { NotificationBell } from '@/Components/Layout/NotificationBell';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
@@ -214,6 +215,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
                 <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
                 <span className="font-bold text-base text-foreground">Wealth Tracker</span>
+                <div className="ml-auto">
+                    <NotificationBell variant="icon" direction="down" />
+                </div>
             </div>
 
             {/* Mobile overlay */}
@@ -264,6 +268,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                 {/* Toggle button */}
                 <div className="px-2 py-3 border-t border-border space-y-1">
+                    <NotificationBell collapsed={showCollapsed} direction="up" variant="sidebar" />
                     <button
                         onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
                         className={cn(

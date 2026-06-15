@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Advisor\GenerateAdvisorReport;
+use App\Actions\Notifications\PushNotification;
 use App\Models\AdvisorReport;
+use App\Models\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -27,7 +29,7 @@ class GenerateAdvisorReportJob implements ShouldQueue
         private readonly int $reportId,
     ) {}
 
-    public function handle(GenerateAdvisorReport $generate): void
+    public function handle(GenerateAdvisorReport $generate, PushNotification $notify): void
     {
         $report = AdvisorReport::find($this->reportId);
 
@@ -39,11 +41,25 @@ class GenerateAdvisorReportJob implements ShouldQueue
 
         if ($content === null) {
             $report->update(['status' => AdvisorReport::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);
+            $notify->run(
+                type: Notification::TYPE_ADVISOR_REPORT_FAILED,
+                level: Notification::LEVEL_WARNING,
+                title: 'Analisi non generata',
+                body: 'Il consulente AI non è configurato.',
+                actionUrl: '/advisor',
+            );
 
             return;
         }
 
         $report->update(['status' => AdvisorReport::STATUS_DONE, 'content' => $content]);
+        $notify->run(
+            type: Notification::TYPE_ADVISOR_REPORT_READY,
+            level: Notification::LEVEL_SUCCESS,
+            title: 'Analisi completata',
+            body: 'Il consulente AI ha generato una nuova lettura del tuo portafoglio.',
+            actionUrl: '/advisor',
+        );
     }
 
     public function failed(\Throwable $exception): void
@@ -52,5 +68,13 @@ class GenerateAdvisorReportJob implements ShouldQueue
             'status' => AdvisorReport::STATUS_FAILED,
             'error' => 'Generazione non riuscita. Verifica che il modello locale sia in esecuzione.',
         ]);
+
+        app(PushNotification::class)->run(
+            type: Notification::TYPE_ADVISOR_REPORT_FAILED,
+            level: Notification::LEVEL_WARNING,
+            title: 'Analisi non riuscita',
+            body: 'Generazione fallita. Verifica che il modello locale sia in esecuzione.',
+            actionUrl: '/advisor',
+        );
     }
 }

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Prices;
 
 use App\Actions\Action;
+use App\Actions\Notifications\PushNotification;
 use App\Http\Clients\EnableBankingClient;
 use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
+use App\Models\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +18,14 @@ class FetchBankBalances extends Action
 {
     public function __construct(
         private readonly EnableBankingClient $enableBanking,
+        private readonly PushNotification $notify,
     ) {}
+
+    /** Stable dedupe key for a given bank connection's consent-expiry warning. */
+    public static function consentExpiredKey(int $connectionId): string
+    {
+        return 'bank_consent_expired:'.$connectionId;
+    }
 
     public function run(): PriceRefreshResult
     {
@@ -44,6 +53,14 @@ class FetchBankBalances extends Action
             if ($balance === 'unauthorized') {
                 $account->connection->update(['status' => BankConnection::STATUS_EXPIRED]);
                 $account->recordSyncFailure('Consenso non più valido. Riconnetti il conto.');
+                $this->notify->run(
+                    type: Notification::TYPE_BANK_CONSENT_EXPIRED,
+                    level: Notification::LEVEL_WARNING,
+                    title: 'Consenso bancario scaduto',
+                    body: $account->connection->aspsp_name.': riconnetti il conto dalle Impostazioni.',
+                    actionUrl: '/settings',
+                    dedupeKey: self::consentExpiredKey($account->connection->id),
+                );
                 $failed[] = $label;
 
                 continue;

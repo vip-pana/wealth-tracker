@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Controllers;
 
 use App\Actions\Advisor\GenerateAdvisorReport;
+use App\Actions\Notifications\PushNotification;
 use App\Contracts\AdvisorProvider;
 use App\Jobs\GenerateAdvisorReportJob;
 use App\Models\AdvisorReport;
@@ -120,7 +121,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: true, reply: 'Il tuo portafoglio è solido.');
         $report = AdvisorReport::create(['status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class));
+        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
 
         $report->refresh();
         $this->assertSame('done', $report->status);
@@ -132,7 +133,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: false);
         $report = AdvisorReport::create(['status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class));
+        (new GenerateAdvisorReportJob($report->id))->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
 
         $this->assertSame('failed', $report->fresh()->status);
     }

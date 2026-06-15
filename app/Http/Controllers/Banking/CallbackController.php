@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Banking;
 
+use App\Actions\Notifications\PushNotification;
+use App\Actions\Prices\FetchBankBalances;
 use App\Http\Clients\EnableBankingClient;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
@@ -16,6 +18,7 @@ class CallbackController extends Controller
 {
     public function __construct(
         private readonly EnableBankingClient $enableBanking,
+        private readonly PushNotification $notify,
     ) {}
 
     public function __invoke(Request $request): RedirectResponse
@@ -73,11 +76,18 @@ class CallbackController extends Controller
         }
 
         // Now that links are inherited, drop the superseded connections for this
-        // bank (everything except the one we just activated).
-        BankConnection::where('aspsp_name', $connection->aspsp_name)
+        // bank (everything except the one we just activated). Reconnecting
+        // resolves any standing "consent expired" warning for those — the keys
+        // are per superseded connection id, so clear them before deleting.
+        $superseded = BankConnection::where('aspsp_name', $connection->aspsp_name)
             ->where('aspsp_country', $connection->aspsp_country)
             ->whereKeyNot($connection->id)
-            ->delete();
+            ->get();
+
+        foreach ($superseded as $old) {
+            $this->notify->resolve(FetchBankBalances::consentExpiredKey($old->id));
+            $old->delete();
+        }
 
         return redirect()->route('settings.index')
             ->with('success', sprintf('Conto bancario collegato: %s (%d conti).', $connection->aspsp_name, $connection->accounts()->count()));

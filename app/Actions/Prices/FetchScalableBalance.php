@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace App\Actions\Prices;
 
 use App\Actions\Action;
+use App\Actions\Notifications\PushNotification;
 use App\Http\Clients\ScalableCliClient;
 use App\Models\Asset;
+use App\Models\Notification;
 use App\Models\ScalableConnection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 
 class FetchScalableBalance extends Action
 {
+    private const SYNC_FAILED_KEY = 'scalable_sync_failed';
+
     public function __construct(
         private readonly ScalableCliClient $cli,
+        private readonly PushNotification $notify,
     ) {}
 
     public function run(): PriceRefreshResult
@@ -30,6 +35,7 @@ class FetchScalableBalance extends Action
         // No live CLI session: record the failure and leave stored values as is.
         if (! $this->cli->isLoggedIn()) {
             ScalableConnection::current()->recordSyncFailure('Sincronizzazione non riuscita. Sessione Scalable scaduta: riconnetti.');
+            $this->notifyFailed();
 
             return new PriceRefreshResult([], ['Scalable']);
         }
@@ -76,11 +82,26 @@ class FetchScalableBalance extends Action
         $connection = ScalableConnection::current();
         if ($failed !== []) {
             $connection->recordSyncFailure('Sincronizzazione non riuscita. Sessione Scalable scaduta: riconnetti.');
+            $this->notifyFailed();
         } else {
             $connection->recordSyncSuccess();
+            // Sync is healthy again: clear any standing "sync failed" warning.
+            $this->notify->resolve(self::SYNC_FAILED_KEY);
         }
 
         return new PriceRefreshResult($updated, $failed);
+    }
+
+    private function notifyFailed(): void
+    {
+        $this->notify->run(
+            type: Notification::TYPE_SCALABLE_SYNC_FAILED,
+            level: Notification::LEVEL_WARNING,
+            title: 'Sincronizzazione Scalable non riuscita',
+            body: 'Sessione Scalable scaduta: riconnetti dalle Impostazioni.',
+            actionUrl: '/settings',
+            dedupeKey: self::SYNC_FAILED_KEY,
+        );
     }
 
     /**
