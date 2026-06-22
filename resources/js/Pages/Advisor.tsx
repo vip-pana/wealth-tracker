@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/Components/Layout/AppLayout';
@@ -8,7 +8,7 @@ import { Button } from '@/Components/ui/button';
 import { Markdown } from '@/Components/ui/Markdown';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { ProfileDialog, ProfileSummary, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
+import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import {
     Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog,
 } from 'lucide-react';
@@ -46,6 +46,33 @@ interface Props {
     goalObjective: string | null;
     sessions: SessionSummary[];
     activeSession: ActiveSession | null;
+}
+
+// Pool of conversation starters; 3 are drawn per session. Phrased as things to
+// understand/evaluate (never "buy X"), matching the advisor's ethical boundary.
+const SUGGESTED_QUESTIONS = [
+    'La mia liquidità ferma è troppa?',
+    'Quanto sono concentrato e dovrei preoccuparmi?',
+    'Come sta andando davvero il mio rendimento?',
+    'Il mio portafoglio è coerente col mio profilo di rischio?',
+    'Quanto incidono i costi di gestione sul lungo periodo?',
+    'Sono in linea con il mio obiettivo?',
+    'Il mio PAC è abbastanza per raggiungere l’obiettivo?',
+    'Quali sono i rischi principali del mio portafoglio?',
+    'Cosa dovrei controllare questo mese?',
+    'La mia esposizione a Bitcoin è troppo alta?',
+];
+
+/** Pick `count` distinct questions, varied by the session id so they're stable per session. */
+function pickQuestions(seed: number, count: number): string[] {
+    const pool = [...SUGGESTED_QUESTIONS];
+    const out: string[] = [];
+    let s = seed + 1;
+    while (out.length < count && pool.length > 0) {
+        s = (s * 1103515245 + 12345) & 0x7fffffff; // deterministic LCG, varies by seed
+        out.push(pool.splice(s % pool.length, 1)[0]);
+    }
+    return out;
 }
 
 function KindIcon({ kind, className }: { kind: Kind; className?: string }) {
@@ -87,7 +114,7 @@ function SessionList({
                     {sessions.map((s) => (
                         <button
                             key={s.id}
-                            onClick={() => router.visit(`/advisor/${s.id}`)}
+                            onClick={() => { if (s.id !== activeId) router.visit(`/advisor/${s.id}`); }}
                             className={cn(
                                 'flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
                                 s.id === activeId ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -121,9 +148,23 @@ function MessageBubble({ message }: { message: Message }) {
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-                <Markdown content={message.content} />
+                {message.content === '' ? (
+                    <span className="text-muted-foreground"><TypingDots /></span>
+                ) : (
+                    <Markdown content={message.content} />
+                )}
             </div>
         </div>
+    );
+}
+
+function TypingDots() {
+    return (
+        <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.3s]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.15s]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
+        </span>
     );
 }
 
@@ -144,6 +185,14 @@ function Conversation({
     const pushToast = useToast();
     const bottomRef = useRef<HTMLDivElement>(null);
     const prevStatus = useRef<Status>(session.status);
+    // Synchronous lock: setSending is async, so two near-simultaneous sends
+    // (chip + Enter) could both pass the state guard and hit the single-request
+    // local model concurrently, which returns an empty reply. This blocks the
+    // second one immediately.
+    const sendingRef = useRef(false);
+
+    // 3 starters, stable for this session (don't reshuffle on every keystroke).
+    const suggestions = useMemo(() => pickQuestions(session.id, 3), [session.id]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -170,33 +219,64 @@ function Conversation({
         return () => { cancelled = true; if (timer) clearTimeout(timer); };
     }, [status, session.id]);
 
-    // Toast on a real pending→done/failed transition for the report.
+    // Toast on a real pending→done/failed transition for the report, and
+    // refresh the session list so its row stops showing the pending spinner.
     useEffect(() => {
         const from = prevStatus.current;
         prevStatus.current = status;
-        if (from === 'pending' && status === 'done') pushToast('Analisi completata.', 'success');
-        else if (from === 'pending' && status === 'failed') pushToast('Generazione non riuscita.', 'error');
-    }, [status, pushToast]);
+        if (from === 'pending' && status === 'done') {
+            pushToast('Analisi completata.', 'success');
+            onSent();
+        } else if (from === 'pending' && status === 'failed') {
+            pushToast('Generazione non riuscita.', 'error');
+            onSent();
+        }
+    }, [status, pushToast, onSent]);
 
-    const send = async () => {
-        const text = input.trim();
-        if (text === '' || sending) return;
+    const send = async (raw?: string) => {
+        const text = (raw ?? input).trim();
+        if (text === '' || sendingRef.current) return;
+        sendingRef.current = true;
         setInput('');
         setSending(true);
-        const optimisticId = -Date.now();
-        setMessages((m) => [...m, { id: optimisticId, role: 'user', content: text, created_at: null }]);
+        const userId = -Date.now();
+        const assistantId = userId - 1;
+        // Show the user turn and an empty assistant bubble that fills as the
+        // stream arrives.
+        setMessages((m) => [
+            ...m,
+            { id: userId, role: 'user', content: text, created_at: null },
+            { id: assistantId, role: 'assistant', content: '', created_at: null },
+        ]);
         try {
-            const { data } = await axios.post<{ message: Message }>(`/advisor/${session.id}/message`, { message: text });
-            setMessages((m) => [...m, data.message]);
+            const xsrf = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');
+            const res = await fetch(`/advisor/${session.id}/message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': xsrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ message: text }),
+            });
+            if (!res.ok || !res.body) throw new Error(String(res.status));
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            for (;;) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: msg.content + chunk } : msg));
+            }
             onSent();
-        } catch (e) {
-            const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
-                ? e.response.data.error
-                : 'Il consulente non ha risposto. Riprova.';
-            pushToast(msg, 'error');
-            setMessages((m) => m.filter((x) => x.id !== optimisticId));
+        } catch {
+            pushToast('Il consulente non ha risposto. Riprova.', 'error');
+            // Roll back the optimistic pair.
+            setMessages((m) => m.filter((x) => x.id !== userId && x.id !== assistantId));
             setInput(text);
         } finally {
+            sendingRef.current = false;
             setSending(false);
         }
     };
@@ -204,11 +284,11 @@ function Conversation({
     const pending = status === 'pending';
 
     return (
-        <Card className="flex flex-col h-[calc(100vh-13rem)]">
+        <Card className="flex flex-col flex-1 min-h-0">
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                 {pending && messages.length === 0 && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <TypingDots />
                         Analisi in corso… il modello locale può impiegare qualche decina di secondi.
                     </div>
                 )}
@@ -219,17 +299,25 @@ function Conversation({
                     </div>
                 )}
                 {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
-                {sending && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Il consulente sta scrivendo…
-                    </div>
-                )}
                 <div ref={bottomRef} />
             </CardContent>
 
             {configured && !pending && (
-                <div className="border-t border-border p-3">
+                <div className="border-t border-border p-3 space-y-2">
+                    {!sending && messages.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {suggestions.map((q) => (
+                                <button
+                                    key={q}
+                                    type="button"
+                                    onClick={() => void send(q)}
+                                    className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex items-end gap-2">
                         <textarea
                             value={input}
@@ -300,7 +388,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
     return (
         <>
             <Head title="Consulente AI" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            <div className="flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={Sparkles}
                     title="Consulente AI"
@@ -323,9 +411,8 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
+                    <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
                         <div className="space-y-3">
-                            <ProfileSummary profile={profile} onEdit={() => setProfileOpen(true)} />
                             <SessionList
                                 sessions={sessions}
                                 activeId={activeSession?.id ?? null}
@@ -335,10 +422,10 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                             />
                         </div>
 
-                        <div>
+                        <div className="h-full min-h-0">
                             {activeSession ? (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
+                                <div className="flex flex-col h-full min-h-0 gap-2">
+                                    <div className="flex items-center justify-between flex-shrink-0">
                                         <h2 className="text-sm font-medium truncate flex items-center gap-2">
                                             <KindIcon kind={activeSession.kind} className="w-4 h-4 text-primary" />
                                             {activeSession.title ?? 'Sessione'}
