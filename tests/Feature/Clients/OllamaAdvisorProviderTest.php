@@ -35,6 +35,22 @@ class OllamaAdvisorProviderTest extends TestCase
         $this->assertSame('Il tuo portafoglio è ben distribuito.', $text); // trimmed
     }
 
+    public function test_strips_the_internal_guillemets_from_the_reply(): void
+    {
+        Http::fake([
+            '*/api/chat' => Http::response([
+                'message' => ['content' => 'Il tuo «iShares MSCI ACWI» rende bene.'],
+            ]),
+        ]);
+
+        // The «» data-markers must not leak into the visible reply.
+        $text = $this->provider()->analyze('briefing');
+
+        $this->assertStringNotContainsString('«', $text);
+        $this->assertStringNotContainsString('»', $text);
+        $this->assertStringContainsString('iShares MSCI ACWI', $text);
+    }
+
     public function test_sends_system_prompt_and_context_to_ollama(): void
     {
         Http::fake([
@@ -76,6 +92,38 @@ class OllamaAdvisorProviderTest extends TestCase
         });
     }
 
+    public function test_chat_stream_forwards_each_ndjson_delta_and_returns_the_full_reply(): void
+    {
+        // Ollama streams one JSON object per line.
+        $ndjson = implode("\n", [
+            json_encode(['message' => ['content' => 'Il tuo ']]),
+            json_encode(['message' => ['content' => '«ETF» ']]),
+            json_encode(['message' => ['content' => 'va bene.'], 'done' => true]),
+        ])."\n";
+
+        Http::fake(['*/api/chat' => Http::response($ndjson)]);
+
+        $chunks = [];
+        $full = $this->provider()->chatStream(
+            [['role' => 'user', 'content' => 'come va?']],
+            function (string $c) use (&$chunks): void {
+                $chunks[] = $c;
+            },
+        );
+
+        // Each delta was forwarded, and the «» were normalised on the way out.
+        $this->assertSame(['Il tuo ', '“ETF” ', 'va bene.'], $chunks);
+        $this->assertSame('Il tuo “ETF” va bene.', $full);
+    }
+
+    public function test_chat_stream_throws_on_an_empty_stream(): void
+    {
+        Http::fake(['*/api/chat' => Http::response('')]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->provider()->chatStream([['role' => 'user', 'content' => 'x']], function (): void {});
+    }
+
     public function test_throws_on_a_failed_request(): void
     {
         Http::fake(['*/api/chat' => Http::response('', 500)]);
@@ -90,5 +138,15 @@ class OllamaAdvisorProviderTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->provider()->analyze('briefing');
+    }
+
+    public function test_retries_once_when_the_first_reply_is_empty(): void
+    {
+        // A local model intermittently returns an empty body; one retry recovers.
+        Http::fakeSequence('*/api/chat')
+            ->push(['message' => ['content' => '   ']])
+            ->push(['message' => ['content' => 'Risposta valida.']]);
+
+        $this->assertSame('Risposta valida.', $this->provider()->analyze('briefing'));
     }
 }

@@ -33,6 +33,18 @@ interface AdvisorProvider
     public function chat(array $messages): string;
 
     /**
+     * Like chat(), but streams the reply: each text chunk is passed to $onChunk
+     * as it arrives from the model, and the full accumulated reply is returned
+     * at the end (for persistence). Lets the chat surface show characters as
+     * they're generated instead of waiting for the whole answer.
+     *
+     * @param  list<array{role: string, content: string}>  $messages
+     * @param  callable(string): void  $onChunk  receives each text delta
+     * @return string the full assistant reply
+     */
+    public function chatStream(array $messages, callable $onChunk): string;
+
+    /**
      * Whether the provider is configured and usable. False makes the advisor
      * surface report itself as unavailable rather than erroring.
      */

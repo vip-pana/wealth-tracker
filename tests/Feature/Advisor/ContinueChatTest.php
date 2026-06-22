@@ -45,6 +45,18 @@ class ContinueChatTest extends TestCase
 
                 return 'Risposta del consulente.';
             }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                $this->captured = $messages;
+                $onChunk('Risposta del consulente.');
+
+                return 'Risposta del consulente.';
+            }
         };
     }
 
@@ -84,6 +96,70 @@ class ContinueChatTest extends TestCase
         $this->assertStringContainsString('portafoglio', strtolower($captured[1]['content']));
         $this->assertSame('user', $captured[count($captured) - 1]['role']);
         $this->assertSame('Ho troppa liquidità?', $captured[count($captured) - 1]['content']);
+    }
+
+    public function test_collapses_consecutive_same_role_turns_so_the_model_sees_clean_alternation(): void
+    {
+        $captured = [];
+        $this->app->instance(AdvisorProvider::class, $this->recordingProvider(true, $captured));
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        // A poisoned history (orphaned user turns from past failures).
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'a']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'b']);
+
+        app(ContinueChat::class)->run($session, 'c');
+
+        // Among the conversation turns (ignoring the leading system messages,
+        // which may legitimately repeat), no two consecutive turns share a role.
+        $convo = array_values(array_filter($captured, fn (array $m): bool => $m['role'] !== 'system'));
+        for ($i = 1; $i < count($convo); $i++) {
+            $this->assertNotSame($convo[$i - 1]['role'], $convo[$i]['role'], 'consecutive same-role turn leaked to the model');
+        }
+        // The three orphaned/new user turns collapsed into a single user turn.
+        $this->assertCount(1, $convo);
+        $this->assertStringContainsString('a', $convo[0]['content']);
+        $this->assertStringContainsString('c', $convo[0]['content']);
+    }
+
+    public function test_a_failed_model_call_leaves_no_orphan_user_message(): void
+    {
+        $this->app->instance(AdvisorProvider::class, new class implements AdvisorProvider
+        {
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function analyze(string $briefing): string
+            {
+                return 'n/a';
+            }
+
+            /** @param  list<array{role: string, content: string}>  $messages */
+            public function chat(array $messages): string
+            {
+                throw new \RuntimeException('modello giù');
+            }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                throw new \RuntimeException('modello giù');
+            }
+        });
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+
+        try {
+            app(ContinueChat::class)->run($session, 'domanda');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        // The user turn must NOT be persisted if the reply failed.
+        $this->assertDatabaseCount('advisor_messages', 0);
     }
 
     public function test_includes_recent_history_in_the_sent_messages(): void

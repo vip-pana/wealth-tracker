@@ -46,6 +46,17 @@ class AdvisorControllerTest extends TestCase
             {
                 return $this->reply;
             }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                $onChunk($this->reply);
+
+                return $this->reply;
+            }
         });
     }
 
@@ -169,17 +180,20 @@ class AdvisorControllerTest extends TestCase
         $this->assertDatabaseHas('advisor_messages', ['role' => 'assistant', 'content' => 'Ecco la mia risposta.']);
     }
 
-    public function test_message_appends_to_an_existing_session(): void
+    public function test_message_streams_the_reply_and_appends_to_the_session(): void
     {
         $this->bindProvider(configured: true, reply: 'Risposta di follow-up.');
         $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
         AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'apertura']);
 
-        $this->postJson("/advisor/{$session->id}/message", ['message' => 'E i costi?'])
-            ->assertOk()
-            ->assertJsonPath('message.content', 'Risposta di follow-up.');
+        $response = $this->post("/advisor/{$session->id}/message", ['message' => 'E i costi?']);
+        $response->assertOk();
+        // The reply is streamed as plain text.
+        $this->assertStringContainsString('Risposta di follow-up.', $response->streamedContent());
 
+        // The opening message + the user turn + the assistant reply.
         $this->assertSame(3, $session->messages()->count());
+        $this->assertDatabaseHas('advisor_messages', ['session_id' => $session->id, 'role' => 'user', 'content' => 'E i costi?']);
     }
 
     public function test_destroy_removes_the_session_and_its_messages(): void

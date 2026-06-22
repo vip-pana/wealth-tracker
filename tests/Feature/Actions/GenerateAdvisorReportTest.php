@@ -34,6 +34,17 @@ class GenerateAdvisorReportTest extends TestCase
             {
                 return $this->reply;
             }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                $onChunk($this->reply);
+
+                return $this->reply;
+            }
         };
     }
 
