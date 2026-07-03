@@ -8,6 +8,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/Components/ui/dialog';
 import {
@@ -57,6 +58,7 @@ export function ProfileDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Il tuo profilo investitore</DialogTitle>
+                    <DialogDescription className="sr-only">Imposta orizzonte, tolleranza al rischio e obiettivo per personalizzare l&apos;analisi del consulente.</DialogDescription>
                 </DialogHeader>
                 <p className="text-xs text-muted-foreground">
                     Questo contesto rende l&apos;analisi tua, non generica. Obiettivo e allocazione sono opzionali: se vuoti, il consulente usa quelli della sezione Obiettivo.

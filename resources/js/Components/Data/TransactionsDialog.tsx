@@ -4,6 +4,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/Components/ui/dialog';
 import {
     Table,
@@ -85,6 +86,7 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Transazioni — {asset?.name}</DialogTitle>
+                    <DialogDescription className="sr-only">Riepilogo posizione e storico delle transazioni di questo asset.</DialogDescription>
                 </DialogHeader>
 
                 {loading && <p className="text-sm text-muted-foreground py-4">Caricamento…</p>}

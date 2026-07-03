@@ -8,6 +8,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/Components/ui/dialog';
 import {
@@ -82,6 +83,7 @@ export function CategoryDialog({
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica categoria' : 'Nuova categoria'}</DialogTitle>
+                    <DialogDescription className="sr-only">Imposta nome, colore e macro-categoria.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
                     <div className="space-y-1">

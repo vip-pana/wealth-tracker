@@ -7,6 +7,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/Components/ui/dialog';
 
@@ -28,6 +29,7 @@ export function ImportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Importa da CSV</DialogTitle>
+                    <DialogDescription className="sr-only">Carica un file CSV per importare asset in blocco.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <p className="text-sm text-muted-foreground">

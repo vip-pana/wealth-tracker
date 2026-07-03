@@ -4,7 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { ChevronDown } from 'lucide-react';
 import { PensionCategory, PensionEntry } from '@/Components/Pension/types';
 
@@ -85,6 +85,7 @@ export function PensionFormDialog({
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica valore annuale' : 'Aggiungi valore annuale'}</DialogTitle>
+                    <DialogDescription className="sr-only">Registra il valore di un fondo pensione per un dato anno.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={submit} className="space-y-4">
                     <div className="space-y-1">

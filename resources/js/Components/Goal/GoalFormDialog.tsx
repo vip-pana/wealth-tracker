@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { ChevronDown } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
@@ -90,6 +90,7 @@ export function GoalFormDialog({
             <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica obiettivo' : 'Crea il tuo obiettivo'}</DialogTitle>
+                    <DialogDescription className="sr-only">Definisci patrimonio obiettivo, allocazione target e milestone.</DialogDescription>
                 </DialogHeader>
                 {/* Two columns on wide screens: the base fields on the left, the
                     longer allocation and milestone lists on the right, so the

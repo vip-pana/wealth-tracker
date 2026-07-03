@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/Components/ui/dialog';
 import { Link2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { BankOption } from '@/Components/Settings/types';
@@ -30,6 +31,7 @@ export function ConnectBankDialog({ open, onClose, banks, redirectReady }: { ope
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Collega un conto bancario</DialogTitle>
+                    <DialogDescription className="sr-only">Cerca e scegli la tua banca per autorizzare l&apos;accesso in sola lettura al saldo.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                     {!redirectReady && (

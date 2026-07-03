@@ -7,6 +7,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/Components/ui/dialog';
 import {
@@ -48,6 +49,7 @@ function DeleteButton({ asset }: { asset: Asset }) {
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Elimina asset</DialogTitle>
+                        <DialogDescription className="sr-only">Conferma la rimozione di questo asset dal mese corrente.</DialogDescription>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
                         Stai per rimuovere <span className="font-medium text-foreground">{asset.name}</span> dal mese corrente. Gli altri mesi non vengono modificati.

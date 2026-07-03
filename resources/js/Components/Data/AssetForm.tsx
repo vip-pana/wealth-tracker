@@ -17,6 +17,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/Components/ui/dialog';
 import { Money } from '@/Components/ui/Money';
@@ -146,6 +147,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica Asset' : 'Aggiungi Asset'}</DialogTitle>
+                    <DialogDescription className="sr-only">Inserisci un asset a valore manuale o da ticker con quantità.</DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">

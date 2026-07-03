@@ -12,6 +12,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/Components/ui/dialog';
 import {
     Select,
@@ -258,6 +259,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Copia asset da un altro mese</DialogTitle>
+                        <DialogDescription className="sr-only">Copia gli asset di un mese precedente nel mese corrente.</DialogDescription>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
                         Gli asset del mese selezionato verranno copiati in{' '}
