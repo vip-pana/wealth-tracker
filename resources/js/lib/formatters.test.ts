@@ -8,6 +8,7 @@ import {
     formatDateLong,
     formatMonthLong,
     toMonthString,
+    stepMonth,
 } from '@/lib/formatters';
 
 // Intl currency output uses locale-specific separators and a non-breaking
@@ -103,5 +104,27 @@ describe('toMonthString', () => {
 
     it('zero-pads single-digit months', () => {
         expect(toMonthString(new Date(2025, 8, 1))).toBe('2025-09-01');
+    });
+});
+
+describe('stepMonth', () => {
+    it('steps forward within a year', () => {
+        expect(stepMonth('2025-06-01', 'next')).toBe('2025-07-01');
+    });
+
+    it('steps back within a year', () => {
+        expect(stepMonth('2025-06-01', 'prev')).toBe('2025-05-01');
+    });
+
+    it('rolls over December → January of the next year', () => {
+        expect(stepMonth('2025-12-01', 'next')).toBe('2026-01-01');
+    });
+
+    it('rolls back January → December of the previous year', () => {
+        expect(stepMonth('2025-01-01', 'prev')).toBe('2024-12-01');
+    });
+
+    it('normalizes to the first of the month regardless of the input day', () => {
+        expect(stepMonth('2025-03-31', 'next')).toBe('2025-04-01');
     });
 });

@@ -100,6 +100,16 @@ export function currentMonth(): string {
 }
 
 /**
+ * Steps a "YYYY-MM-DD" month one month forward or back, returning the first day
+ * of the resulting month as "YYYY-MM-01". Handles year rollover (Dec↔Jan).
+ */
+export function stepMonth(month: string, direction: 'prev' | 'next'): string {
+    const [year, mon] = month.split('-').map(Number);
+    const date = new Date(year, mon - 1 + (direction === 'next' ? 1 : -1), 1);
+    return toMonthString(date);
+}
+
+/**
  * Returns today's date as "YYYY-MM-DD".
  */
 export function today(): string {

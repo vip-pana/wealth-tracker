@@ -21,7 +21,7 @@ import {
     SelectValue,
 } from '@/Components/ui/select';
 import { Plus, ChevronLeft, ChevronRight, Copy, Camera, PlusSquare } from 'lucide-react';
-import { formatMonthLong, formatDateLong, today } from '@/lib/formatters';
+import { formatMonthLong, formatDateLong, today, stepMonth } from '@/lib/formatters';
 import { Money } from '@/Components/ui/Money';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
@@ -63,10 +63,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
     };
 
     const navigateMonth = (direction: 'prev' | 'next') => {
-        const [year, mon] = month.split('-').map(Number);
-        const date = new Date(year, mon - 1 + (direction === 'next' ? 1 : -1), 1);
-        const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
-        handleMonthChange(newMonth);
+        handleMonthChange(stepMonth(month, direction));
     };
 
     const handleCopy = () => {
