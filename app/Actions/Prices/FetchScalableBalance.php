@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Config;
 
 class FetchScalableBalance extends Action
 {
-    private const string SYNC_FAILED_KEY = 'scalable_sync_failed';
+    public const string SYNC_FAILED_KEY = 'scalable_sync_failed';
 
     public function __construct(
         private readonly ScalableCliClient $cli,

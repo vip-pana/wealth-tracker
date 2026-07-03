@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Scalable;
 
 use App\Actions\Action;
+use App\Actions\Notifications\PushNotification;
+use App\Actions\Prices\FetchScalableBalance;
 use App\Http\Clients\ScalableCliClient;
 use App\Models\ScalableConnection;
 use App\Services\Scalable\ScalableLoginState;
@@ -31,6 +33,7 @@ class RunScalableCliLogin extends Action
     public function __construct(
         private readonly ScalableLoginState $state,
         private readonly ScalableCliClient $cli,
+        private readonly PushNotification $notify,
     ) {}
 
     public function run(): void
@@ -60,6 +63,10 @@ class RunScalableCliLogin extends Action
         if ($result->successful() && $this->cli->isLoggedIn()) {
             $this->state->markComplete();
             ScalableConnection::current()->recordSyncSuccess();
+            // Reconnecting clears the standing "sync failed" warning: the user
+            // has fixed the session, so the bell must stop nagging even before
+            // the next sync runs.
+            $this->notify->resolve(FetchScalableBalance::SYNC_FAILED_KEY);
 
             return;
         }

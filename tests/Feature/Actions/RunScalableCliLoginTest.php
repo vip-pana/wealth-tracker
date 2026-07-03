@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Actions;
 
+use App\Actions\Notifications\PushNotification;
+use App\Actions\Prices\FetchScalableBalance;
 use App\Actions\Scalable\RunScalableCliLogin;
+use App\Models\Notification;
 use App\Models\ScalableConnection;
 use App\Services\Scalable\ScalableLoginState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +47,46 @@ class RunScalableCliLoginTest extends TestCase
         $this->assertSame('https://secure.scalable.capital/activate?user_code=ABCD-1234', $snapshot['url']);
         $this->assertSame('ABCD-1234', $snapshot['user_code']);
         $this->assertSame(ScalableConnection::SYNC_OK, ScalableConnection::current()->last_sync_status);
+    }
+
+    public function test_a_successful_login_resolves_a_standing_sync_failed_notification(): void
+    {
+        $notification = app(PushNotification::class)->run(
+            type: Notification::TYPE_SCALABLE_SYNC_FAILED,
+            level: Notification::LEVEL_WARNING,
+            title: 'Sincronizzazione Scalable non riuscita',
+            dedupeKey: FetchScalableBalance::SYNC_FAILED_KEY,
+        );
+
+        Process::fake([
+            '*login*' => Process::result(self::LOGIN_OUTPUT),
+            '*whoami*' => Process::result($this->whoamiOk()),
+        ]);
+
+        app(ScalableLoginState::class)->markPending();
+        app(RunScalableCliLogin::class)->run();
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_a_failed_login_leaves_the_sync_failed_notification_unread(): void
+    {
+        $notification = app(PushNotification::class)->run(
+            type: Notification::TYPE_SCALABLE_SYNC_FAILED,
+            level: Notification::LEVEL_WARNING,
+            title: 'Sincronizzazione Scalable non riuscita',
+            dedupeKey: FetchScalableBalance::SYNC_FAILED_KEY,
+        );
+
+        Process::fake([
+            '*login*' => Process::result(self::LOGIN_OUTPUT),
+            '*whoami*' => Process::result((string) json_encode(['ok' => false, 'error' => ['code' => 'no_session']])),
+        ]);
+
+        app(ScalableLoginState::class)->markPending();
+        app(RunScalableCliLogin::class)->run();
+
+        $this->assertNull($notification->fresh()->read_at);
     }
 
     public function test_fails_when_whoami_does_not_confirm_the_session(): void
