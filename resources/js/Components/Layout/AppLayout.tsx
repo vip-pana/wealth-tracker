@@ -139,7 +139,15 @@ function NavItem({
         <div ref={ref} onMouseEnter={showTooltip} onMouseLeave={hideTooltip}>
             <Link
                 href={href}
-                onClick={onNavigate}
+                onClick={(e) => {
+                    // Already here: swallow the click so Inertia doesn't re-visit
+                    // the same page and replay its enter animation.
+                    if (active) {
+                        e.preventDefault();
+                        return;
+                    }
+                    onNavigate?.();
+                }}
                 className={cn(
                     'flex items-center gap-3 px-2 py-2 rounded-md text-sm font-medium transition-colors',
                     collapsed ? 'justify-center' : '',
