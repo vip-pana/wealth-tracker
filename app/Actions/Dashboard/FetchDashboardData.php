@@ -56,7 +56,7 @@ class FetchDashboardData extends Action
 
         $monthlySnapshots = $this->collapseToMonthly($liquidSnapshots);
 
-        $goal = Goal::first();
+        $goal = Goal::with('milestones')->first();
 
         return [
             'netWorthSeries' => $this->buildNetWorthSeries->run($liquidSnapshots),
@@ -92,6 +92,10 @@ class FetchDashboardData extends Action
                 'name' => $goal->name,
                 'target_value' => $goal->target_value,
                 'target_date' => $goal->target_date?->format('Y-m-d'),
+                'milestones' => $goal->milestones
+                    ->map(fn ($m): array => ['target_value' => $m->target_value])
+                    ->values()
+                    ->toArray(),
             ] : null,
             'portfolioMetrics' => $this->computePortfolioMetrics->run($monthlySnapshots, $liquidCategories, $goal),
             'positionReturns' => $this->computePositionReturns->run(),

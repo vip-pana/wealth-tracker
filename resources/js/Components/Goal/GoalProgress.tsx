@@ -8,6 +8,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Target, Pencil, Trash2, CalendarClock, TrendingUp } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Components/ui/tooltip';
 import { monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth, formatPct, pctOfTotal, allocationDeviation } from '@/lib/goalMath';
 import { SmallDonut } from '@/Components/Goal/SmallDonut';
 import { MilestoneAccordionItem } from '@/Components/Goal/MilestoneAccordionItem';
@@ -129,12 +130,39 @@ export function GoalProgress({
                         <Money value={current} variant="no-decimals" className="font-medium" />
                         <Money value={target} variant="no-decimals" className="text-muted-foreground" />
                     </div>
-                    <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
-                        <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${progressPct}%` }}
-                        />
-                    </div>
+                    <TooltipProvider delayDuration={100}>
+                        <div className="relative w-full h-3 rounded-full bg-muted">
+                            <div
+                                className="h-full rounded-full bg-primary transition-all"
+                                style={{ width: `${progressPct}%` }}
+                            />
+                            {target > 0 && sortedMilestones.map((m) => {
+                                const pos = Math.min((m.target_value / target) * 100, 100);
+                                const reached = current >= m.target_value;
+                                return (
+                                    <Tooltip key={m.id}>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                type="button"
+                                                aria-label={`Milestone: ${m.notes ?? ''}`}
+                                                className={`absolute top-1/2 h-4 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background transition-colors ${reached ? 'bg-emerald-500' : 'bg-foreground/40'}`}
+                                                style={{ left: `${pos}%` }}
+                                            />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <div className="space-y-0.5 text-xs">
+                                                {m.notes && <p className="font-medium">{m.notes}</p>}
+                                                <p><Money value={m.target_value} variant="no-decimals" /> · {m.target_date}</p>
+                                                <p className={reached ? 'text-emerald-500' : 'text-muted-foreground'}>
+                                                    {reached ? 'Raggiunta' : <><Money value={Math.max(m.target_value - current, 0)} variant="no-decimals" /> mancanti</>}
+                                                </p>
+                                            </div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                );
+                            })}
+                        </div>
+                    </TooltipProvider>
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{progressPct.toFixed(1)}% raggiunto</span>
                         <span><Money value={remaining} variant="no-decimals" /> mancanti</span>

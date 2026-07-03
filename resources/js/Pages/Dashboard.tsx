@@ -47,7 +47,7 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     latestSnapshot: string | null;
-    goal: { name: string; target_value: number; target_date: string | null } | null;
+    goal: { name: string; target_value: number; target_date: string | null; milestones: { target_value: number }[] } | null;
     portfolioMetrics: PortfolioMetrics;
     positionReturns: PositionReturns | null;
 }
@@ -209,11 +209,18 @@ export default function Dashboard({
                                                 {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
                                             </span>
                                         </div>
-                                        <div className="w-full bg-muted rounded-full h-1.5">
+                                        <div className="relative w-full bg-muted rounded-full h-1.5">
                                             <div
                                                 className="bg-amber-500 h-1.5 rounded-full transition-all"
                                                 style={{ width: `${Math.min(100, (lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%` }}
                                             />
+                                            {goal.target_value > 0 && goal.milestones.map((m, i) => (
+                                                <span
+                                                    key={i}
+                                                    className={`absolute top-1/2 h-2.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${lastPoint.total_value >= m.target_value ? 'bg-emerald-500' : 'bg-foreground/30'}`}
+                                                    style={{ left: `${Math.min((m.target_value / goal.target_value) * 100, 100)}%` }}
+                                                />
+                                            ))}
                                         </div>
                                     </div>
                                     <span className="text-sm font-bold text-amber-500 flex-shrink-0">
