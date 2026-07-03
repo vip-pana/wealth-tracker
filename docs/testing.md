@@ -107,3 +107,26 @@ public function definition(): array
 | Models | custom methods if added | Unit |
 
 Do **not** mock the database in feature tests — use `RefreshDatabase` with the real SQLite in-memory DB.
+
+## Frontend tests (Vitest)
+
+`pnpm run test` runs Vitest over `resources/js/**/*.{test,spec}.{ts,tsx}` in a
+`happy-dom` environment (config in `vitest.config.ts`; jest-dom matchers and
+per-test `cleanup()` load from `resources/js/test/setup.ts`).
+
+Two layers:
+
+- **Pure logic** (`*.test.ts`, e.g. `lib/goalMath.test.ts`) — import a function,
+  assert on outputs. Cheapest and most stable; extend these whenever logic is
+  factored into a `lib/` helper.
+- **Component** (`*.test.tsx`) — render a component with `@testing-library/react`,
+  drive it with `@testing-library/user-event`, assert on what the user sees.
+  Reserve for components with **state logic** (forms, dialogs, chat), not purely
+  presentational ones. Examples: `Components/Advisor/NewConversation.test.tsx`
+  (a chip click sends the question), `TypewriterText.test.tsx` (the title reveal
+  doesn't replay on remount).
+
+> **pnpm is pinned** to `package.json` `packageManager` (`pnpm@10.18.0`) via
+> corepack, so the container's pnpm matches the store that built `node_modules`
+> — this avoids the `ERR_PNPM_UNEXPECTED_STORE` (v10 vs v11) footgun. Run
+> `corepack enable` once in a fresh container; then plain `pnpm` uses the pin.
