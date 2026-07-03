@@ -34,9 +34,10 @@ interface Props {
     lastSnapshotDate: string | null;
     currentNetWorth: number;
     prices: Record<string, AssetPriceInfo>;
+    previousValues: Record<string, number>;
 }
 
-export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, prices }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, prices, previousValues }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -253,6 +254,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 month={month}
                 editAsset={editAsset}
                 prices={prices}
+                previousValues={previousValues}
             />
 
             <Dialog open={copyOpen} onOpenChange={setCopyOpen}>

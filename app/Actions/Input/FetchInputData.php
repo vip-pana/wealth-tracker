@@ -7,6 +7,7 @@ namespace App\Actions\Input;
 use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
 use App\Actions\Snapshots\ComputeValuesAsOf;
+use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\Category;
 use App\Models\Snapshot;
@@ -53,6 +54,32 @@ class FetchInputData extends Action
             'lastSnapshotDate' => $lastSnapshot?->date->format('Y-m-d'),
             'currentNetWorth' => $currentNetWorth,
             'prices' => $priceMap,
+            'previousValues' => $this->previousValues($month),
         ];
+    }
+
+    /**
+     * Value each asset held in the most recent month *before* $month that has
+     * data, keyed by "category_id|name". The input form compares a freshly
+     * entered value against this to warn on a likely typo (a huge jump vs. last
+     * month). Empty when $month is the earliest tracked month.
+     *
+     * @return array<string, float>
+     */
+    private function previousValues(string $month): array
+    {
+        $previousMonth = Asset::query()
+            ->where('date', '<', $month)
+            ->max('date');
+
+        if ($previousMonth === null) {
+            return [];
+        }
+
+        return Asset::query()
+            ->where('date', $previousMonth)
+            ->get()
+            ->mapWithKeys(fn (Asset $a): array => [$a->category_id.'|'.$a->name => (float) $a->value])
+            ->all();
     }
 }

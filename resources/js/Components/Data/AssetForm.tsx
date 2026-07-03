@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
-import { Landmark, CandlestickChart, ReceiptText } from 'lucide-react';
+import { Landmark, CandlestickChart, ReceiptText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -31,9 +31,10 @@ interface Props {
     month: string;
     editAsset?: Asset | null;
     prices: Record<string, AssetPriceInfo>;
+    previousValues: Record<string, number>;
 }
 
-export default function AssetForm({ open, onClose, categories, month, editAsset, prices }: Props) {
+export default function AssetForm({ open, onClose, categories, month, editAsset, prices, previousValues }: Props) {
     const isEdit = !!editAsset;
 
     const initialMode = (): Mode =>
@@ -95,13 +96,34 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             ? parseFloat(data.quantity) * currentPrice.price
             : null;
 
+    // Warn on a likely typo: a manually entered value that jumps more than ~3x
+    // (or drops below a third) versus the same asset last month. Advisory only —
+    // it asks for confirmation, never blocks. Ticker assets derive their value
+    // from qty × price, so this only guards the manual field.
+    const prevValue = data.category_id && data.name.trim() !== ''
+        ? previousValues[`${data.category_id}|${data.name.trim()}`]
+        : undefined;
+    const enteredValue = data.value && !isNaN(parseFloat(data.value)) ? parseFloat(data.value) : null;
+    const anomaly = mode === 'manual' && prevValue !== undefined && prevValue > 0 && enteredValue !== null && enteredValue > 0
+        && (enteredValue / prevValue > 3 || enteredValue / prevValue < 1 / 3)
+        ? { prev: prevValue, factor: enteredValue / prevValue }
+        : null;
+    const [anomalyConfirmed, setAnomalyConfirmed] = useState(false);
+
     const handleClose = () => {
         reset();
+        setAnomalyConfirmed(false);
         onClose();
     };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        // First submit with an anomalous value surfaces the warning; a second
+        // submit (now confirmed) goes through.
+        if (anomaly && !anomalyConfirmed) {
+            setAnomalyConfirmed(true);
+            return;
+        }
         const hasTicker = data.ticker.trim() !== '';
         const opts = {
             onSuccess: () => {
@@ -217,6 +239,15 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 </p>
                             ) : (
                                 errors.value && <p className="text-xs text-destructive">{errors.value}</p>
+                            )}
+                            {anomaly && (
+                                <p className="flex items-start gap-1.5 text-xs text-amber-500">
+                                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                    <span>
+                                        Valore insolito: <strong>{anomaly.factor > 1 ? `${anomaly.factor.toFixed(1)}×` : `-${Math.round((1 - anomaly.factor) * 100)}%`}</strong> rispetto al mese precedente (<Money value={anomaly.prev} variant="no-decimals" />). Controlla che non sia un errore di battitura
+                                        {anomalyConfirmed ? '; premi di nuovo Salva per confermare.' : '.'}
+                                    </span>
+                                </p>
                             )}
                         </div>
                     ) : (
