@@ -1,0 +1,213 @@
+import { useState, useEffect, useRef, useMemo } from 'react';
+import axios from 'axios';
+import { Card, CardContent } from '@/Components/ui/card';
+import { Button } from '@/Components/ui/button';
+import { useToast } from '@/lib/toast';
+import { AlertTriangle, Send, ChevronDown } from 'lucide-react';
+import { type Status, type Message, type ActiveSession, pickQuestions } from '@/Components/Advisor/types';
+import { MessageBubble } from '@/Components/Advisor/MessageBubble';
+import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
+
+export function Conversation({
+    session,
+    configured,
+    funFacts,
+    onSent,
+}: {
+    session: ActiveSession;
+    configured: boolean;
+    funFacts: string[];
+    onSent: () => void;
+}) {
+    const [messages, setMessages] = useState<Message[]>(session.messages);
+    const [status, setStatus] = useState<Status>(session.status);
+    const [error, setError] = useState<string | null>(session.error);
+    const [input, setInput] = useState('');
+    const [sending, setSending] = useState(false);
+    const pushToast = useToast();
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const prevStatus = useRef<Status>(session.status);
+    // Whether the view is pinned to the bottom. Auto-scroll on new content only
+    // while pinned, so a user who scrolls up to read old messages isn't yanked
+    // back down every time a stream chunk arrives.
+    const [atBottom, setAtBottom] = useState(true);
+    // Synchronous lock: setSending is async, so two near-simultaneous sends
+    // (chip + Enter) could both pass the state guard and hit the single-request
+    // local model concurrently, which returns an empty reply. This blocks the
+    // second one immediately.
+    const sendingRef = useRef(false);
+
+    // 3 starters, stable for this session (don't reshuffle on every keystroke).
+    const suggestions = useMemo(() => pickQuestions(session.id, 3), [session.id]);
+
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+        bottomRef.current?.scrollIntoView({ behavior });
+    };
+
+    const handleScroll = () => {
+        const el = scrollRef.current;
+        if (!el) return;
+        // A small threshold so "almost at the bottom" still counts as pinned.
+        setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+    };
+
+    // Follow new content only while pinned to the bottom.
+    useEffect(() => {
+        if (atBottom) scrollToBottom();
+    }, [messages, sending, atBottom]);
+
+    // Poll while a report session's opening analysis is generating.
+    useEffect(() => {
+        if (status !== 'pending') return;
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const tick = async () => {
+            try {
+                const { data } = await axios.get<{ status: Status; error: string | null; messages: Message[] }>(`/advisor/${session.id}/status`);
+                if (cancelled) return;
+                setStatus(data.status);
+                setMessages(data.messages);
+                setError(data.error);
+                if (data.status === 'pending') timer = setTimeout(tick, 2500);
+            } catch {
+                // transient; stop quietly
+            }
+        };
+        void tick();
+        return () => { cancelled = true; if (timer) clearTimeout(timer); };
+    }, [status, session.id]);
+
+    // Toast on a real pending→done/failed transition for the report, and
+    // refresh the session list so its row stops showing the pending spinner.
+    useEffect(() => {
+        const from = prevStatus.current;
+        prevStatus.current = status;
+        if (from === 'pending' && status === 'done') {
+            pushToast('Analisi completata.', 'success');
+            onSent();
+        } else if (from === 'pending' && status === 'failed') {
+            pushToast('Generazione non riuscita.', 'error');
+            onSent();
+        }
+    }, [status, pushToast, onSent]);
+
+    const send = async (raw?: string) => {
+        const text = (raw ?? input).trim();
+        if (text === '' || sendingRef.current) return;
+        sendingRef.current = true;
+        setInput('');
+        setSending(true);
+        const userId = -Date.now();
+        const assistantId = userId - 1;
+        // Show the user turn and an empty assistant bubble that fills as the
+        // stream arrives.
+        setMessages((m) => [
+            ...m,
+            { id: userId, role: 'user', content: text, created_at: null },
+            { id: assistantId, role: 'assistant', content: '', created_at: null },
+        ]);
+        try {
+            const xsrf = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');
+            const res = await fetch(`/advisor/${session.id}/message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': xsrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ message: text }),
+            });
+            if (!res.ok || !res.body) throw new Error(String(res.status));
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            for (;;) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: msg.content + chunk } : msg));
+            }
+            onSent();
+        } catch {
+            pushToast('Il consulente non ha risposto. Riprova.', 'error');
+            // Roll back the optimistic pair.
+            setMessages((m) => m.filter((x) => x.id !== userId && x.id !== assistantId));
+            setInput(text);
+        } finally {
+            sendingRef.current = false;
+            setSending(false);
+        }
+    };
+
+    const pending = status === 'pending';
+
+    return (
+        <Card className="flex flex-col flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0">
+                <CardContent ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto p-4 space-y-4">
+                    {pending && messages.length === 0 && (
+                        <ThinkingWithFacts facts={funFacts} revealDelay={0} label="Sto analizzando il tuo portafoglio…" />
+                    )}
+                    {status === 'failed' && (
+                        <div className="flex items-start gap-2 text-sm text-red-500">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{error ?? 'Generazione non riuscita.'}</span>
+                        </div>
+                    )}
+                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} />)}
+                    <div ref={bottomRef} />
+                </CardContent>
+
+                {!atBottom && (
+                    <button
+                        type="button"
+                        onClick={() => scrollToBottom()}
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground animate-fade-in"
+                        title="Vai in fondo"
+                    >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                        Vai in fondo
+                    </button>
+                )}
+            </div>
+
+            {configured && !pending && (
+                <div className="border-t border-border p-3 space-y-2">
+                    {!sending && messages.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {suggestions.map((q) => (
+                                <button
+                                    key={q}
+                                    type="button"
+                                    onClick={() => void send(q)}
+                                    className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    {q}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex items-end gap-2">
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    void send();
+                                }
+                            }}
+                            placeholder="Chiedi al tuo consulente… (es. la mia liquidità è troppa?)"
+                            rows={1}
+                            className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <Button size="icon" onClick={() => void send()} disabled={sending || input.trim() === ''}>
+                            <Send className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </Card>
+    );
+}
