@@ -10,7 +10,7 @@ import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import {
-    Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog, Pencil, Check, X,
+    Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog, Pencil, Check, X, ChevronDown,
 } from 'lucide-react';
 
 type Status = 'pending' | 'done' | 'failed';
@@ -46,6 +46,7 @@ interface Props {
     goalObjective: string | null;
     sessions: SessionSummary[];
     activeSession: ActiveSession | null;
+    funFacts: string[];
 }
 
 // Pool of conversation starters; 3 are drawn per session. Phrased as things to
@@ -78,6 +79,82 @@ function pickQuestions(seed: number, count: number): string[] {
 function KindIcon({ kind, className }: { kind: Kind; className?: string }) {
     const Icon = kind === 'report' ? FileText : MessageCircle;
     return <Icon className={className} />;
+}
+
+// The title typewriter plays only for a session the user just created. On
+// creation we stamp its id here (survives the `router.visit` navigation, unlike
+// module state, and a normal page refresh doesn't set it) and TypewriterText
+// consumes the stamp — so a refresh, a rename, or reopening an old session all
+// render the title plainly.
+const PENDING_TITLE_ANIM_KEY = 'advisor:animate-title-id';
+
+function markSessionForTitleAnimation(id: number): void {
+    try {
+        sessionStorage.setItem(PENDING_TITLE_ANIM_KEY, String(id));
+    } catch {
+        // sessionStorage unavailable (private mode / SSR) — skip the animation.
+    }
+}
+
+// Ids resolved to "animate" this page-load. Both title spots (header + list
+// row) share the same id, so we resolve the sessionStorage stamp once and let
+// every instance agree — otherwise the first to mount would consume the stamp
+// and the other would render plainly.
+const claimedTitleAnims = new Map<number, boolean>();
+
+function claimTitleAnimation(id: number): boolean {
+    const cached = claimedTitleAnims.get(id);
+    if (cached !== undefined) return cached;
+
+    let claimed = false;
+    try {
+        if (sessionStorage.getItem(PENDING_TITLE_ANIM_KEY) === String(id)) {
+            sessionStorage.removeItem(PENDING_TITLE_ANIM_KEY);
+            claimed = true;
+        }
+    } catch {
+        // ignore
+    }
+    claimedTitleAnims.set(id, claimed);
+    return claimed;
+}
+
+/**
+ * Types a title out character by character, but only for the freshly created
+ * session (claimed once from sessionStorage). Every other case — refresh,
+ * rename, reopening an old session — renders the title plainly.
+ */
+function TypewriterText({ id, text, className }: { id: number; text: string; className?: string }) {
+    // Claim once at mount: the first render for the just-created id animates,
+    // and the claim is cleared so a later refresh won't replay it.
+    const [shouldAnimate] = useState(() => claimTitleAnimation(id));
+    const [shown, setShown] = useState(shouldAnimate ? '' : text);
+
+    useEffect(() => {
+        if (!shouldAnimate) {
+            setShown(text);
+            return;
+        }
+        let i = 0;
+        const timer = setInterval(() => {
+            i += 1;
+            setShown(text.slice(0, i));
+            if (i >= text.length) clearInterval(timer);
+        }, 32);
+        return () => clearInterval(timer);
+        // Keyed on id only: a title that changes mid-life (rename) must not
+        // retrigger the typewriter.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
+
+    return (
+        <span className={className}>
+            {shown}
+            {shouldAnimate && shown.length < text.length && (
+                <span className="inline-block w-[1px] animate-pulse">|</span>
+            )}
+        </span>
+    );
 }
 
 function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activeId: number | null; onRename: (id: number, title: string) => void }) {
@@ -127,7 +204,7 @@ function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activeId: nu
             )}
         >
             <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="flex-1 min-w-0 truncate">{s.title ?? 'Sessione'}</span>
+            <TypewriterText id={s.id} text={s.title ?? 'Sessione'} className="flex-1 min-w-0 truncate" />
             {s.status === 'pending' && <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />}
             {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
             <button
@@ -184,7 +261,7 @@ function SessionList({
     );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, funFacts }: { message: Message; funFacts: string[] }) {
     if (message.role === 'user') {
         return (
             <div className="flex justify-end">
@@ -201,11 +278,56 @@ function MessageBubble({ message }: { message: Message }) {
             </div>
             <div className="min-w-0 flex-1">
                 {message.content === '' ? (
-                    <span className="text-muted-foreground"><TypingDots /></span>
+                    <ThinkingWithFacts facts={funFacts} />
                 ) : (
                     <Markdown content={message.content} />
                 )}
             </div>
+        </div>
+    );
+}
+
+/**
+ * The "thinking" state shown while the model works — for both a chat reply and
+ * the opening report. Typing dots plus a single rotating insight about the
+ * user's own data, so a slow answer never feels like dead air. `revealDelay`
+ * holds the insight back briefly for chat (its stream often starts fast, so a
+ * flash of fact would be noise); the report reveals it right away since its
+ * wait is always long.
+ */
+function ThinkingWithFacts({ facts, revealDelay = 2000, label }: { facts: string[]; revealDelay?: number; label?: string }) {
+    const [ordered] = useState(() => {
+        const a = [...facts];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    });
+    const [show, setShow] = useState(revealDelay === 0);
+    const [idx, setIdx] = useState(0);
+
+    useEffect(() => {
+        if (ordered.length === 0 || revealDelay === 0) return;
+        const reveal = setTimeout(() => setShow(true), revealDelay);
+        return () => clearTimeout(reveal);
+    }, [ordered.length, revealDelay]);
+
+    useEffect(() => {
+        if (!show || ordered.length < 2) return;
+        const t = setInterval(() => setIdx((i) => (i + 1) % ordered.length), 5000);
+        return () => clearInterval(t);
+    }, [show, ordered.length]);
+
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TypingDots />
+                {label && <span>{label}</span>}
+            </div>
+            {show && ordered.length > 0 && (
+                <p key={idx} className="text-xs italic text-muted-foreground/80 animate-fade-in">{ordered[idx]}</p>
+            )}
         </div>
     );
 }
@@ -223,10 +345,12 @@ function TypingDots() {
 function Conversation({
     session,
     configured,
+    funFacts,
     onSent,
 }: {
     session: ActiveSession;
     configured: boolean;
+    funFacts: string[];
     onSent: () => void;
 }) {
     const [messages, setMessages] = useState<Message[]>(session.messages);
@@ -236,7 +360,12 @@ function Conversation({
     const [sending, setSending] = useState(false);
     const pushToast = useToast();
     const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
     const prevStatus = useRef<Status>(session.status);
+    // Whether the view is pinned to the bottom. Auto-scroll on new content only
+    // while pinned, so a user who scrolls up to read old messages isn't yanked
+    // back down every time a stream chunk arrives.
+    const [atBottom, setAtBottom] = useState(true);
     // Synchronous lock: setSending is async, so two near-simultaneous sends
     // (chip + Enter) could both pass the state guard and hit the single-request
     // local model concurrently, which returns an empty reply. This blocks the
@@ -246,9 +375,21 @@ function Conversation({
     // 3 starters, stable for this session (don't reshuffle on every keystroke).
     const suggestions = useMemo(() => pickQuestions(session.id, 3), [session.id]);
 
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+        bottomRef.current?.scrollIntoView({ behavior });
+    };
+
+    const handleScroll = () => {
+        const el = scrollRef.current;
+        if (!el) return;
+        // A small threshold so "almost at the bottom" still counts as pinned.
+        setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+    };
+
+    // Follow new content only while pinned to the bottom.
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, sending]);
+        if (atBottom) scrollToBottom();
+    }, [messages, sending, atBottom]);
 
     // Poll while a report session's opening analysis is generating.
     useEffect(() => {
@@ -337,22 +478,33 @@ function Conversation({
 
     return (
         <Card className="flex flex-col flex-1 min-h-0">
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                {pending && messages.length === 0 && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <TypingDots />
-                        Analisi in corso… il modello locale può impiegare qualche decina di secondi.
-                    </div>
+            <div className="relative flex-1 min-h-0">
+                <CardContent ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto p-4 space-y-4">
+                    {pending && messages.length === 0 && (
+                        <ThinkingWithFacts facts={funFacts} revealDelay={0} label="Sto analizzando il tuo portafoglio…" />
+                    )}
+                    {status === 'failed' && (
+                        <div className="flex items-start gap-2 text-sm text-red-500">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{error ?? 'Generazione non riuscita.'}</span>
+                        </div>
+                    )}
+                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} />)}
+                    <div ref={bottomRef} />
+                </CardContent>
+
+                {!atBottom && (
+                    <button
+                        type="button"
+                        onClick={() => scrollToBottom()}
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground animate-fade-in"
+                        title="Vai in fondo"
+                    >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                        Vai in fondo
+                    </button>
                 )}
-                {status === 'failed' && (
-                    <div className="flex items-start gap-2 text-sm text-red-500">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{error ?? 'Generazione non riuscita.'}</span>
-                    </div>
-                )}
-                {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
-                <div ref={bottomRef} />
-            </CardContent>
+            </div>
 
             {configured && !pending && (
                 <div className="border-t border-border p-3 space-y-2">
@@ -394,7 +546,86 @@ function Conversation({
     );
 }
 
-export default function Advisor({ configured, profile, goalObjective, sessions, activeSession }: Props) {
+/**
+ * The empty state for a not-yet-started conversation. Deliberately mirrors the
+ * Conversation layout — a full-height message area (here holding a centered
+ * prompt) over the same bottom input with suggestion chips — so starting a chat
+ * feels continuous with reading one, rather than a separate form.
+ */
+function NewConversation({
+    value,
+    onChange,
+    onStart,
+    onCancel,
+    onPick,
+    starting,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    onStart: () => void;
+    onCancel: () => void;
+    onPick: (q: string) => void;
+    starting: boolean;
+}) {
+    // A fresh set of starters each time the composer opens (no session id yet).
+    const [suggestions] = useState(() => {
+        const a = [...SUGGESTED_QUESTIONS];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a.slice(0, 3);
+    });
+
+    return (
+        <Card className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 overflow-y-auto p-4 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                </div>
+                <p className="text-sm font-medium">Nuova conversazione</p>
+                <p className="max-w-sm text-xs text-muted-foreground">
+                    Chiedi quello che vuoi sul tuo portafoglio, una decisione, la tua strategia o l&apos;obiettivo.
+                </p>
+            </div>
+
+            <div className="border-t border-border p-3 space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                    {suggestions.map((q) => (
+                        <button
+                            key={q}
+                            type="button"
+                            disabled={starting}
+                            onClick={() => onPick(q)}
+                            className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                        >
+                            {q}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-end gap-2">
+                    <textarea
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onStart(); }
+                            else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+                        }}
+                        placeholder="Chiedi al tuo consulente… (es. la mia liquidità è troppa?)"
+                        rows={1}
+                        autoFocus
+                        className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <Button size="icon" onClick={onStart} disabled={starting || value.trim() === ''}>
+                        {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+export default function Advisor({ configured, profile, goalObjective, sessions, activeSession, funFacts }: Props) {
     const [profileOpen, setProfileOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [chatMode, setChatMode] = useState(false);
@@ -406,6 +637,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
         setGenerating(true);
         try {
             const { data } = await axios.post<{ session_id: number }>('/advisor/generate');
+            markSessionForTitleAnimation(data.session_id);
             router.visit(`/advisor/${data.session_id}`);
         } catch (e) {
             const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
@@ -416,12 +648,13 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
         }
     };
 
-    const startChat = async () => {
-        const text = firstChat.trim();
+    const startChat = async (raw?: string) => {
+        const text = (raw ?? firstChat).trim();
         if (text === '' || startingChat) return;
         setStartingChat(true);
         try {
             const { data } = await axios.post<{ session_id: number }>('/advisor/chat', { message: text });
+            markSessionForTitleAnimation(data.session_id);
             router.visit(`/advisor/${data.session_id}`);
         } catch (e) {
             const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
@@ -444,7 +677,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
     return (
         <>
             <Head title="Consulente AI" />
-            <div className="flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            <div className="flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full">
                 <PageHeader
                     icon={Sparkles}
                     title="Consulente AI"
@@ -480,12 +713,12 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                         </div>
 
                         <div className="h-full min-h-0">
-                            {activeSession ? (
-                                <div className="flex flex-col h-full min-h-0 gap-2">
+                            {activeSession && !chatMode ? (
+                                <div key={activeSession.id} className="flex flex-col h-full min-h-0 gap-2 animate-page-enter">
                                     <div className="flex items-center justify-between flex-shrink-0">
                                         <h2 className="text-sm font-medium truncate flex items-center gap-2">
                                             <KindIcon kind={activeSession.kind} className="w-4 h-4 text-primary" />
-                                            {activeSession.title ?? 'Sessione'}
+                                            <TypewriterText id={activeSession.id} text={activeSession.title ?? 'Sessione'} className="truncate" />
                                         </h2>
                                         <Button
                                             variant="ghost" size="icon"
@@ -500,38 +733,21 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                         key={activeSession.id}
                                         session={activeSession}
                                         configured={configured}
+                                        funFacts={funFacts}
                                         onSent={() => router.reload({ only: ['sessions'] })}
                                     />
                                 </div>
                             ) : chatMode ? (
-                                <Card>
-                                    <CardContent className="p-4 space-y-3">
-                                        <p className="text-sm font-medium">Nuova conversazione</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Chiedi quello che vuoi sul tuo portafoglio, una decisione, la tua strategia o l&apos;obiettivo.
-                                        </p>
-                                        <textarea
-                                            value={firstChat}
-                                            onChange={(e) => setFirstChat(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void startChat(); }
-                                            }}
-                                            placeholder="es. Ho troppa liquidità ferma? Mi conviene aumentare il PAC?"
-                                            rows={3}
-                                            autoFocus
-                                            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                        />
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => { setChatMode(false); setFirstChat(''); }}>
-                                                Annulla
-                                            </Button>
-                                            <Button size="sm" onClick={() => void startChat()} disabled={startingChat || firstChat.trim() === ''}>
-                                                {startingChat ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
-                                                Invia
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <div className="flex flex-col h-full min-h-0">
+                                    <NewConversation
+                                        value={firstChat}
+                                        onChange={setFirstChat}
+                                        onStart={() => void startChat()}
+                                        onPick={(q) => void startChat(q)}
+                                        onCancel={() => { setChatMode(false); setFirstChat(''); }}
+                                        starting={startingChat}
+                                    />
+                                </div>
                             ) : (
                                 <Card>
                                     <CardContent className="py-12 text-center space-y-2">
