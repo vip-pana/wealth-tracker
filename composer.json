@@ -19,7 +19,8 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.1",
         "nunomaduro/larastan": "^3.0",
-        "phpunit/phpunit": "^11.0.1"
+        "phpunit/phpunit": "^11.0.1",
+        "rector/rector": "^2.4"
     },
     "autoload": {
         "psr-4": {
@@ -56,6 +57,8 @@
         "lint": "@php ./vendor/bin/pint --test",
         "lint:fix": "@php ./vendor/bin/pint",
         "analyse": "@php vendor/bin/phpstan analyse --memory-limit=256M",
+        "rector": "@php ./vendor/bin/rector process --dry-run",
+        "rector:fix": "@php ./vendor/bin/rector process",
         "setup-hooks": "git config core.hooksPath .githooks"
     },
     "extra": {

@@ -17,6 +17,7 @@ The Laravel scheduler is defined in `routes/console.php` (`prices:fetch` daily a
 Canonical list is in `composer.json` / `package.json` scripts — reference, don't copy. Key ones:
 - `composer dev` — start everything; `php artisan migrate` — migrations.
 - `composer lint` / `composer lint:fix` — Pint; `composer analyse` — PHPStan level 9.
+- `composer rector` / `composer rector:fix` — Rector (PHP 8.4 upgrade + code-quality + dead-code, config in `rector.php`). On-demand refactoring, not part of the pre-push gate; run `rector:fix` then `lint:fix` and the gate after.
 - `pnpm run lint` / `lint:fix` — ESLint; `pnpm run typecheck` — tsc; `pnpm run test` — Vitest.
 - `php artisan test` — PHPUnit.
 
