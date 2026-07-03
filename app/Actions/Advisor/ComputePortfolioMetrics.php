@@ -242,7 +242,7 @@ class ComputePortfolioMetrics extends Action
      */
     private function goalEta(Collection $ordered, ?Goal $goal, float $total): ?array
     {
-        if ($goal === null || $ordered->count() < 2) {
+        if (! $goal instanceof Goal || $ordered->count() < 2) {
             return null;
         }
 
@@ -321,7 +321,7 @@ class ComputePortfolioMetrics extends Action
         }
 
         $denominator = $n * $sumX2 - $sumX ** 2;
-        if ($denominator == 0.0) {
+        if ($denominator === 0.0) {
             return null;
         }
 

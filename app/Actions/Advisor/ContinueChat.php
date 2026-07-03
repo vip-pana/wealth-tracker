@@ -18,7 +18,7 @@ class ContinueChat extends Action
      * included separately (it's the first assistant message and sets the
      * scene), then the most recent exchanges.
      */
-    private const HISTORY_TURNS = 8;
+    private const int HISTORY_TURNS = 8;
 
     public function __construct(
         private readonly BuildAdvisorContext $buildContext,

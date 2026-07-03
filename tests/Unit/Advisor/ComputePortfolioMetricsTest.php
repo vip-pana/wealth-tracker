@@ -36,12 +36,10 @@ class ComputePortfolioMetricsTest extends TestCase
         ]);
         $snapshot->id = $id;
 
-        $values = collect($valuesByCategory)->map(function (float $value, int $categoryId): SnapshotCategoryValue {
-            return new SnapshotCategoryValue([
-                'category_id' => $categoryId,
-                'value' => $value,
-            ]);
-        })->values();
+        $values = collect($valuesByCategory)->map(fn (float $value, int $categoryId): SnapshotCategoryValue => new SnapshotCategoryValue([
+            'category_id' => $categoryId,
+            'value' => $value,
+        ]))->values();
 
         $snapshot->setRelation('categoryValues', $values);
 

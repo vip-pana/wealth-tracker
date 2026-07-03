@@ -15,10 +15,10 @@ use Illuminate\Support\Facades\Cache;
  */
 class ScalableLoginState
 {
-    private const KEY = 'scalable.login';
+    private const string KEY = 'scalable.login';
 
     /** A device code expires in minutes; bound the whole flow well past that. */
-    private const TTL_MINUTES = 20;
+    private const int TTL_MINUTES = 20;
 
     public const PENDING = 'pending';
 

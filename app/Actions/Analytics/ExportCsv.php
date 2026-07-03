@@ -96,11 +96,11 @@ class ExportCsv extends Action
                     $v = $valuesByMonth[$m] ?? null;
                     $row[] = $v !== null ? number_format($v, 2, ',', '.') : '';
                 }
-                fputcsv($handle, $row, ';');
+                fputcsv($handle, $row, ';', escape: '\\');
             };
 
             // Header row
-            fputcsv($handle, array_merge(['Net Worth '.Carbon::now()->year, 'Type', ''], $monthLabels), ';');
+            fputcsv($handle, array_merge(['Net Worth '.Carbon::now()->year, 'Type', ''], $monthLabels), ';', escape: '\\');
 
             // Group categories by macro_category
             /** @var array<string, list<Category>> $byMacro */
@@ -122,7 +122,7 @@ class ExportCsv extends Action
                 }
 
                 // Section header
-                fputcsv($handle, array_merge([$macroKey, '', ''], array_fill(0, count($months), '')), ';');
+                fputcsv($handle, array_merge([$macroKey, '', ''], array_fill(0, count($months), '')), ';', escape: '\\');
 
                 foreach ($byMacro[$macroKey] as $category) {
                     $catId = $category->id;
@@ -139,16 +139,16 @@ class ExportCsv extends Action
             }
 
             // Blank row
-            fputcsv($handle, [], ';');
+            fputcsv($handle, [], ';', escape: '\\');
 
             // Net worth total row
             $valueRow('Patrimonio Netto (EUR)', 'Total', $netWorth);
 
             // Blank row
-            fputcsv($handle, [], ';');
+            fputcsv($handle, [], ';', escape: '\\');
 
             // Asset allocation section
-            fputcsv($handle, array_merge(['Asset Allocation', '%', ''], array_fill(0, count($months), '')), ';');
+            fputcsv($handle, array_merge(['Asset Allocation', '%', ''], array_fill(0, count($months), '')), ';', escape: '\\');
 
             foreach ($macroOrder as $macroKey) {
                 if (! isset($macroTotals[$macroKey])) {
@@ -166,7 +166,7 @@ class ExportCsv extends Action
                 foreach ($months as $m) {
                     $row[] = number_format($pctByMonth[$m] ?? 0.0, 1, ',', '.').'%';
                 }
-                fputcsv($handle, $row, ';');
+                fputcsv($handle, $row, ';', escape: '\\');
             }
 
             fclose($handle);

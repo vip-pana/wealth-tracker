@@ -15,7 +15,7 @@ class GenerateAdvisorReportTest extends TestCase
 
     private function fakeProvider(bool $configured, string $reply = 'analisi'): AdvisorProvider
     {
-        return new class($configured, $reply) implements AdvisorProvider
+        return new readonly class($configured, $reply) implements AdvisorProvider
         {
             public function __construct(private bool $configured, private string $reply) {}
 

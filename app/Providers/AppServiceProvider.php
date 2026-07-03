@@ -16,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
+    #[\Override]
     public function register(): void
     {
         $this->app->singleton(EnableBankingClient::class, fn (): EnableBankingClient => new EnableBankingClient(

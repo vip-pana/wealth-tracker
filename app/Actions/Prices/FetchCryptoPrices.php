@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Log;
 
 class FetchCryptoPrices extends Action
 {
-    private const CURRENCY = 'EUR';
+    private const string CURRENCY = 'EUR';
 
-    private const BTC_COINGECKO_ID = 'bitcoin';
+    private const string BTC_COINGECKO_ID = 'bitcoin';
 
     public function __construct(
         private readonly CoinGeckoClient $coinGecko,
@@ -40,7 +40,7 @@ class FetchCryptoPrices extends Action
                 continue;
             }
 
-            AssetPrice::recordSuccess($ticker, (float) $data[$coinId]['eur'], self::CURRENCY);
+            AssetPrice::recordSuccess($ticker, $data[$coinId]['eur'], self::CURRENCY);
             $updated[] = $ticker;
         }
 

@@ -29,7 +29,7 @@ class IndexController extends Controller
         // Opening a session marks it read, so its unread dot clears. A session
         // whose reply is still generating is left unread until it finishes and
         // the user next opens it.
-        if ($session !== null && ! $session->isGenerating()) {
+        if ($session instanceof AdvisorSession && ! $session->isGenerating()) {
             $session->update(['last_read_at' => now()]);
         }
 
@@ -43,7 +43,7 @@ class IndexController extends Controller
             ] : null,
             'goalObjective' => $goal?->name,
             'sessions' => $this->sessionList(),
-            'activeSession' => $session !== null ? $this->serializeSession($session) : null,
+            'activeSession' => $session instanceof AdvisorSession ? $this->serializeSession($session) : null,
             'funFacts' => $this->provider->isConfigured() ? $this->funFacts->run() : [],
         ]);
     }

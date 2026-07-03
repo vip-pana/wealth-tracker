@@ -10,7 +10,7 @@ use App\Models\AssetPrice;
 
 class FetchAllPrices extends Action
 {
-    private const CRYPTO_TICKERS = ['BTC'];
+    private const array CRYPTO_TICKERS = ['BTC'];
 
     public function __construct(
         private readonly FetchWalletBalances $fetchWalletBalances,
@@ -45,7 +45,7 @@ class FetchAllPrices extends Action
         $cryptoTickers = array_values(array_filter($tickers, fn (mixed $t) => is_string($t) && in_array(strtoupper($t), self::CRYPTO_TICKERS, true)));
         $etfTickers = array_values(array_filter($tickers, fn (mixed $t) => is_string($t) && ! in_array(strtoupper($t), self::CRYPTO_TICKERS, true)));
 
-        if (! empty($cryptoTickers)) {
+        if ($cryptoTickers !== []) {
             $result = $result->merge($this->fetchCryptoPrices->run($cryptoTickers));
         }
 

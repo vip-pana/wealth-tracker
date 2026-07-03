@@ -26,7 +26,7 @@ class ContinueChatTest extends TestCase
         return new class($configured, $captured) implements AdvisorProvider
         {
             /** @param  list<array{role: string, content: string}>  $captured */
-            public function __construct(private bool $configured, private array &$captured) {}
+            public function __construct(private readonly bool $configured, private array &$captured) {}
 
             public function isConfigured(): bool
             {
@@ -112,7 +112,8 @@ class ContinueChatTest extends TestCase
         // Among the conversation turns (ignoring the leading system messages,
         // which may legitimately repeat), no two consecutive turns share a role.
         $convo = array_values(array_filter($captured, fn (array $m): bool => $m['role'] !== 'system'));
-        for ($i = 1; $i < count($convo); $i++) {
+        $counter = count($convo);
+        for ($i = 1; $i < $counter; $i++) {
             $this->assertNotSame($convo[$i - 1]['role'], $convo[$i]['role'], 'consecutive same-role turn leaked to the model');
         }
         // The three orphaned/new user turns collapsed into a single user turn.

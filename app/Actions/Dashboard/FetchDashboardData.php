@@ -145,7 +145,7 @@ class FetchDashboardData extends Action
      */
     private function illiquidTotalFor(?Snapshot $snapshot, array $illiquidCategoryIds): float
     {
-        if ($snapshot === null || $illiquidCategoryIds === []) {
+        if (! $snapshot instanceof Snapshot || $illiquidCategoryIds === []) {
             return 0.0;
         }
 

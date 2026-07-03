@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class CoinGeckoClient
 {
-    private const URL = 'https://api.coingecko.com/api/v3/simple/price';
+    private const string URL = 'https://api.coingecko.com/api/v3/simple/price';
 
     /**
      * @param  string[]  $coinIds

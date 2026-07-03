@@ -42,6 +42,7 @@ class Notification extends Model
 
     protected $fillable = ['type', 'level', 'title', 'body', 'action_url', 'dedupe_key', 'read_at'];
 
+    #[\Override]
     protected function casts(): array
     {
         return ['read_at' => 'datetime'];

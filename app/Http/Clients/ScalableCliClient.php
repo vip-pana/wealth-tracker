@@ -27,7 +27,7 @@ class ScalableCliClient
      *
      * @var array<string, list<string>>
      */
-    private const COMMANDS = [
+    private const array COMMANDS = [
         'overview' => ['broker', 'overview', '--json'],
         'holdings' => ['broker', 'holdings', '--json'],
         'transactions' => ['broker', 'transactions', '--json'],
@@ -36,7 +36,7 @@ class ScalableCliClient
     ];
 
     /** Maximum page size the CLI accepts for `broker transactions`. */
-    private const TRANSACTIONS_PAGE_SIZE = 100;
+    private const int TRANSACTIONS_PAGE_SIZE = 100;
 
     public function __construct(
         private readonly bool $enabled,

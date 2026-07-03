@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Log;
 
 class BlockstreamClient
 {
-    private const URL = 'https://blockstream.info/api/address/';
+    private const string URL = 'https://blockstream.info/api/address/';
 
-    private const SATOSHIS_PER_BTC = 100_000_000;
+    private const int SATOSHIS_PER_BTC = 100_000_000;
 
     public function getBalanceBtc(string $address): ?float
     {

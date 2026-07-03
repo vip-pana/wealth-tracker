@@ -10,14 +10,14 @@ use App\Models\Category;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 
-final class ImportCsvResult
+final readonly class ImportCsvResult
 {
     public function __construct(
-        public readonly int $created,
-        public readonly int $updated,
-        public readonly int $skipped,
+        public int $created,
+        public int $updated,
+        public int $skipped,
         /** @var list<string> */
-        public readonly array $errors,
+        public array $errors,
     ) {}
 }
 
@@ -44,7 +44,7 @@ class ImportCsv extends Action
         }
 
         // Skip header row
-        fgetcsv($handle, 0, ';');
+        fgetcsv($handle, 0, ';', escape: '\\');
 
         $created = 0;
         $updated = 0;
@@ -53,7 +53,7 @@ class ImportCsv extends Action
         $errors = [];
         $lineNumber = 1;
 
-        while (($row = fgetcsv($handle, 0, ';')) !== false) {
+        while (($row = fgetcsv($handle, 0, ';', escape: '\\')) !== false) {
             $lineNumber++;
 
             if (count($row) < 4) {
@@ -66,13 +66,13 @@ class ImportCsv extends Action
             $rawCat = trim((string) $row[1]);
             $rawName = trim((string) $row[2]);
             $rawValue = trim((string) $row[3]);
-            $rawNote = isset($row[4]) ? trim((string) $row[4]) : '';
+            $rawNote = isset($row[4]) ? trim($row[4]) : '';
 
             // Validate date — createFromFormat silently overflows out-of-range parts
             // (e.g. 2026-13-99 -> 2027-04-09) and throws on unparseable input, so we
             // round-trip the formatted result to reject anything that didn't match exactly.
             $date = $this->parseDate($rawDate);
-            if ($date === null) {
+            if (! $date instanceof Carbon) {
                 $errors[] = "Riga {$lineNumber}: data '{$rawDate}' non valida (formato atteso: YYYY-MM-DD).";
                 $skipped++;
 

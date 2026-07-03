@@ -22,7 +22,7 @@ class ComputeAdvisorFunFactsTest extends TestCase
         $stub = \Mockery::mock(BuildAdvisorContext::class);
         $stub->shouldReceive('run')->andReturn($context);
 
-        return (new ComputeAdvisorFunFacts($stub))->run();
+        return new ComputeAdvisorFunFacts($stub)->run();
     }
 
     public function test_returns_empty_when_there_is_no_portfolio_data(): void

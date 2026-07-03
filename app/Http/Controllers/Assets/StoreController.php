@@ -14,7 +14,7 @@ class StoreController extends Controller
     public function __invoke(StoreAssetRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['value'] = $data['value'] ?? 0.0;
+        $data['value'] ??= 0.0;
 
         Asset::create($data);
 

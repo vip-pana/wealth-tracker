@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Log;
 
 class FetchEtfPrice extends Action
 {
-    private const CURRENCY = 'EUR';
+    private const string CURRENCY = 'EUR';
 
-    private const MILAN_EXCHANGE_SUFFIX = '.MI';
+    private const string MILAN_EXCHANGE_SUFFIX = '.MI';
 
     public function __construct(
         private readonly YahooFinanceClient $yahooFinance,

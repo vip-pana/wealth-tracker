@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Http;
 
 class YahooFinanceClient
 {
-    private const URL = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+    private const string URL = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 
-    private const SUMMARY_URL = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/';
+    private const string SUMMARY_URL = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/';
 
-    private const CRUMB_URL = 'https://query1.finance.yahoo.com/v1/test/getcrumb';
+    private const string CRUMB_URL = 'https://query1.finance.yahoo.com/v1/test/getcrumb';
 
-    private const COOKIE_URL = 'https://fc.yahoo.com';
+    private const string COOKIE_URL = 'https://fc.yahoo.com';
 
     public function getPrice(string $symbol): ?float
     {

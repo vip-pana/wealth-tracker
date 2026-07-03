@@ -36,7 +36,7 @@ class BuildMacroMonthComparison extends Action
                 continue;
             }
             $totals[$macro]['current'] = ($totals[$macro]['current'] ?? 0.0) + (float) $cv->value;
-            $totals[$macro]['previous'] = $totals[$macro]['previous'] ?? 0.0;
+            $totals[$macro]['previous'] ??= 0.0;
         }
 
         foreach ($penult->categoryValues as $cv) {
@@ -45,7 +45,7 @@ class BuildMacroMonthComparison extends Action
                 continue;
             }
             $totals[$macro]['previous'] = ($totals[$macro]['previous'] ?? 0.0) + (float) $cv->value;
-            $totals[$macro]['current'] = $totals[$macro]['current'] ?? 0.0;
+            $totals[$macro]['current'] ??= 0.0;
         }
 
         return array_map(

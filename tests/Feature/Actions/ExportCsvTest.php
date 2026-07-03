@@ -33,7 +33,7 @@ class ExportCsvTest extends TestCase
 
                 continue;
             }
-            $rows[] = str_getcsv($line, ';');
+            $rows[] = str_getcsv($line, ';', escape: '\\');
         }
 
         return $rows;
@@ -115,13 +115,7 @@ class ExportCsvTest extends TestCase
         // treat it as text, not a formula. The quote goes at the very front,
         // before the two-space indent the export adds to asset names.
         $label = "'  =SUM(A1:A9)";
-        $found = false;
-        foreach ($this->exportRows() as $row) {
-            if (isset($row[0]) && $row[0] === $label) {
-                $found = true;
-                break;
-            }
-        }
+        $found = array_any($this->exportRows(), fn ($row) => isset($row[0]) && $row[0] === $label);
 
         $this->assertTrue($found, 'Asset name starting with = must be single-quote prefixed in the export.');
     }

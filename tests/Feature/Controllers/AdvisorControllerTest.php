@@ -29,7 +29,7 @@ class AdvisorControllerTest extends TestCase
 
     private function bindProvider(bool $configured, string $reply = 'analisi'): void
     {
-        $this->app->instance(AdvisorProvider::class, new class($configured, $reply) implements AdvisorProvider
+        $this->app->instance(AdvisorProvider::class, new readonly class($configured, $reply) implements AdvisorProvider
         {
             public function __construct(private bool $configured, private string $reply) {}
 
@@ -180,7 +180,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: true, reply: 'Il tuo portafoglio è solido.');
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($session->id))->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
+        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
 
         $session->refresh();
         $this->assertSame('done', $session->status);
@@ -196,7 +196,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: false);
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($session->id))->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
+        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
 
         $this->assertSame('failed', $session->fresh()->status);
         $this->assertDatabaseCount('advisor_messages', 0);
@@ -247,7 +247,7 @@ class AdvisorControllerTest extends TestCase
         $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'E i costi?', 'status' => 'done']);
         $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
 
-        (new ContinueChatJob($user->id, $assistant->id))->handle(app(ContinueChat::class), app(PushNotification::class));
+        new ContinueChatJob($user->id, $assistant->id)->handle(app(ContinueChat::class), app(PushNotification::class));
 
         $assistant->refresh();
         $this->assertSame('done', $assistant->status);

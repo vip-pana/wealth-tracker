@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Config;
 
 class FetchScalableBalance extends Action
 {
-    private const SYNC_FAILED_KEY = 'scalable_sync_failed';
+    private const string SYNC_FAILED_KEY = 'scalable_sync_failed';
 
     public function __construct(
         private readonly ScalableCliClient $cli,
@@ -53,7 +53,7 @@ class FetchScalableBalance extends Action
                 $asset = $this->resolveByIsin($position['isin']);
 
                 // No asset carries this ISIN: the holding isn't tracked here.
-                if ($asset === null) {
+                if (! $asset instanceof Asset) {
                     continue;
                 }
 

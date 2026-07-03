@@ -15,7 +15,7 @@ class RunScalableCliLoginTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const LOGIN_OUTPUT = "Open this URL:\nhttps://secure.scalable.capital/activate?user_code=ABCD-1234\nVerify the code ABCD-1234 in your browser.\nWaiting for browser confirmation...\nLogged in via device code.";
+    private const string LOGIN_OUTPUT = "Open this URL:\nhttps://secure.scalable.capital/activate?user_code=ABCD-1234\nVerify the code ABCD-1234 in your browser.\nWaiting for browser confirmation...\nLogged in via device code.";
 
     protected function setUp(): void
     {

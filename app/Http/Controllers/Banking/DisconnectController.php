@@ -18,7 +18,10 @@ class DisconnectController extends Controller
         // longer implies a live link that no longer exists.
         $connection->loadMissing('accounts');
         foreach ($connection->accounts as $account) {
-            if ($account->linked_name === null || $account->linked_category_id === null) {
+            if ($account->linked_name === null) {
+                continue;
+            }
+            if ($account->linked_category_id === null) {
                 continue;
             }
             Asset::where('name', $account->linked_name)

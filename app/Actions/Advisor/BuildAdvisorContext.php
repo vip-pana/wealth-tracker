@@ -82,7 +82,7 @@ class BuildAdvisorContext extends Action
             return ['value' => $override, 'source' => 'profile'];
         }
 
-        if ($goal !== null) {
+        if ($goal instanceof Goal) {
             $value = $goal->name;
             if ($goal->target_value > 0.0) {
                 $value .= ' (target '.number_format($goal->target_value, 0, ',', '.').'€'
@@ -104,7 +104,7 @@ class BuildAdvisorContext extends Action
             return ['value' => $override, 'source' => 'profile'];
         }
 
-        if ($goal === null) {
+        if (! $goal instanceof Goal) {
             return null;
         }
 

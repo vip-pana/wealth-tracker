@@ -22,12 +22,12 @@ class CsvTemplateController extends Controller
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
 
-            fputcsv($handle, ['data', 'categoria', 'nome_asset', 'valore', 'note'], ';');
+            fputcsv($handle, ['data', 'categoria', 'nome_asset', 'valore', 'note'], ';', escape: '\\');
 
             $today = Carbon::now()->startOfMonth()->format('Y-m-d');
 
             foreach ($categories as $category) {
-                fputcsv($handle, [$today, $category->name, 'Esempio Asset', '0.00', ''], ';');
+                fputcsv($handle, [$today, $category->name, 'Esempio Asset', '0.00', ''], ';', escape: '\\');
             }
 
             fclose($handle);

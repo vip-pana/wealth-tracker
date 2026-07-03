@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Process;
 class RunScalableCliLogin extends Action
 {
     /** Matches "https://secure.scalable.capital/activate?user_code=XXXX-XXXX". */
-    private const URL_PATTERN = '#(https://\S*activate\S*user_code=([A-Z0-9-]+))#';
+    private const string URL_PATTERN = '#(https://\S*activate\S*user_code=([A-Z0-9-]+))#';
 
     public function __construct(
         private readonly ScalableLoginState $state,

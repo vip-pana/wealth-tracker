@@ -66,8 +66,8 @@ class OllamaAdvisorProviderTest extends TestCase
             return $body['model'] === 'qwen2.5:14b'
                 && $body['stream'] === false
                 && $messages[0]['role'] === 'system'
-                && str_contains($messages[0]['content'], 'NON raccomandare strumenti')
-                && str_contains($messages[1]['content'], 'Azioni');
+                && str_contains((string) $messages[0]['content'], 'NON raccomandare strumenti')
+                && str_contains((string) $messages[1]['content'], 'Azioni');
         });
     }
 

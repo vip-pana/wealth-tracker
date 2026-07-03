@@ -42,21 +42,19 @@ class ComputeForecast extends Action
         }
 
         $denominator = $n * $sumX2 - $sumX ** 2;
-        if ($denominator == 0.0) {
+        if ($denominator === 0.0) {
             return [];
         }
 
         $slope = ($n * $sumXY - $sumX * $sumY) / $denominator;
         $intercept = ($sumY - $slope * $sumX) / $n;
 
-        $historical = $ordered->map(function (Snapshot $s, int $i) use ($intercept, $slope, $xs): array {
-            return [
-                'date' => $s->date->format('Y-m-d'),
-                'actual' => (float) $s->total_value,
-                'trend' => round($intercept + $slope * $xs[$i], 2),
-                'forecast' => null,
-            ];
-        })->toArray();
+        $historical = $ordered->map(fn (Snapshot $s, int $i): array => [
+            'date' => $s->date->format('Y-m-d'),
+            'actual' => (float) $s->total_value,
+            'trend' => round($intercept + $slope * $xs[$i], 2),
+            'forecast' => null,
+        ])->toArray();
 
         /** @var Snapshot $lastSnap */
         $lastSnap = $ordered->last();

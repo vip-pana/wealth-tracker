@@ -145,9 +145,8 @@ class RenderAdvisorContext extends Action
         $out = 'COSTI DI GESTIONE (TER): costo medio ponderato '.$this->pct($costs['weighted_ter_pct'] ?? null)
             .' all\'anno, pari a circa '.$this->eur($costs['annual_cost'] ?? null).'/anno';
         $out .= ' sui '.$this->eur($costs['covered_value'] ?? null).' di asset con TER indicato.';
-        $out .= ' (Il TER non è inserito su tutti gli asset: il dato copre solo quelli indicati.)';
 
-        return $out;
+        return $out.' (Il TER non è inserito su tutti gli asset: il dato copre solo quelli indicati.)';
     }
 
     private function contributionSection(mixed $contribution): string
@@ -203,9 +202,8 @@ class RenderAdvisorContext extends Action
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
         $out .= "\n- Obiettivo: ".$this->sourced($profile['objective'] ?? null);
-        $out .= "\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null);
 
-        return $out;
+        return $out.("\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null));
     }
 
     /**

@@ -22,7 +22,7 @@ class AdvisorReportNotificationTest extends TestCase
 
     private function bindProvider(bool $configured, string $reply = 'analisi'): void
     {
-        $this->app->instance(AdvisorProvider::class, new class($configured, $reply) implements AdvisorProvider
+        $this->app->instance(AdvisorProvider::class, new readonly class($configured, $reply) implements AdvisorProvider
         {
             public function __construct(private bool $configured, private string $reply) {}
 
@@ -60,7 +60,7 @@ class AdvisorReportNotificationTest extends TestCase
         $this->bindProvider(configured: true, reply: 'Portafoglio solido.');
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($session->id))->handle(
+        new GenerateAdvisorReportJob($session->id)->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
         );
@@ -76,7 +76,7 @@ class AdvisorReportNotificationTest extends TestCase
         $this->bindProvider(configured: false);
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        (new GenerateAdvisorReportJob($session->id))->handle(
+        new GenerateAdvisorReportJob($session->id)->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
         );
@@ -94,7 +94,7 @@ class AdvisorReportNotificationTest extends TestCase
         $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'q', 'status' => 'done']);
         $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
 
-        (new ContinueChatJob($user->id, $assistant->id))->handle(
+        new ContinueChatJob($user->id, $assistant->id)->handle(
             app(ContinueChat::class),
             app(PushNotification::class),
         );

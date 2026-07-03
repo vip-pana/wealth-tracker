@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Prices;
 
-final class PriceRefreshResult
+final readonly class PriceRefreshResult
 {
     /**
      * @param  list<string>  $updated  tickers (or wallet labels) refreshed successfully
      * @param  list<string>  $failed  tickers (or wallet labels) that could not be refreshed
      */
     public function __construct(
-        public readonly array $updated = [],
-        public readonly array $failed = [],
+        public array $updated = [],
+        public array $failed = [],
     ) {}
 
     public function merge(self $other): self

@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 class ComputeAdvisorExtras extends Action
 {
     /** Trailing window for the average monthly contribution. */
-    private const CONTRIBUTION_MONTHS = 6;
+    private const int CONTRIBUTION_MONTHS = 6;
 
     /**
      * Extra advisor inputs the base metrics don't cover, both pure arithmetic

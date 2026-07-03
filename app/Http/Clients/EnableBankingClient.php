@@ -23,9 +23,9 @@ use Illuminate\Support\Facades\Log;
  */
 class EnableBankingClient
 {
-    private const BASE_URL = 'https://api.enablebanking.com';
+    private const string BASE_URL = 'https://api.enablebanking.com';
 
-    private const JWT_CACHE_KEY = 'enable_banking.jwt';
+    private const string JWT_CACHE_KEY = 'enable_banking.jwt';
 
     public function __construct(
         private readonly string $applicationId,
@@ -52,7 +52,7 @@ class EnableBankingClient
 
         $aspsps = $response->json('aspsps');
 
-        return is_array($aspsps) ? array_values(array_filter($aspsps, 'is_array')) : [];
+        return is_array($aspsps) ? array_values(array_filter($aspsps, is_array(...))) : [];
     }
 
     /**
@@ -117,7 +117,7 @@ class EnableBankingClient
 
         return [
             'session_id' => $sessionId,
-            'accounts' => array_values(array_filter($accounts, 'is_array')),
+            'accounts' => array_values(array_filter($accounts, is_array(...))),
             'valid_until' => $validUntil,
         ];
     }
@@ -185,7 +185,7 @@ class EnableBankingClient
         }
 
         $key = $this->loadPrivateKey();
-        if ($key === null) {
+        if (! $key instanceof \OpenSSLAsymmetricKey) {
             return null;
         }
 
