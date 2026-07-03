@@ -1,0 +1,142 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ToastContext } from '@/lib/toast';
+import type { ActiveSession, Message } from '@/Components/Advisor/types';
+
+// Conversation talks to the server only through axios; mock it so we drive the
+// optimistic-send, rollback, and guard logic without a network. ThinkingWithFacts
+// spins timers/rng, so stub it to a static marker.
+const axiosGet = vi.fn();
+const axiosPost = vi.fn();
+vi.mock('axios', () => ({
+    default: {
+        get: (...a: unknown[]) => axiosGet(...a),
+        post: (...a: unknown[]) => axiosPost(...a),
+    },
+}));
+vi.mock('@/Components/Advisor/ThinkingWithFacts', () => ({
+    ThinkingWithFacts: () => <div data-testid="thinking" />,
+}));
+
+import { Conversation } from '@/Components/Advisor/Conversation';
+
+const pushToast = vi.fn();
+
+function session(over: Partial<ActiveSession> = {}): ActiveSession {
+    return {
+        id: 1,
+        kind: 'chat',
+        title: 'Chat',
+        status: 'done',
+        error: null,
+        messages: [{ id: 1, role: 'assistant', content: 'Ciao', status: 'done', created_at: null }],
+        ...over,
+    };
+}
+
+function renderConversation(over: Partial<ActiveSession> = {}, onSent = vi.fn()) {
+    render(
+        <ToastContext.Provider value={pushToast}>
+            <Conversation session={session(over)} configured funFacts={[]} onSent={onSent} />
+        </ToastContext.Provider>,
+    );
+    return { onSent };
+}
+
+beforeEach(() => {
+    axiosGet.mockReset();
+    axiosPost.mockReset();
+    pushToast.mockReset();
+    // Default: status poll returns a settled session (no further scheduling).
+    axiosGet.mockResolvedValue({ data: { status: 'done', error: null, messages: [] } });
+});
+
+describe('Conversation — optimistic send', () => {
+    it('shows the typed question immediately and posts it', async () => {
+        // Never-resolving post keeps the optimistic pair on screen.
+        axiosPost.mockReturnValue(new Promise(() => {}));
+        renderConversation();
+
+        const box = screen.getByPlaceholderText(/Chiedi al tuo consulente/);
+        await userEvent.type(box, 'La mia liquidità è troppa?');
+        await userEvent.keyboard('{Enter}');
+
+        expect(screen.getByText('La mia liquidità è troppa?')).toBeInTheDocument();
+        expect(axiosPost).toHaveBeenCalledWith('/advisor/1/message', { message: 'La mia liquidità è troppa?' });
+    });
+
+    it('replaces the optimistic pair with the server rows on success', async () => {
+        const user: Message = { id: 10, role: 'user', content: 'Domanda', status: 'done', created_at: null };
+        const assistant: Message = { id: 11, role: 'assistant', content: 'Risposta reale', status: 'done', created_at: null };
+        axiosPost.mockResolvedValue({ data: { user, assistant } });
+        renderConversation();
+
+        await userEvent.type(screen.getByPlaceholderText(/Chiedi al tuo consulente/), 'Domanda');
+        await userEvent.keyboard('{Enter}');
+
+        await waitFor(() => expect(screen.getByText('Risposta reale')).toBeInTheDocument());
+    });
+
+    it('rolls back the optimistic pair and toasts on failure', async () => {
+        axiosPost.mockRejectedValue(new Error('boom'));
+        renderConversation();
+
+        await userEvent.type(screen.getByPlaceholderText(/Chiedi al tuo consulente/), 'Domanda fallita');
+        await userEvent.keyboard('{Enter}');
+
+        await waitFor(() =>
+            expect(pushToast).toHaveBeenCalledWith('Il consulente non ha risposto. Riprova.', 'error'),
+        );
+        // The optimistic user bubble (a <div>, not the textarea) is gone…
+        const bubble = screen
+            .queryAllByText('Domanda fallita')
+            .find((el) => el.tagName !== 'TEXTAREA');
+        expect(bubble).toBeUndefined();
+        // …and the text is restored into the input for a retry.
+        expect(screen.getByPlaceholderText(/Chiedi al tuo consulente/)).toHaveValue('Domanda fallita');
+    });
+
+    it('ignores an empty send', async () => {
+        renderConversation();
+        // Enter on an empty box must not fire a request.
+        await userEvent.type(screen.getByPlaceholderText(/Chiedi al tuo consulente/), '{Enter}');
+        expect(axiosPost).not.toHaveBeenCalled();
+    });
+});
+
+describe('Conversation — send guard', () => {
+    it('blocks a second concurrent send while the first is in flight', async () => {
+        // Post never resolves → the first send stays "in flight".
+        axiosPost.mockReturnValue(new Promise(() => {}));
+        renderConversation();
+
+        const box = screen.getByPlaceholderText(/Chiedi al tuo consulente/);
+        await userEvent.type(box, 'Prima');
+        await userEvent.keyboard('{Enter}');
+        // A chip click (second path) should be blocked by the synchronous ref lock.
+        // After the first send the input clears; typing + Enter again is the 2nd attempt.
+        await userEvent.type(box, 'Seconda');
+        await userEvent.keyboard('{Enter}');
+
+        expect(axiosPost).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Conversation — report status transitions', () => {
+    it('toasts and refreshes when a pending report finishes', async () => {
+        // First poll returns done → pending→done transition fires the toast.
+        axiosGet.mockResolvedValue({ data: { status: 'done', error: null, messages: [] } });
+        const { onSent } = renderConversation({ status: 'pending', messages: [] });
+
+        await waitFor(() => expect(pushToast).toHaveBeenCalledWith('Analisi completata.', 'success'));
+        expect(onSent).toHaveBeenCalled();
+    });
+
+    it('toasts an error when a pending report fails', async () => {
+        axiosGet.mockResolvedValue({ data: { status: 'failed', error: 'kaputt', messages: [] } });
+        renderConversation({ status: 'pending', messages: [] });
+
+        await waitFor(() => expect(pushToast).toHaveBeenCalledWith('Generazione non riuscita.', 'error'));
+    });
+});

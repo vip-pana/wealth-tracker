@@ -124,7 +124,60 @@ Two layers:
   Reserve for components with **state logic** (forms, dialogs, chat), not purely
   presentational ones. Examples: `Components/Advisor/NewConversation.test.tsx`
   (a chip click sends the question), `TypewriterText.test.tsx` (the title reveal
-  doesn't replay on remount).
+  doesn't replay on remount), `Data/AssetForm.test.tsx` and
+  `Goal/GoalFormDialog.test.tsx` (form logic + submit path),
+  `Data/AssetTable.test.tsx` (grouping/totals + freshness badges),
+  `Dashboard/PortfolioInsights.test.tsx` (threshold-driven hints),
+  `Goal/GoalProgress.test.tsx` (derived progress/deviation values),
+  `Advisor/Conversation.test.tsx` (optimistic send, rollback, send guard).
+  Pure helpers get a plain `*.test.ts`: `Advisor/types.test.ts`
+  (`pickQuestions` LCG), `Advisor/enterAnimation.test.ts` (one-shot flag).
+
+### Testing components that use Inertia's `useForm`
+
+A form component (`AssetForm`, `GoalFormDialog`) drives its fields through
+`useForm` from `@inertiajs/react` and submits with `post`/`put`. To test the
+*client* logic (mode switching, computed values, validation gates, which verb
+is called) without a network, `vi.mock('@inertiajs/react', …)` and back
+`useForm` with a real `useState` store plus `vi.fn()` spies for `post`/`put`/
+`router.post`. See `AssetForm.test.tsx` for the pattern. Assert on the spy
+(`expect(put).toHaveBeenCalledWith('/assets/7', …)`) to distinguish create vs
+edit.
+
+### happy-dom limits to design around
+
+- **Radix `Select` can't be driven** — its trigger has `pointer-events: none`
+  under happy-dom, so `userEvent.click` on the options throws. Seed the value a
+  different way (e.g. pass an `editAsset` with `category_id` already set) rather
+  than opening the dropdown.
+- **`Intl.NumberFormat` grouping is unreliable** — the container's Node ICU may
+  drop the thousands separator (`1234,50` instead of `1.234,50`). Assert on the
+  digits without the group separator, or query the element by role/structure
+  rather than by its full formatted text.
+- **Adjacent JSX text nodes break `getByText`** — a template like
+  `{pct}% raggiunto` renders as *two* text nodes, so an exact-string
+  `getByText('50.0% raggiunto')` finds nothing. Match on the element's combined
+  `textContent` (`document.querySelectorAll('span').some(s => s.textContent === …)`)
+  or assert on `document.body.textContent`.
+
+### Other Inertia/network surfaces to mock
+
+- **`axios`** — components that call the server directly (e.g. `Conversation`)
+  import `axios`. `vi.mock('axios', …)` with `get`/`post` spies lets you drive
+  optimistic-update, rollback, and polling logic. A never-resolving
+  `mockReturnValue(new Promise(() => {}))` freezes a request "in flight" to test
+  in-flight state (send guards, disabled buttons).
+- **`ToastContext`** — imperative toasts go through `useToast()`. Wrap the
+  component in `<ToastContext.Provider value={vi.fn()}>` and assert on the spy.
+- **`<Head>`** — a component that renders Inertia's `<Head>` (e.g. `GoalProgress`)
+  needs `vi.mock('@inertiajs/react', () => ({ Head: () => null }))`.
+
+### Test-fixture footgun
+
+- **`??` swallows an intentional `null` prop.** A render helper that defaults a
+  nullable prop with `props.value ?? fallback` turns a deliberate `null` (e.g.
+  "no snapshot yet") back into the fallback. Use an `'key' in over` presence
+  check instead, so `null` is passed through.
 
 > **pnpm is pinned** to `package.json` `packageManager` (`pnpm@10.18.0`) via
 > corepack, so the container's pnpm matches the store that built `node_modules`
