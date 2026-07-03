@@ -5,6 +5,7 @@ import { AlertTriangle, Loader2, Pencil, Check, X } from 'lucide-react';
 import { type SessionSummary } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
 import { TypewriterText } from '@/Components/Advisor/TypewriterText';
+import { markInternalNavigation } from '@/Components/Advisor/enterAnimation';
 
 export function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activeId: number | null; onRename: (id: number, title: string) => void }) {
     const isActive = s.id === activeId;
@@ -46,7 +47,7 @@ export function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activ
 
     return (
         <div
-            onClick={() => { if (!isActive) router.visit(`/advisor/${s.id}`); }}
+            onClick={() => { if (!isActive) { markInternalNavigation(); router.visit(`/advisor/${s.id}`); } }}
             className={cn(
                 'group flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors cursor-pointer',
                 isActive ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',

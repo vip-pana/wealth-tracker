@@ -6,6 +6,7 @@ import { PageHeader } from '@/Components/Layout/PageHeader';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import { type SessionSummary, type ActiveSession } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
@@ -13,6 +14,7 @@ import { TypewriterText, markSessionForTitleAnimation } from '@/Components/Advis
 import { SessionList } from '@/Components/Advisor/SessionList';
 import { Conversation } from '@/Components/Advisor/Conversation';
 import { NewConversation } from '@/Components/Advisor/NewConversation';
+import { markInternalNavigation, claimEnterAnimation } from '@/Components/Advisor/enterAnimation';
 import { Sparkles, AlertTriangle, Trash2, UserCog } from 'lucide-react';
 
 interface Props {
@@ -30,6 +32,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
     const [chatMode, setChatMode] = useState(false);
     const [firstChat, setFirstChat] = useState('');
     const [startingChat, setStartingChat] = useState(false);
+    const [animateEnter] = useState(claimEnterAnimation);
     const pushToast = useToast();
 
     const generate = async () => {
@@ -37,6 +40,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
         try {
             const { data } = await axios.post<{ session_id: number }>('/advisor/generate');
             markSessionForTitleAnimation(data.session_id);
+            markInternalNavigation();
             router.visit(`/advisor/${data.session_id}`);
         } catch (e) {
             const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
@@ -54,6 +58,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
         try {
             const { data } = await axios.post<{ session_id: number }>('/advisor/chat', { message: text });
             markSessionForTitleAnimation(data.session_id);
+            markInternalNavigation();
             router.visit(`/advisor/${data.session_id}`);
         } catch (e) {
             const msg = axios.isAxiosError(e) && typeof e.response?.data?.error === 'string'
@@ -66,6 +71,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
 
     const deleteSession = (id: number) => {
         if (!confirm('Eliminare questa sessione e la sua conversazione?')) return;
+        markInternalNavigation();
         router.delete(`/advisor/${id}`, { preserveScroll: true });
     };
 
@@ -76,7 +82,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
     return (
         <>
             <Head title="Consulente AI" />
-            <div className="flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full">
+            <div className={cn('flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full', animateEnter && 'animate-page-enter')}>
                 <PageHeader
                     icon={Sparkles}
                     title="Consulente AI"
@@ -113,7 +119,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
 
                         <div className="h-full min-h-0">
                             {activeSession && !chatMode ? (
-                                <div key={activeSession.id} className="flex flex-col h-full min-h-0 gap-2 animate-page-enter">
+                                <div key={activeSession.id} className="flex flex-col h-full min-h-0 gap-2">
                                     <div className="flex items-center justify-between flex-shrink-0">
                                         <h2 className="text-sm font-medium truncate flex items-center gap-2">
                                             <KindIcon kind={activeSession.kind} className="w-4 h-4 text-primary" />
@@ -136,7 +142,10 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                         onSent={() => router.reload({ only: ['sessions'] })}
                                     />
                                 </div>
-                            ) : chatMode ? (
+                            ) : (
+                                // No open session (or the user hit "new chat"):
+                                // land on a ready-to-type new conversation rather
+                                // than a passive empty state.
                                 <div className="flex flex-col h-full min-h-0">
                                     <NewConversation
                                         value={firstChat}
@@ -148,15 +157,6 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                         funFacts={funFacts}
                                     />
                                 </div>
-                            ) : (
-                                <Card>
-                                    <CardContent className="py-12 text-center space-y-2">
-                                        <Sparkles className="w-8 h-8 text-primary/60 mx-auto" />
-                                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                                            Genera un&apos;analisi del tuo portafoglio o avvia una conversazione. Le sessioni restano salvate qui a sinistra.
-                                        </p>
-                                    </CardContent>
-                                </Card>
                             )}
                         </div>
                     </div>
