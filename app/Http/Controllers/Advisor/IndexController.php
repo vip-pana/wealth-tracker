@@ -11,6 +11,7 @@ use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use App\Models\Goal;
 use App\Models\InvestorProfile;
+use App\Models\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,9 +29,16 @@ class IndexController extends Controller
 
         // Opening a session marks it read, so its unread dot clears. A session
         // whose reply is still generating is left unread until it finishes and
-        // the user next opens it.
+        // the user next opens it. Reaching the session directly (not via the
+        // bell) also dismisses any notification pointing at it — the user has
+        // arrived, so the bell must not keep nagging about it.
         if ($session instanceof AdvisorSession && ! $session->isGenerating()) {
             $session->update(['last_read_at' => now()]);
+
+            Notification::query()
+                ->unread()
+                ->where('action_url', '/advisor/'.$session->id)
+                ->each(fn (Notification $n) => $n->markRead());
         }
 
         return Inertia::render('Advisor', [
