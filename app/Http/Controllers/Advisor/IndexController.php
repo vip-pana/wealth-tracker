@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
 
+use App\Actions\Advisor\ComputeAdvisorFunFacts;
 use App\Contracts\AdvisorProvider;
 use App\Http\Controllers\Controller;
 use App\Models\AdvisorMessage;
@@ -17,6 +18,7 @@ class IndexController extends Controller
 {
     public function __construct(
         private readonly AdvisorProvider $provider,
+        private readonly ComputeAdvisorFunFacts $funFacts,
     ) {}
 
     public function __invoke(?AdvisorSession $session = null): Response
@@ -35,6 +37,7 @@ class IndexController extends Controller
             'goalObjective' => $goal?->name,
             'sessions' => $this->sessionList(),
             'activeSession' => $session !== null ? $this->serializeSession($session) : null,
+            'funFacts' => $this->provider->isConfigured() ? $this->funFacts->run() : [],
         ]);
     }
 
