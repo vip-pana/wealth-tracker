@@ -29,9 +29,9 @@ jobs:
           php artisan key:generate
 
       - name: Setup pnpm
+        # No explicit version: action-setup reads packageManager in package.json
+        # (pnpm@10.18.0), keeping CI on the same pnpm as the pinned local/container.
         uses: pnpm/action-setup@v6
-        with:
-          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v6
