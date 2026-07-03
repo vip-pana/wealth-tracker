@@ -56,6 +56,38 @@ total. **No link to net worth / forecast for now.** Examples: subscriptions,
 mortgage, rent, loans. It's a self-contained mini-module; keep it isolated from
 the asset/snapshot model unless we later decide to integrate it.
 
+## Stop / interrupt a generating advisor reply — needs streaming first
+
+A "Stop" button to interrupt the AI advisor while it's replying. A logical-only
+cancel was built and then removed: it hid the reply in the UI, but couldn't
+free the model. Worth revisiting only together with streaming.
+
+**Why the simple version isn't enough.** The reply is produced by a *single*
+queued worker making a *blocking, non-abortable* `AdvisorProvider::chat()` call
+to the local model. A cancel can mark the turn cancelled in the DB and have the
+job discard its result, but the worker stays busy inside that call until the
+model finishes. Consequence the user hit: after cancelling Q1 and asking Q2, you
+still wait out Q1's full generation time *and* Q2's — the worker processes them
+sequentially and can't drop Q1 early.
+
+**What a real abort needs.** Switch chat generation to streaming and interrupt
+it between chunks:
+- `AdvisorProvider::chatStream()` already exists (used nowhere for chat yet) —
+  have the chat job stream instead of calling `chat()`.
+- Between chunks, check a cancel flag on the assistant message; if set, stop
+  consuming the stream and return, freeing the worker near-immediately.
+- Frontend: a Stop button while `awaitingReply`, a `POST …/message/{id}/cancel`
+  endpoint setting the flag, and the reply poll must keep *every* locally-
+  cancelled turn cancelled (not just the last message) so a late `done` from a
+  finished job can't resurrect it after a new question is sent.
+- Note the prior warning in `MessageController`: a synchronous streamed response
+  "froze the whole server" — that's why generation is queued. Streaming must
+  stay in the background job, not the web request.
+
+The removed attempt is in git history on branch
+`fix/notifications-ter-reconciliation` (commits `feat(advisor): let the user
+stop a generating chat reply` and follow-ups) if the wiring is useful later.
+
 ## External account sync — built on a branch, verified live, awaiting merge
 
 Goal: pull balances from banks instead of typing them. Researched in depth
