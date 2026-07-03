@@ -27,7 +27,7 @@ import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 interface Props {
     assets: Asset[];
-    categories: Pick<Category, 'id' | 'name' | 'color' | 'icon'>[];
+    categories: Pick<Category, 'id' | 'name' | 'color'>[];
     month: string;
     availableMonths: string[];
     snapshotState: 'missing' | 'stale' | 'current';
@@ -77,13 +77,12 @@ export default function InputData({ assets, categories, month, availableMonths, 
     const total = assets.reduce((sum, a) => sum + a.value, 0);
 
     // Group by category for summary
-    const byCat: Record<string, { name: string; color: string; icon: string | null; total: number }> = {};
+    const byCat: Record<string, { name: string; color: string; total: number }> = {};
     for (const a of assets) {
         if (!byCat[a.category_id]) {
             byCat[a.category_id] = {
                 name:  a.category.name,
                 color: a.category.color,
-                icon:  a.category.icon,
                 total: 0,
             };
         }
@@ -184,7 +183,6 @@ export default function InputData({ assets, categories, month, availableMonths, 
                             <Card key={cat.name}>
                                 <CardContent className="p-3">
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        {cat.icon && <span>{cat.icon}</span>}
                                         {cat.name}
                                     </p>
                                     <p

@@ -16,7 +16,6 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $color
- * @property string|null $icon
  * @property int $sort_order
  * @property MacroCategory|null $macro_category
  * @property int|null $assets_count
@@ -29,7 +28,7 @@ class Category extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['name', 'color', 'icon', 'sort_order', 'macro_category'];
+    protected $fillable = ['name', 'color', 'sort_order', 'macro_category'];
 
     protected $casts = [
         'sort_order' => 'integer',

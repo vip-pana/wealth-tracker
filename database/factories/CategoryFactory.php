@@ -17,7 +17,6 @@ class CategoryFactory extends Factory
         return [
             'name' => fake()->unique()->word(),
             'color' => '#'.strtoupper(fake()->hexColor()),
-            'icon' => null,
             'sort_order' => fake()->numberBetween(0, 100),
         ];
     }

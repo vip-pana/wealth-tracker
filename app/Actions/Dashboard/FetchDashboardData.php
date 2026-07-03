@@ -79,7 +79,6 @@ class FetchDashboardData extends Action
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
-                'icon' => $c->icon,
             ])->values()->toArray(),
             'hasData' => $liquidSnapshots->count() > 0,
             'latestSnapshot' => $latestSnapshot?->date?->format('Y-m-d'),

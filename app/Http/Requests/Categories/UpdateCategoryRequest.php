@@ -25,7 +25,6 @@ class UpdateCategoryRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:100', Rule::unique('categories', 'name')->ignore($category->id)->withoutTrashed()],
             'color' => 'sometimes|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'icon' => 'nullable|string|max:10',
             'sort_order' => 'nullable|integer|min:0',
             'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],
         ];

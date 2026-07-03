@@ -25,7 +25,6 @@ class FetchPensionData extends Action
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
-                'icon' => $c->icon,
                 'macro_category' => $c->macro_category?->value,
             ])
             ->values();
@@ -48,7 +47,6 @@ class FetchPensionData extends Action
                     'id' => $a->category->id,
                     'name' => $a->category->name,
                     'color' => $a->category->color,
-                    'icon' => $a->category->icon,
                 ],
             ])
             ->values();

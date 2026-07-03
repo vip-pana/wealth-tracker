@@ -96,7 +96,6 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                                 style={{ backgroundColor: cat.color }}
                             />
                             <span className="text-sm font-medium">
-                                {cat.icon && <span className="mr-1">{cat.icon}</span>}
                                 {cat.name}
                             </span>
                             <span className="text-xs text-muted-foreground">({assets.length})</span>

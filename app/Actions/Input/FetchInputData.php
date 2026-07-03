@@ -33,7 +33,6 @@ class FetchInputData extends Action
                 'id' => $c->id,
                 'name' => $c->name,
                 'color' => $c->color,
-                'icon' => $c->icon,
                 'macro_category' => $c->macro_category?->value,
             ]);
 

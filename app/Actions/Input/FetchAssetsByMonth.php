@@ -15,7 +15,7 @@ class FetchAssetsByMonth extends Action
 {
     /**
      * @param  Collection<string, AssetPrice>  $prices
-     * @return Collection<int, array{id: int, name: string, ticker: string|null, isin: string|null, expense_ratio: float|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, synced_at: string|null, sync_source: string|null, bank_linked: bool, transaction_managed: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, icon: string|null, macro_category: string|null}}>
+     * @return Collection<int, array{id: int, name: string, ticker: string|null, isin: string|null, expense_ratio: float|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, synced_at: string|null, sync_source: string|null, bank_linked: bool, transaction_managed: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, macro_category: string|null}}>
      */
     public function run(string $month, Collection $prices): Collection
     {
@@ -59,7 +59,6 @@ class FetchAssetsByMonth extends Action
                         'id' => $a->category->id,
                         'name' => $a->category->name,
                         'color' => $a->category->color,
-                        'icon' => $a->category->icon,
                         'macro_category' => $a->category->macro_category?->value,
                     ],
                 ];

@@ -260,7 +260,6 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                 <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
                                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
                                     <span className="text-sm font-medium flex-1 flex items-center gap-1.5">
-                                        {cat.icon && <span>{cat.icon}</span>}
                                         {cat.name}
                                     </span>
                                     {cat.macro_category && (

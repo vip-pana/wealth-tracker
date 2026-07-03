@@ -73,7 +73,6 @@ export interface TransactionAsset {
 export type CategoryForm = {
     name: string;
     color: string;
-    icon: string;
     macro_category: string;
 };
 

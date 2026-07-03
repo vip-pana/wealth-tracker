@@ -2,7 +2,6 @@ export interface Category {
     id: number;
     name: string;
     color: string;   // "#3b82f6"
-    icon: string | null;
     sort_order: number;
     macro_category: string | null;
     assets_count?: number;
@@ -11,7 +10,7 @@ export interface Category {
 export interface Asset {
     id: number;
     category_id: number;
-    category: Pick<Category, 'id' | 'name' | 'color' | 'icon' | 'macro_category'>;
+    category: Pick<Category, 'id' | 'name' | 'color' | 'macro_category'>;
     name: string;
     ticker: string | null;
     isin: string | null;
