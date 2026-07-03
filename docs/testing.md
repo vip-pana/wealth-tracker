@@ -142,7 +142,10 @@ is called) without a network, `vi.mock('@inertiajs/react', …)` and back
 `useForm` with a real `useState` store plus `vi.fn()` spies for `post`/`put`/
 `router.post`. See `AssetForm.test.tsx` for the pattern. Assert on the spy
 (`expect(put).toHaveBeenCalledWith('/assets/7', …)`) to distinguish create vs
-edit.
+edit. **If the component lists `setData` in a `useEffect` dependency array**
+(e.g. `CategoryDialog`), wrap the mock's `setData` in `useCallback(…, [])` — an
+unstable identity re-runs the effect every render and trips React's
+"Maximum update depth exceeded".
 
 ### happy-dom limits to design around
 
