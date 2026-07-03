@@ -10,7 +10,7 @@ import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import {
-    Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog,
+    Sparkles, AlertTriangle, Loader2, MessageSquarePlus, Trash2, FileText, MessageCircle, Send, UserCog, Pencil, Check, X,
 } from 'lucide-react';
 
 type Status = 'pending' | 'done' | 'failed';
@@ -80,17 +80,81 @@ function KindIcon({ kind, className }: { kind: Kind; className?: string }) {
     return <Icon className={className} />;
 }
 
+function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activeId: number | null; onRename: (id: number, title: string) => void }) {
+    const isActive = s.id === activeId;
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(s.title ?? '');
+
+    const startEditing = () => { setDraft(s.title ?? ''); setEditing(true); };
+    const commit = () => {
+        const next = draft.trim();
+        if (next !== '' && next !== (s.title ?? '')) onRename(s.id, next);
+        setEditing(false);
+    };
+
+    if (editing) {
+        return (
+            <div className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1.5">
+                <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
+                <input
+                    value={draft}
+                    autoFocus
+                    maxLength={120}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+                        else if (e.key === 'Escape') { e.preventDefault(); setEditing(false); }
+                    }}
+                    onBlur={commit}
+                    className="flex-1 min-w-0 bg-transparent text-sm focus:outline-none"
+                />
+                <button type="button" className="flex-shrink-0 text-muted-foreground hover:text-foreground" title="Salva" onMouseDown={(e) => { e.preventDefault(); commit(); }}>
+                    <Check className="w-3.5 h-3.5" />
+                </button>
+                <button type="button" className="flex-shrink-0 text-muted-foreground hover:text-foreground" title="Annulla" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }}>
+                    <X className="w-3.5 h-3.5" />
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            onClick={() => { if (!isActive) router.visit(`/advisor/${s.id}`); }}
+            className={cn(
+                'group flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors cursor-pointer',
+                isActive ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+            )}
+        >
+            <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="flex-1 min-w-0 truncate">{s.title ?? 'Sessione'}</span>
+            {s.status === 'pending' && <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />}
+            {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
+            <button
+                type="button"
+                className="flex-shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                title="Rinomina sessione"
+                onClick={(e) => { e.stopPropagation(); startEditing(); }}
+            >
+                <Pencil className="w-3.5 h-3.5" />
+            </button>
+        </div>
+    );
+}
+
 function SessionList({
     sessions,
     activeId,
     onGenerate,
     onNewChat,
+    onRename,
     generating,
 }: {
     sessions: SessionSummary[];
     activeId: number | null;
     onGenerate: () => void;
     onNewChat: () => void;
+    onRename: (id: number, title: string) => void;
     generating: boolean;
 }) {
     return (
@@ -112,19 +176,7 @@ function SessionList({
             ) : (
                 <div className="flex flex-col gap-1">
                     {sessions.map((s) => (
-                        <button
-                            key={s.id}
-                            onClick={() => { if (s.id !== activeId) router.visit(`/advisor/${s.id}`); }}
-                            className={cn(
-                                'flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
-                                s.id === activeId ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                            )}
-                        >
-                            <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="flex-1 min-w-0 truncate">{s.title ?? 'Sessione'}</span>
-                            {s.status === 'pending' && <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />}
-                            {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
-                        </button>
+                        <SessionRow key={s.id} s={s} activeId={activeId} onRename={onRename} />
                     ))}
                 </div>
             )}
@@ -385,6 +437,10 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
         router.delete(`/advisor/${id}`, { preserveScroll: true });
     };
 
+    const renameSession = (id: number, title: string) => {
+        router.patch(`/advisor/${id}`, { title }, { preserveScroll: true });
+    };
+
     return (
         <>
             <Head title="Consulente AI" />
@@ -418,6 +474,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                 activeId={activeSession?.id ?? null}
                                 onGenerate={generate}
                                 onNewChat={() => setChatMode(true)}
+                                onRename={renameSession}
                                 generating={generating}
                             />
                         </div>

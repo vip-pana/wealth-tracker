@@ -206,4 +206,22 @@ class AdvisorControllerTest extends TestCase
         $this->assertDatabaseMissing('advisor_sessions', ['id' => $session->id]);
         $this->assertDatabaseCount('advisor_messages', 0);
     }
+
+    public function test_rename_updates_the_session_title(): void
+    {
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done', 'title' => 'vecchio']);
+
+        $this->patch("/advisor/{$session->id}", ['title' => 'nuovo nome'])->assertRedirect();
+
+        $this->assertDatabaseHas('advisor_sessions', ['id' => $session->id, 'title' => 'nuovo nome']);
+    }
+
+    public function test_rename_rejects_an_empty_title(): void
+    {
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done', 'title' => 'vecchio']);
+
+        $this->patch("/advisor/{$session->id}", ['title' => ''])->assertSessionHasErrors('title');
+
+        $this->assertDatabaseHas('advisor_sessions', ['id' => $session->id, 'title' => 'vecchio']);
+    }
 }
