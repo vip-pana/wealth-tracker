@@ -174,6 +174,21 @@ unstable identity re-runs the effect every render and trips React's
   component in `<ToastContext.Provider value={vi.fn()}>` and assert on the spy.
 - **`<Head>`** — a component that renders Inertia's `<Head>` (e.g. `GoalProgress`)
   needs `vi.mock('@inertiajs/react', () => ({ Head: () => null }))`.
+- **`fetch`** — a component that fetches on open (e.g. `TransactionsDialog`)
+  needs `vi.stubGlobal('fetch', fetchMock)` where `fetchMock` resolves to
+  `{ json: async () => payload }`; `waitFor` the loaded content, and
+  `vi.unstubAllGlobals()` in `afterEach`.
+
+### Timers and randomness
+
+Components with a reveal delay or a rotating ticker (e.g. `ThinkingWithFacts`)
+need `vi.useFakeTimers()` and `act(() => vi.advanceTimersByTime(ms))` to step
+them; restore with `vi.useRealTimers()` in `afterEach`. If the component also
+shuffles with `Math.random`, `vi.spyOn(Math, 'random').mockReturnValue(0)` — but
+note a Fisher-Yates shuffle with `random()===0` still *reorders* (each element
+swaps with index 0), so don't assume element 0 stays first. Assert that the
+shown item *changes* across a tick rather than pinning a specific order, or use
+a single-element list when order doesn't matter.
 
 ### Test-fixture footgun
 
