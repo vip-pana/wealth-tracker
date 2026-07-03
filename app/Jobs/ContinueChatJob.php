@@ -67,4 +67,23 @@ class ContinueChatJob implements ShouldQueue
             actionUrl: '/advisor/'.$session->id,
         );
     }
+
+    /**
+     * The job died before completing (timeout, max attempts). Without this the
+     * assistant turn stays `pending` forever and the UI spins indefinitely, so
+     * flip it to failed.
+     */
+    public function failed(?\Throwable $e): void
+    {
+        $assistant = AdvisorMessage::find($this->assistantMessageId);
+
+        if ($assistant === null || $assistant->status !== AdvisorMessage::STATUS_PENDING) {
+            return;
+        }
+
+        $assistant->update([
+            'status' => AdvisorMessage::STATUS_FAILED,
+            'error' => 'Il consulente non ha risposto. Riprova.',
+        ]);
+    }
 }

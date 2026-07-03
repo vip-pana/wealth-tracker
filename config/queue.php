@@ -41,7 +41,11 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest job timeout (advisor jobs are 600s): a
+            // local model can take minutes to reply, and if retry_after fires
+            // first the queue re-runs the still-running job, which then trips
+            // MaxAttemptsExceededException (tries=1) and the reply never lands.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 660),
             'after_commit' => false,
         ],
 
