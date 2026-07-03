@@ -20,6 +20,7 @@ run() {
 
 run "Laravel Pint (style)"          "composer lint"
 run "PHPStan (static analysis)"     "composer analyse"
+run "Rector (refactoring check)"    "composer rector"
 run "ESLint"                        "pnpm run lint"
 run "TypeScript (tsc)"              "pnpm run typecheck"
 run "Vitest (frontend tests)"       "pnpm run test"

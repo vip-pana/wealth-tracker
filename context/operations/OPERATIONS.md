@@ -17,14 +17,14 @@ The Laravel scheduler is defined in `routes/console.php` (`prices:fetch` daily a
 Canonical list is in `composer.json` / `package.json` scripts — reference, don't copy. Key ones:
 - `composer dev` — start everything; `php artisan migrate` — migrations.
 - `composer lint` / `composer lint:fix` — Pint; `composer analyse` — PHPStan level 9.
-- `composer rector` / `composer rector:fix` — Rector (PHP 8.4 upgrade + code-quality + dead-code, config in `rector.php`). On-demand refactoring, not part of the pre-push gate; run `rector:fix` then `lint:fix` and the gate after.
+- `composer rector` / `composer rector:fix` — Rector (PHP 8.4 upgrade + code-quality + dead-code, config in `rector.php`). `composer rector` is a dry-run and part of the gate (it fails if any fix is pending); apply with `rector:fix`, then `lint:fix`.
 - `pnpm run lint` / `lint:fix` — ESLint; `pnpm run typecheck` — tsc; `pnpm run test` — Vitest.
 - `php artisan test` — PHPUnit.
 
 ## Deploy
 
 <!-- exodia:section:deploy -->
-No deploy pipeline. The quality gate (pre-push hook in `.githooks/pre-push`, mirrored by `.github/workflows/ci.yml`) runs six checks **in order, inside Docker**: Pint → PHPStan → ESLint → tsc → Vitest → PHPUnit. All must pass before push. Enable the hook with `composer setup-hooks`. Versions are released via git tags + `CHANGELOG.md` (current: `v1.0.0`).
+No deploy pipeline. The quality gate (pre-push hook in `.githooks/pre-push`, mirrored by `.github/workflows/ci.yml`) runs seven checks **in order, inside Docker**: Pint → PHPStan → Rector (dry-run) → ESLint → tsc → Vitest → PHPUnit. All must pass before push. Enable the hook with `composer setup-hooks`. Versions are released via git tags + `CHANGELOG.md` (current: `v1.0.0`).
 
 ## Backup & restore
 

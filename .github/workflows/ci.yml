@@ -48,6 +48,9 @@ jobs:
       - name: Static analysis (PHPStan)
         run: composer analyse
 
+      - name: Refactoring check (Rector)
+        run: composer rector
+
       - name: Lint (ESLint)
         run: pnpm run lint
 
