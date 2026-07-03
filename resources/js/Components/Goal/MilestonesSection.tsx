@@ -1,4 +1,5 @@
 import { Label } from '@/Components/ui/label';
+import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { Button } from '@/Components/ui/button';
 import { Plus } from 'lucide-react';
 import { MilestoneFormRow } from '@/Components/Goal/MilestoneFormRow';
@@ -17,7 +18,7 @@ export function MilestonesSection({
 }) {
     return (
         <div className="space-y-2">
-            <Label>Milestone intermedie (opzionale)</Label>
+            <Label>Milestone intermedie <OptionalHint /></Label>
             <div className="space-y-0">
                 {items.map((item, idx) => (
                     <MilestoneFormRow

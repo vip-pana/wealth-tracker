@@ -49,7 +49,6 @@ export function CategoryDialog({
     const { data, setData, post, put, processing, errors, reset } = useForm<CategoryForm>({
         name:           editCategory?.name ?? '',
         color:          editCategory?.color ?? '#6366f1',
-        icon:           editCategory?.icon ?? '',
         macro_category: editCategory?.macro_category ?? '',
     });
 
@@ -58,7 +57,6 @@ export function CategoryDialog({
             setData({
                 name:           editCategory?.name ?? '',
                 color:          editCategory?.color ?? '#6366f1',
-                icon:           editCategory?.icon ?? '',
                 macro_category: editCategory?.macro_category ?? '',
             });
         }
@@ -124,15 +122,6 @@ export function CategoryDialog({
                             ))}
                         </div>
                         {errors.color && <p className="text-xs text-destructive">{errors.color}</p>}
-                    </div>
-                    <div className="space-y-1">
-                        <Label>Icona (emoji opzionale)</Label>
-                        <Input
-                            value={data.icon}
-                            onChange={(e) => setData('icon', e.target.value)}
-                            placeholder="💰"
-                            maxLength={10}
-                        />
                     </div>
                     <div className="space-y-1">
                         <Label>Macro-categoria</Label>

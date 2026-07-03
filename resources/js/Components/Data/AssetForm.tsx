@@ -4,6 +4,7 @@ import { Landmark, CandlestickChart, ReceiptText } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import { OptionalHint } from '@/Components/ui/OptionalHint';
 import {
     Select,
     SelectContent,
@@ -26,7 +27,7 @@ type Mode = 'manual' | 'ticker';
 interface Props {
     open: boolean;
     onClose: () => void;
-    categories: Pick<Category, 'id' | 'name' | 'color' | 'icon'>[];
+    categories: Pick<Category, 'id' | 'name' | 'color'>[];
     month: string;
     editAsset?: Asset | null;
     prices: Record<string, AssetPriceInfo>;
@@ -164,7 +165,6 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                 {categories.map((cat) => (
                                     <SelectItem key={cat.id} value={cat.id.toString()}>
                                         <span className="flex items-center gap-2">
-                                            {cat.icon && <span>{cat.icon}</span>}
                                             {cat.name}
                                         </span>
                                     </SelectItem>
@@ -336,8 +336,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                     {(mode === 'ticker' || isEdit) && !editAsset?.bank_linked && (
                         <div className="space-y-1">
                             <Label>
-                                ISIN{' '}
-                                <span className="text-muted-foreground font-normal">(opzionale)</span>
+                                ISIN <OptionalHint />
                             </Label>
                             <Input
                                 value={data.isin}
@@ -370,8 +369,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                so it can reason about cost drag on net return. */}
                             <div className="space-y-1 pt-1">
                                 <Label>
-                                    Costo annuo (TER){' '}
-                                    <span className="text-muted-foreground font-normal">(opzionale, %)</span>
+                                    Costo annuo (TER) <OptionalHint note="%" />
                                 </Label>
                                 <Input
                                     type="text"
@@ -394,8 +392,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                     {/* Notes */}
                     <div className="space-y-1">
                         <Label>
-                            Note{' '}
-                            <span className="text-muted-foreground font-normal">(opzionale)</span>
+                            Note <OptionalHint />
                         </Label>
                         <Input
                             value={data.notes ?? ''}

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
+import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { ChevronDown } from 'lucide-react';
 import { PensionCategory, PensionEntry } from '@/Components/Pension/types';
@@ -146,7 +147,7 @@ export function PensionFormDialog({
                     </div>
 
                     <div className="space-y-1">
-                        <Label>Note (opzionale)</Label>
+                        <Label>Note <OptionalHint /></Label>
                         <textarea
                             value={data.notes}
                             onChange={(e) => setData('notes', e.target.value)}

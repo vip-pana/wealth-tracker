@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
+import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { Input } from '@/Components/ui/input';
 import {
     Dialog,
@@ -86,7 +87,7 @@ export function ProfileDialog({
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <Label className="text-xs">Obiettivo principale <span className="text-muted-foreground">(opzionale)</span></Label>
+                        <Label className="text-xs">Obiettivo principale <OptionalHint /></Label>
                         <Input
                             value={form.data.objective}
                             onChange={(e) => form.setData('objective', e.target.value)}
@@ -94,7 +95,7 @@ export function ProfileDialog({
                         />
                     </div>
                     <div className="space-y-1">
-                        <Label className="text-xs">Allocazione target <span className="text-muted-foreground">(opzionale)</span></Label>
+                        <Label className="text-xs">Allocazione target <OptionalHint /></Label>
                         <textarea
                             value={form.data.target_allocation}
                             onChange={(e) => form.setData('target_allocation', e.target.value)}
