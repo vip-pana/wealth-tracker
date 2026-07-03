@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notifications;
 
+use App\Actions\Advisor\ContinueChat;
 use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
 use App\Contracts\AdvisorProvider;
+use App\Jobs\ContinueChatJob;
 use App\Jobs\GenerateAdvisorReportJob;
+use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use App\Models\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +84,25 @@ class AdvisorReportNotificationTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'type' => Notification::TYPE_ADVISOR_REPORT_FAILED,
             'level' => Notification::LEVEL_WARNING,
+        ]);
+    }
+
+    public function test_a_finished_chat_reply_produces_a_notification(): void
+    {
+        $this->bindProvider(configured: true, reply: 'Ecco la risposta.');
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'q', 'status' => 'done']);
+        $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        (new ContinueChatJob($user->id, $assistant->id))->handle(
+            app(ContinueChat::class),
+            app(PushNotification::class),
+        );
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => Notification::TYPE_ADVISOR_CHAT_READY,
+            'level' => Notification::LEVEL_SUCCESS,
+            'action_url' => '/advisor/'.$session->id,
         ]);
     }
 }

@@ -53,8 +53,16 @@ export function SessionRow({ s, activeId, onRename }: { s: SessionSummary; activ
             )}
         >
             <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
-            <TypewriterText id={s.id} text={s.title ?? 'Sessione'} className="flex-1 min-w-0 truncate" />
-            {s.status === 'pending' && <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />}
+            <TypewriterText
+                id={s.id}
+                text={s.title ?? 'Sessione'}
+                className={cn('flex-1 min-w-0 truncate', s.unread && !isActive && 'font-semibold text-foreground')}
+            />
+            {s.generating
+                ? <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />
+                : s.unread && !isActive
+                    ? <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" title="Risposta da leggere" />
+                    : null}
             {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
             <button
                 type="button"

@@ -34,6 +34,8 @@ class Notification extends Model
 
     public const TYPE_ADVISOR_REPORT_FAILED = 'advisor_report_failed';
 
+    public const TYPE_ADVISOR_CHAT_READY = 'advisor_chat_ready';
+
     public const TYPE_SCALABLE_SYNC_FAILED = 'scalable_sync_failed';
 
     public const TYPE_BANK_CONSENT_EXPIRED = 'bank_consent_expired';

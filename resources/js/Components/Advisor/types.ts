@@ -6,6 +6,8 @@ export interface SessionSummary {
     kind: Kind;
     title: string | null;
     status: Status;
+    generating: boolean;
+    unread: boolean;
     created_at: string | null;
 }
 
@@ -13,6 +15,8 @@ export interface Message {
     id: number;
     role: 'assistant' | 'user';
     content: string;
+    status?: Status;
+    error?: string | null;
     created_at: string | null;
 }
 

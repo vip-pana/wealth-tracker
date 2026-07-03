@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
 
-use App\Actions\Advisor\ContinueChat;
 use App\Contracts\AdvisorProvider;
 use App\Http\Controllers\Controller;
+use App\Jobs\ContinueChatJob;
+use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,6 @@ class StartChatController extends Controller
 {
     public function __construct(
         private readonly AdvisorProvider $provider,
-        private readonly ContinueChat $continueChat,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -30,30 +30,32 @@ class StartChatController extends Controller
             'message' => 'required|string|max:4000',
         ]);
 
-        // A free chat starts already "done" (no background report to await);
-        // the title is a short preview of the opening question.
+        // Persist the session, the user turn and an empty pending assistant
+        // turn, then generate the reply in the background (same as follow-up
+        // messages) so the request returns immediately and the app stays
+        // navigable while the local model works. The title previews the question.
         $session = AdvisorSession::create([
             'kind' => AdvisorSession::KIND_CHAT,
             'title' => Str::limit($data['message'], 60),
             'status' => AdvisorSession::STATUS_DONE,
         ]);
 
-        $reply = $this->continueChat->run($session, $data['message']);
-
-        if ($reply === null) {
-            $session->delete();
-
-            return response()->json(['error' => 'Consulente AI non configurato.'], 422);
-        }
-
-        return response()->json([
+        $user = AdvisorMessage::create([
             'session_id' => $session->id,
-            'message' => [
-                'id' => $reply->id,
-                'role' => $reply->role,
-                'content' => $reply->content,
-                'created_at' => $reply->created_at?->toISOString(),
-            ],
+            'role' => AdvisorMessage::ROLE_USER,
+            'content' => $data['message'],
+            'status' => AdvisorMessage::STATUS_DONE,
         ]);
+
+        $assistant = AdvisorMessage::create([
+            'session_id' => $session->id,
+            'role' => AdvisorMessage::ROLE_ASSISTANT,
+            'content' => '',
+            'status' => AdvisorMessage::STATUS_PENDING,
+        ]);
+
+        ContinueChatJob::dispatch($user->id, $assistant->id);
+
+        return response()->json(['session_id' => $session->id]);
     }
 }

@@ -15,10 +15,12 @@ export function markSessionForTitleAnimation(id: number): void {
     }
 }
 
-// Ids resolved to "animate" this page-load. Both title spots (header + list
-// row) share the same id, so we resolve the sessionStorage stamp once and let
-// every instance agree — otherwise the first to mount would consume the stamp
-// and the other would render plainly.
+// Ids currently mid-reveal this page-load. The two title spots (header + list
+// row) mount together and must agree, so the first to resolve the stamp records
+// `true` here and the sibling reads it. Once the reveal has actually started it
+// is marked `false`, so any LATER remount of the same id (e.g. the chat poll
+// re-rendering the list while a reply generates) renders the title plainly
+// instead of replaying the typewriter.
 const claimedTitleAnims = new Map<number, boolean>();
 
 function claimTitleAnimation(id: number): boolean {
@@ -38,6 +40,10 @@ function claimTitleAnimation(id: number): boolean {
     return claimed;
 }
 
+function consumeTitleAnimation(id: number): void {
+    claimedTitleAnims.set(id, false);
+}
+
 /**
  * Types a title out character by character, but only for the freshly created
  * session (claimed once from sessionStorage). Every other case — refresh,
@@ -54,6 +60,9 @@ export function TypewriterText({ id, text, className }: { id: number; text: stri
             setShown(text);
             return;
         }
+        // Mark the reveal consumed so future remounts of this id (chat poll
+        // re-rendering the list) don't replay it.
+        consumeTitleAnimation(id);
         let i = 0;
         const timer = setInterval(() => {
             i += 1;

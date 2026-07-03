@@ -5,11 +5,11 @@ declare(strict_types=1);
 use App\Http\Controllers\Advisor\DestroyController as AdvisorDestroyController;
 use App\Http\Controllers\Advisor\GenerateController as AdvisorGenerateController;
 use App\Http\Controllers\Advisor\IndexController as AdvisorIndexController;
+use App\Http\Controllers\Advisor\MessageController as AdvisorMessageController;
 use App\Http\Controllers\Advisor\RenameController as AdvisorRenameController;
 use App\Http\Controllers\Advisor\StartChatController as AdvisorStartChatController;
 use App\Http\Controllers\Advisor\StatusController as AdvisorStatusController;
 use App\Http\Controllers\Advisor\StoreProfileController as AdvisorStoreProfileController;
-use App\Http\Controllers\Advisor\StreamMessageController as AdvisorStreamMessageController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
@@ -65,7 +65,7 @@ Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('adv
 // the static segments above.
 Route::get('/advisor/{session}', AdvisorIndexController::class)->name('advisor.show');
 Route::get('/advisor/{session}/status', AdvisorStatusController::class)->name('advisor.status');
-Route::post('/advisor/{session}/message', AdvisorStreamMessageController::class)->name('advisor.message');
+Route::post('/advisor/{session}/message', AdvisorMessageController::class)->name('advisor.message');
 Route::patch('/advisor/{session}', AdvisorRenameController::class)->name('advisor.rename');
 Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advisor.destroy');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');

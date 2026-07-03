@@ -27,6 +27,8 @@ class StatusController extends Controller
                     'id' => $m->id,
                     'role' => $m->role,
                     'content' => $m->content,
+                    'status' => $m->status,
+                    'error' => $m->error,
                     'created_at' => $m->created_at?->toISOString(),
                 ])
                 ->all(),

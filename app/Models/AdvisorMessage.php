@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
  * @property int $session_id
  * @property string $role
  * @property string $content
+ * @property string $status
+ * @property string|null $error
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read AdvisorSession $session
@@ -23,7 +25,13 @@ class AdvisorMessage extends Model
 
     public const ROLE_USER = 'user';
 
-    protected $fillable = ['session_id', 'role', 'content'];
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_DONE = 'done';
+
+    public const STATUS_FAILED = 'failed';
+
+    protected $fillable = ['session_id', 'role', 'content', 'status', 'error'];
 
     /** @return BelongsTo<AdvisorSession, $this> */
     public function session(): BelongsTo

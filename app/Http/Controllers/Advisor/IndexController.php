@@ -26,6 +26,13 @@ class IndexController extends Controller
         $profile = InvestorProfile::query()->first();
         $goal = Goal::query()->first();
 
+        // Opening a session marks it read, so its unread dot clears. A session
+        // whose reply is still generating is left unread until it finishes and
+        // the user next opens it.
+        if ($session !== null && ! $session->isGenerating()) {
+            $session->update(['last_read_at' => now()]);
+        }
+
         return Inertia::render('Advisor', [
             'configured' => $this->provider->isConfigured(),
             'profile' => $profile ? [
@@ -44,11 +51,12 @@ class IndexController extends Controller
     /**
      * The session history for the sidebar list (no message bodies — light).
      *
-     * @return list<array{id: int, kind: string, title: string|null, status: string, created_at: string|null}>
+     * @return list<array{id: int, kind: string, title: string|null, status: string, generating: bool, unread: bool, created_at: string|null}>
      */
     private function sessionList(): array
     {
         $rows = AdvisorSession::query()
+            ->with('messages')
             ->latest('id')
             ->get()
             ->map(fn (AdvisorSession $s): array => [
@@ -56,6 +64,8 @@ class IndexController extends Controller
                 'kind' => $s->kind,
                 'title' => $s->title,
                 'status' => $s->status,
+                'generating' => $s->isGenerating(),
+                'unread' => $s->hasUnread(),
                 'created_at' => $s->created_at?->toISOString(),
             ])
             ->all();
@@ -66,7 +76,7 @@ class IndexController extends Controller
     /**
      * A full session with its messages, for the conversation view.
      *
-     * @return array{id: int, kind: string, title: string|null, status: string, error: string|null, messages: list<array{id: int, role: string, content: string, created_at: string|null}>}
+     * @return array{id: int, kind: string, title: string|null, status: string, error: string|null, messages: list<array{id: int, role: string, content: string, status: string, error: string|null, created_at: string|null}>}
      */
     private function serializeSession(AdvisorSession $session): array
     {
@@ -76,6 +86,8 @@ class IndexController extends Controller
                 'id' => $m->id,
                 'role' => $m->role,
                 'content' => $m->content,
+                'status' => $m->status,
+                'error' => $m->error,
                 'created_at' => $m->created_at?->toISOString(),
             ])
             ->all();

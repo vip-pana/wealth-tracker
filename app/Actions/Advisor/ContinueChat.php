@@ -56,6 +56,32 @@ class ContinueChat extends Action
     }
 
     /**
+     * Generate the reply for an already-persisted user turn and fill the
+     * pending assistant message in place. Used by the background job: the web
+     * request has already stored the user message and an empty `pending`
+     * assistant message, so the UI can show the sent question immediately and
+     * poll for the answer. Marks the assistant message done, or failed on error.
+     */
+    public function complete(AdvisorSession $session, AdvisorMessage $user, AdvisorMessage $assistant): void
+    {
+        if (! $this->provider->isConfigured()) {
+            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);
+
+            return;
+        }
+
+        try {
+            $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
+        } catch (\Throwable) {
+            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.']);
+
+            return;
+        }
+
+        $assistant->update(['content' => $reply, 'status' => AdvisorMessage::STATUS_DONE]);
+    }
+
+    /**
      * Like run(), but streams the reply: each text delta is handed to $onChunk
      * as it arrives. Persists the user turn and the full assistant reply only
      * after a successful stream (same no-orphan guarantee as run()). Returns the
@@ -90,13 +116,19 @@ class ContinueChat extends Action
      * session (oldest first), then the new question. Metrics are recomputed
      * now, so reopening an old session still reasons about the present state.
      *
+     * When called from the background job, the current user turn and the empty
+     * pending assistant turn are already persisted; `$excludeFromId` drops them
+     * from the history so they aren't duplicated (the new question is appended
+     * explicitly below).
+     *
      * @return list<array{role: string, content: string}>
      */
-    private function buildMessages(AdvisorSession $session, string $userMessage): array
+    private function buildMessages(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null): array
     {
         $briefing = $this->renderContext->run($this->buildContext->run());
 
         $history = $session->messages()
+            ->when($excludeFromId !== null, fn ($q) => $q->where('id', '<', $excludeFromId))
             ->orderByDesc('id')
             ->limit(self::HISTORY_TURNS)
             ->get()

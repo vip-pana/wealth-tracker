@@ -92,53 +92,74 @@ export function Conversation({
         }
     }, [status, pushToast, onSent]);
 
+    // The assistant reply is generated in a background job; the request just
+    // enqueues it. Show the sent question and an empty pending bubble, then let
+    // the poll effect below fill it in — so the user can navigate away while the
+    // local model works.
     const send = async (raw?: string) => {
         const text = (raw ?? input).trim();
         if (text === '' || sendingRef.current) return;
         sendingRef.current = true;
         setInput('');
         setSending(true);
-        const userId = -Date.now();
-        const assistantId = userId - 1;
-        // Show the user turn and an empty assistant bubble that fills as the
-        // stream arrives.
+        // Optimistic pair; replaced by the server's real rows on response.
+        const tempUserId = -Date.now();
+        const tempAssistantId = tempUserId - 1;
         setMessages((m) => [
             ...m,
-            { id: userId, role: 'user', content: text, created_at: null },
-            { id: assistantId, role: 'assistant', content: '', created_at: null },
+            { id: tempUserId, role: 'user', content: text, status: 'done', created_at: null },
+            { id: tempAssistantId, role: 'assistant', content: '', status: 'pending', created_at: null },
         ]);
         try {
-            const xsrf = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');
-            const res = await fetch(`/advisor/${session.id}/message`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': xsrf,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({ message: text }),
-            });
-            if (!res.ok || !res.body) throw new Error(String(res.status));
-
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            for (;;) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: msg.content + chunk } : msg));
-            }
-            onSent();
+            const { data } = await axios.post<{ user: Message; assistant: Message }>(
+                `/advisor/${session.id}/message`,
+                { message: text },
+            );
+            setMessages((m) => [
+                ...m.filter((x) => x.id !== tempUserId && x.id !== tempAssistantId),
+                data.user,
+                data.assistant,
+            ]);
         } catch {
             pushToast('Il consulente non ha risposto. Riprova.', 'error');
-            // Roll back the optimistic pair.
-            setMessages((m) => m.filter((x) => x.id !== userId && x.id !== assistantId));
+            setMessages((m) => m.filter((x) => x.id !== tempUserId && x.id !== tempAssistantId));
             setInput(text);
         } finally {
             sendingRef.current = false;
             setSending(false);
         }
     };
+
+    // A chat reply is being generated when the last message is a pending
+    // assistant turn. Poll the session until it resolves (mirrors the report
+    // poll, but keyed on the message rather than the session status).
+    const lastMessage = messages[messages.length - 1];
+    const awaitingReply = lastMessage?.role === 'assistant' && lastMessage?.status === 'pending' && lastMessage.id > 0;
+
+    useEffect(() => {
+        if (!awaitingReply) return;
+        let cancelled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const tick = async () => {
+            try {
+                const { data } = await axios.get<{ messages: Message[] }>(`/advisor/${session.id}/status`);
+                if (cancelled) return;
+                setMessages(data.messages);
+                const last = data.messages[data.messages.length - 1];
+                if (last?.role === 'assistant' && last?.status === 'pending') {
+                    timer = setTimeout(tick, 2000);
+                } else {
+                    if (last?.status === 'failed') pushToast(last.error ?? 'Il consulente non ha risposto.', 'error');
+                    onSent();
+                }
+            } catch {
+                // transient; retry
+                timer = setTimeout(tick, 2500);
+            }
+        };
+        timer = setTimeout(tick, 1500);
+        return () => { cancelled = true; if (timer) clearTimeout(timer); };
+    }, [awaitingReply, session.id, pushToast, onSent]);
 
     const pending = status === 'pending';
 
