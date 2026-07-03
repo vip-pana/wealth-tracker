@@ -32,7 +32,7 @@ class FetchEtfPrice extends Action
             }
 
             AssetPrice::recordSuccess($ticker, $price, self::CURRENCY);
-            $this->backfillExpenseRatio($ticker, $symbol);
+            $this->backfillExpenseRatio($ticker, $candidates);
 
             return new PriceRefreshResult(updated: [$ticker]);
         }
@@ -47,11 +47,15 @@ class FetchEtfPrice extends Action
      * Best-effort: stamp the fund's TER on this ticker's assets that don't have
      * one yet. The TER is quasi-static, so we only hit Yahoo's gated funds
      * endpoint when at least one asset is missing it — never re-fetching once
-     * set (clear the field to force a refresh). A null result (Yahoo doesn't
-     * carry it, or the crumb handshake failed) is silently ignored; this must
-     * never affect the price refresh.
+     * set (clear the field to force a refresh). Yahoo's fundProfile module is
+     * only populated on the exchange-suffixed symbol (e.g. ISAC.MI), not the
+     * bare ticker the price often comes from, so we try every candidate. A null
+     * result (Yahoo doesn't carry it, or the crumb handshake failed) is silently
+     * ignored; this must never affect the price refresh.
+     *
+     * @param  list<string>  $symbols
      */
-    private function backfillExpenseRatio(string $ticker, string $symbol): void
+    private function backfillExpenseRatio(string $ticker, array $symbols): void
     {
         $missing = Asset::query()
             ->where('ticker', $ticker)
@@ -62,7 +66,15 @@ class FetchEtfPrice extends Action
             return;
         }
 
-        $ter = $this->yahooFinance->getExpenseRatio($symbol);
+        $ter = null;
+
+        foreach ($symbols as $symbol) {
+            $ter = $this->yahooFinance->getExpenseRatio($symbol);
+
+            if ($ter !== null) {
+                break;
+            }
+        }
 
         if ($ter === null) {
             return;
