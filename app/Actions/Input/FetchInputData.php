@@ -6,7 +6,7 @@ namespace App\Actions\Input;
 
 use App\Actions\Action;
 use App\Actions\FetchAvailableMonths;
-use App\Actions\Snapshots\ComputeValuesAsOf;
+use App\Actions\Snapshots\BuildNetWorthReconciliation;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\Category;
@@ -19,7 +19,7 @@ class FetchInputData extends Action
         private readonly FetchAssetsByMonth $fetchAssetsByMonth,
         private readonly ResolveSnapshotState $resolveSnapshotState,
         private readonly FetchAvailableMonths $fetchAvailableMonths,
-        private readonly ComputeValuesAsOf $computeValuesAsOf,
+        private readonly BuildNetWorthReconciliation $buildReconciliation,
     ) {}
 
     /** @return array<string, mixed> */
@@ -43,7 +43,8 @@ class FetchInputData extends Action
         ]]);
 
         $lastSnapshot = Snapshot::orderByDesc('date')->first();
-        $currentNetWorth = $this->computeValuesAsOf->run(Carbon::now()->toDateString())['total'];
+        $today = Carbon::now()->toDateString();
+        $reconciliation = $this->buildReconciliation->run($today, Carbon::now()->format('Y-m'));
 
         return [
             'assets' => $this->fetchAssetsByMonth->run($month, $prices),
@@ -52,7 +53,8 @@ class FetchInputData extends Action
             'availableMonths' => $this->fetchAvailableMonths->run(),
             'snapshotState' => $this->resolveSnapshotState->run($month),
             'lastSnapshotDate' => $lastSnapshot?->date->format('Y-m-d'),
-            'currentNetWorth' => $currentNetWorth,
+            'currentNetWorth' => $reconciliation['total'],
+            'reconciliation' => $reconciliation,
             'prices' => $priceMap,
             'previousValues' => $this->previousValues($month),
         ];

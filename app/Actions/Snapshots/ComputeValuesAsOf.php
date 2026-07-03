@@ -14,34 +14,40 @@ class ComputeValuesAsOf extends Action
 {
     /**
      * Net worth as of $date: for each category, the assets of its most recent
-     * date on or before $date, priced live for tickers.
+     * date on or before $date, priced live for tickers. `asOf` records the month
+     * each category's value was actually taken from — a category with no row in
+     * the reference month is carried forward from an earlier one, which is why
+     * the snapshot total can exceed the sum of the current month's rows.
      *
-     * @return array{byCategory: array<int, float>, total: float}
+     * @return array{byCategory: array<int, float>, total: float, asOf: array<int, string>}
      */
     public function run(string $date): array
     {
         $prices = AssetPrice::all()->keyBy('ticker');
 
         $byCategory = [];
+        $asOf = [];
         $total = 0.0;
         foreach (Category::all() as $category) {
-            $value = $this->latestKnownValue($category->id, $date, $prices);
+            $resolved = $this->latestKnownValue($category->id, $date, $prices);
 
-            if ($value === null) {
+            if ($resolved === null) {
                 continue;
             }
 
-            $byCategory[$category->id] = $value;
-            $total += $value;
+            $byCategory[$category->id] = $resolved['value'];
+            $asOf[$category->id] = $resolved['date'];
+            $total += $resolved['value'];
         }
 
-        return ['byCategory' => $byCategory, 'total' => $total];
+        return ['byCategory' => $byCategory, 'total' => $total, 'asOf' => $asOf];
     }
 
     /**
      * @param  Collection<string, AssetPrice>  $prices
+     * @return array{value: float, date: string}|null
      */
-    private function latestKnownValue(int $categoryId, string $date, Collection $prices): ?float
+    private function latestKnownValue(int $categoryId, string $date, Collection $prices): ?array
     {
         $latestDate = Asset::query()
             ->where('category_id', $categoryId)
@@ -64,6 +70,6 @@ class ComputeValuesAsOf extends Action
             $value += $asset->currentValue($priceRecord?->price);
         }
 
-        return $value;
+        return ['value' => $value, 'date' => $latestDate];
     }
 }

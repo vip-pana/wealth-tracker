@@ -24,6 +24,7 @@ import {
 import { Plus, ChevronLeft, ChevronRight, Copy, Camera, PlusSquare } from 'lucide-react';
 import { formatMonthLong, formatDateLong, today, stepMonth } from '@/lib/formatters';
 import { Money } from '@/Components/ui/Money';
+import { NetWorthReconciliation, type Reconciliation } from '@/Components/Data/NetWorthReconciliation';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 interface Props {
@@ -34,11 +35,12 @@ interface Props {
     snapshotState: 'missing' | 'stale' | 'current';
     lastSnapshotDate: string | null;
     currentNetWorth: number;
+    reconciliation: Reconciliation;
     prices: Record<string, AssetPriceInfo>;
     previousValues: Record<string, number>;
 }
 
-export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, prices, previousValues }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, reconciliation, prices, previousValues }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -162,6 +164,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                             <p className="text-xs text-muted-foreground">
                                 Congela il valore attuale di tutti gli asset in un punto del grafico. Fanne uno quando vuoi registrare lo stato di oggi.
                             </p>
+                            <NetWorthReconciliation reconciliation={reconciliation} />
                             <Button
                                 size="sm"
                                 onClick={handleSaveSnapshot}
