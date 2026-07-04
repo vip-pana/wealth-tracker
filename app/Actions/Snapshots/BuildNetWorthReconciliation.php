@@ -6,6 +6,7 @@ namespace App\Actions\Snapshots;
 
 use App\Actions\Action;
 use App\Models\Category;
+use Illuminate\Support\Collection;
 
 class BuildNetWorthReconciliation extends Action
 {
@@ -31,7 +32,7 @@ class BuildNetWorthReconciliation extends Action
     {
         ['byCategory' => $byCategory, 'total' => $total, 'asOf' => $asOf] = $this->computeValuesAsOf->run($date);
 
-        /** @var \Illuminate\Support\Collection<int, string> $names */
+        /** @var Collection<int, string> $names */
         $names = Category::query()->pluck('name', 'id');
 
         $currentMonthTotal = 0.0;
