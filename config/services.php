@@ -69,6 +69,10 @@ return [
             'model' => env('OLLAMA_MODEL', ''),
             'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
         ],
+        'anthropic' => [
+            'model' => env('ADVISOR_ANTHROPIC_MODEL', ''),
+            'timeout' => (int) env('ADVISOR_ANTHROPIC_TIMEOUT', 120),
+        ],
     ],
 
 ];

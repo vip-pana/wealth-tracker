@@ -31,54 +31,74 @@ tests/
     Controllers/  — full HTTP flow via Inertia (creates DB records, checks redirects)
 ```
 
+> Tests use **plain PHPUnit** (classes extending `Tests\TestCase`, `test_*`
+> methods), not Pest. There is no `Pest.php`; do not use `it()` / `expect()` /
+> `uses()` — they are undefined and the suite will fail to load.
+
 ## FormRequest tests (Unit)
 
 Test validation rules in isolation — no HTTP request needed:
 
 ```php
+namespace Tests\Unit\Requests;
+
 use App\Http\Requests\StoreAssetRequest;
 use Illuminate\Support\Facades\Validator;
+use Tests\TestCase;
 
-it('requires category_id', function () {
-    $rules = (new StoreAssetRequest())->rules();
-    $v = Validator::make([], $rules);
-    expect($v->errors()->has('category_id'))->toBeTrue();
-});
+class StoreAssetRequestTest extends TestCase
+{
+    public function test_requires_category_id(): void
+    {
+        $rules = (new StoreAssetRequest())->rules();
+        $v = Validator::make([], $rules);
+        $this->assertTrue($v->errors()->has('category_id'));
+    }
 
-it('passes with valid data', function () {
-    $rules = (new StoreAssetRequest())->rules();
-    $v = Validator::make([
-        'category_id' => 1,
-        'name' => 'ETF',
-        'value' => 1000.00,
-        'date' => '2025-01-01',
-    ], $rules);
-    expect($v->passes())->toBeTrue();
-});
+    public function test_passes_with_valid_data(): void
+    {
+        $rules = (new StoreAssetRequest())->rules();
+        $v = Validator::make([
+            'category_id' => 1,
+            'name' => 'ETF',
+            'value' => 1000.00,
+            'date' => '2025-01-01',
+        ], $rules);
+        $this->assertTrue($v->passes());
+    }
+}
 ```
 
 ## Feature / controller tests
 
-Use `$this->post()` / `$this->put()` / `$this->delete()` and assert redirects + DB state:
+Use `$this->post()` / `$this->put()` / `$this->delete()` and assert redirects + DB state.
+Add the `RefreshDatabase` trait to the class (not a top-level `uses()`):
 
 ```php
+namespace Tests\Feature\Controllers;
+
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+class StoreAssetTest extends TestCase
+{
+    use RefreshDatabase;
 
-it('stores an asset', function () {
-    $category = Category::factory()->create();
+    public function test_stores_an_asset(): void
+    {
+        $category = Category::factory()->create();
 
-    $this->post('/assets', [
-        'category_id' => $category->id,
-        'name' => 'ETF',
-        'value' => 1000,
-        'date' => '2025-01-01',
-    ])->assertRedirect();
+        $this->post('/assets', [
+            'category_id' => $category->id,
+            'name' => 'ETF',
+            'value' => 1000,
+            'date' => '2025-01-01',
+        ])->assertRedirect();
 
-    $this->assertDatabaseHas('assets', ['name' => 'ETF']);
-});
+        $this->assertDatabaseHas('assets', ['name' => 'ETF']);
+    }
+}
 ```
 
 ## Factories
