@@ -8,6 +8,7 @@ export function SessionList({
     activeId,
     onGenerate,
     onNewChat,
+    onOpen,
     onRename,
     generating,
 }: {
@@ -15,6 +16,7 @@ export function SessionList({
     activeId: number | null;
     onGenerate: () => void;
     onNewChat: () => void;
+    onOpen?: () => void;
     onRename: (id: number, title: string) => void;
     generating: boolean;
 }) {
@@ -37,7 +39,7 @@ export function SessionList({
             ) : (
                 <div className="flex flex-col gap-1">
                     {sessions.map((s) => (
-                        <SessionRow key={s.id} s={s} activeId={activeId} onRename={onRename} />
+                        <SessionRow key={s.id} s={s} activeId={activeId} onRename={onRename} onOpen={onOpen} />
                     ))}
                 </div>
             )}

@@ -219,9 +219,9 @@ export function Conversation({
                                     void send();
                                 }
                             }}
-                            placeholder="Chiedi al tuo consulente… (es. la mia liquidità è troppa?)"
+                            placeholder="Chiedi al tuo consulente…"
                             rows={1}
-                            className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         />
                         <Button size="icon" onClick={() => void send()} disabled={sending || input.trim() === ''}>
                             <Send className="w-4 h-4" />

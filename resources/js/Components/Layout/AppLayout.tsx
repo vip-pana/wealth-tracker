@@ -326,8 +326,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </aside>
 
-            {/* Main content */}
-            <main className="flex-1 overflow-y-auto pt-[56px] lg:pt-0">
+            {/* Main content. min-w-0 lets this flex child shrink below its
+                content width instead of pushing the page wider than the
+                viewport (the default flex min-width:auto causes h-scroll on
+                mobile); overflow-x-hidden is a belt-and-braces guard. */}
+            <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto pt-[56px] lg:pt-0">
                 {children}
             </main>
 

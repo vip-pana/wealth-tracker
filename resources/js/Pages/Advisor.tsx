@@ -15,7 +15,7 @@ import { SessionList } from '@/Components/Advisor/SessionList';
 import { Conversation } from '@/Components/Advisor/Conversation';
 import { NewConversation } from '@/Components/Advisor/NewConversation';
 import { markInternalNavigation, claimEnterAnimation } from '@/Components/Advisor/enterAnimation';
-import { Sparkles, AlertTriangle, Trash2, UserCog } from 'lucide-react';
+import { Sparkles, AlertTriangle, Trash2, UserCog, ChevronLeft } from 'lucide-react';
 
 interface Props {
     configured: boolean;
@@ -33,6 +33,11 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
     const [firstChat, setFirstChat] = useState('');
     const [startingChat, setStartingChat] = useState(false);
     const [animateEnter] = useState(claimEnterAnimation);
+    // On phones/tablets the list and the conversation don't fit side by side, so
+    // we show one at a time (messaging-app pattern). Land on the conversation
+    // when a session is open, else on the list; a back button toggles to 'list'.
+    // Above `lg` both panes show and this state is ignored.
+    const [mobileView, setMobileView] = useState<'list' | 'chat'>(activeSession || chatMode ? 'chat' : 'list');
     const pushToast = useToast();
 
     const generate = async () => {
@@ -106,28 +111,37 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                     </Card>
                 ) : (
                     <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
-                        <div className="space-y-3">
+                        <div className={cn('min-w-0 space-y-3', mobileView === 'chat' && 'hidden lg:block')}>
                             <SessionList
                                 sessions={sessions}
                                 activeId={activeSession?.id ?? null}
                                 onGenerate={generate}
-                                onNewChat={() => setChatMode(true)}
+                                onNewChat={() => { setChatMode(true); setMobileView('chat'); }}
+                                onOpen={() => setMobileView('chat')}
                                 onRename={renameSession}
                                 generating={generating}
                             />
                         </div>
 
-                        <div className="h-full min-h-0">
+                        <div className={cn('h-full min-w-0 min-h-0', mobileView === 'list' && 'hidden lg:block')}>
                             {activeSession && !chatMode ? (
                                 <div key={activeSession.id} className="flex flex-col h-full min-h-0 gap-2">
-                                    <div className="flex items-center justify-between flex-shrink-0">
-                                        <h2 className="text-sm font-medium truncate flex items-center gap-2">
-                                            <KindIcon kind={activeSession.kind} className="w-4 h-4 text-primary" />
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <Button
+                                            variant="ghost" size="icon"
+                                            className="h-7 w-7 flex-shrink-0 text-muted-foreground lg:hidden"
+                                            onClick={() => setMobileView('list')}
+                                            title="Torna alle sessioni"
+                                        >
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <h2 className="min-w-0 flex-1 text-sm font-medium truncate flex items-center gap-2">
+                                            <KindIcon kind={activeSession.kind} className="w-4 h-4 flex-shrink-0 text-primary" />
                                             <TypewriterText id={activeSession.id} text={activeSession.title ?? 'Sessione'} className="truncate" />
                                         </h2>
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                            className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive"
                                             onClick={() => deleteSession(activeSession.id)}
                                             title="Elimina sessione"
                                         >
@@ -146,7 +160,15 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                 // No open session (or the user hit "new chat"):
                                 // land on a ready-to-type new conversation rather
                                 // than a passive empty state.
-                                <div className="flex flex-col h-full min-h-0">
+                                <div className="flex flex-col h-full min-h-0 gap-2">
+                                    <Button
+                                        variant="ghost" size="sm"
+                                        className="self-start h-7 px-2 text-muted-foreground lg:hidden"
+                                        onClick={() => setMobileView('list')}
+                                    >
+                                        <ChevronLeft className="w-4 h-4 mr-1" />
+                                        Sessioni
+                                    </Button>
                                     <NewConversation
                                         value={firstChat}
                                         onChange={setFirstChat}
