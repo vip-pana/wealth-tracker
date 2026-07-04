@@ -46,32 +46,47 @@ class AdvisorToolFactory
     private function getPosition(): PrismTool
     {
         return Tool::as('get_position')
-            ->for('Dettagli di una singola posizione di investimento gestita da transazioni (ETF, crypto): quote possedute, prezzo medio di carico, valore attuale, guadagno/perdita e rendimento reale. Usalo quando la domanda riguarda un singolo strumento.')
-            ->withStringParameter('name', 'Nome (anche parziale) della posizione, es. Bitcoin, ACWI, Oro')
+            ->for('Dettagli di una singola posizione o categoria di investimento, per nome (anche parziale). Per gli strumenti gestiti da transazioni (ETF, crypto importate) dà quote, prezzo medio di carico, valore, guadagno/perdita e rendimento reale; per le altre voci del portafoglio (es. Bitcoin, Oro, Liquidità) dà almeno valore attuale e peso. Usalo quando la domanda riguarda un singolo strumento o categoria.')
+            ->withStringParameter('name', 'Nome (anche parziale) della posizione o categoria, es. Bitcoin, ACWI, Oro')
             ->using(function (string $name): string {
-                /** @var array{positions: list<array{id: int, name: string, shares: float, average_cost: float, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}>}|null $returns */
-                $returns = $this->buildContext->run()['positionReturns'] ?? null;
-
-                if ($returns === null || $returns['positions'] === []) {
-                    return 'Nessuna posizione gestita da transazioni è disponibile.';
-                }
-
+                $context = $this->buildContext->run();
                 $needle = mb_strtolower(trim($name));
-                $match = null;
-                foreach ($returns['positions'] as $position) {
-                    if (str_contains(mb_strtolower($position['name']), $needle)) {
-                        $match = $position;
-                        break;
+
+                /** @var array{positions: list<array{id: int, name: string, shares: float, average_cost: float, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}>}|null $returns */
+                $returns = $context['positionReturns'] ?? null;
+
+                if ($returns !== null) {
+                    foreach ($returns['positions'] as $position) {
+                        if (str_contains(mb_strtolower($position['name']), $needle)) {
+                            return $this->describePosition($position);
+                        }
                     }
                 }
 
-                if ($match === null) {
-                    $available = implode(', ', array_map(fn (array $p): string => $p['name'], $returns['positions']));
-
-                    return "Nessuna posizione trovata per «{$name}». Posizioni disponibili: {$available}.";
+                // Not a transaction-managed position: fall back to the portfolio
+                // allocation, which covers categories like Bitcoin/Oro/Liquidità
+                // that have a current value and weight but no cost-basis detail.
+                $portfolio = $this->portfolio($context);
+                if ($portfolio !== null) {
+                    foreach ($portfolio['allocation'] as $slice) {
+                        if (str_contains(mb_strtolower($slice['name']), $needle)) {
+                            return "Posizione: {$slice['name']}\n"
+                                .'Valore attuale: '.$this->eur($slice['value']).' ('.$this->num($slice['share_pct'], 1).'% del portafoglio)'."\n"
+                                .'Questa voce non è gestita da transazioni: non ho il prezzo medio di carico né il rendimento reale, solo il valore attuale.';
+                        }
+                    }
                 }
 
-                return $this->describePosition($match);
+                $names = [];
+                foreach (($returns['positions'] ?? []) as $p) {
+                    $names[] = $p['name'];
+                }
+                foreach (($portfolio['allocation'] ?? []) as $slice) {
+                    $names[] = $slice['name'];
+                }
+                $available = $names === [] ? 'nessuna' : implode(', ', array_unique($names));
+
+                return "Nessuna posizione trovata per «{$name}». Voci disponibili: {$available}.";
             });
     }
 

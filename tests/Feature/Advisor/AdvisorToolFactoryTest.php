@@ -93,11 +93,22 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('ACWI ETF', $out);
     }
 
-    public function test_reports_no_positions_when_none_are_transaction_managed(): void
+    public function test_falls_back_to_the_allocation_for_a_non_transaction_managed_category(): void
     {
-        $out = $this->tool($this->toolFor(['positionReturns' => null]), 'get_position')->handle(name: 'acwi');
+        // Bitcoin is in the allocation but has no imported transactions, so it
+        // has a current value/weight but no cost basis or real return.
+        $out = $this->tool($this->toolFor($this->portfolioContext), 'get_position')->handle(name: 'bitcoin');
 
-        $this->assertStringContainsString('Nessuna posizione gestita da transazioni', $out);
+        $this->assertStringContainsString('Bitcoin', $out);
+        $this->assertStringContainsString('16.000,00€', $out);
+        $this->assertStringContainsString('non è gestita da transazioni', $out);
+    }
+
+    public function test_reports_no_match_when_neither_positions_nor_allocation_have_it(): void
+    {
+        $out = $this->tool($this->toolFor(['positionReturns' => null, 'portfolio' => ['hasData' => false]]), 'get_position')->handle(name: 'acwi');
+
+        $this->assertStringContainsString('Nessuna posizione trovata', $out);
     }
 
     public function test_summarises_the_portfolio_with_allocation_and_idle_liquidity(): void
