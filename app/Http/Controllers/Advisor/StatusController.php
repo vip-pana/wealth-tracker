@@ -29,6 +29,7 @@ class StatusController extends Controller
                     'content' => $m->content,
                     'status' => $m->status,
                     'error' => $m->error,
+                    'tool_activity' => $m->tool_activity,
                     'created_at' => $m->created_at?->toISOString(),
                 ])
                 ->all(),

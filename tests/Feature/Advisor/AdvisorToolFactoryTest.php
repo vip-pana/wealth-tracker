@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Advisor;
 
 use App\Actions\Advisor\BuildAdvisorContext;
+use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
+use App\Models\AdvisorMessage;
+use App\Models\AdvisorSession;
 use App\Models\Snapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -62,7 +65,7 @@ class AdvisorToolFactoryTest extends TestCase
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn($context);
 
-        return new AdvisorToolFactory($build);
+        return new AdvisorToolFactory($build, new AdvisorToolActivityReporter);
     }
 
     private function tool(AdvisorToolFactory $factory, string $name): Tool
@@ -74,6 +77,30 @@ class AdvisorToolFactoryTest extends TestCase
         }
 
         throw new RuntimeException("tool {$name} not found");
+    }
+
+    public function test_reports_live_tool_activity_to_the_armed_message(): void
+    {
+        $reporter = new AdvisorToolActivityReporter;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, $reporter);
+
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        $reporter->for($message);
+        $this->tool($factory, 'get_position')->handle(name: 'ACWI');
+
+        $this->assertSame('Sto controllando la tua posizione ACWI…', $message->fresh()?->tool_activity);
+    }
+
+    public function test_does_not_report_activity_when_not_armed(): void
+    {
+        // The tools run outside a tracked turn (report/tests): report() is a no-op.
+        $out = $this->tool($this->toolFor($this->portfolioContext), 'get_portfolio_summary')->handle();
+
+        $this->assertStringContainsString('Patrimonio netto totale', $out);
     }
 
     public function test_describes_a_matched_position_with_an_explicit_gain_sign(): void

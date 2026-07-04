@@ -23,6 +23,7 @@ class AdvisorToolFactory
 {
     public function __construct(
         private readonly BuildAdvisorContext $buildContext,
+        private readonly AdvisorToolActivityReporter $activity,
     ) {}
 
     /**
@@ -49,6 +50,7 @@ class AdvisorToolFactory
             ->for('Dettagli di una singola posizione o categoria di investimento, per nome (anche parziale). Per gli strumenti gestiti da transazioni (ETF, crypto importate) dà quote, prezzo medio di carico, valore, guadagno/perdita e rendimento reale; per le altre voci del portafoglio (es. Bitcoin, Oro, Liquidità) dà almeno valore attuale e peso. Usalo quando la domanda riguarda un singolo strumento o categoria.')
             ->withStringParameter('name', 'Nome (anche parziale) della posizione o categoria, es. Bitcoin, ACWI, Oro')
             ->using(function (string $name): string {
+                $this->activity->report('Sto controllando la tua posizione '.trim($name).'…');
                 $context = $this->buildContext->run();
                 $needle = mb_strtolower(trim($name));
 
@@ -99,6 +101,7 @@ class AdvisorToolFactory
         return Tool::as('get_portfolio_summary')
             ->for('Riassunto complessivo del portafoglio: patrimonio netto totale, allocazione per categoria in percentuale, concentrazione e liquidità ferma. Usalo per domande generali sullo stato del portafoglio.')
             ->using(function (): string {
+                $this->activity->report('Sto riepilogando il tuo portafoglio…');
                 $portfolio = $this->portfolio();
 
                 if ($portfolio === null) {
@@ -121,6 +124,7 @@ class AdvisorToolFactory
             ->for('Simula l\'effetto di un diverso importo mensile del piano di accumulo (PAC) sul tempo stimato per raggiungere l\'obiettivo. Usalo quando l\'utente chiede cosa succede se cambia il versamento mensile.')
             ->withNumberParameter('monthly_amount', 'Nuovo importo mensile in euro, es. 600')
             ->using(function (int|float $monthly_amount): string {
+                $this->activity->report('Sto simulando un versamento mensile di '.$this->eur((float) $monthly_amount).'…');
                 $context = $this->buildContext->run();
                 $portfolio = $this->portfolio($context);
 
@@ -143,6 +147,8 @@ class AdvisorToolFactory
             ->withStringParameter('from', 'Data iniziale in formato AAAA-MM-GG')
             ->withStringParameter('to', 'Data finale in formato AAAA-MM-GG')
             ->using(function (string $from, string $to): string {
+                $this->activity->report('Sto confrontando il patrimonio nel periodo indicato…');
+
                 return $this->describeNetWorthBetween($from, $to);
             });
     }

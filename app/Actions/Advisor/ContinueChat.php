@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Advisor;
 
 use App\Actions\Action;
+use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
@@ -24,6 +25,7 @@ class ContinueChat extends Action
         private readonly BuildAdvisorContext $buildContext,
         private readonly RenderAdvisorContext $renderContext,
         private readonly AdvisorProvider $provider,
+        private readonly AdvisorToolActivityReporter $activity,
     ) {}
 
     /**
@@ -70,15 +72,22 @@ class ContinueChat extends Action
             return;
         }
 
+        // Arm the reporter so any tool the model calls writes its live label to
+        // this message; the polling UI reads it. Cleared before the final update
+        // so the finished reply carries no lingering activity text.
+        $this->activity->for($assistant);
+
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
         } catch (\Throwable) {
-            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.']);
+            $this->activity->clear();
+            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.', 'tool_activity' => null]);
 
             return;
         }
 
-        $assistant->update(['content' => $reply, 'status' => AdvisorMessage::STATUS_DONE]);
+        $this->activity->clear();
+        $assistant->update(['content' => $reply, 'status' => AdvisorMessage::STATUS_DONE, 'tool_activity' => null]);
     }
 
     /**

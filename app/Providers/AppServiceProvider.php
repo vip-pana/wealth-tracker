@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Contracts\AdvisorProvider;
 use App\Http\Clients\EnableBankingClient;
@@ -31,6 +32,11 @@ class AppServiceProvider extends ServiceProvider
             Config::string('services.scalable.cli.binary', 'sc'),
             Config::integer('services.scalable.cli.timeout', 30),
         ));
+
+        // Request-scoped so ContinueChat and the tools (resolved inside the
+        // provider) share the same instance: the tools report their live
+        // activity to the message ContinueChat armed it with.
+        $this->app->singleton(AdvisorToolActivityReporter::class);
 
         // The advisor is swappable: a local model (Ollama) for development or a
         // cloud one (Anthropic) later, chosen by services.advisor.driver. Both
