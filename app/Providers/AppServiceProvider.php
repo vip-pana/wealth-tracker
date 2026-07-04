@@ -58,6 +58,24 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
 
+            // Regolo speaks the classic /chat/completions API, not OpenAI's newer
+            // /responses one that Prism's OpenAI provider now targets. Prism's
+            // OpenRouter provider is a plain OpenAI-compatible /chat/completions
+            // client, so we reuse it pointed at Regolo's endpoint + key.
+            if ($driver === 'regolo') {
+                return new PrismAdvisorProvider(
+                    Provider::OpenRouter,
+                    Config::string('services.advisor.regolo.model', ''),
+                    Config::integer('services.advisor.regolo.timeout', 120),
+                    $this->app->make(AdvisorToolFactory::class),
+                    [],
+                    [
+                        'url' => Config::string('services.advisor.regolo.base_url', 'https://api.regolo.ai/v1'),
+                        'api_key' => Config::string('services.advisor.regolo.api_key', ''),
+                    ],
+                );
+            }
+
             return new PrismAdvisorProvider(
                 Provider::Ollama,
                 Config::string('services.advisor.ollama.model', ''),

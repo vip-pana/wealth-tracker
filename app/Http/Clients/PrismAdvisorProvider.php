@@ -36,6 +36,10 @@ class PrismAdvisorProvider implements AdvisorProvider
      *                                                                                  Generation knobs applied to local (Ollama) requests: keep_alive keeps the
      *                                                                                  model resident between turns, a low temperature suits a factual advisor,
      *                                                                                  and num_ctx sizes the context window so the briefing isn't truncated.
+     * @param  array{url?: string, api_key?: string}  $clientConfig
+     *                                                               Provider connection overrides passed to Prism's using(): an OpenAI-compatible
+     *                                                               endpoint (url) and its api_key. Used to point the OpenAI provider at a
+     *                                                               third-party host (e.g. Regolo) instead of api.openai.com.
      */
     public function __construct(
         private readonly Provider $provider,
@@ -43,6 +47,7 @@ class PrismAdvisorProvider implements AdvisorProvider
         private readonly int $timeout,
         private readonly AdvisorToolFactory $tools,
         private readonly array $tuning = [],
+        private readonly array $clientConfig = [],
     ) {}
 
     public function isConfigured(): bool
@@ -140,7 +145,7 @@ class PrismAdvisorProvider implements AdvisorProvider
     private function request(?string $system, array $conversation): PendingRequest
     {
         $request = Prism::text()
-            ->using($this->provider, $this->model)
+            ->using($this->provider, $this->model, $this->clientConfig)
             ->withClientOptions(['timeout' => $this->timeout])
             ->withMessages($this->toPrismMessages($conversation))
             ->withTools($this->tools->make())

@@ -79,6 +79,16 @@ return [
             'model' => env('ADVISOR_ANTHROPIC_MODEL', ''),
             'timeout' => (int) env('ADVISOR_ANTHROPIC_TIMEOUT', 120),
         ],
+        // Regolo (EU, zero-data-retention) via its OpenAI-compatible endpoint.
+        // Driven through Prism's OpenRouter provider (a /chat/completions client)
+        // rather than the OpenAI one, which now targets /responses (see the
+        // regolo branch in AppServiceProvider).
+        'regolo' => [
+            'base_url' => env('REGOLO_BASE_URL', 'https://api.regolo.ai/v1'),
+            'api_key' => env('REGOLO_API_KEY', ''),
+            'model' => env('REGOLO_MODEL', ''),
+            'timeout' => (int) env('REGOLO_TIMEOUT', 120),
+        ],
     ],
 
 ];
