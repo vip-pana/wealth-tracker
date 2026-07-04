@@ -3,9 +3,10 @@ import { render, screen } from '@testing-library/react';
 import type { Message } from '@/Components/Advisor/types';
 
 // ThinkingWithFacts spins timers/rng; stub it to a marker so the "thinking"
-// branch is observable without driving timers here.
+// branch is observable without driving timers here. It echoes the label so we
+// can assert the live tool activity is passed through.
 vi.mock('@/Components/Advisor/ThinkingWithFacts', () => ({
-    ThinkingWithFacts: () => <div data-testid="thinking" />,
+    ThinkingWithFacts: ({ label }: { label?: string }) => <div data-testid="thinking">{label}</div>,
 }));
 
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
@@ -34,6 +35,11 @@ describe('MessageBubble', () => {
     it('treats an undefined status with empty content as thinking', () => {
         render(<MessageBubble message={msg({ role: 'assistant', content: '', status: undefined })} funFacts={[]} />);
         expect(screen.getByTestId('thinking')).toBeInTheDocument();
+    });
+
+    it('surfaces the live tool activity while thinking', () => {
+        render(<MessageBubble message={msg({ role: 'assistant', content: '', status: 'pending', tool_activity: 'Sto controllando la tua posizione Bitcoin…' })} funFacts={[]} />);
+        expect(screen.getByTestId('thinking')).toHaveTextContent('Sto controllando la tua posizione Bitcoin…');
     });
 
     it('shows the error text when failed', () => {

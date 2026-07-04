@@ -17,6 +17,7 @@ export interface Message {
     content: string;
     status?: Status;
     error?: string | null;
+    tool_activity?: string | null;
     created_at: string | null;
 }
 

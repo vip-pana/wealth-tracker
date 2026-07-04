@@ -31,7 +31,7 @@ class AdvisorMessage extends Model
 
     public const STATUS_FAILED = 'failed';
 
-    protected $fillable = ['session_id', 'role', 'content', 'status', 'error'];
+    protected $fillable = ['session_id', 'role', 'content', 'status', 'error', 'tool_activity'];
 
     /** @return BelongsTo<AdvisorSession, $this> */
     public function session(): BelongsTo

@@ -68,6 +68,16 @@ return [
             'base_url' => env('OLLAMA_BASE_URL', 'http://host.docker.internal:11434'),
             'model' => env('OLLAMA_MODEL', ''),
             'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
+            // Keep the model resident between requests so a follow-up doesn't pay
+            // the reload cost; low temperature for a factual advisor; an explicit
+            // context window so the briefing + history isn't silently truncated.
+            'keep_alive' => env('OLLAMA_KEEP_ALIVE', '30m'),
+            'temperature' => (float) env('OLLAMA_TEMPERATURE', 0.3),
+            'num_ctx' => (int) env('OLLAMA_NUM_CTX', 8192),
+        ],
+        'anthropic' => [
+            'model' => env('ADVISOR_ANTHROPIC_MODEL', ''),
+            'timeout' => (int) env('ADVISOR_ANTHROPIC_TIMEOUT', 120),
         ],
     ],
 

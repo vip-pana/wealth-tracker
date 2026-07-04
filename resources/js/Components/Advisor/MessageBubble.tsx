@@ -27,7 +27,7 @@ export function MessageBubble({ message, funFacts }: { message: Message; funFact
                         <span>{message.error ?? 'Il consulente non ha risposto. Riprova.'}</span>
                     </div>
                 ) : thinking ? (
-                    <ThinkingWithFacts facts={funFacts} />
+                    <ThinkingWithFacts facts={funFacts} label={message.tool_activity ?? undefined} />
                 ) : (
                     <Markdown content={message.content} />
                 )}
