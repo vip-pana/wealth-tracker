@@ -117,7 +117,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                 activeId={activeSession?.id ?? null}
                                 onGenerate={generate}
                                 onNewChat={() => { setChatMode(true); setMobileView('chat'); }}
-                                onOpen={() => setMobileView('chat')}
+                                onOpen={() => { setChatMode(false); setMobileView('chat'); }}
                                 onRename={renameSession}
                                 generating={generating}
                             />
