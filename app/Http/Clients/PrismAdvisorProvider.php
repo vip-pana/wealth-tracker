@@ -31,11 +31,18 @@ class PrismAdvisorProvider implements AdvisorProvider
      */
     private const int MAX_STEPS = 5;
 
+    /**
+     * @param  array{temperature?: float, keep_alive?: string, num_ctx?: int}  $tuning
+     *                                                                                  Generation knobs applied to local (Ollama) requests: keep_alive keeps the
+     *                                                                                  model resident between turns, a low temperature suits a factual advisor,
+     *                                                                                  and num_ctx sizes the context window so the briefing isn't truncated.
+     */
     public function __construct(
         private readonly Provider $provider,
         private readonly string $model,
         private readonly int $timeout,
         private readonly AdvisorToolFactory $tools,
+        private readonly array $tuning = [],
     ) {}
 
     public function isConfigured(): bool
@@ -138,6 +145,23 @@ class PrismAdvisorProvider implements AdvisorProvider
             ->withMessages($this->toPrismMessages($conversation))
             ->withTools($this->tools->make())
             ->withMaxSteps(self::MAX_STEPS);
+
+        if (isset($this->tuning['temperature'])) {
+            $request = $request->usingTemperature($this->tuning['temperature']);
+        }
+
+        // keep_alive is a top-level Ollama field; num_ctx goes into its options.
+        // Both are provider options for Prism; harmless/ignored on Anthropic.
+        $providerOptions = [];
+        if (isset($this->tuning['keep_alive'])) {
+            $providerOptions['keep_alive'] = $this->tuning['keep_alive'];
+        }
+        if (isset($this->tuning['num_ctx'])) {
+            $providerOptions['num_ctx'] = $this->tuning['num_ctx'];
+        }
+        if ($providerOptions !== []) {
+            $request = $request->withProviderOptions($providerOptions);
+        }
 
         if ($system !== null) {
             $request = $request->withSystemPrompt($system);

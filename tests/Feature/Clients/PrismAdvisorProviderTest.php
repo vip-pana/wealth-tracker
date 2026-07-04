@@ -22,12 +22,15 @@ class PrismAdvisorProviderTest extends TestCase
         config()->set('prism.providers.ollama.url', 'http://ollama.test');
     }
 
-    private function provider(string $model = 'qwen3:8b'): PrismAdvisorProvider
+    /**
+     * @param  array{temperature?: float, keep_alive?: string, num_ctx?: int}  $tuning
+     */
+    private function provider(string $model = 'qwen3:8b', array $tuning = []): PrismAdvisorProvider
     {
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn(['portfolio' => ['hasData' => false], 'positionReturns' => null]);
 
-        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter));
+        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter), $tuning);
     }
 
     public function test_is_not_configured_without_a_model(): void
@@ -104,6 +107,23 @@ class PrismAdvisorProviderTest extends TestCase
                 && in_array('get_portfolio_summary', $names, true)
                 && in_array('simulate_pac', $names, true)
                 && in_array('net_worth_between', $names, true);
+        });
+    }
+
+    public function test_applies_the_generation_tuning_to_the_ollama_request(): void
+    {
+        Http::fake(['*/api/chat' => Http::response(['message' => ['content' => 'ok'], 'done' => true])]);
+
+        $this->provider('qwen3:8b', ['temperature' => 0.3, 'keep_alive' => '30m', 'num_ctx' => 8192])
+            ->chat([['role' => 'user', 'content' => 'x']]);
+
+        Http::assertSent(function ($request): bool {
+            $body = $request->data();
+
+            // keep_alive is top-level; temperature and num_ctx live under options.
+            return $body['keep_alive'] === '30m'
+                && ($body['options']['temperature'] ?? null) === 0.3
+                && ($body['options']['num_ctx'] ?? null) === 8192;
         });
     }
 

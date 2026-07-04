@@ -63,6 +63,11 @@ class AppServiceProvider extends ServiceProvider
                 Config::string('services.advisor.ollama.model', ''),
                 Config::integer('services.advisor.ollama.timeout', 120),
                 $this->app->make(AdvisorToolFactory::class),
+                [
+                    'temperature' => Config::float('services.advisor.ollama.temperature', 0.3),
+                    'keep_alive' => Config::string('services.advisor.ollama.keep_alive', '30m'),
+                    'num_ctx' => Config::integer('services.advisor.ollama.num_ctx', 8192),
+                ],
             );
         });
     }
