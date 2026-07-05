@@ -44,11 +44,36 @@ class AdvisorWidgetCollector
     }
 
     /**
+     * The collected widgets. profile_proposal is de-duplicated keeping only the
+     * LAST one: a confused model can call propose_profile_update more than once
+     * within a single reply's tool loop, and only the final proposal should
+     * reach the UI. Other widget types are all kept (a reply can legitimately
+     * carry several — e.g. two different position cards).
+     *
      * @return list<array{type: string, data: array<string, mixed>}>
      */
     public function widgets(): array
     {
-        return $this->widgets;
+        $lastProposalIndex = null;
+        foreach ($this->widgets as $i => $widget) {
+            if ($widget['type'] === 'profile_proposal') {
+                $lastProposalIndex = $i;
+            }
+        }
+
+        if ($lastProposalIndex === null) {
+            return $this->widgets;
+        }
+
+        $out = [];
+        foreach ($this->widgets as $i => $widget) {
+            if ($widget['type'] === 'profile_proposal' && $i !== $lastProposalIndex) {
+                continue;
+            }
+            $out[] = $widget;
+        }
+
+        return $out;
     }
 
     public function clear(): void
