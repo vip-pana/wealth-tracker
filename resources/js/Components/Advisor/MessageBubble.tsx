@@ -2,6 +2,7 @@ import { Markdown } from '@/Components/ui/Markdown';
 import { Sparkles, AlertTriangle } from 'lucide-react';
 import { type Message } from '@/Components/Advisor/types';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
+import { AdvisorWidgets } from '@/Components/Advisor/AdvisorWidgets';
 
 export function MessageBubble({ message, funFacts }: { message: Message; funFacts: string[] }) {
     if (message.role === 'user') {
@@ -29,7 +30,12 @@ export function MessageBubble({ message, funFacts }: { message: Message; funFact
                 ) : thinking ? (
                     <ThinkingWithFacts facts={funFacts} label={message.tool_activity ?? undefined} />
                 ) : (
-                    <Markdown content={message.content} />
+                    <>
+                        <Markdown content={message.content} />
+                        {message.widgets && message.widgets.length > 0 && (
+                            <AdvisorWidgets widgets={message.widgets} />
+                        )}
+                    </>
                 )}
             </div>
         </div>

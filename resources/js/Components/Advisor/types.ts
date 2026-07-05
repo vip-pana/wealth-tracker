@@ -11,6 +11,66 @@ export interface SessionSummary {
     created_at: string | null;
 }
 
+/**
+ * Generative-UI widgets a reply can carry. The advisor model chooses to render
+ * one by calling the matching tool; the backend attaches app-computed data here
+ * (the model never produces this payload). The frontend maps `type` to a React
+ * component. New widget types are added to this union as tools gain UI.
+ */
+export interface PacSimulatorWidget {
+    type: 'pac_simulator';
+    data: {
+        current_net_worth: number;
+        target_value: number;
+        monthly_amount: number;
+        annual_return: number;
+        annual_return_source: string;
+        low_confidence: boolean;
+    };
+}
+
+export interface PositionCardWidget {
+    type: 'position_card';
+    data:
+        | {
+              name: string;
+              managed: true;
+              shares: number;
+              average_cost: number;
+              cost_basis: number;
+              current_value: number | null;
+              unrealised_pnl: number | null;
+              unrealised_pnl_pct: number | null;
+              realised_pnl: number;
+          }
+        | {
+              name: string;
+              managed: false;
+              current_value: number;
+              share_pct: number;
+          };
+}
+
+export interface AllocationDonutWidget {
+    type: 'allocation_donut';
+    data: {
+        slices: { name: string; value: number; share_pct: number; color: string }[];
+        top_category: string;
+        top_share_pct: number;
+    };
+}
+
+export interface NetWorthLineWidget {
+    type: 'networth_line';
+    data: {
+        points: { date: string; total_value: number }[];
+        from: string;
+        to: string;
+    };
+}
+
+export type Widget = PacSimulatorWidget | PositionCardWidget | AllocationDonutWidget | NetWorthLineWidget;
+
 export interface Message {
     id: number;
     role: 'assistant' | 'user';
@@ -18,6 +78,7 @@ export interface Message {
     status?: Status;
     error?: string | null;
     tool_activity?: string | null;
+    widgets?: Widget[] | null;
     created_at: string | null;
 }
 
