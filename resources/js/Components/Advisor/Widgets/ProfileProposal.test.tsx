@@ -30,6 +30,9 @@ describe('ProfileProposal', () => {
         expect(post).toHaveBeenCalledTimes(1);
         expect(post.mock.calls[0][0]).toBe('/advisor/profile');
         expect(post.mock.calls[0][1]).toEqual({ horizon: 'short', objective: 'Casa' });
+        // Partial reload of the profile prop so the profile dialog updates, while
+        // preserveState keeps the open chat from remounting.
+        expect(post.mock.calls[0][2]).toMatchObject({ preserveState: true, only: ['profile'] });
     });
 
     it('shows a confirmation and stops offering Applica once applied', async () => {
@@ -52,5 +55,29 @@ describe('ProfileProposal', () => {
 
         expect(post).not.toHaveBeenCalled();
         expect(screen.getByText(/Proposta annullata/)).toBeInTheDocument();
+    });
+
+    it('renders as already applied when the profile already matches the proposal (survives refresh)', () => {
+        render(
+            <ProfileProposal
+                data={{ horizon: 'long', risk_tolerance: 'high' }}
+                profile={{ horizon: 'long', risk_tolerance: 'high', objective: 'Qualcosa', target_allocation: null }}
+            />,
+        );
+        // Local state is gone after a refresh; matching the current profile means
+        // it was applied, so no clickable button is offered again.
+        expect(screen.getByText(/Profilo aggiornato/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Applica' })).not.toBeInTheDocument();
+    });
+
+    it('stays clickable when the profile only partially matches the proposal', () => {
+        render(
+            <ProfileProposal
+                data={{ horizon: 'long', risk_tolerance: 'high' }}
+                profile={{ horizon: 'long', risk_tolerance: 'low', objective: null, target_allocation: null }}
+            />,
+        );
+        // risk_tolerance differs, so the proposal was not fully applied.
+        expect(screen.getByRole('button', { name: 'Applica' })).toBeInTheDocument();
     });
 });

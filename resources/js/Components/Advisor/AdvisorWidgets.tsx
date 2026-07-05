@@ -6,6 +6,7 @@ import { AllocationVsTarget } from '@/Components/Advisor/Widgets/AllocationVsTar
 import { PositionsTable } from '@/Components/Advisor/Widgets/PositionsTable';
 import { GoalSimulator } from '@/Components/Advisor/Widgets/GoalSimulator';
 import { ProfileProposal } from '@/Components/Advisor/Widgets/ProfileProposal';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import type { Widget } from '@/Components/Advisor/types';
 
 /**
@@ -13,7 +14,7 @@ import type { Widget } from '@/Components/Advisor/types';
  * widget's `type` to its component; an unknown type (e.g. an older client
  * meeting a newer widget) is skipped rather than crashing the message.
  */
-export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
+export function AdvisorWidgets({ widgets, profile }: { widgets: Widget[]; profile?: InvestorProfile | null }) {
     return (
         <>
             {widgets.map((widget, i) => {
@@ -33,7 +34,7 @@ export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
                     case 'goal_simulator':
                         return <GoalSimulator key={i} data={widget.data} />;
                     case 'profile_proposal':
-                        return <ProfileProposal key={i} data={widget.data} />;
+                        return <ProfileProposal key={i} data={widget.data} profile={profile} />;
                     default:
                         return null;
                 }

@@ -4,9 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { UserCog, Check } from 'lucide-react';
 import type { ProfileProposalWidget } from '@/Components/Advisor/types';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
 const HORIZON_LABELS: Record<string, string> = { short: 'Breve (< 3 anni)', medium: 'Medio (3-10 anni)', long: 'Lungo (10+ anni)' };
 const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+
+/**
+ * Is every proposed field already the current profile value? If so the proposal
+ * was applied before (its local state is gone after a refresh), so we show it as
+ * already applied instead of a fresh, clickable card. Only the fields the AI
+ * proposed are compared — an unrelated field on the profile doesn't matter.
+ */
+function alreadyApplied(data: ProfileProposalWidget['data'], profile: InvestorProfile | null | undefined): boolean {
+    if (!profile) return false;
+    const keys = Object.keys(data) as (keyof ProfileProposalWidget['data'])[];
+    if (keys.length === 0) return false;
+
+    return keys.every((k) => (data[k] ?? null) === (profile[k] ?? null));
+}
 
 /**
  * Confirmation card for an AI-proposed investor-profile change. The AI only
@@ -14,9 +29,16 @@ const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', hig
  * user clicks Applica, which POSTs to the existing /advisor/profile endpoint
  * (same validation as the manual dialog). This keeps the "AI proposes, the user
  * applies" boundary — the write is a deliberate, reversible user action.
+ *
+ * The applied/dismissed state is local (useState), so a page refresh loses it.
+ * To avoid re-offering a proposal the user already applied, we compare the
+ * proposed values against the current profile at mount: an exact match means it
+ * was applied, so we render the applied state and hide the button.
  */
-export function ProfileProposal({ data }: { data: ProfileProposalWidget['data'] }) {
-    const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dismissed'>('idle');
+export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget['data']; profile?: InvestorProfile | null }) {
+    const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dismissed'>(
+        alreadyApplied(data, profile) ? 'applied' : 'idle',
+    );
 
     const rows: { label: string; value: string }[] = [];
     if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
@@ -28,9 +50,13 @@ export function ProfileProposal({ data }: { data: ProfileProposalWidget['data'] 
 
     const apply = () => {
         setState('saving');
+        // preserveState keeps the open chat (and this card's local state) from
+        // remounting; only: ['profile'] still refreshes the profile prop so the
+        // profile dialog reflects the change immediately after the write.
         router.post('/advisor/profile', { ...data }, {
             preserveScroll: true,
             preserveState: true,
+            only: ['profile'],
             onSuccess: () => setState('applied'),
             onError: () => setState('idle'),
         });

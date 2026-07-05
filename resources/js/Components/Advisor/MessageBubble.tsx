@@ -3,8 +3,9 @@ import { Sparkles, AlertTriangle } from 'lucide-react';
 import { type Message } from '@/Components/Advisor/types';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
 import { AdvisorWidgets } from '@/Components/Advisor/AdvisorWidgets';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
-export function MessageBubble({ message, funFacts }: { message: Message; funFacts: string[] }) {
+export function MessageBubble({ message, funFacts, profile }: { message: Message; funFacts: string[]; profile?: InvestorProfile | null }) {
     if (message.role === 'user') {
         return (
             <div className="flex justify-end">
@@ -33,7 +34,7 @@ export function MessageBubble({ message, funFacts }: { message: Message; funFact
                     <>
                         <Markdown content={message.content} />
                         {message.widgets && message.widgets.length > 0 && (
-                            <AdvisorWidgets widgets={message.widgets} />
+                            <AdvisorWidgets widgets={message.widgets} profile={profile} />
                         )}
                     </>
                 )}

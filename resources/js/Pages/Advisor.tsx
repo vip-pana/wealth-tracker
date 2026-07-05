@@ -153,6 +153,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                         session={activeSession}
                                         configured={configured}
                                         funFacts={funFacts}
+                                        profile={profile}
                                         onSent={() => router.reload({ only: ['sessions'] })}
                                     />
                                 </div>

@@ -7,16 +7,19 @@ import { AlertTriangle, Send, ChevronDown } from 'lucide-react';
 import { type Status, type Message, type ActiveSession, pickQuestions } from '@/Components/Advisor/types';
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
 export function Conversation({
     session,
     configured,
     funFacts,
+    profile,
     onSent,
 }: {
     session: ActiveSession;
     configured: boolean;
     funFacts: string[];
+    profile: InvestorProfile | null;
     onSent: () => void;
 }) {
     const [messages, setMessages] = useState<Message[]>(session.messages);
@@ -176,7 +179,7 @@ export function Conversation({
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
-                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} />)}
+                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} />)}
                     <div ref={bottomRef} />
                 </CardContent>
 
