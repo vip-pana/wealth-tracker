@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
@@ -47,6 +48,22 @@ export function ProfileDialog({
         objective: profile?.objective ?? '',
         target_allocation: profile?.target_allocation ?? '',
     });
+
+    // useForm seeds its data only once, so when the profile prop changes after a
+    // save elsewhere (e.g. the AI's profile-proposal card applies an update via a
+    // partial reload), re-sync the fields — otherwise the dialog keeps showing
+    // the stale values it was first mounted with. Depend on the prop values, not
+    // on setData, to avoid the effect re-running every render.
+    const { setData } = form;
+    useEffect(() => {
+        setData({
+            horizon: profile?.horizon ?? '',
+            risk_tolerance: profile?.risk_tolerance ?? '',
+            objective: profile?.objective ?? '',
+            target_allocation: profile?.target_allocation ?? '',
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile?.horizon, profile?.risk_tolerance, profile?.objective, profile?.target_allocation]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
