@@ -428,4 +428,48 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('futura', $out);
         $this->assertSame([], $collector->widgets());
     }
+
+    public function test_propose_profile_update_emits_a_proposal_widget(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            horizon: 'long',
+            risk_tolerance: 'medium',
+            objective: 'Indipendenza finanziaria',
+            target_allocation: null,
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('profile_proposal', $widgets[0]['type']);
+        $this->assertSame('long', $widgets[0]['data']['horizon']);
+        $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
+        $this->assertSame('Indipendenza finanziaria', $widgets[0]['data']['objective']);
+        // Fields not proposed are absent, not null.
+        $this->assertArrayNotHasKey('target_allocation', $widgets[0]['data']);
+    }
+
+    public function test_propose_profile_update_drops_an_invalid_enum_value(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        // The model must not be able to push an out-of-range enum into the DB.
+        $this->tool($factory, 'propose_profile_update')->handle(
+            horizon: 'forever',
+            risk_tolerance: 'medium',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertArrayNotHasKey('horizon', $widgets[0]['data']);
+        $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
+    }
+
+    public function test_propose_profile_update_emits_nothing_when_all_fields_empty(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'propose_profile_update')->handle(horizon: null, risk_tolerance: null);
+
+        $this->assertStringContainsString('Non ho abbastanza elementi', $out);
+        $this->assertSame([], $collector->widgets());
+    }
 }
