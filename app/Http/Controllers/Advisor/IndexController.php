@@ -84,7 +84,7 @@ class IndexController extends Controller
     /**
      * A full session with its messages, for the conversation view.
      *
-     * @return array{id: int, kind: string, title: string|null, status: string, error: string|null, messages: list<array{id: int, role: string, content: string, status: string, error: string|null, created_at: string|null}>}
+     * @return array{id: int, kind: string, title: string|null, status: string, error: string|null, messages: list<array{id: int, role: string, content: string, status: string, error: string|null, widgets: list<array{type: string, data: array<string, mixed>}>|null, created_at: string|null}>}
      */
     private function serializeSession(AdvisorSession $session): array
     {
@@ -96,6 +96,7 @@ class IndexController extends Controller
                 'content' => $m->content,
                 'status' => $m->status,
                 'error' => $m->error,
+                'widgets' => $m->widgets,
                 'created_at' => $m->created_at?->toISOString(),
             ])
             ->all();

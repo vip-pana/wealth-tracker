@@ -6,6 +6,7 @@ namespace App\Actions\Advisor;
 
 use App\Actions\Action;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
+use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
@@ -26,6 +27,7 @@ class ContinueChat extends Action
         private readonly RenderAdvisorContext $renderContext,
         private readonly AdvisorProvider $provider,
         private readonly AdvisorToolActivityReporter $activity,
+        private readonly AdvisorWidgetCollector $widgets,
     ) {}
 
     /**
@@ -74,20 +76,31 @@ class ContinueChat extends Action
 
         // Arm the reporter so any tool the model calls writes its live label to
         // this message; the polling UI reads it. Cleared before the final update
-        // so the finished reply carries no lingering activity text.
+        // so the finished reply carries no lingering activity text. The widget
+        // collector is armed the same way so a tool with an interactive
+        // counterpart can attach it to this reply.
         $this->activity->for($assistant);
+        $this->widgets->for($assistant);
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
         } catch (\Throwable) {
             $this->activity->clear();
+            $this->widgets->clear();
             $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.', 'tool_activity' => null]);
 
             return;
         }
 
+        $widgets = $this->widgets->widgets();
         $this->activity->clear();
-        $assistant->update(['content' => $reply, 'status' => AdvisorMessage::STATUS_DONE, 'tool_activity' => null]);
+        $this->widgets->clear();
+        $assistant->update([
+            'content' => $reply,
+            'status' => AdvisorMessage::STATUS_DONE,
+            'tool_activity' => null,
+            'widgets' => $widgets === [] ? null : $widgets,
+        ]);
     }
 
     /**

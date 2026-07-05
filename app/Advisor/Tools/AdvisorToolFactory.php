@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Advisor\Tools;
 
 use App\Actions\Advisor\BuildAdvisorContext;
+use App\Models\Category;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 use Prism\Prism\Facades\Tool;
@@ -24,6 +25,7 @@ class AdvisorToolFactory
     public function __construct(
         private readonly BuildAdvisorContext $buildContext,
         private readonly AdvisorToolActivityReporter $activity,
+        private readonly AdvisorWidgetCollector $widgets,
     ) {}
 
     /**
@@ -60,6 +62,8 @@ class AdvisorToolFactory
                 if ($returns !== null) {
                     foreach ($returns['positions'] as $position) {
                         if (str_contains(mb_strtolower($position['name']), $needle)) {
+                            $this->emitPositionWidget($position);
+
                             return $this->describePosition($position);
                         }
                     }
@@ -72,6 +76,8 @@ class AdvisorToolFactory
                 if ($portfolio !== null) {
                     foreach ($portfolio['allocation'] as $slice) {
                         if (str_contains(mb_strtolower($slice['name']), $needle)) {
+                            $this->emitCategoryWidget($slice);
+
                             return "Posizione: {$slice['name']}\n"
                                 .'Valore attuale: '.$this->eur($slice['value']).' ('.$this->num($slice['share_pct'], 1).'% del portafoglio)'."\n"
                                 .'Questa voce non è gestita da transazioni: non ho il prezzo medio di carico né il rendimento reale, solo il valore attuale.';
@@ -108,6 +114,8 @@ class AdvisorToolFactory
                     return 'Non ci sono ancora dati di portafoglio sufficienti.';
                 }
 
+                $this->emitAllocationWidget($portfolio);
+
                 return $this->describePortfolio($portfolio);
             });
     }
@@ -132,7 +140,10 @@ class AdvisorToolFactory
                     return 'Non ci sono ancora dati sufficienti per simulare il PAC.';
                 }
 
-                return $this->describePacSimulation($portfolio, $this->expectedAnnualReturn($context), (float) $monthly_amount);
+                $expectedReturn = $this->expectedAnnualReturn($context);
+                $this->emitPacWidget($portfolio, $expectedReturn, (float) $monthly_amount);
+
+                return $this->describePacSimulation($portfolio, $expectedReturn, (float) $monthly_amount);
             });
     }
 
@@ -142,10 +153,20 @@ class AdvisorToolFactory
      */
     private function netWorthBetween(): PrismTool
     {
+        // Give the model concrete date anchors: without today's date and the
+        // tracked range it turns "due mesi fa" into a guess and often sends the
+        // same date for from and to (a zero-length period that draws no line).
+        $today = Carbon::now()->format('Y-m-d');
+        $first = Snapshot::query()->orderBy('date')->value('date');
+        $last = Snapshot::query()->orderByDesc('date')->value('date');
+        $range = $first instanceof Carbon && $last instanceof Carbon
+            ? " Dati disponibili dal {$first->format('Y-m-d')} al {$last->format('Y-m-d')}."
+            : '';
+
         return Tool::as('net_worth_between')
-            ->for('Confronta il patrimonio netto tra due date, restituendo i valori e la variazione. Usalo per domande su come è andato il patrimonio in un periodo (es. rispetto a 3 mesi fa).')
-            ->withStringParameter('from', 'Data iniziale in formato AAAA-MM-GG')
-            ->withStringParameter('to', 'Data finale in formato AAAA-MM-GG')
+            ->for("Confronta il patrimonio netto tra due date, restituendo i valori e la variazione, e disegna l'andamento nel periodo. Usalo per domande su come è andato il patrimonio in un periodo (es. rispetto a 3 mesi fa). Oggi è {$today}.{$range}")
+            ->withStringParameter('from', "Data iniziale in formato AAAA-MM-GG. Deve essere una data PASSATA (es. per «due mesi fa» sottrai 2 mesi da oggi, {$today}). DEVE essere diversa e precedente a «to», altrimenti il periodo è vuoto.")
+            ->withStringParameter('to', "Data finale in formato AAAA-MM-GG. Di solito oggi ({$today}) per «fino ad adesso».")
             ->using(function (string $from, string $to): string {
                 $this->activity->report('Sto confrontando il patrimonio nel periodo indicato…');
 
@@ -309,6 +330,131 @@ class AdvisorToolFactory
         return implode("\n", $lines);
     }
 
+    /**
+     * Emit the interactive PAC-simulator widget. The frontend re-runs the same
+     * compound projection as describePacSimulation() (mirrored in lib/pacMath.ts,
+     * tested on both sides), so the user can drag the monthly amount and expected
+     * return and watch the ETA update without another model round-trip. Skipped
+     * when there's no reachable goal, so the widget only appears when the text
+     * has a meaningful estimate to accompany.
+     *
+     * @param  array{monthsTracked: int, totalNetWorth: float, allocation: list<array{name: string, value: float, share_pct: float}>, concentration: array{hhi: float, top_category: string, top_share_pct: float}, liquidity: array{value: float, share_pct: float}, goalEta: array<string, mixed>|null}  $portfolio
+     * @param  array{rate: float, source: string}  $expectedReturn
+     */
+    private function emitPacWidget(array $portfolio, array $expectedReturn, float $monthlyAmount): void
+    {
+        $goalEta = $portfolio['goalEta'];
+
+        if ($goalEta === null || ! isset($goalEta['target_value']) || ($goalEta['reached'] ?? false) === true) {
+            return;
+        }
+
+        $this->widgets->add('pac_simulator', [
+            'current_net_worth' => $portfolio['totalNetWorth'],
+            'target_value' => is_numeric($goalEta['target_value']) ? (float) $goalEta['target_value'] : 0.0,
+            'monthly_amount' => $monthlyAmount,
+            'annual_return' => $expectedReturn['rate'],
+            'annual_return_source' => $expectedReturn['source'],
+            'low_confidence' => ($goalEta['low_confidence'] ?? false) === true,
+        ]);
+    }
+
+    /**
+     * Emit the static position-detail card for a transaction-managed position.
+     * The frontend renders shares, average cost, value and a coloured P&L; all
+     * figures are the ones ComputePositionReturns already derived.
+     *
+     * @param  array{id: int, name: string, shares: float, average_cost: float, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}  $p
+     */
+    private function emitPositionWidget(array $p): void
+    {
+        $this->widgets->add('position_card', [
+            'name' => $p['name'],
+            'managed' => true,
+            'shares' => $p['shares'],
+            'average_cost' => $p['average_cost'],
+            'cost_basis' => $p['cost_basis'],
+            'current_value' => $p['current_value'],
+            'unrealised_pnl' => $p['unrealised_pnl'],
+            'unrealised_pnl_pct' => $p['unrealised_pnl_pct'],
+            'realised_pnl' => $p['realised_pnl'],
+        ]);
+    }
+
+    /**
+     * Emit the position card for a non-transaction-managed category (Bitcoin,
+     * Oro, Liquidità): only the current value and portfolio weight are known.
+     *
+     * @param  array{name: string, value: float, share_pct: float}  $slice
+     */
+    private function emitCategoryWidget(array $slice): void
+    {
+        $this->widgets->add('position_card', [
+            'name' => $slice['name'],
+            'managed' => false,
+            'current_value' => $slice['value'],
+            'share_pct' => $slice['share_pct'],
+        ]);
+    }
+
+    /**
+     * Emit the allocation donut. The metrics allocation carries name/value/%
+     * but not the category colour, so we look colours up by name here (the
+     * dashboard donut uses the same category colours) and default any unmatched
+     * slice to a neutral grey.
+     *
+     * @param  array{allocation: list<array{name: string, value: float, share_pct: float}>, concentration: array{top_category: string, top_share_pct: float}}  $portfolio
+     */
+    private function emitAllocationWidget(array $portfolio): void
+    {
+        /** @var array<string, string> $colours */
+        $colours = Category::query()->pluck('color', 'name')->all();
+
+        $slices = [];
+        foreach ($portfolio['allocation'] as $slice) {
+            $slices[] = [
+                'name' => $slice['name'],
+                'value' => $slice['value'],
+                'share_pct' => $slice['share_pct'],
+                'color' => $colours[$slice['name']] ?? '#94a3b8',
+            ];
+        }
+
+        $this->widgets->add('allocation_donut', [
+            'slices' => $slices,
+            'top_category' => $portfolio['concentration']['top_category'],
+            'top_share_pct' => $portfolio['concentration']['top_share_pct'],
+        ]);
+    }
+
+    /**
+     * Emit the net-worth line for the requested window: the full run of monthly
+     * snapshots between the two resolved endpoints, so the frontend draws a real
+     * curve (not just the two ends) and highlights the period.
+     */
+    private function emitNetWorthWidget(Snapshot $start, Snapshot $end): void
+    {
+        $points = Snapshot::query()
+            ->whereBetween('date', [$start->date->format('Y-m-d'), $end->date->format('Y-m-d')])
+            ->orderBy('date')
+            ->get(['date', 'total_value'])
+            ->map(fn (Snapshot $s): array => [
+                'date' => $s->date->format('Y-m-d'),
+                'total_value' => round((float) $s->total_value, 2),
+            ])
+            ->all();
+
+        if (count($points) < 2) {
+            return;
+        }
+
+        $this->widgets->add('networth_line', [
+            'points' => $points,
+            'from' => $start->date->format('Y-m-d'),
+            'to' => $end->date->format('Y-m-d'),
+        ]);
+    }
+
     private function describeNetWorthBetween(string $from, string $to): string
     {
         try {
@@ -333,6 +479,8 @@ class AdvisorToolFactory
         $pct = (float) $start->total_value > 0.0
             ? $delta / (float) $start->total_value * 100
             : null;
+
+        $this->emitNetWorthWidget($start, $end);
 
         $lines = [
             'Patrimonio al '.$start->date->format('Y-m-d').': '.$this->eur((float) $start->total_value),

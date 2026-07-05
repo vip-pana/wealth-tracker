@@ -55,7 +55,7 @@ class MessageController extends Controller
     }
 
     /**
-     * @return array{id: int, role: string, content: string, status: string, error: string|null, tool_activity: string|null, created_at: string|null}
+     * @return array{id: int, role: string, content: string, status: string, error: string|null, tool_activity: string|null, widgets: list<array{type: string, data: array<string, mixed>}>|null, created_at: string|null}
      */
     private function serialize(AdvisorMessage $message): array
     {
@@ -66,6 +66,7 @@ class MessageController extends Controller
             'status' => $message->status,
             'error' => $message->error,
             'tool_activity' => $message->tool_activity,
+            'widgets' => $message->widgets,
             'created_at' => $message->created_at?->toISOString(),
         ];
     }
