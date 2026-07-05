@@ -202,8 +202,14 @@ class RenderAdvisorContext extends Action
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
         $out .= "\n- Obiettivo: ".$this->sourced($profile['objective'] ?? null);
+        $out .= "\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null);
 
-        return $out.("\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null));
+        $notes = $profile['notes'] ?? null;
+        if (is_string($notes) && $notes !== '') {
+            $out .= "\n- Note sul profilo di rischio: ".$notes;
+        }
+
+        return $out;
     }
 
     /**

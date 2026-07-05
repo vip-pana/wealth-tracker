@@ -60,8 +60,9 @@ class BuildAdvisorContext extends Action
 
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
+        $notes = $profile?->notes;
 
-        if ($horizon === null && $risk === null && $objective === null && $allocation === null) {
+        if ($horizon === null && $risk === null && $objective === null && $allocation === null && $notes === null) {
             return null;
         }
 
@@ -70,6 +71,7 @@ class BuildAdvisorContext extends Action
             'risk_tolerance' => $risk,
             'objective' => $objective,
             'target_allocation' => $allocation,
+            'notes' => $notes,
         ];
     }
 

@@ -472,4 +472,18 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('Non ho abbastanza elementi', $out);
         $this->assertSame([], $collector->widgets());
     }
+
+    public function test_propose_profile_update_carries_the_risk_profiling_notes(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            risk_tolerance: 'medium',
+            notes: 'Orizzonte 15+ anni, reddito stabile, ma nervoso oltre il -20%.',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
+        $this->assertStringContainsString('nervoso', $widgets[0]['data']['notes']);
+    }
 }

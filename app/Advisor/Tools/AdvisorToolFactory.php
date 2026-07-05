@@ -241,15 +241,16 @@ class AdvisorToolFactory
     private function proposeProfileUpdate(): PrismTool
     {
         return Tool::as('propose_profile_update')
-            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, obiettivo, allocazione target) quando la conversazione ha chiarito uno o più di questi elementi. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, obiettivo, allocazione target, note) quando la conversazione ha chiarito uno o più di questi elementi. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
             ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short" (breve, <3 anni), "medium" (medio, 3-10 anni), "long" (lungo, 10+ anni). Ometti se non emerso.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low" (bassa), "medium" (media), "high" (alta). Ometti se non emerso.', required: false)
             ->withStringParameter('objective', 'Obiettivo di investimento, testo libero (max 500 caratteri). Ometti se non emerso.', required: false)
             ->withStringParameter('target_allocation', 'Allocazione target desiderata, testo libero (es. "60% azioni, 30% obbligazioni, 10% liquidità", max 500). Ometti se non emerso.', required: false)
-            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, ?string $objective = null, ?string $target_allocation = null): string {
+            ->withStringParameter('notes', 'Sintesi del ragionamento sul profilo di rischio (max 1000 caratteri): capacità di rischio (orizzonte, stabilità del reddito, cuscinetto di liquidità), tolleranza emotiva (reazione a un forte calo), e contesto rilevante. Compilalo quando hai condotto un\'intervista di profilazione, così il "perché" resta salvato.', required: false)
+            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, ?string $objective = null, ?string $target_allocation = null, ?string $notes = null): string {
                 $this->activity->report('Sto preparando una proposta per il tuo profilo…');
 
-                return $this->describeProfileProposal($horizon, $risk_tolerance, $objective, $target_allocation);
+                return $this->describeProfileProposal($horizon, $risk_tolerance, $objective, $target_allocation, $notes);
             });
     }
 
@@ -719,18 +720,20 @@ class AdvisorToolFactory
      * enum is dropped (not proposed) so the model can't push an invalid value.
      * Returns without a widget when nothing valid was proposed.
      */
-    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, ?string $objective, ?string $targetAllocation): string
+    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, ?string $objective, ?string $targetAllocation, ?string $notes = null): string
     {
         $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
         $objective = $objective !== null && trim($objective) !== '' ? mb_substr(trim($objective), 0, 500) : null;
         $targetAllocation = $targetAllocation !== null && trim($targetAllocation) !== '' ? mb_substr(trim($targetAllocation), 0, 500) : null;
+        $notes = $notes !== null && trim($notes) !== '' ? mb_substr(trim($notes), 0, 1000) : null;
 
         $proposed = array_filter([
             'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
             'objective' => $objective,
             'target_allocation' => $targetAllocation,
+            'notes' => $notes,
         ], fn ($v): bool => $v !== null);
 
         if ($proposed === []) {
@@ -754,6 +757,9 @@ class AdvisorToolFactory
         }
         if ($targetAllocation !== null) {
             $lines[] = '  - Allocazione target: '.$targetAllocation;
+        }
+        if ($notes !== null) {
+            $lines[] = '  - Note: '.$notes;
         }
         $lines[] = 'La proposta è mostrata all\'utente con un pulsante per confermare: non è ancora salvata.';
 

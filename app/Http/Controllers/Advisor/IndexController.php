@@ -48,6 +48,7 @@ class IndexController extends Controller
                 'risk_tolerance' => $profile->risk_tolerance,
                 'objective' => $profile->objective,
                 'target_allocation' => $profile->target_allocation,
+                'notes' => $profile->notes,
             ] : null,
             'goalObjective' => $goal?->name,
             'sessions' => $this->sessionList(),
