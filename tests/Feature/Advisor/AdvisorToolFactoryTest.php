@@ -7,8 +7,10 @@ namespace Tests\Feature\Advisor;
 use App\Actions\Advisor\BuildAdvisorContext;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
+use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
+use App\Models\Category;
 use App\Models\Snapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -65,7 +67,7 @@ class AdvisorToolFactoryTest extends TestCase
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn($context);
 
-        return new AdvisorToolFactory($build, new AdvisorToolActivityReporter);
+        return new AdvisorToolFactory($build, new AdvisorToolActivityReporter, new AdvisorWidgetCollector);
     }
 
     private function tool(AdvisorToolFactory $factory, string $name): Tool
@@ -84,7 +86,7 @@ class AdvisorToolFactoryTest extends TestCase
         $reporter = new AdvisorToolActivityReporter;
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn($this->portfolioContext);
-        $factory = new AdvisorToolFactory($build, $reporter);
+        $factory = new AdvisorToolFactory($build, $reporter, new AdvisorWidgetCollector);
 
         $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
         $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
@@ -93,6 +95,117 @@ class AdvisorToolFactoryTest extends TestCase
         $this->tool($factory, 'get_position')->handle(name: 'ACWI');
 
         $this->assertSame('Sto controllando la tua posizione ACWI…', $message->fresh()?->tool_activity);
+    }
+
+    public function test_simulate_pac_emits_a_pac_simulator_widget_when_armed(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        $collector->for($message);
+        $this->tool($factory, 'simulate_pac')->handle(monthly_amount: 600);
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('pac_simulator', $widgets[0]['type']);
+        $this->assertSame(50000.0, $widgets[0]['data']['current_net_worth']);
+        $this->assertSame(100000.0, $widgets[0]['data']['target_value']);
+        $this->assertSame(600.0, $widgets[0]['data']['monthly_amount']);
+    }
+
+    public function test_simulate_pac_emits_no_widget_when_there_is_no_goal(): void
+    {
+        $context = $this->portfolioContext;
+        $context['portfolio']['goalEta'] = null;
+
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($context);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        $collector->for($message);
+        $this->tool($factory, 'simulate_pac')->handle(monthly_amount: 600);
+
+        $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_widget_collector_is_a_no_op_when_not_armed(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+        $this->tool($this->toolFor($this->portfolioContext), 'simulate_pac')->handle(monthly_amount: 600);
+
+        $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_get_position_emits_a_managed_position_card(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $this->tool($factory, 'get_position')->handle(name: 'acwi');
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('position_card', $widgets[0]['type']);
+        $this->assertTrue($widgets[0]['data']['managed']);
+        $this->assertSame('ACWI ETF', $widgets[0]['data']['name']);
+        $this->assertSame(2695.0, $widgets[0]['data']['unrealised_pnl']);
+    }
+
+    public function test_get_position_emits_an_unmanaged_category_card(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $this->tool($factory, 'get_position')->handle(name: 'bitcoin');
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('position_card', $widgets[0]['type']);
+        $this->assertFalse($widgets[0]['data']['managed']);
+        $this->assertSame(16000.0, $widgets[0]['data']['current_value']);
+    }
+
+    public function test_get_portfolio_summary_emits_an_allocation_donut_with_colours(): void
+    {
+        Category::factory()->create(['name' => 'Bitcoin', 'color' => '#f7931a']);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $this->tool($factory, 'get_portfolio_summary')->handle();
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('allocation_donut', $widgets[0]['type']);
+        $bitcoin = collect($widgets[0]['data']['slices'])->firstWhere('name', 'Bitcoin');
+        $this->assertSame('#f7931a', $bitcoin['color']);
+        // A slice without a matching category falls back to the neutral grey.
+        $liquid = collect($widgets[0]['data']['slices'])->firstWhere('name', 'Liquidità');
+        $this->assertSame('#94a3b8', $liquid['color']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array{0: AdvisorToolFactory, 1: AdvisorWidgetCollector}
+     */
+    private function armedFactory(array $context): array
+    {
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($context);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+
+        return [$factory, $collector];
     }
 
     public function test_does_not_report_activity_when_not_armed(): void
@@ -221,5 +334,32 @@ class AdvisorToolFactoryTest extends TestCase
         $out = $this->tool($this->toolFor($this->portfolioContext), 'net_worth_between')->handle(from: '2020-01-01', to: '2020-12-31');
 
         $this->assertStringContainsString('Non ci sono snapshot', $out);
+    }
+
+    public function test_net_worth_between_emits_a_line_widget_with_the_snapshot_points(): void
+    {
+        Snapshot::create(['date' => '2026-01-31', 'total_value' => 40000]);
+        Snapshot::create(['date' => '2026-02-28', 'total_value' => 45000]);
+        Snapshot::create(['date' => '2026-04-30', 'total_value' => 50000]);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'net_worth_between')->handle(from: '2026-01-31', to: '2026-04-30');
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('networth_line', $widgets[0]['type']);
+        $this->assertCount(3, $widgets[0]['data']['points']);
+        $this->assertSame('2026-01-31', $widgets[0]['data']['from']);
+    }
+
+    public function test_net_worth_between_emits_no_widget_with_a_single_point(): void
+    {
+        Snapshot::create(['date' => '2026-04-30', 'total_value' => 50000]);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        // Both endpoints resolve to the one snapshot, so there's no curve to draw.
+        $this->tool($factory, 'net_worth_between')->handle(from: '2026-04-01', to: '2026-04-30');
+
+        $this->assertSame([], $collector->widgets());
     }
 }
