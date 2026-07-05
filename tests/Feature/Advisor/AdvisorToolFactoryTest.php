@@ -11,6 +11,8 @@ use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use App\Models\Category;
+use App\Models\Goal;
+use App\Models\GoalCategoryAllocation;
 use App\Models\Snapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -360,6 +362,70 @@ class AdvisorToolFactoryTest extends TestCase
         // Both endpoints resolve to the one snapshot, so there's no curve to draw.
         $this->tool($factory, 'net_worth_between')->handle(from: '2026-04-01', to: '2026-04-30');
 
+        $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_allocation_vs_target_emits_a_comparison_widget(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azioni']);
+        $goal = Goal::create(['name' => 'FIRE', 'target_value' => 100000, 'target_date' => '2040-01-01']);
+        GoalCategoryAllocation::create(['goal_id' => $goal->id, 'category_id' => $azioni->id, 'percentage' => 60]);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'allocation_vs_target')->handle();
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('allocation_vs_target', $widgets[0]['type']);
+        // Bitcoin is in the current allocation but not the target -> target 0.
+        $bitcoin = collect($widgets[0]['data']['rows'])->firstWhere('name', 'Bitcoin');
+        $this->assertSame(32.0, $bitcoin['current_pct']);
+        $this->assertSame(0.0, $bitcoin['target_pct']);
+        // Azioni is in the target but not the current allocation -> current 0.
+        $azioniRow = collect($widgets[0]['data']['rows'])->firstWhere('name', 'Azioni');
+        $this->assertSame(60.0, $azioniRow['target_pct']);
+    }
+
+    public function test_allocation_vs_target_reports_no_target_when_none_set(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'allocation_vs_target')->handle();
+
+        $this->assertStringContainsString('non posso confrontare con un target', $out);
+        $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_list_positions_emits_a_table_widget(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'list_positions')->handle();
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('positions_table', $widgets[0]['type']);
+        $this->assertCount(1, $widgets[0]['data']['rows']);
+        $this->assertSame('ACWI ETF', $widgets[0]['data']['rows'][0]['name']);
+        $this->assertStringContainsString('ACWI ETF', $out);
+    }
+
+    public function test_simulate_goal_emits_a_widget_with_the_required_monthly(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'simulate_goal')->handle(target_value: 1000000, target_date: '2050-01-01');
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('goal_simulator', $widgets[0]['type']);
+        $this->assertSame(1000000.0, $widgets[0]['data']['target_value']);
+        $this->assertGreaterThan(0.0, $widgets[0]['data']['required_monthly']);
+    }
+
+    public function test_simulate_goal_rejects_a_past_date(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'simulate_goal')->handle(target_value: 1000000, target_date: '2000-01-01');
+
+        $this->assertStringContainsString('futura', $out);
         $this->assertSame([], $collector->widgets());
     }
 }
