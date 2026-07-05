@@ -6,6 +6,8 @@ namespace App\Advisor\Tools;
 
 use App\Actions\Advisor\BuildAdvisorContext;
 use App\Models\Category;
+use App\Models\Goal;
+use App\Models\GoalCategoryAllocation;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 use Prism\Prism\Facades\Tool;
@@ -38,6 +40,9 @@ class AdvisorToolFactory
             $this->getPortfolioSummary(),
             $this->simulatePac(),
             $this->netWorthBetween(),
+            $this->allocationVsTarget(),
+            $this->listPositions(),
+            $this->simulateGoal(),
         ];
     }
 
@@ -171,6 +176,58 @@ class AdvisorToolFactory
                 $this->activity->report('Sto confrontando il patrimonio nel periodo indicato…');
 
                 return $this->describeNetWorthBetween($from, $to);
+            });
+    }
+
+    /**
+     * Current allocation against the Goal's target allocation, per category.
+     * Answers "am I in line with my plan?" — a comparison the user's structured
+     * GoalCategoryAllocation makes possible.
+     */
+    private function allocationVsTarget(): PrismTool
+    {
+        return Tool::as('allocation_vs_target')
+            ->for('Confronta l\'allocazione ATTUALE del portafoglio con l\'allocazione OBIETTIVO impostata (target per categoria). Usalo per domande su quanto il portafoglio è in linea col piano/strategia, o dove ribilanciare.')
+            ->using(function (): string {
+                $this->activity->report('Sto confrontando la tua allocazione con l\'obiettivo…');
+
+                return $this->describeAllocationVsTarget();
+            });
+    }
+
+    /**
+     * All positions with cost/value/return in one shot. Answers "how are my
+     * investments doing?" across the whole book — a table the eye reads faster
+     * than the model narrates, and where per-position signs stay correct.
+     */
+    private function listPositions(): PrismTool
+    {
+        return Tool::as('list_positions')
+            ->for('Elenca TUTTE le posizioni gestite da transazioni con quote, prezzo medio di carico, valore attuale e guadagno/perdita. Usalo per domande sull\'andamento complessivo degli investimenti o per confrontare le posizioni tra loro.')
+            ->using(function (): string {
+                $this->activity->report('Sto raccogliendo i rendimenti di tutte le posizioni…');
+
+                return $this->describePositionsTable();
+            });
+    }
+
+    /**
+     * What-if on the goal itself: given a target amount and date, the monthly
+     * contribution needed to reach it. The inverse of simulate_pac (which fixes
+     * the PAC and finds the time); here the time is fixed and we solve for PAC.
+     */
+    private function simulateGoal(): PrismTool
+    {
+        $today = Carbon::now()->format('Y-m-d');
+
+        return Tool::as('simulate_goal')
+            ->for("Simula un obiettivo: dato un importo target e una data, calcola il versamento mensile (PAC) necessario per raggiungerlo. Usalo quando l'utente ragiona su un obiettivo diverso o vuole capire quanto versare. Oggi è {$today}.")
+            ->withNumberParameter('target_value', 'Importo obiettivo in euro, es. 500000')
+            ->withStringParameter('target_date', "Data obiettivo in formato AAAA-MM-GG, futura (dopo {$today})")
+            ->using(function (int|float $target_value, string $target_date): string {
+                $this->activity->report('Sto simulando l\'obiettivo…');
+
+                return $this->describeGoalSimulation((float) $target_value, $target_date);
             });
     }
 
@@ -453,6 +510,184 @@ class AdvisorToolFactory
             'from' => $start->date->format('Y-m-d'),
             'to' => $end->date->format('Y-m-d'),
         ]);
+    }
+
+    /**
+     * Build the current-vs-target allocation comparison, emit its widget and
+     * return the annotated text. Target percentages come from the Goal's
+     * category allocations; current percentages from the metrics.
+     */
+    private function describeAllocationVsTarget(): string
+    {
+        $portfolio = $this->portfolio();
+
+        if ($portfolio === null) {
+            return 'Non ci sono ancora dati di portafoglio sufficienti.';
+        }
+
+        $goal = Goal::query()->with('categoryAllocations.category')->first();
+        $targets = [];
+        if ($goal instanceof Goal) {
+            foreach ($goal->categoryAllocations as $a) {
+                $label = $a->category_id !== null
+                    ? ($a->category->name ?? 'Sconosciuta')
+                    : ($a->macro_category ?? 'Sconosciuta');
+                $targets[$label] = round((float) $a->percentage, 2);
+            }
+        }
+
+        if ($targets === []) {
+            return 'Non hai impostato un\'allocazione obiettivo nella sezione Obiettivo, quindi non posso confrontare con un target.';
+        }
+
+        $current = [];
+        foreach ($portfolio['allocation'] as $slice) {
+            $current[$slice['name']] = $slice['share_pct'];
+        }
+
+        // Union of category names across current and target, so a category that
+        // is only in one of the two still shows (as 0 on the missing side).
+        $names = array_values(array_unique([...array_keys($current), ...array_keys($targets)]));
+
+        $rows = [];
+        foreach ($names as $name) {
+            $rows[] = [
+                'name' => $name,
+                'current_pct' => $current[$name] ?? 0.0,
+                'target_pct' => $targets[$name] ?? 0.0,
+            ];
+        }
+
+        $this->widgets->add('allocation_vs_target', ['rows' => $rows]);
+
+        $lines = ['Allocazione attuale vs obiettivo:'];
+        foreach ($rows as $row) {
+            $delta = $row['current_pct'] - $row['target_pct'];
+            $lines[] = "  - {$row['name']}: attuale ".$this->num($row['current_pct'], 1).'%, obiettivo '
+                .$this->num($row['target_pct'], 1).'% ('.$this->signedPct($delta).')';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Emit and describe the full positions table (transaction-managed only).
+     */
+    private function describePositionsTable(): string
+    {
+        $context = $this->buildContext->run();
+
+        /** @var array{positions: list<array{id: int, name: string, shares: float, average_cost: float, cost_basis: float, current_value: float|null, unrealised_pnl: float|null, unrealised_pnl_pct: float|null, realised_pnl: float}>}|null $returns */
+        $returns = $context['positionReturns'] ?? null;
+
+        if ($returns === null || $returns['positions'] === []) {
+            return 'Non hai posizioni gestite da transazioni (nessun rendimento reale da confrontare).';
+        }
+
+        $rows = [];
+        foreach ($returns['positions'] as $p) {
+            $rows[] = [
+                'name' => $p['name'],
+                'shares' => $p['shares'],
+                'average_cost' => $p['average_cost'],
+                'current_value' => $p['current_value'],
+                'unrealised_pnl' => $p['unrealised_pnl'],
+                'unrealised_pnl_pct' => $p['unrealised_pnl_pct'],
+            ];
+        }
+
+        $this->widgets->add('positions_table', ['rows' => $rows]);
+
+        $lines = ['Rendimenti per posizione:'];
+        foreach ($returns['positions'] as $p) {
+            $pnl = $p['unrealised_pnl'] !== null
+                ? $this->signedEur($p['unrealised_pnl']).($p['unrealised_pnl_pct'] !== null ? ' ('.$this->signedPct($p['unrealised_pnl_pct']).')' : '')
+                : 'valore non disponibile';
+            $lines[] = "  - {$p['name']}: ".$pnl;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Simulate a goal: given a target amount and date, the monthly PAC needed.
+     * Solves the compound annuity for the payment (the inverse of simulate_pac),
+     * using the same expected-return assumption. Emits an interactive widget so
+     * the user can drag target and date and watch the required PAC update.
+     */
+    private function describeGoalSimulation(float $targetValue, string $targetDate): string
+    {
+        $context = $this->buildContext->run();
+        $portfolio = $this->portfolio($context);
+
+        if ($portfolio === null) {
+            return 'Non ci sono ancora dati sufficienti per simulare l\'obiettivo.';
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $targetDate)?->endOfDay();
+        } catch (\Throwable) {
+            return 'Data non valida. Usa il formato AAAA-MM-GG.';
+        }
+
+        if ($date === null || $date->isPast()) {
+            return 'La data obiettivo deve essere futura.';
+        }
+
+        $months = (int) ceil(Carbon::now()->diffInMonths($date, absolute: true));
+        if ($months < 1) {
+            return 'La data obiettivo è troppo vicina per un piano mensile.';
+        }
+
+        $expectedReturn = $this->expectedAnnualReturn($context);
+        $current = $portfolio['totalNetWorth'];
+        $required = $this->requiredMonthlyContribution($current, $targetValue, $months, $expectedReturn['rate']);
+
+        $this->widgets->add('goal_simulator', [
+            'current_net_worth' => $current,
+            'target_value' => $targetValue,
+            'target_date' => $date->format('Y-m-d'),
+            'months' => $months,
+            'annual_return' => $expectedReturn['rate'],
+            'annual_return_source' => $expectedReturn['source'],
+            'required_monthly' => $required,
+        ]);
+
+        $lines = [
+            'Simulazione obiettivo '.$this->eur($targetValue).' entro il '.$date->format('Y-m-d').' ('.$months.' mesi):',
+            'Patrimonio attuale '.$this->eur($current).'.',
+            'Ipotesi di rendimento annuo: '.$this->num($expectedReturn['rate'] * 100, 1).'% ('.$expectedReturn['source'].') — assunzione di pianificazione, NON una previsione.',
+        ];
+
+        if ($required <= 0.0) {
+            $lines[] = 'Con il solo patrimonio attuale e questo rendimento raggiungi già l\'obiettivo entro la data: nessun versamento aggiuntivo necessario.';
+        } else {
+            $lines[] = 'Versamento mensile necessario: circa '.$this->eur($required).'.';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * The monthly PAC needed to grow $current to $target over $months at a
+     * given annual rate. Closed-form annuity: PMT = (FV - PV·(1+i)^n) / s, where
+     * s is the future-value factor of a €1/month annuity. Returns 0 when the
+     * current balance alone already reaches the target.
+     */
+    private function requiredMonthlyContribution(float $current, float $target, int $months, float $annualReturn): float
+    {
+        $i = (1.0 + $annualReturn) ** (1.0 / 12.0) - 1.0;
+        $growth = (1.0 + $i) ** $months;
+        $futureOfCurrent = $current * $growth;
+
+        if ($futureOfCurrent >= $target) {
+            return 0.0;
+        }
+
+        // Future-value factor of a €1/month ordinary annuity; guard i≈0.
+        $annuityFactor = $i > 1e-9 ? ($growth - 1.0) / $i : $months;
+
+        return ($target - $futureOfCurrent) / $annuityFactor;
     }
 
     private function describeNetWorthBetween(string $from, string $to): string
