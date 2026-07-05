@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * @property string $content
  * @property string $status
  * @property string|null $error
+ * @property string|null $tool_activity
+ * @property list<array{type: string, data: array<string, mixed>}>|null $widgets
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read AdvisorSession $session
@@ -31,7 +33,13 @@ class AdvisorMessage extends Model
 
     public const STATUS_FAILED = 'failed';
 
-    protected $fillable = ['session_id', 'role', 'content', 'status', 'error', 'tool_activity'];
+    protected $fillable = ['session_id', 'role', 'content', 'status', 'error', 'tool_activity', 'widgets'];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['widgets' => 'array'];
+    }
 
     /** @return BelongsTo<AdvisorSession, $this> */
     public function session(): BelongsTo

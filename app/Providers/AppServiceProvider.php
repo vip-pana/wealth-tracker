@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
+use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Contracts\AdvisorProvider;
 use App\Http\Clients\EnableBankingClient;
 use App\Http\Clients\PrismAdvisorProvider;
@@ -37,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
         // provider) share the same instance: the tools report their live
         // activity to the message ContinueChat armed it with.
         $this->app->singleton(AdvisorToolActivityReporter::class);
+
+        // Same request-scoped sharing for the generative-UI widgets a tool emits
+        // (see AdvisorWidgetCollector): the tools append, ContinueChat persists.
+        $this->app->singleton(AdvisorWidgetCollector::class);
 
         // The advisor is swappable: a local model (Ollama) for development or a
         // cloud one (Anthropic) later, chosen by services.advisor.driver. Both
