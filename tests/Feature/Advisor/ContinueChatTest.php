@@ -9,6 +9,7 @@ use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ContinueChatTest extends TestCase
@@ -178,5 +179,28 @@ class ContinueChatTest extends TestCase
         $contents = array_map(fn (array $m): string => $m['content'], $captured);
         $this->assertContains('apertura', $contents);
         $this->assertContains('E adesso?', $contents);
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function consentCases(): iterable
+    {
+        yield 'question is never consent' => ['Se avessi tolleranza alta cosa cambierebbe?', false];
+        yield 'bare si' => ['Sì', true];
+        yield 'ok update it' => ['Ok aggiorna il profilo', true];
+        yield 'va bene' => ['va bene', true];
+        yield 'plain answer is not consent' => ['Libertà finanziaria tra 20 anni', false];
+        yield 'update-with-question is not consent' => ['Vuoi aggiornare il profilo?', false];
+        yield 'empty is not consent' => ['', false];
+    }
+
+    #[DataProvider('consentCases')]
+    public function test_detects_explicit_consent_to_update_the_profile(string $message, bool $expected): void
+    {
+        $action = app(ContinueChat::class);
+        $method = new \ReflectionMethod($action, 'userConsentsToProfileUpdate');
+
+        $this->assertSame($expected, $method->invoke($action, $message));
     }
 }

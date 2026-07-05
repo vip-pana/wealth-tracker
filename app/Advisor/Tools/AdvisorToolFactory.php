@@ -740,6 +740,14 @@ class AdvisorToolFactory
             return 'Non ho abbastanza elementi per proporre una modifica al profilo. Chiedi all\'utente orizzonte, tolleranza al rischio e obiettivo.';
         }
 
+        // Deterministic consent gate: the advisor must not propose on its own
+        // initiative. Unless the user just agreed (ContinueChat sets this), emit
+        // no widget and steer the model to ask first. This holds regardless of
+        // how insistently the model tries to propose.
+        if (! $this->widgets->isProfileProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card di proposta. Prima CHIEDI esplicitamente all\'utente se vuole che aggiorni il suo profilo con queste conclusioni, oppure se preferisce continuare l\'analisi. Attendi il suo consenso.';
+        }
+
         $this->widgets->add('profile_proposal', $proposed);
 
         $horizonLabels = ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo'];

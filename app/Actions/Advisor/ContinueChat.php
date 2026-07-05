@@ -81,6 +81,10 @@ class ContinueChat extends Action
         // counterpart can attach it to this reply.
         $this->activity->for($assistant);
         $this->widgets->for($assistant);
+        // The advisor may only propose a profile change once the user has just
+        // agreed to it. Everywhere else the proposal tool emits nothing (see
+        // AdvisorWidgetCollector), so the model can't push an unrequested card.
+        $this->widgets->allowProfileProposal($this->userConsentsToProfileUpdate($user->content));
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
@@ -186,6 +190,30 @@ class ContinueChat extends Action
         ];
     }
 
+    /**
+     * Whether the user's message reads as explicit consent to apply a profile
+     * update — the gate that lets the advisor actually emit a proposal card.
+     * Deliberately narrow: a short affirmative, or an explicit "update/apply the
+     * profile" phrasing, and never when the message is a question. Erring toward
+     * NOT proposing is the safe default (the user can always say "yes").
+     */
+    private function userConsentsToProfileUpdate(string $message): bool
+    {
+        $text = mb_strtolower(trim($message));
+
+        if ($text === '' || str_contains($text, '?')) {
+            return false;
+        }
+
+        // An explicit "update/change/apply/create the profile" request.
+        if (preg_match('/\b(aggiorna|aggiornare|modifica|modificare|applica|applicare|imposta|impostare|salva|salvare|crea|creare|procedi|procedere)\b.*\bprofil/u', $text) === 1) {
+            return true;
+        }
+
+        // A short bare affirmative in reply to the advisor's "shall I update it?".
+        return mb_strlen($text) <= 30 && preg_match('/\b(s[iì]|ok|okay|va bene|certo|d\'accordo|perfetto|procedi|confermo|esatto)\b/u', $text) === 1;
+    }
+
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
@@ -208,16 +236,15 @@ class ContinueChat extends Action
         3. REDDITO E CUSCINETTO — l'app vede la liquidità ma non sa se è un fondo di emergenza né quanto è stabile il reddito: chiedilo.
         4. REAZIONE AI CALI — domanda chiave sulla tolleranza emotiva: come reagirebbe a un -20/-30% (vende, aspetta, compra di più).
 
-        DISTINZIONE CRUCIALE — leggila come la regola più importante. Se l'ultimo messaggio dell'utente è una DOMANDA (finisce con «?», o chiede «cosa cambierebbe se…», «cosa significa…», «perché…», «puoi spiegarmi…»), allora DEVI limitarti a RISPONDERE A PAROLE. In quel turno NON devi chiamare propose_profile_update, NON devi mostrare una card, NON devi riassumere una proposta. Rispondere a una domanda NON è mai proporre.
-        Esempio concreto: l'utente ha già ricevuto una proposta con rischio medio e chiede «se volessi tolleranza alta, cosa dovrebbe cambiare?». Risposta CORRETTA: spieghi a parole cosa comporterebbe un profilo a rischio alto (es. maggiore quota azionaria/volatilità, richiede di reggere emotivamente cali più forti) e gli chiedi se vuole che aggiorni la proposta. Risposta SBAGLIATA: rifare una proposta con rischio alto. NON farlo.
-        Chiama propose_profile_update SOLO quando: (a) l'intervista è completa E (b) l'ultimo messaggio dell'utente NON è una domanda ma una risposta/conferma. Una volta sola. Riproponi (aggiornando i campi) SOLO se l'utente lo chiede esplicitamente («sì aggiornala», «cambiala in rischio alto»).
+        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Quindi:
+        - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
+        - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
+        - Quando ritieni di avere un quadro completo (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali), NON proporre subito: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
+        - Chiama propose_profile_update SOLO dopo che l'utente ha acconsentito esplicitamente (es. «sì», «ok aggiornalo», «procedi»). Solo allora, e una volta sola.
 
-        REGOLE FERREE:
-        - Al PRIMO messaggio in cui chiede aiuto sul profilo, NON proporre e NON chiamare propose_profile_update: apri riconoscendo cosa vedi dai suoi dati e fai UNA domanda di approfondimento (di norma sull'obiettivo). Poi fermati.
-        - NON chiamare propose_profile_update finché non hai coperto tutti e quattro i temi. Se ne manca uno, fai la domanda che manca.
-        - Non inventare né presumere risposte che non ti ha dato.
+        (Nota tecnica: se chiami propose_profile_update senza che l'utente abbia acconsentito, lo strumento non mostrerà nulla e ti dirà di chiedere prima il consenso. Non insistere: chiedi il consenso a parole.)
 
-        Quando l'intervista è completa: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali). Chiama propose_profile_update UNA volta con horizon, risk_tolerance, objective (solo se diverso da quello in Obiettivo) e SEMPRE notes con la sintesi del ragionamento. Poi invita a confermare con il pulsante.
+        Quando l'utente ha acconsentito: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali). Chiama propose_profile_update con horizon, risk_tolerance, objective (solo se diverso da quello in Obiettivo) e SEMPRE notes con la sintesi del ragionamento. Poi invita a confermare con il pulsante.
 
         IMPORTANTE sugli strumenti: quando ti serve un dato, CHIAMA davvero lo strumento (funzione). NON scrivere MAI la sintassi di una chiamata (nomi di funzione, blocchi tipo <function-call>, JSON di argomenti) dentro la risposta all'utente: l'utente vede solo il testo, non le chiamate. Se una domanda richiede più dati, chiama gli strumenti necessari (anche più d'uno) e solo dopo aver ricevuto tutti i risultati scrivi la risposta finale in linguaggio naturale.
 

@@ -25,10 +25,30 @@ class AdvisorWidgetCollector
     /** @var list<array{type: string, data: array<string, mixed>}> */
     private array $widgets = [];
 
+    /**
+     * Whether the profile-proposal tool is allowed to emit its widget this turn.
+     * The advisor must not propose a profile change on its own initiative — only
+     * after the user explicitly agrees. ContinueChat sets this from the user's
+     * last message; when false, propose_profile_update emits nothing and tells
+     * the model to ask for consent first. Deterministic guard: the prompt alone
+     * did not stop the model from proposing.
+     */
+    private bool $profileProposalAllowed = false;
+
     public function for(AdvisorMessage $message): void
     {
         $this->target = $message;
         $this->widgets = [];
+    }
+
+    public function allowProfileProposal(bool $allowed): void
+    {
+        $this->profileProposalAllowed = $allowed;
+    }
+
+    public function isProfileProposalAllowed(): bool
+    {
+        return $this->profileProposalAllowed;
     }
 
     /**
@@ -80,5 +100,6 @@ class AdvisorWidgetCollector
     {
         $this->target = null;
         $this->widgets = [];
+        $this->profileProposalAllowed = false;
     }
 }

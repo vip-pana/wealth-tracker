@@ -206,6 +206,9 @@ class AdvisorToolFactoryTest extends TestCase
         $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
         $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
         $collector->for($message);
+        // Most tests exercise tools other than the consent-gated proposal; allow
+        // it by default so those stay unaffected. The gate has its own tests.
+        $collector->allowProfileProposal(true);
 
         return [$factory, $collector];
     }
@@ -471,6 +474,24 @@ class AdvisorToolFactoryTest extends TestCase
 
         $this->assertStringContainsString('Non ho abbastanza elementi', $out);
         $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_propose_profile_update_emits_nothing_without_consent(): void
+    {
+        // Same setup as armedFactory but WITHOUT allowing the proposal.
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // proposal NOT allowed (default)
+
+        $out = $this->tool($factory, 'propose_profile_update')->handle(horizon: 'long', risk_tolerance: 'high');
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('CHIEDI', $out);
     }
 
     public function test_propose_profile_update_carries_the_risk_profiling_notes(): void
