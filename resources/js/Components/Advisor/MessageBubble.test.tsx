@@ -9,6 +9,14 @@ vi.mock('@/Components/Advisor/ThinkingWithFacts', () => ({
     ThinkingWithFacts: ({ label }: { label?: string }) => <div data-testid="thinking">{label}</div>,
 }));
 
+// The widgets pull in Recharts; stub the dispatcher to a marker that reports how
+// many widgets it received, so we test MessageBubble's wiring in isolation.
+vi.mock('@/Components/Advisor/AdvisorWidgets', () => ({
+    AdvisorWidgets: ({ widgets }: { widgets: unknown[] }) => (
+        <div data-testid="widgets">{widgets.length}</div>
+    ),
+}));
+
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
 
 function msg(over: Partial<Message> = {}): Message {
@@ -40,6 +48,39 @@ describe('MessageBubble', () => {
     it('surfaces the live tool activity while thinking', () => {
         render(<MessageBubble message={msg({ role: 'assistant', content: '', status: 'pending', tool_activity: 'Sto controllando la tua posizione Bitcoin…' })} funFacts={[]} />);
         expect(screen.getByTestId('thinking')).toHaveTextContent('Sto controllando la tua posizione Bitcoin…');
+    });
+
+    it('renders widgets under the prose when the reply carries them', () => {
+        render(
+            <MessageBubble
+                message={msg({
+                    role: 'assistant',
+                    content: 'Con 600€ ci metti circa 30 anni.',
+                    status: 'done',
+                    widgets: [
+                        {
+                            type: 'pac_simulator',
+                            data: {
+                                current_net_worth: 35516,
+                                target_value: 1000000,
+                                monthly_amount: 600,
+                                annual_return: 0.07,
+                                annual_return_source: 'profilo di rischio alto',
+                                low_confidence: true,
+                            },
+                        },
+                    ],
+                })}
+                funFacts={[]}
+            />,
+        );
+        expect(screen.getByText('Con 600€ ci metti circa 30 anni.')).toBeInTheDocument();
+        expect(screen.getByTestId('widgets')).toHaveTextContent('1');
+    });
+
+    it('renders no widgets container when there are none', () => {
+        render(<MessageBubble message={msg({ role: 'assistant', content: 'Risposta', status: 'done' })} funFacts={[]} />);
+        expect(screen.queryByTestId('widgets')).not.toBeInTheDocument();
     });
 
     it('shows the error text when failed', () => {
