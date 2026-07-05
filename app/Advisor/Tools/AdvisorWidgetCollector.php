@@ -36,7 +36,7 @@ class AdvisorWidgetCollector
      */
     public function add(string $type, array $data): void
     {
-        if ($this->target === null) {
+        if (! $this->target instanceof AdvisorMessage) {
             return;
         }
 

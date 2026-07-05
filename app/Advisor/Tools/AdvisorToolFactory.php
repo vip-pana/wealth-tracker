@@ -704,7 +704,7 @@ class AdvisorToolFactory
         $start = $this->snapshotNear($fromDate);
         $end = $this->snapshotNear($toDate);
 
-        if ($start === null || $end === null) {
+        if (! $start instanceof Snapshot || ! $end instanceof Snapshot) {
             return 'Non ci sono snapshot registrati per il periodo richiesto.';
         }
 

@@ -95,7 +95,7 @@ class PrismAdvisorProvider implements AdvisorProvider
         } catch (\Throwable $e) {
             Log::warning('Prism advisor stream failed', ['error' => $e->getMessage()]);
 
-            throw new \RuntimeException('Il modello non ha risposto. Verifica la configurazione.');
+            throw new \RuntimeException('Il modello non ha risposto. Verifica la configurazione.', $e->getCode(), $e);
         }
 
         $full = '';
@@ -129,7 +129,7 @@ class PrismAdvisorProvider implements AdvisorProvider
         } catch (\Throwable $e) {
             Log::warning('Prism advisor request failed', ['error' => $e->getMessage()]);
 
-            throw new \RuntimeException('Il modello non ha risposto. Verifica la configurazione.');
+            throw new \RuntimeException('Il modello non ha risposto. Verifica la configurazione.', $e->getCode(), $e);
         }
 
         return trim($response->text) === '' ? null : trim($response->text);
@@ -169,7 +169,7 @@ class PrismAdvisorProvider implements AdvisorProvider
         }
 
         if ($system !== null) {
-            $request = $request->withSystemPrompt($system);
+            return $request->withSystemPrompt($system);
         }
 
         return $request;

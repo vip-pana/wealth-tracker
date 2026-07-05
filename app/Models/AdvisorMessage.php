@@ -36,6 +36,7 @@ class AdvisorMessage extends Model
     protected $fillable = ['session_id', 'role', 'content', 'status', 'error', 'tool_activity', 'widgets'];
 
     /** @return array<string, string> */
+    #[\Override]
     protected function casts(): array
     {
         return ['widgets' => 'array'];

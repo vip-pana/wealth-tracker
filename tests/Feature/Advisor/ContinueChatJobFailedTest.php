@@ -28,7 +28,7 @@ class ContinueChatJobFailedTest extends TestCase
             'status' => AdvisorMessage::STATUS_PENDING,
         ]);
 
-        (new ContinueChatJob($user->id, $assistant->id))->failed(new \RuntimeException('timeout'));
+        new ContinueChatJob($user->id, $assistant->id)->failed(new \RuntimeException('timeout'));
 
         $assistant->refresh();
         $this->assertSame(AdvisorMessage::STATUS_FAILED, $assistant->status);
@@ -49,7 +49,7 @@ class ContinueChatJobFailedTest extends TestCase
             'status' => AdvisorMessage::STATUS_DONE,
         ]);
 
-        (new ContinueChatJob($user->id, $assistant->id))->failed(new \RuntimeException('timeout'));
+        new ContinueChatJob($user->id, $assistant->id)->failed(new \RuntimeException('timeout'));
 
         $this->assertSame(AdvisorMessage::STATUS_DONE, $assistant->fresh()->status);
     }
