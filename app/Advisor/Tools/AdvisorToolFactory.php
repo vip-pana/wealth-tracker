@@ -161,12 +161,10 @@ class AdvisorToolFactory
         // Give the model concrete date anchors: without today's date and the
         // tracked range it turns "due mesi fa" into a guess and often sends the
         // same date for from and to (a zero-length period that draws no line).
+        // make() runs on every request and must not assume a migrated DB, so the
+        // range lookup degrades to no range if the snapshots table isn't there.
         $today = Carbon::now()->format('Y-m-d');
-        $first = Snapshot::query()->orderBy('date')->value('date');
-        $last = Snapshot::query()->orderByDesc('date')->value('date');
-        $range = $first instanceof Carbon && $last instanceof Carbon
-            ? " Dati disponibili dal {$first->format('Y-m-d')} al {$last->format('Y-m-d')}."
-            : '';
+        $range = $this->snapshotRangeHint();
 
         return Tool::as('net_worth_between')
             ->for("Confronta il patrimonio netto tra due date, restituendo i valori e la variazione, e disegna l'andamento nel periodo. Usalo per domande su come è andato il patrimonio in un periodo (es. rispetto a 3 mesi fa). Oggi è {$today}.{$range}")
@@ -724,6 +722,26 @@ class AdvisorToolFactory
         ];
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * A " Dati disponibili dal … al …." hint for the net_worth_between tool
+     * description, or '' when there are no snapshots. Built at tool-construction
+     * time, so it must tolerate a DB without the snapshots table (tests that
+     * don't migrate) — any query error degrades to no hint rather than throwing.
+     */
+    private function snapshotRangeHint(): string
+    {
+        try {
+            $first = Snapshot::query()->orderBy('date')->value('date');
+            $last = Snapshot::query()->orderByDesc('date')->value('date');
+        } catch (\Throwable) {
+            return '';
+        }
+
+        return $first instanceof Carbon && $last instanceof Carbon
+            ? " Dati disponibili dal {$first->format('Y-m-d')} al {$last->format('Y-m-d')}."
+            : '';
     }
 
     private function snapshotNear(Carbon $date): ?Snapshot
