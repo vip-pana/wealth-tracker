@@ -19,13 +19,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { UserCog } from 'lucide-react';
+import { UserCog, Sparkles } from 'lucide-react';
 
 export interface InvestorProfile {
     horizon: string | null;
     risk_tolerance: string | null;
     objective: string | null;
     target_allocation: string | null;
+    notes: string | null;
 }
 
 const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
@@ -36,11 +37,13 @@ export function ProfileDialog({
     onClose,
     profile,
     goalObjective,
+    onDefineWithAi,
 }: {
     open: boolean;
     onClose: () => void;
     profile: InvestorProfile | null;
     goalObjective: string | null;
+    onDefineWithAi: () => void;
 }) {
     const form = useForm({
         horizon: profile?.horizon ?? '',
@@ -123,13 +126,30 @@ export function ProfileDialog({
                             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={onClose} disabled={form.processing}>
-                            Annulla
+                    {profile?.notes && (
+                        <div className="space-y-1">
+                            <Label className="text-xs">Note sul profilo di rischio</Label>
+                            <p className="rounded-md border border-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                                {profile.notes}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Sintesi scritta dal consulente AI durante l’intervista di profilazione.
+                            </p>
+                        </div>
+                    )}
+                    <DialogFooter className="sm:justify-between">
+                        <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={onDefineWithAi} disabled={form.processing}>
+                            <Sparkles className="h-4 w-4" />
+                            Definisci con l’AI
                         </Button>
-                        <Button type="submit" disabled={form.processing}>
-                            {form.processing ? 'Salvataggio…' : 'Salva profilo'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" onClick={onClose} disabled={form.processing}>
+                                Annulla
+                            </Button>
+                            <Button type="submit" disabled={form.processing}>
+                                {form.processing ? 'Salvataggio…' : 'Salva profilo'}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>

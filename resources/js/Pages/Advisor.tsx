@@ -191,6 +191,10 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                 onClose={() => setProfileOpen(false)}
                 profile={profile}
                 goalObjective={goalObjective}
+                onDefineWithAi={() => {
+                    setProfileOpen(false);
+                    void startChat('Aiutami a definire il mio profilo di rischio');
+                }}
             />
         </>
     );

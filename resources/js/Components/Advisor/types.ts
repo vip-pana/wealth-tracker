@@ -110,6 +110,7 @@ export interface ProfileProposalWidget {
         risk_tolerance?: 'low' | 'medium' | 'high';
         objective?: string;
         target_allocation?: string;
+        notes?: string;
     };
 }
 
@@ -156,6 +157,7 @@ export const SUGGESTED_QUESTIONS = [
     'Quali sono i rischi principali del mio portafoglio?',
     'Cosa dovrei controllare questo mese?',
     'La mia esposizione a Bitcoin è troppo alta?',
+    'Aiutami a definire il mio profilo di rischio',
 ];
 
 /** Pick `count` distinct questions, varied by the session id so they're stable per session. */
