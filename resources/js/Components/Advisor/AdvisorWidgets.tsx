@@ -2,6 +2,9 @@ import { PacSimulator } from '@/Components/Advisor/Widgets/PacSimulator';
 import { PositionCard } from '@/Components/Advisor/Widgets/PositionCard';
 import { AllocationDonut } from '@/Components/Advisor/Widgets/AllocationDonut';
 import { NetWorthLine } from '@/Components/Advisor/Widgets/NetWorthLine';
+import { AllocationVsTarget } from '@/Components/Advisor/Widgets/AllocationVsTarget';
+import { PositionsTable } from '@/Components/Advisor/Widgets/PositionsTable';
+import { GoalSimulator } from '@/Components/Advisor/Widgets/GoalSimulator';
 import type { Widget } from '@/Components/Advisor/types';
 
 /**
@@ -22,6 +25,12 @@ export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
                         return <AllocationDonut key={i} data={widget.data} />;
                     case 'networth_line':
                         return <NetWorthLine key={i} data={widget.data} />;
+                    case 'allocation_vs_target':
+                        return <AllocationVsTarget key={i} data={widget.data} />;
+                    case 'positions_table':
+                        return <PositionsTable key={i} data={widget.data} />;
+                    case 'goal_simulator':
+                        return <GoalSimulator key={i} data={widget.data} />;
                     default:
                         return null;
                 }

@@ -69,7 +69,48 @@ export interface NetWorthLineWidget {
     };
 }
 
-export type Widget = PacSimulatorWidget | PositionCardWidget | AllocationDonutWidget | NetWorthLineWidget;
+export interface AllocationVsTargetWidget {
+    type: 'allocation_vs_target';
+    data: {
+        rows: { name: string; current_pct: number; target_pct: number }[];
+    };
+}
+
+export interface PositionsTableWidget {
+    type: 'positions_table';
+    data: {
+        rows: {
+            name: string;
+            shares: number;
+            average_cost: number;
+            current_value: number | null;
+            unrealised_pnl: number | null;
+            unrealised_pnl_pct: number | null;
+        }[];
+    };
+}
+
+export interface GoalSimulatorWidget {
+    type: 'goal_simulator';
+    data: {
+        current_net_worth: number;
+        target_value: number;
+        target_date: string;
+        months: number;
+        annual_return: number;
+        annual_return_source: string;
+        required_monthly: number;
+    };
+}
+
+export type Widget =
+    | PacSimulatorWidget
+    | PositionCardWidget
+    | AllocationDonutWidget
+    | NetWorthLineWidget
+    | AllocationVsTargetWidget
+    | PositionsTableWidget
+    | GoalSimulatorWidget;
 
 export interface Message {
     id: number;

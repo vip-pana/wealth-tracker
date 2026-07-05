@@ -44,3 +44,25 @@ export function projectPac(
         balances,
     };
 }
+
+/**
+ * The monthly contribution needed to grow `current` to `target` over `months`
+ * at a given annual rate — the inverse of projectPac (which fixes the PAC and
+ * finds the time). Closed-form annuity, mirrored from the PHP
+ * requiredMonthlyContribution. Returns 0 when the current balance alone already
+ * reaches the target within the horizon. Powers the interactive goal simulator.
+ */
+export function requiredMonthlyContribution(
+    current: number,
+    target: number,
+    months: number,
+    annualReturn: number,
+): number {
+    if (months < 1) return 0;
+    const i = Math.pow(1 + annualReturn, 1 / 12) - 1;
+    const growth = Math.pow(1 + i, months);
+    const futureOfCurrent = current * growth;
+    if (futureOfCurrent >= target) return 0;
+    const annuityFactor = i > 1e-9 ? (growth - 1) / i : months;
+    return (target - futureOfCurrent) / annuityFactor;
+}
