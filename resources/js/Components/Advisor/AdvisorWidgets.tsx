@@ -5,6 +5,7 @@ import { NetWorthLine } from '@/Components/Advisor/Widgets/NetWorthLine';
 import { AllocationVsTarget } from '@/Components/Advisor/Widgets/AllocationVsTarget';
 import { PositionsTable } from '@/Components/Advisor/Widgets/PositionsTable';
 import { GoalSimulator } from '@/Components/Advisor/Widgets/GoalSimulator';
+import { ProfileProposal } from '@/Components/Advisor/Widgets/ProfileProposal';
 import type { Widget } from '@/Components/Advisor/types';
 
 /**
@@ -31,6 +32,8 @@ export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
                         return <PositionsTable key={i} data={widget.data} />;
                     case 'goal_simulator':
                         return <GoalSimulator key={i} data={widget.data} />;
+                    case 'profile_proposal':
+                        return <ProfileProposal key={i} data={widget.data} />;
                     default:
                         return null;
                 }

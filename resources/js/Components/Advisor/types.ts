@@ -103,6 +103,16 @@ export interface GoalSimulatorWidget {
     };
 }
 
+export interface ProfileProposalWidget {
+    type: 'profile_proposal';
+    data: {
+        horizon?: 'short' | 'medium' | 'long';
+        risk_tolerance?: 'low' | 'medium' | 'high';
+        objective?: string;
+        target_allocation?: string;
+    };
+}
+
 export type Widget =
     | PacSimulatorWidget
     | PositionCardWidget
@@ -110,7 +120,8 @@ export type Widget =
     | NetWorthLineWidget
     | AllocationVsTargetWidget
     | PositionsTableWidget
-    | GoalSimulatorWidget;
+    | GoalSimulatorWidget
+    | ProfileProposalWidget;
 
 export interface Message {
     id: number;
