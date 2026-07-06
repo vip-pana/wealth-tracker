@@ -38,7 +38,10 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
+            // The queue uses its own SQLite file (see config/database.php ->
+            // sqlite_queue) so the worker's constant polling doesn't contend
+            // with web writes on the app DB and cause "database is locked".
+            'connection' => env('DB_QUEUE_CONNECTION', 'sqlite_queue'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             // Must exceed the longest job timeout (advisor jobs are 600s): a

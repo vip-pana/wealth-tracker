@@ -9,11 +9,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
+     * The queue tables live on their own SQLite connection/file (sqlite_queue),
+     * so the worker's constant polling doesn't contend for the single SQLite
+     * writer with ordinary web requests on the app DB (which caused "database
+     * is locked"). In tests the queue is forced synchronous, so these tables
+     * aren't used there.
+     */
+    private const string CONNECTION = 'sqlite_queue';
+
+    /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create('jobs', function (Blueprint $table) {
+        Schema::connection(self::CONNECTION)->create('jobs', function (Blueprint $table) {
             $table->id();
             $table->string('queue')->index();
             $table->longText('payload');
@@ -23,7 +32,7 @@ return new class extends Migration
             $table->unsignedInteger('created_at');
         });
 
-        Schema::create('job_batches', function (Blueprint $table) {
+        Schema::connection(self::CONNECTION)->create('job_batches', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');
             $table->integer('total_jobs');
@@ -36,7 +45,7 @@ return new class extends Migration
             $table->integer('finished_at')->nullable();
         });
 
-        Schema::create('failed_jobs', function (Blueprint $table) {
+        Schema::connection(self::CONNECTION)->create('failed_jobs', function (Blueprint $table) {
             $table->id();
             $table->string('uuid')->unique();
             $table->text('connection');
@@ -52,8 +61,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('jobs');
-        Schema::dropIfExists('job_batches');
-        Schema::dropIfExists('failed_jobs');
+        Schema::connection(self::CONNECTION)->dropIfExists('jobs');
+        Schema::connection(self::CONNECTION)->dropIfExists('job_batches');
+        Schema::connection(self::CONNECTION)->dropIfExists('failed_jobs');
     }
 };
