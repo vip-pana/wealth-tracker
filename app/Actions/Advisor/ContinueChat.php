@@ -247,6 +247,8 @@ class ContinueChat extends Action
         3. REDDITO E CUSCINETTO — l'app vede la liquidità ma non sa se è un fondo di emergenza né quanto è stabile il reddito: chiedilo.
         4. REAZIONE AI CALI — domanda chiave sulla tolleranza emotiva: come reagirebbe a un -20/-30% (vende, aspetta, compra di più).
 
+        Puoi anche, se rende la conversazione più naturale e personale, chiedere l'età o la fase di vita dell'utente (es. quanto manca alla pensione): usala come CONTESTO UMANO per calibrare tono e domande e, se emerge, riportala nelle notes. NON è un dato obbligatorio né un campo strutturato: l'orizzonte resta il riferimento per la capacità di rischio. Non insistere se l'utente non vuole condividerla.
+
         REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
