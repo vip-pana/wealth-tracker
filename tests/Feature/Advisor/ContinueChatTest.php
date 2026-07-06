@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Advisor;
 
 use App\Actions\Advisor\ContinueChat;
+use App\Advisor\Tools\AdvisorToolFactory;
 use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
@@ -202,5 +203,80 @@ class ContinueChatTest extends TestCase
         $method = new \ReflectionMethod($action, 'userConsentsToProfileUpdate');
 
         $this->assertSame($expected, $method->invoke($action, $message));
+    }
+
+    /**
+     * A provider that, while "replying", makes the advisor call the profile
+     * proposal tool. Whether a widget actually lands on the message then depends
+     * only on the consent/turn gate ContinueChat armed — which is what we test.
+     */
+    private function proposingProvider(): AdvisorProvider
+    {
+        return new class implements AdvisorProvider
+        {
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function analyze(string $briefing): string
+            {
+                return 'n/a';
+            }
+
+            /** @param  list<array{role: string, content: string}>  $messages */
+            public function chat(array $messages): string
+            {
+                $factory = app(AdvisorToolFactory::class);
+                foreach ($factory->make() as $tool) {
+                    if ($tool->name() === 'propose_profile_update') {
+                        $tool->handle(horizon: 'long', risk_tolerance: 'high');
+                    }
+                }
+
+                return 'ok';
+            }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                return $this->chat($messages);
+            }
+        };
+    }
+
+    public function test_no_proposal_before_the_minimum_interview_turns_even_with_consent(): void
+    {
+        $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        // Only the current user turn exists: below the interview minimum.
+        $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
+        $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        app(ContinueChat::class)->complete($session, $user, $assistant);
+
+        $this->assertNull($assistant->fresh()?->widgets);
+    }
+
+    public function test_proposal_allowed_after_enough_turns_with_consent(): void
+    {
+        $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        // Two earlier user turns + the current one = three: meets the minimum.
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'primo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'secondo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'altra domanda']);
+        $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
+        $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        app(ContinueChat::class)->complete($session, $user, $assistant);
+
+        $widgets = $assistant->fresh()?->widgets;
+        $this->assertNotNull($widgets);
+        $this->assertSame('profile_proposal', $widgets[0]['type']);
     }
 }

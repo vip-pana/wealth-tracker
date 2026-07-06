@@ -22,6 +22,13 @@ class ContinueChat extends Action
      */
     private const int HISTORY_TURNS = 8;
 
+    /**
+     * Minimum number of user turns in a session before a profile proposal can be
+     * emitted, even with explicit consent. Forces a real interview: a "yes" on
+     * the first message keeps the advisor asking instead of proposing at once.
+     */
+    private const int MIN_INTERVIEW_TURNS = 3;
+
     public function __construct(
         private readonly BuildAdvisorContext $buildContext,
         private readonly RenderAdvisorContext $renderContext,
@@ -81,10 +88,14 @@ class ContinueChat extends Action
         // counterpart can attach it to this reply.
         $this->activity->for($assistant);
         $this->widgets->for($assistant);
-        // The advisor may only propose a profile change once the user has just
-        // agreed to it. Everywhere else the proposal tool emits nothing (see
-        // AdvisorWidgetCollector), so the model can't push an unrequested card.
-        $this->widgets->allowProfileProposal($this->userConsentsToProfileUpdate($user->content));
+        // The advisor may only propose a profile change once the user has both
+        // explicitly agreed AND actually gone through the interview — at least a
+        // few of their own turns — so a "yes" on the first message can't cut the
+        // conversation short. Everywhere else the proposal tool emits nothing.
+        $userTurns = $session->messages()->where('role', AdvisorMessage::ROLE_USER)->count();
+        $this->widgets->allowProfileProposal(
+            $userTurns >= self::MIN_INTERVIEW_TURNS && $this->userConsentsToProfileUpdate($user->content),
+        );
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
@@ -236,7 +247,7 @@ class ContinueChat extends Action
         3. REDDITO E CUSCINETTO — l'app vede la liquidità ma non sa se è un fondo di emergenza né quanto è stabile il reddito: chiedilo.
         4. REAZIONE AI CALI — domanda chiave sulla tolleranza emotiva: come reagirebbe a un -20/-30% (vende, aspetta, compra di più).
 
-        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Quindi:
+        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno tre messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» al primo o secondo messaggio, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
         - Quando ritieni di avere un quadro completo (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali), NON proporre subito: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
