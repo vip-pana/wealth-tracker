@@ -194,9 +194,22 @@ class ContinueChat extends Action
             $conversation[] = $turn;
         }
 
-        return [
+        $messages = [
             ['role' => 'system', 'content' => $this->systemPrompt()],
             ['role' => 'system', 'content' => "Stato attuale del portafoglio dell'utente (dati aggiornati):\n\n".$briefing],
+        ];
+
+        // Concrete pacing signal for the interview: a generic "ask only when the
+        // picture is complete" rule isn't enough — the model asks for consent
+        // after one or two questions. Telling it the actual turn count, and that
+        // it's still too early, holds far better than the rule alone.
+        $userTurns = $session->messages()->where('role', AdvisorMessage::ROLE_USER)->count();
+        if ($userTurns < self::MIN_INTERVIEW_TURNS) {
+            $messages[] = ['role' => 'system', 'content' => "Nota: l'utente ha scritto solo {$userTurns} messaggi in questa sessione. Se sta definendo il profilo di rischio, l'intervista è ancora agli inizi: NON chiedergli ancora se vuole aggiornare il profilo e NON proporlo. Continua a fare domande di approfondimento, una alla volta."];
+        }
+
+        return [
+            ...$messages,
             ...$conversation,
         ];
     }
@@ -256,7 +269,8 @@ class ContinueChat extends Action
         REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
-        - Quando ritieni di avere un quadro completo (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali), NON proporre subito: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
+        - NON chiedere all'utente se vuole aggiornare il profilo troppo presto. Puoi chiederlo SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
+        - Solo quando hai coperto tutti i temi: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
         - Chiama propose_profile_update SOLO dopo che l'utente ha acconsentito esplicitamente (es. «sì», «ok aggiornalo», «procedi»). Solo allora, e una volta sola.
 
         (Nota tecnica: se chiami propose_profile_update senza che l'utente abbia acconsentito, lo strumento non mostrerà nulla e ti dirà di chiedere prima il consenso. Non insistere: chiedi il consenso a parole.)
