@@ -27,7 +27,7 @@ class ContinueChat extends Action
      * emitted, even with explicit consent. Forces a real interview: a "yes" on
      * the first message keeps the advisor asking instead of proposing at once.
      */
-    private const int MIN_INTERVIEW_TURNS = 3;
+    private const int MIN_INTERVIEW_TURNS = 4;
 
     public function __construct(
         private readonly BuildAdvisorContext $buildContext,
@@ -247,7 +247,7 @@ class ContinueChat extends Action
         3. REDDITO E CUSCINETTO — l'app vede la liquidità ma non sa se è un fondo di emergenza né quanto è stabile il reddito: chiedilo.
         4. REAZIONE AI CALI — domanda chiave sulla tolleranza emotiva: come reagirebbe a un -20/-30% (vende, aspetta, compra di più).
 
-        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno tre messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» al primo o secondo messaggio, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
+        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
         - Quando ritieni di avere un quadro completo (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali), NON proporre subito: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.

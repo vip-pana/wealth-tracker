@@ -252,7 +252,12 @@ class ContinueChatTest extends TestCase
     {
         $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
         $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
-        // Only the current user turn exists: below the interview minimum.
+        // Two earlier user turns + the current one = three: still below the
+        // four-turn minimum, so consent alone must not trigger a proposal.
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'primo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'secondo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'altra domanda']);
         $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
         $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
 
@@ -265,11 +270,13 @@ class ContinueChatTest extends TestCase
     {
         $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
         $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
-        // Two earlier user turns + the current one = three: meets the minimum.
+        // Three earlier user turns + the current one = four: meets the minimum.
         AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'primo']);
         AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'domanda']);
         AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'secondo']);
         AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'altra domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'terzo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'ancora una domanda']);
         $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
         $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
 
