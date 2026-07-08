@@ -1,11 +1,21 @@
 import { Markdown } from '@/Components/ui/Markdown';
-import { Sparkles, AlertTriangle } from 'lucide-react';
+import { Sparkles, AlertTriangle, RotateCw } from 'lucide-react';
 import { type Message } from '@/Components/Advisor/types';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
 import { AdvisorWidgets } from '@/Components/Advisor/AdvisorWidgets';
 import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
-export function MessageBubble({ message, funFacts, profile }: { message: Message; funFacts: string[]; profile?: InvestorProfile | null }) {
+export function MessageBubble({
+    message,
+    funFacts,
+    profile,
+    onRetry,
+}: {
+    message: Message;
+    funFacts: string[];
+    profile?: InvestorProfile | null;
+    onRetry?: (message: Message) => void;
+}) {
     if (message.role === 'user') {
         return (
             <div className="flex justify-end">
@@ -24,9 +34,21 @@ export function MessageBubble({ message, funFacts, profile }: { message: Message
             </div>
             <div className="min-w-0 flex-1">
                 {failed ? (
-                    <div className="flex items-start gap-2 text-sm text-red-500">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{message.error ?? 'Il consulente non ha risposto. Riprova.'}</span>
+                    <div className="space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-red-500">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{message.error ?? 'Il consulente non ha risposto.'}</span>
+                        </div>
+                        {onRetry && (
+                            <button
+                                type="button"
+                                onClick={() => onRetry(message)}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                            >
+                                <RotateCw className="h-3.5 w-3.5" />
+                                Riprova
+                            </button>
+                        )}
                     </div>
                 ) : thinking ? (
                     <ThinkingWithFacts facts={funFacts} label={message.tool_activity ?? undefined} />

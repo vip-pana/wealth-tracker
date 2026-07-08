@@ -133,6 +133,19 @@ export function Conversation({
         }
     };
 
+    // Retry a failed assistant reply in place: ask the server to regenerate it,
+    // then flip it back to pending so the poll effect below resumes and fills it.
+    const retry = async (failed: Message) => {
+        if (sendingRef.current) return;
+        setMessages((m) => m.map((x) => (x.id === failed.id ? { ...x, status: 'pending', error: null, content: '' } : x)));
+        try {
+            await axios.post(`/advisor/${session.id}/message/${failed.id}/retry`);
+        } catch {
+            pushToast('Non è stato possibile riprovare. Riprova più tardi.', 'error');
+            setMessages((m) => m.map((x) => (x.id === failed.id ? { ...x, status: 'failed' } : x)));
+        }
+    };
+
     // A chat reply is being generated when the last message is a pending
     // assistant turn. Poll the session until it resolves (mirrors the report
     // poll, but keyed on the message rather than the session status).
@@ -179,7 +192,7 @@ export function Conversation({
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
-                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} />)}
+                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} onRetry={retry} />)}
                     <div ref={bottomRef} />
                 </CardContent>
 
