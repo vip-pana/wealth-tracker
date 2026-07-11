@@ -88,6 +88,9 @@ return [
             'api_key' => env('REGOLO_API_KEY', ''),
             'model' => env('REGOLO_MODEL', ''),
             'timeout' => (int) env('REGOLO_TIMEOUT', 120),
+            // Low temperature for deterministic tool routing: at the provider
+            // default (~0.7) the model wanders and repeats stale answers.
+            'temperature' => (float) env('REGOLO_TEMPERATURE', 0.2),
         ],
     ],
 
