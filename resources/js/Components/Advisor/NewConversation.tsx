@@ -78,14 +78,14 @@ export function NewConversation({
             </div>
 
             <div className="border-t border-border p-3 space-y-2">
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {suggestions.map((q) => (
                         <button
                             key={q}
                             type="button"
                             disabled={starting}
                             onClick={() => pick(q)}
-                            className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                            className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
                         >
                             {q}
                         </button>

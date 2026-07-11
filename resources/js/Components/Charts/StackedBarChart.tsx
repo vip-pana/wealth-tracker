@@ -58,7 +58,11 @@ export default function StackedBarChart({ data, categories }: Props) {
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
                         )}
-                        <Legend iconType="circle" iconSize={8} />
+                        <Legend
+                            iconType="circle"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                        />
                         {visibleCategories.map((cat) => (
                             <Bar
                                 key={cat.name}
