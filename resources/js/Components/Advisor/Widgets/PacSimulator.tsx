@@ -15,6 +15,13 @@ import { projectPac } from '@/lib/pacMath';
 import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
 import type { PacSimulatorWidget } from '@/Components/Advisor/types';
 
+/** The calendar year reached `months` from today, for the arrival label. */
+function arrivalYear(months: number): number {
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    return d.getFullYear();
+}
+
 /**
  * Interactive PAC simulator. The advisor emits it when the user asks about the
  * effect of a monthly contribution; the user then drags the monthly amount and
@@ -26,9 +33,11 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
     const hidden = useValuesHidden();
     const [monthly, setMonthly] = useState(Math.round(data.monthly_amount));
     const [annualPct, setAnnualPct] = useState(Math.round(data.annual_return * 100));
+    // Older persisted widgets predate this field; default to no growth.
+    const [increasePct, setIncreasePct] = useState(Math.round(data.annual_increase_pct ?? 0));
 
     const { months, chart } = useMemo(() => {
-        const projection = projectPac(data.current_net_worth, data.target_value, monthly, annualPct / 100);
+        const projection = projectPac(data.current_net_worth, data.target_value, monthly, annualPct / 100, increasePct);
         // Sample the balance curve yearly so the area chart stays readable even
         // over long horizons; always include the final point.
         const step = Math.max(1, Math.floor(projection.balances.length / 60));
@@ -39,7 +48,7 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                 value,
             }));
         return { months: projection.months, chart };
-    }, [data.current_net_worth, data.target_value, monthly, annualPct]);
+    }, [data.current_net_worth, data.target_value, monthly, annualPct, increasePct]);
 
     const years = months === null ? null : months / 12;
 
@@ -78,6 +87,20 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                             aria-label="Rendimento annuo ipotizzato"
                         />
                     </label>
+                    <label className="block text-xs">
+                        <span className="text-muted-foreground">Crescita del versamento all’anno</span>
+                        <span className="ml-1 font-medium text-foreground">{increasePct === 0 ? 'nessuna' : `+${increasePct}%`}</span>
+                        <input
+                            type="range"
+                            min={0}
+                            max={20}
+                            step={1}
+                            value={increasePct}
+                            onChange={(e) => setIncreasePct(Number(e.target.value))}
+                            className="mt-1 w-full accent-primary"
+                            aria-label="Crescita del versamento all’anno"
+                        />
+                    </label>
                 </div>
 
                 <div className="text-sm">
@@ -90,14 +113,16 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                             Raggiungi l’obiettivo di{' '}
                             <span className="font-medium">{formatCurrency(data.target_value)}</span> in circa{' '}
                             <span className="font-medium text-primary">{years.toFixed(1)} anni</span>
-                            {months !== null && <span className="text-muted-foreground"> ({months} mesi)</span>}.
+                            {months !== null && (
+                                <span className="text-muted-foreground"> ({months} mesi, entro il {arrivalYear(months)})</span>
+                            )}.
                         </span>
                     )}
                 </div>
 
                 <div className="h-[160px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                        <AreaChart data={chart} margin={{ top: 5, right: 16, left: 10, bottom: 5 }}>
                             <defs>
                                 <linearGradient id="pacFill" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -138,6 +163,20 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                                 strokeWidth={1.5}
                                 label={{ value: 'Obiettivo', position: 'insideTopRight', fontSize: 10, fill: '#f59e0b' }}
                             />
+                            {months !== null && (
+                                <ReferenceLine
+                                    x={months}
+                                    stroke="hsl(var(--primary))"
+                                    strokeDasharray="5 3"
+                                    strokeWidth={1.5}
+                                    label={{
+                                        value: String(arrivalYear(months)),
+                                        position: 'insideTopLeft',
+                                        fontSize: 10,
+                                        fill: 'hsl(var(--primary))',
+                                    }}
+                                />
+                            )}
                             <Area
                                 type="monotone"
                                 dataKey="value"
