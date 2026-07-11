@@ -146,8 +146,22 @@ class PrismAdvisorProviderTest extends TestCase
         $this->assertSame('Risposta valida.', $this->provider()->chat([['role' => 'user', 'content' => 'x']]));
     }
 
-    public function test_throws_when_empty_twice(): void
+    public function test_recovers_after_several_empty_replies(): void
     {
+        // A flaky hosted model (Regolo/Llama) can return empty several times in a
+        // row before answering; the retries should ride over that, not give up.
+        Http::fakeSequence('*/api/chat')
+            ->push(['message' => ['content' => ''], 'done' => true])
+            ->push(['message' => ['content' => '  '], 'done' => true])
+            ->push(['message' => ['content' => 'Ecco la risposta.'], 'done' => true]);
+
+        $this->assertSame('Ecco la risposta.', $this->provider()->chat([['role' => 'user', 'content' => 'x']]));
+    }
+
+    public function test_throws_when_every_attempt_is_empty(): void
+    {
+        // Every attempt comes back empty (a persistently unresponsive backend):
+        // after exhausting the retries the advisor surfaces an error.
         Http::fake(['*/api/chat' => Http::response(['message' => ['content' => ''], 'done' => true])]);
 
         $this->expectException(\RuntimeException::class);

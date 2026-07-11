@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Advisor;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreGoalMilestonesRequest extends FormRequest
+{
+    /** @return array<string, mixed> */
+    public function rules(): array
+    {
+        return [
+            'milestones' => ['required', 'array', 'min:1'],
+            'milestones.*.notes' => ['nullable', 'string', 'max:100'],
+            'milestones.*.target_value' => ['required', 'numeric', 'min:0'],
+            'milestones.*.target_date' => ['required', 'date'],
+        ];
+    }
+}

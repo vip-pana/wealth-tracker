@@ -24,6 +24,30 @@ describe('projectPac', () => {
         expect(withGrowth.months!).toBeLessThan(noGrowth.months!);
     });
 
+    it('a growing contribution reaches the target sooner than a flat one', () => {
+        const flat = projectPac(10000, 200000, 400, 0.05, 0);
+        const growing = projectPac(10000, 200000, 400, 0.05, 10);
+        expect(flat.months).not.toBeNull();
+        expect(growing.months).not.toBeNull();
+        expect(growing.months!).toBeLessThan(flat.months!);
+    });
+
+    it('the contribution steps up only at full years, not before', () => {
+        // Within the first 12 months a 100%/yr step-up must not yet apply, so the
+        // balance at month 6 equals the no-growth case.
+        const flat = projectPac(0, 1_000_000, 100, 0, 0);
+        const growing = projectPac(0, 1_000_000, 100, 0, 100);
+        expect(growing.balances[6]).toBeCloseTo(flat.balances[6], 6);
+        // By month 13 the step-up has kicked in, so it's ahead.
+        expect(growing.balances[13]).toBeGreaterThan(flat.balances[13]);
+    });
+
+    it('defaults to no growth when annualIncreasePct is omitted', () => {
+        const explicit = projectPac(10000, 200000, 400, 0.05, 0);
+        const omitted = projectPac(10000, 200000, 400, 0.05);
+        expect(omitted.months).toBe(explicit.months);
+    });
+
     it('returns null months when the goal is unreachable within the cap', () => {
         const p = projectPac(0, 1_000_000, 1, 0);
         expect(p.months).toBeNull();

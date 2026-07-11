@@ -5,14 +5,19 @@ import { NetWorthLine } from '@/Components/Advisor/Widgets/NetWorthLine';
 import { AllocationVsTarget } from '@/Components/Advisor/Widgets/AllocationVsTarget';
 import { PositionsTable } from '@/Components/Advisor/Widgets/PositionsTable';
 import { GoalSimulator } from '@/Components/Advisor/Widgets/GoalSimulator';
-import type { Widget } from '@/Components/Advisor/types';
+import { ProfileProposal } from '@/Components/Advisor/Widgets/ProfileProposal';
+import { GoalCoreProposal } from '@/Components/Advisor/Widgets/GoalCoreProposal';
+import { GoalMilestonesProposal } from '@/Components/Advisor/Widgets/GoalMilestonesProposal';
+import { GoalCompositionProposal } from '@/Components/Advisor/Widgets/GoalCompositionProposal';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
+import type { Widget, GoalData } from '@/Components/Advisor/types';
 
 /**
  * Renders the generative-UI widgets an assistant reply carries. Maps each
  * widget's `type` to its component; an unknown type (e.g. an older client
  * meeting a newer widget) is skipped rather than crashing the message.
  */
-export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
+export function AdvisorWidgets({ widgets, profile, goal }: { widgets: Widget[]; profile?: InvestorProfile | null; goal?: GoalData | null }) {
     return (
         <>
             {widgets.map((widget, i) => {
@@ -31,6 +36,14 @@ export function AdvisorWidgets({ widgets }: { widgets: Widget[] }) {
                         return <PositionsTable key={i} data={widget.data} />;
                     case 'goal_simulator':
                         return <GoalSimulator key={i} data={widget.data} />;
+                    case 'profile_proposal':
+                        return <ProfileProposal key={i} data={widget.data} profile={profile} />;
+                    case 'goal_core_proposal':
+                        return <GoalCoreProposal key={i} data={widget.data} goal={goal} />;
+                    case 'goal_milestones_proposal':
+                        return <GoalMilestonesProposal key={i} data={widget.data} goal={goal} />;
+                    case 'goal_composition_proposal':
+                        return <GoalCompositionProposal key={i} data={widget.data} goal={goal} />;
                     default:
                         return null;
                 }

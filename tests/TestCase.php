@@ -33,6 +33,15 @@ abstract class TestCase extends BaseTestCase
         // the cache don't need the cache table migrated.
         $app['config']->set('cache.default', 'array');
 
+        // The container also exports QUEUE_CONNECTION=database, which overrides
+        // phpunit.xml's `sync`. Left as-is, tests would use the separate
+        // sqlite_queue file connection, and a synchronously-dispatched job that
+        // runs VACUUM INTO (the backup) would break the RefreshDatabase
+        // transaction and drop the session (CSRF failures on the next request).
+        // Force sync here so jobs run inline against the in-memory app DB.
+        $app['config']->set('queue.default', 'sync');
+        $app['config']->set('database.connections.sqlite_queue.database', ':memory:');
+
         // The container exports SCALABLE_* as real env vars (like DB_*), which
         // override phpunit.xml. Force the broker sync off so tests never run the
         // CLI; tests that exercise it set the config explicitly.

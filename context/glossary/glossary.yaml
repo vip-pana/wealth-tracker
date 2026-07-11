@@ -32,3 +32,6 @@ concepts:
   Stale price:
     definition: A live price older than 24h or missing; flagged in the UI instead of shown as fresh.
     notes: "See priceFreshness() in resources/js/lib/metrics.ts"
+  Advisor proposal:
+    definition: The advisor never writes user data directly. A propose_* tool emits a proposal widget (via AdvisorWidgetCollector) that renders as a confirm card; only the user's click POSTs to a write endpoint. Covers the investor profile (propose_profile_update → profile_proposal → POST /advisor/profile) and the goal (propose_goal_core/_milestones/_composition → goal_*_proposal → POST /advisor/goal[/milestones|/composition]).
+    notes: "Each write is deterministically gated: ContinueChat::complete() arms AdvisorWidgetCollector with a per-capability allow-flag (allowProfileProposal / allowGoalProposal, kept SEPARATE so consent to one never unlocks the other), set from MIN_INTERVIEW_TURNS + a userConsentsTo*Update() match on the user's message. A tool checks isProfileProposalAllowed()/isGoalProposalAllowed() before emitting. The goal-composition card is a SUGGESTION: percentages are editable before applying. Goal milestone/composition writes replace only their own slice, leaving the goal core intact."

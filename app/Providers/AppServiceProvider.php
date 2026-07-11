@@ -73,7 +73,9 @@ class AppServiceProvider extends ServiceProvider
                     Config::string('services.advisor.regolo.model', ''),
                     Config::integer('services.advisor.regolo.timeout', 120),
                     $this->app->make(AdvisorToolFactory::class),
-                    [],
+                    [
+                        'temperature' => Config::float('services.advisor.regolo.temperature', 0.2),
+                    ],
                     [
                         'url' => Config::string('services.advisor.regolo.base_url', 'https://api.regolo.ai/v1'),
                         'api_key' => Config::string('services.advisor.regolo.api_key', ''),

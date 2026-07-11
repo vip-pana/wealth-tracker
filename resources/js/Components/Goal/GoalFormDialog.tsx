@@ -1,10 +1,10 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, Link } from '@inertiajs/react';
 import { useEffect } from 'react';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { AllocationSection } from '@/Components/Goal/AllocationSection';
@@ -195,11 +195,19 @@ export function GoalFormDialog({
                         </div>
                     </div>
 
-                    <DialogFooter className="lg:col-span-2">
-                        <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-                        <Button type="submit" disabled={processing}>
-                            {isEdit ? 'Salva modifiche' : 'Crea obiettivo'}
+                    <DialogFooter className="lg:col-span-2 sm:justify-between">
+                        <Button asChild type="button" variant="ghost" size="sm" className="gap-1.5">
+                            <Link href={`/advisor?ask=${encodeURIComponent(isEdit ? 'Aiutami a ridefinire il mio obiettivo e a rivedere le milestone.' : 'Aiutami a definire il mio obiettivo finanziario da zero.')}`}>
+                                <Sparkles className="h-4 w-4" />
+                                Ridefinisci con l’AI
+                            </Link>
                         </Button>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+                            <Button type="submit" disabled={processing}>
+                                {isEdit ? 'Salva modifiche' : 'Crea obiettivo'}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>

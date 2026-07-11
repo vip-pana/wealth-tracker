@@ -48,6 +48,22 @@ return [
             'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
         ],
 
+        // The queue lives in its OWN SQLite file. SQLite allows a single writer
+        // per file, so keeping the queue (which the worker polls constantly, and
+        // which the advisor job writes to) on the app's file put it in contention
+        // with ordinary web writes (sessions, etc.) and caused "database is
+        // locked". A separate file removes that cross-contention entirely.
+        'sqlite_queue' => [
+            'driver' => 'sqlite',
+            'url' => env('DB_QUEUE_URL'),
+            'database' => env('DB_QUEUE_DATABASE', storage_path('app/queue.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

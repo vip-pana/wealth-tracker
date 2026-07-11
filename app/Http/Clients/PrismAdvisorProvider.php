@@ -32,6 +32,14 @@ class PrismAdvisorProvider implements AdvisorProvider
     private const int MAX_STEPS = 5;
 
     /**
+     * How many times to re-ask when the model returns an empty body. Empty
+     * replies are transient (a tool call with no text, or a busy backend); an
+     * immediate retry almost always succeeds, so a few attempts make the advisor
+     * far more reliable on a flaky hosted model without masking a real outage.
+     */
+    private const int MAX_EMPTY_RETRIES = 4;
+
+    /**
      * @param  array{temperature?: float, keep_alive?: string, num_ctx?: int}  $tuning
      *                                                                                  Generation knobs applied to local (Ollama) requests: keep_alive keeps the
      *                                                                                  model resident between turns, a low temperature suits a factual advisor,
@@ -68,18 +76,20 @@ class PrismAdvisorProvider implements AdvisorProvider
      */
     public function chat(array $messages): string
     {
-        // A local model occasionally returns an empty body (whitespace/only
-        // "thinking", or when hit while busy). That's transient, so try twice
-        // before surfacing an error.
-        $content = $this->attempt($messages) ?? $this->attempt($messages);
-
-        if ($content === null) {
-            Log::warning('Prism advisor returned an empty reply twice');
-
-            throw new \RuntimeException('Il modello non ha risposto. Riprova tra poco.');
+        // The model occasionally returns an empty body: a local model hit while
+        // busy, or a hosted one (Regolo/Llama) that makes a tool call and then
+        // emits no text on that turn. It's transient — an immediate re-ask
+        // usually succeeds — so retry a few times before surfacing an error.
+        for ($attempt = 1; $attempt <= self::MAX_EMPTY_RETRIES; $attempt++) {
+            $content = $this->attempt($messages);
+            if ($content !== null) {
+                return $this->normalise($content);
+            }
         }
 
-        return $this->normalise($content);
+        Log::warning('Prism advisor returned an empty reply', ['attempts' => self::MAX_EMPTY_RETRIES]);
+
+        throw new \RuntimeException('Il modello non ha risposto. Riprova tra poco.');
     }
 
     /**

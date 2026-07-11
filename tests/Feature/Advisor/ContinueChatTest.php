@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Advisor;
 
 use App\Actions\Advisor\ContinueChat;
+use App\Advisor\Tools\AdvisorToolFactory;
 use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ContinueChatTest extends TestCase
@@ -178,5 +180,145 @@ class ContinueChatTest extends TestCase
         $contents = array_map(fn (array $m): string => $m['content'], $captured);
         $this->assertContains('apertura', $contents);
         $this->assertContains('E adesso?', $contents);
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function consentCases(): iterable
+    {
+        yield 'question is never consent' => ['Se avessi tolleranza alta cosa cambierebbe?', false];
+        yield 'bare si' => ['Sì', true];
+        yield 'ok update it' => ['Ok aggiorna il profilo', true];
+        yield 'va bene' => ['va bene', true];
+        yield 'lets update it (-iamo form)' => ['aggiorniamo direi', true];
+        yield 'im sure' => ['sono sicuro', true];
+        yield 'lets proceed' => ['procediamo pure', true];
+        yield 'do it' => ['fallo', true];
+        yield 'plain answer is not consent' => ['Libertà finanziaria tra 20 anni', false];
+        yield 'update-with-question is not consent' => ['Vuoi aggiornare il profilo?', false];
+        yield 'lets keep analysing is not consent' => ['continuiamo a discutere', false];
+        yield 'keep going a bit more is not consent' => ["continuiamo ancora un po' l'analisi", false];
+        yield 'not sure is not consent' => ['non sono sicuro', false];
+        yield 'no do it later is not consent' => ['no facciamo dopo', false];
+        yield 'do not update is not consent' => ['non aggiornare il profilo', false];
+        yield 'empty is not consent' => ['', false];
+    }
+
+    #[DataProvider('consentCases')]
+    public function test_detects_explicit_consent_to_update_the_profile(string $message, bool $expected): void
+    {
+        $action = app(ContinueChat::class);
+        $method = new \ReflectionMethod($action, 'userConsentsToProfileUpdate');
+
+        $this->assertSame($expected, $method->invoke($action, $message));
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function goalConsentCases(): iterable
+    {
+        yield 'question is never consent' => ['Cosa cambierebbe se puntassi più in alto?', false];
+        yield 'bare si' => ['Sì', true];
+        yield 'set the goal' => ["Ok imposta l'obiettivo", true];
+        yield 'lets update the goal' => ["aggiorniamo l'obiettivo", true];
+        yield 'set the milestones' => ['impostiamo le tappe', true];
+        yield 'im sure' => ['sono sicuro', true];
+        yield 'plain answer is not consent' => ['Vorrei un milione entro il 2050', false];
+        yield 'not yet is not consent' => ['non ancora', false];
+        yield 'keep discussing is not consent' => ['continuiamo a discutere', false];
+        yield 'empty is not consent' => ['', false];
+    }
+
+    #[DataProvider('goalConsentCases')]
+    public function test_detects_explicit_consent_to_update_the_goal(string $message, bool $expected): void
+    {
+        $action = app(ContinueChat::class);
+        $method = new \ReflectionMethod($action, 'userConsentsToGoalUpdate');
+
+        $this->assertSame($expected, $method->invoke($action, $message));
+    }
+
+    /**
+     * A provider that, while "replying", makes the advisor call the profile
+     * proposal tool. Whether a widget actually lands on the message then depends
+     * only on the consent/turn gate ContinueChat armed — which is what we test.
+     */
+    private function proposingProvider(): AdvisorProvider
+    {
+        return new class implements AdvisorProvider
+        {
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function analyze(string $briefing): string
+            {
+                return 'n/a';
+            }
+
+            /** @param  list<array{role: string, content: string}>  $messages */
+            public function chat(array $messages): string
+            {
+                $factory = app(AdvisorToolFactory::class);
+                foreach ($factory->make() as $tool) {
+                    if ($tool->name() === 'propose_profile_update') {
+                        $tool->handle(horizon: 'long', risk_tolerance: 'high');
+                    }
+                }
+
+                return 'ok';
+            }
+
+            /**
+             * @param  list<array{role: string, content: string}>  $messages
+             * @param  callable(string): void  $onChunk
+             */
+            public function chatStream(array $messages, callable $onChunk): string
+            {
+                return $this->chat($messages);
+            }
+        };
+    }
+
+    public function test_no_proposal_before_the_minimum_interview_turns_even_with_consent(): void
+    {
+        $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        // Two earlier user turns + the current one = three: still below the
+        // four-turn minimum, so consent alone must not trigger a proposal.
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'primo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'secondo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'altra domanda']);
+        $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
+        $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        app(ContinueChat::class)->complete($session, $user, $assistant);
+
+        $this->assertNull($assistant->fresh()?->widgets);
+    }
+
+    public function test_proposal_allowed_after_enough_turns_with_consent(): void
+    {
+        $this->app->instance(AdvisorProvider::class, $this->proposingProvider());
+        $session = AdvisorSession::create(['kind' => 'chat', 'status' => 'done']);
+        // Three earlier user turns + the current one = four: meets the minimum.
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'primo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'secondo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'altra domanda']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'terzo']);
+        AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => 'ancora una domanda']);
+        $user = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => 'Sì aggiorna il profilo']);
+        $assistant = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+
+        app(ContinueChat::class)->complete($session, $user, $assistant);
+
+        $widgets = $assistant->fresh()?->widgets;
+        $this->assertNotNull($widgets);
+        $this->assertSame('profile_proposal', $widgets[0]['type']);
     }
 }

@@ -8,7 +8,7 @@ import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
-import { type SessionSummary, type ActiveSession } from '@/Components/Advisor/types';
+import { type SessionSummary, type ActiveSession, type GoalData } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
 import { TypewriterText, markSessionForTitleAnimation } from '@/Components/Advisor/TypewriterText';
 import { SessionList } from '@/Components/Advisor/SessionList';
@@ -21,16 +21,24 @@ interface Props {
     configured: boolean;
     profile: InvestorProfile | null;
     goalObjective: string | null;
+    goal: GoalData | null;
     sessions: SessionSummary[];
     activeSession: ActiveSession | null;
     funFacts: string[];
 }
 
-export default function Advisor({ configured, profile, goalObjective, sessions, activeSession, funFacts }: Props) {
+export default function Advisor({ configured, profile, goalObjective, goal, sessions, activeSession, funFacts }: Props) {
+    // A `?ask=` query param (e.g. the "Ridefinisci con l'AI" button on the Goal
+    // page) opens a fresh composer prefilled with that question, so the user
+    // lands ready to send — or to tweak — rather than on the session list.
+    const prefill = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('ask') ?? ''
+        : '';
+
     const [profileOpen, setProfileOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
-    const [chatMode, setChatMode] = useState(false);
-    const [firstChat, setFirstChat] = useState('');
+    const [chatMode, setChatMode] = useState(prefill !== '');
+    const [firstChat, setFirstChat] = useState(prefill);
     const [startingChat, setStartingChat] = useState(false);
     const [animateEnter] = useState(claimEnterAnimation);
     // On phones/tablets the list and the conversation don't fit side by side, so
@@ -111,7 +119,7 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                     </Card>
                 ) : (
                     <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
-                        <div className={cn('min-w-0 space-y-3', mobileView === 'chat' && 'hidden lg:block')}>
+                        <div className={cn('min-w-0', mobileView === 'chat' && 'hidden lg:block')}>
                             <SessionList
                                 sessions={sessions}
                                 activeId={activeSession?.id ?? null}
@@ -153,6 +161,8 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                                         session={activeSession}
                                         configured={configured}
                                         funFacts={funFacts}
+                                        profile={profile}
+                                        goal={goal}
                                         onSent={() => router.reload({ only: ['sessions'] })}
                                     />
                                 </div>
@@ -190,6 +200,10 @@ export default function Advisor({ configured, profile, goalObjective, sessions, 
                 onClose={() => setProfileOpen(false)}
                 profile={profile}
                 goalObjective={goalObjective}
+                onDefineWithAi={() => {
+                    setProfileOpen(false);
+                    void startChat('Aiutami a definire il mio profilo di rischio');
+                }}
             />
         </>
     );

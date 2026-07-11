@@ -11,6 +11,10 @@ use App\Models\GoalCategoryAllocation;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 use Prism\Prism\Facades\Tool;
+use Prism\Prism\Schema\EnumSchema;
+use Prism\Prism\Schema\NumberSchema;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\StringSchema;
 use Prism\Prism\Tool as PrismTool;
 
 /**
@@ -43,6 +47,10 @@ class AdvisorToolFactory
             $this->allocationVsTarget(),
             $this->listPositions(),
             $this->simulateGoal(),
+            $this->proposeProfileUpdate(),
+            $this->proposeGoalCore(),
+            $this->proposeGoalMilestones(),
+            $this->proposeGoalComposition(),
         ];
     }
 
@@ -134,10 +142,12 @@ class AdvisorToolFactory
     private function simulatePac(): PrismTool
     {
         return Tool::as('simulate_pac')
-            ->for('Simula l\'effetto di un diverso importo mensile del piano di accumulo (PAC) sul tempo stimato per raggiungere l\'obiettivo. Usalo quando l\'utente chiede cosa succede se cambia il versamento mensile.')
-            ->withNumberParameter('monthly_amount', 'Nuovo importo mensile in euro, es. 600')
-            ->using(function (int|float $monthly_amount): string {
-                $this->activity->report('Sto simulando un versamento mensile di '.$this->eur((float) $monthly_amount).'…');
+            ->for('Simula l\'effetto di un diverso importo mensile del piano di accumulo (PAC) sul tempo stimato per raggiungere l\'obiettivo. Usalo quando l\'utente chiede cosa succede se cambia il versamento mensile — anche quando prevede di AUMENTARLO nel tempo (es. "verso 400€ e cresco del 10% l\'anno"): in quel caso passa annual_increase_pct.')
+            ->withNumberParameter('monthly_amount', 'Importo mensile iniziale in euro, es. 400')
+            ->withNumberParameter('annual_increase_pct', 'Aumento percentuale del versamento mensile ogni 12 mesi, es. 10 per +10% l\'anno. Ometti o passa 0 per un versamento costante.', required: false)
+            ->using(function (int|float $monthly_amount, int|float|null $annual_increase_pct = null): string {
+                $increase = $annual_increase_pct !== null ? (float) $annual_increase_pct : 0.0;
+                $this->activity->report('Sto simulando un versamento mensile di '.$this->eur((float) $monthly_amount).($increase > 0.0 ? ' con crescita annua del '.$this->num($increase, 1).'%' : '').'…');
                 $context = $this->buildContext->run();
                 $portfolio = $this->portfolio($context);
 
@@ -146,9 +156,9 @@ class AdvisorToolFactory
                 }
 
                 $expectedReturn = $this->expectedAnnualReturn($context);
-                $this->emitPacWidget($portfolio, $expectedReturn, (float) $monthly_amount);
+                $this->emitPacWidget($portfolio, $expectedReturn, (float) $monthly_amount, $increase);
 
-                return $this->describePacSimulation($portfolio, $expectedReturn, (float) $monthly_amount);
+                return $this->describePacSimulation($portfolio, $expectedReturn, (float) $monthly_amount, $increase);
             });
     }
 
@@ -226,6 +236,121 @@ class AdvisorToolFactory
                 $this->activity->report('Sto simulando l\'obiettivo…');
 
                 return $this->describeGoalSimulation((float) $target_value, $target_date);
+            });
+    }
+
+    /**
+     * Propose an investor-profile change. Does NOT write: it emits a
+     * profile_proposal widget the user confirms with a click (the write happens
+     * through the existing /advisor/profile endpoint and its validation). This
+     * keeps the "AI proposes, the user applies" boundary — the model prefills,
+     * the user still pulls the trigger. Every field is optional so the model can
+     * propose only what the conversation actually settled.
+     */
+    private function proposeProfileUpdate(): PrismTool
+    {
+        return Tool::as('propose_profile_update')
+            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, obiettivo, allocazione target, note) quando la conversazione ha chiarito uno o più di questi elementi. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short" (breve, <3 anni), "medium" (medio, 3-10 anni), "long" (lungo, 10+ anni). Ometti se non emerso.', required: false)
+            ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low" (bassa), "medium" (media), "high" (alta). Ometti se non emerso.', required: false)
+            ->withStringParameter('objective', 'Obiettivo di investimento, testo libero (max 500 caratteri). Ometti se non emerso.', required: false)
+            ->withStringParameter('target_allocation', 'Allocazione target desiderata, testo libero (es. "60% azioni, 30% obbligazioni, 10% liquidità", max 500). Ometti se non emerso.', required: false)
+            ->withStringParameter('notes', 'Sintesi del ragionamento sul profilo di rischio (max 1000 caratteri): capacità di rischio (orizzonte, stabilità del reddito, cuscinetto di liquidità), tolleranza emotiva (reazione a un forte calo), e contesto rilevante. Compilalo quando hai condotto un\'intervista di profilazione, così il "perché" resta salvato.', required: false)
+            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, ?string $objective = null, ?string $target_allocation = null, ?string $notes = null): string {
+                $this->activity->report('Sto preparando una proposta per il tuo profilo…');
+
+                return $this->describeProfileProposal($horizon, $risk_tolerance, $objective, $target_allocation, $notes);
+            });
+    }
+
+    /**
+     * Propose the CORE of the goal (target amount, target date, description/why).
+     * Like propose_profile_update it does NOT write: it emits a goal_core_proposal
+     * widget the user confirms with a click. Every field optional so the model
+     * proposes only what the conversation settled.
+     */
+    private function proposeGoalCore(): PrismTool
+    {
+        $today = Carbon::now()->format('Y-m-d');
+
+        return Tool::as('propose_goal_core')
+            ->for('Proponi l\'obiettivo principale dell\'utente: importo target, data target e una descrizione del "perché" (a cosa serve). NON salva: mostra una card che l\'utente conferma con un click. Compila SOLO i campi emersi dalla conversazione. Usalo dopo aver capito, con le risposte dell\'utente, cosa vuole raggiungere e perché.')
+            ->withNumberParameter('target_value', 'Importo obiettivo in euro, es. 1000000. Ometti se non emerso.', required: false)
+            ->withStringParameter('target_date', "Data obiettivo in formato AAAA-MM-GG, futura (dopo {$today}). Ometti se non emersa.", required: false)
+            ->withStringParameter('description', 'Descrizione dell\'obiettivo e del suo scopo (max 500 caratteri), es. "Primo milione per libertà finanziaria entro il 2050". Ometti se non emersa.', required: false)
+            ->using(function (int|float|null $target_value = null, ?string $target_date = null, ?string $description = null): string {
+                $this->activity->report('Sto preparando una proposta per il tuo obiettivo…');
+
+                return $this->describeGoalCoreProposal(
+                    $target_value !== null ? (float) $target_value : null,
+                    $target_date,
+                    $description,
+                );
+            });
+    }
+
+    /**
+     * Propose a set of intermediate milestones toward the goal. Emits a
+     * goal_milestones_proposal widget; the confirming write replaces only the
+     * milestones, leaving the goal core and target composition untouched.
+     */
+    private function proposeGoalMilestones(): PrismTool
+    {
+        $today = Carbon::now()->format('Y-m-d');
+
+        return Tool::as('propose_goal_milestones')
+            ->for('Proponi delle tappe intermedie (milestone) verso l\'obiettivo: ognuna con un importo, una data e un\'etichetta. NON salva: mostra una card che l\'utente conferma. Usalo quando avete ragionato su come scomporre l\'obiettivo in traguardi intermedi realistici.')
+            ->withArrayParameter(
+                'milestones',
+                'Elenco delle tappe intermedie proposte, in ordine cronologico.',
+                new ObjectSchema(
+                    'milestone',
+                    'Una tappa intermedia verso l\'obiettivo.',
+                    [
+                        new StringSchema('label', 'Breve etichetta della tappa, es. "Metà percorso". Facoltativa.'),
+                        new NumberSchema('target_value', 'Importo della tappa in euro, es. 500000.'),
+                        new StringSchema('target_date', "Data della tappa in formato AAAA-MM-GG, futura (dopo {$today})."),
+                    ],
+                    requiredFields: ['target_value', 'target_date'],
+                ),
+            )
+            ->using(function (array $milestones): string {
+                $this->activity->report('Sto preparando le tappe intermedie…');
+
+                /** @var list<array<string, mixed>> $milestones */
+                return $this->describeGoalMilestonesProposal($milestones);
+            });
+    }
+
+    /**
+     * Propose a TARGET COMPOSITION as macro buckets (Liquidità / ETF / Cripto)
+     * with a rationale. This is a SUGGESTION: the confirm card lets the user edit
+     * the exact percentages before applying, so the model never sets the final
+     * numbers. Emits a goal_composition_proposal widget.
+     */
+    private function proposeGoalComposition(): PrismTool
+    {
+        return Tool::as('propose_goal_composition')
+            ->for('Suggerisci una composizione target del portafoglio per macro-categoria (Liquidità, ETF, Cripto), con una spiegazione del ragionamento. È un SUGGERIMENTO: la card mostra le percentuali proposte ma l\'utente può modificarle prima di applicare — non decidi tu i numeri finali. Usalo quando avete discusso come dovrebbe essere allocato il portafoglio per l\'obiettivo, coerentemente col profilo di rischio.')
+            ->withArrayParameter(
+                'buckets',
+                'Le macro-categorie con la percentuale suggerita. La somma dovrebbe avvicinarsi al 100%.',
+                new ObjectSchema(
+                    'bucket',
+                    'Una macro-categoria con la sua quota suggerita.',
+                    [
+                        new EnumSchema('macro_category', 'La macro-categoria.', ['Liquidità', 'ETF', 'Cripto']),
+                        new NumberSchema('percentage', 'Quota percentuale suggerita (0-100).'),
+                    ],
+                    requiredFields: ['macro_category', 'percentage'],
+                ),
+            )
+            ->withStringParameter('rationale', 'Spiegazione dei trade-off dietro questa composizione (max 1000 caratteri): perché questi pesi, come si legano al profilo di rischio e all\'orizzonte.', required: false)
+            ->using(function (array $buckets, ?string $rationale = null): string {
+                $this->activity->report('Sto preparando una composizione target da valutare…');
+
+                /** @var list<array<string, mixed>> $buckets */
+                return $this->describeGoalCompositionProposal($buckets, $rationale);
             });
     }
 
@@ -334,7 +459,7 @@ class AdvisorToolFactory
      * @param  array{monthsTracked: int, totalNetWorth: float, allocation: list<array{name: string, value: float, share_pct: float}>, concentration: array{hhi: float, top_category: string, top_share_pct: float}, liquidity: array{value: float, share_pct: float}, goalEta: array<string, mixed>|null}  $portfolio
      * @param  array{rate: float, source: string}  $expectedReturn
      */
-    private function describePacSimulation(array $portfolio, array $expectedReturn, float $monthlyAmount): string
+    private function describePacSimulation(array $portfolio, array $expectedReturn, float $monthlyAmount, float $annualIncreasePct = 0.0): string
     {
         $goalEta = $portfolio['goalEta'];
 
@@ -349,23 +474,23 @@ class AdvisorToolFactory
         $target = is_numeric($goalEta['target_value']) ? (float) $goalEta['target_value'] : 0.0;
         $current = $portfolio['totalNetWorth'];
         $annual = $expectedReturn['rate'];
-        $monthlyRate = (1.0 + $annual) ** (1.0 / 12.0) - 1.0;
 
         // Compound projection: the current net worth grows at the assumed rate
         // while the monthly PAC is added and itself compounds. A linear
         // "remaining / monthly" ignores compounding and yields absurd century
-        // ETAs on long-horizon goals, so we iterate month by month until the
-        // future value reaches the target (capped so an unreachable goal stops).
+        // ETAs on long-horizon goals. When annualIncreasePct > 0 the monthly
+        // contribution steps up every 12 months (a growing PAC). Kept identical
+        // to projectPac() in lib/pacMath.ts so the widget matches.
         $maxMonths = 1200; // 100 years — a hard stop for the search
-        $balance = $current;
-        $months = 0;
-        while ($balance < $target && $months < $maxMonths) {
-            $balance = $balance * (1.0 + $monthlyRate) + $monthlyAmount;
-            $months++;
+        $months = $this->projectPacMonths($current, $target, $monthlyAmount, $annual, $annualIncreasePct, $maxMonths);
+
+        $intro = 'Simulazione con versamento mensile di '.$this->eur($monthlyAmount);
+        if ($annualIncreasePct > 0.0) {
+            $intro .= ' in crescita del '.$this->num($annualIncreasePct, 1).'% ogni anno';
         }
 
         $lines = [
-            'Simulazione con versamento mensile di '.$this->eur($monthlyAmount).':',
+            $intro.':',
             'Patrimonio attuale '.$this->eur($current).', obiettivo '.$this->eur($target).'.',
             'Ipotesi di rendimento annuo: '.$this->num($annual * 100, 1).'% ('.$expectedReturn['source'].') — è un\'assunzione di pianificazione, NON una previsione di mercato.',
         ];
@@ -378,11 +503,73 @@ class AdvisorToolFactory
 
         $lines[] = 'Stima (con capitalizzazione composta): circa '.$months.' mesi, ovvero '.$this->num($months / 12, 1).' anni, per raggiungere l\'obiettivo.';
 
+        // Per-year contribution schedule: with a step-up the monthly amount
+        // changes each year, so spell it out rather than making the user (or the
+        // model) recompute it. Even flat, it's a useful "how much per year" recap.
+        $schedule = $this->pacContributionSchedule($monthlyAmount, $annualIncreasePct, (int) ceil($months / 12));
+        $lines[] = $annualIncreasePct > 0.0
+            ? 'Piano dei versamenti (il mensile cresce del '.$this->num($annualIncreasePct, 1).'% ogni anno):'
+            : 'Piano dei versamenti (mensile costante):';
+        foreach ($schedule as $row) {
+            $lines[] = '  - Anno '.$row['year'].': '.$this->eur($row['monthly']).'/mese ('.$this->eur($row['yearly']).' nell\'anno).';
+        }
+
         if (($goalEta['low_confidence'] ?? false) === true) {
             $lines[] = 'ATTENZIONE: pochi mesi di dati tracciati. La stima dipende molto dall\'ipotesi di rendimento: trattala come ordine di grandezza, non come previsione.';
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * The monthly contribution (and its 12× yearly total) for each year of the
+     * plan, stepping up by $annualIncreasePct at each full year. Capped so a very
+     * long horizon doesn't produce an unwieldy list. Used by both the tool text
+     * and the widget; the frontend mirrors the same step logic.
+     *
+     * @return list<array{year: int, monthly: float, yearly: float}>
+     */
+    private function pacContributionSchedule(float $monthlyAmount, float $annualIncreasePct, int $years): array
+    {
+        $years = max(1, min($years, 40));
+        $step = 1.0 + $annualIncreasePct / 100.0;
+
+        $rows = [];
+        $monthly = $monthlyAmount;
+        for ($y = 1; $y <= $years; $y++) {
+            if ($y > 1) {
+                $monthly *= $step;
+            }
+            $rows[] = ['year' => $y, 'monthly' => round($monthly, 2), 'yearly' => round($monthly * 12, 2)];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Months to grow $current to $target, contributing $monthlyAmount each month
+     * (stepped up by $annualIncreasePct every 12 months) while the balance
+     * compounds at $annualReturn. Returns $maxMonths when the target isn't reached
+     * within the cap. Mirrors projectPac() in lib/pacMath.ts — keep in step.
+     */
+    private function projectPacMonths(float $current, float $target, float $monthlyAmount, float $annualReturn, float $annualIncreasePct, int $maxMonths): int
+    {
+        $monthlyRate = (1.0 + $annualReturn) ** (1.0 / 12.0) - 1.0;
+        $step = 1.0 + $annualIncreasePct / 100.0;
+
+        $balance = $current;
+        $contribution = $monthlyAmount;
+        $months = 0;
+        while ($balance < $target && $months < $maxMonths) {
+            // Step the contribution up at each full year elapsed.
+            if ($months > 0 && $months % 12 === 0) {
+                $contribution *= $step;
+            }
+            $balance = $balance * (1.0 + $monthlyRate) + $contribution;
+            $months++;
+        }
+
+        return $months;
     }
 
     /**
@@ -396,7 +583,7 @@ class AdvisorToolFactory
      * @param  array{monthsTracked: int, totalNetWorth: float, allocation: list<array{name: string, value: float, share_pct: float}>, concentration: array{hhi: float, top_category: string, top_share_pct: float}, liquidity: array{value: float, share_pct: float}, goalEta: array<string, mixed>|null}  $portfolio
      * @param  array{rate: float, source: string}  $expectedReturn
      */
-    private function emitPacWidget(array $portfolio, array $expectedReturn, float $monthlyAmount): void
+    private function emitPacWidget(array $portfolio, array $expectedReturn, float $monthlyAmount, float $annualIncreasePct = 0.0): void
     {
         $goalEta = $portfolio['goalEta'];
 
@@ -408,6 +595,7 @@ class AdvisorToolFactory
             'current_net_worth' => $portfolio['totalNetWorth'],
             'target_value' => is_numeric($goalEta['target_value']) ? (float) $goalEta['target_value'] : 0.0,
             'monthly_amount' => $monthlyAmount,
+            'annual_increase_pct' => $annualIncreasePct,
             'annual_return' => $expectedReturn['rate'],
             'annual_return_source' => $expectedReturn['source'],
             'low_confidence' => ($goalEta['low_confidence'] ?? false) === true,
@@ -688,6 +876,228 @@ class AdvisorToolFactory
         return ($target - $futureOfCurrent) / $annuityFactor;
     }
 
+    /**
+     * Validate the proposed profile fields, emit the confirmation widget and
+     * return text describing what was proposed. Enum fields are validated
+     * against the same values as StoreInvestorProfileRequest; an out-of-range
+     * enum is dropped (not proposed) so the model can't push an invalid value.
+     * Returns without a widget when nothing valid was proposed.
+     */
+    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, ?string $objective, ?string $targetAllocation, ?string $notes = null): string
+    {
+        $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
+        $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
+        $objective = $objective !== null && trim($objective) !== '' ? mb_substr(trim($objective), 0, 500) : null;
+        $targetAllocation = $targetAllocation !== null && trim($targetAllocation) !== '' ? mb_substr(trim($targetAllocation), 0, 500) : null;
+        $notes = $notes !== null && trim($notes) !== '' ? mb_substr(trim($notes), 0, 1000) : null;
+
+        $proposed = array_filter([
+            'horizon' => $horizon,
+            'risk_tolerance' => $riskTolerance,
+            'objective' => $objective,
+            'target_allocation' => $targetAllocation,
+            'notes' => $notes,
+        ], fn ($v): bool => $v !== null);
+
+        if ($proposed === []) {
+            return 'Non ho abbastanza elementi per proporre una modifica al profilo. Chiedi all\'utente orizzonte, tolleranza al rischio e obiettivo.';
+        }
+
+        // Deterministic consent gate: the advisor must not propose on its own
+        // initiative. Unless the user just agreed (ContinueChat sets this), emit
+        // no widget and steer the model to ask first. This holds regardless of
+        // how insistently the model tries to propose.
+        if (! $this->widgets->isProfileProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card di proposta. Prima CHIEDI esplicitamente all\'utente se vuole che aggiorni il suo profilo con queste conclusioni, oppure se preferisce continuare l\'analisi. Attendi il suo consenso.';
+        }
+
+        $this->widgets->add('profile_proposal', $proposed);
+
+        $horizonLabels = ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo'];
+        $riskLabels = ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta'];
+
+        $lines = ['Proposta di profilo (da confermare):'];
+        if ($horizon !== null) {
+            $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
+        }
+        if ($riskTolerance !== null) {
+            $lines[] = '  - Tolleranza al rischio: '.$riskLabels[$riskTolerance];
+        }
+        if ($objective !== null) {
+            $lines[] = '  - Obiettivo: '.$objective;
+        }
+        if ($targetAllocation !== null) {
+            $lines[] = '  - Allocazione target: '.$targetAllocation;
+        }
+        if ($notes !== null) {
+            $lines[] = '  - Note: '.$notes;
+        }
+        $lines[] = 'La proposta è mostrata all\'utente con un pulsante per confermare: non è ancora salvata.';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Validate the proposed goal-core fields, emit the confirmation widget and
+     * return text describing what was proposed. Gated by the shared goal-proposal
+     * consent flag, like the profile proposal. Returns without a widget when
+     * nothing valid was proposed or the date is invalid/past.
+     */
+    private function describeGoalCoreProposal(?float $targetValue, ?string $targetDate, ?string $description): string
+    {
+        $targetValue = $targetValue !== null && $targetValue > 0.0 ? $targetValue : null;
+        $description = $description !== null && trim($description) !== '' ? mb_substr(trim($description), 0, 500) : null;
+
+        $date = null;
+        if ($targetDate !== null && trim($targetDate) !== '') {
+            $parsed = $this->parseFutureDate(trim($targetDate));
+            if ($parsed === null) {
+                return 'La data obiettivo proposta non è valida o non è futura. Chiedi all\'utente una data obiettivo futura nel formato AAAA-MM-GG.';
+            }
+            $date = $parsed;
+        }
+
+        $proposed = array_filter([
+            'target_value' => $targetValue,
+            'target_date' => $date,
+            'description' => $description,
+        ], fn ($v): bool => $v !== null);
+
+        if ($proposed === []) {
+            return 'Non ho abbastanza elementi per proporre un obiettivo. Chiedi all\'utente importo, data e scopo.';
+        }
+
+        if (! $this->widgets->isGoalProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card. Prima CHIEDI esplicitamente all\'utente se vuole che imposti questo obiettivo, oppure se preferisce continuare a ragionarci. Attendi il suo consenso.';
+        }
+
+        $this->widgets->add('goal_core_proposal', $proposed);
+
+        $lines = ['Proposta di obiettivo (da confermare):'];
+        if ($targetValue !== null) {
+            $lines[] = '  - Importo target: '.$this->eur($targetValue);
+        }
+        if ($date !== null) {
+            $lines[] = '  - Data target: '.$date;
+        }
+        if ($description !== null) {
+            $lines[] = '  - Descrizione: '.$description;
+        }
+        $lines[] = 'La proposta è mostrata con un pulsante per confermare: non è ancora salvata.';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Validate the proposed milestones, emit the widget and describe them. Each
+     * milestone needs a positive value and a valid future date; invalid ones are
+     * dropped. Gated by the goal-proposal consent flag.
+     *
+     * @param  list<array<string, mixed>>  $milestones
+     */
+    private function describeGoalMilestonesProposal(array $milestones): string
+    {
+        $valid = [];
+        foreach ($milestones as $m) {
+            $value = is_numeric($m['target_value'] ?? null) ? (float) $m['target_value'] : null;
+            $rawDate = is_string($m['target_date'] ?? null) ? trim($m['target_date']) : '';
+            $date = $rawDate !== '' ? $this->parseFutureDate($rawDate) : null;
+            if ($value === null) {
+                continue;
+            }
+            if ($value <= 0.0) {
+                continue;
+            }
+            if ($date === null) {
+                continue;
+            }
+
+            $label = is_string($m['label'] ?? null) && trim($m['label']) !== ''
+                ? mb_substr(trim($m['label']), 0, 100)
+                : null;
+
+            $valid[] = ['label' => $label, 'target_value' => $value, 'target_date' => $date];
+        }
+
+        if ($valid === []) {
+            return 'Non ho tappe valide da proporre. Ogni tappa serve di un importo positivo e una data futura (AAAA-MM-GG).';
+        }
+
+        if (! $this->widgets->isGoalProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card. Prima CHIEDI esplicitamente all\'utente se vuole che imposti queste tappe intermedie. Attendi il suo consenso.';
+        }
+
+        $this->widgets->add('goal_milestones_proposal', ['milestones' => $valid]);
+
+        $lines = ['Proposta di tappe intermedie (da confermare):'];
+        foreach ($valid as $m) {
+            $label = $m['label'] !== null ? $m['label'].' — ' : '';
+            $lines[] = '  - '.$label.$this->eur($m['target_value']).' entro il '.$m['target_date'];
+        }
+        $lines[] = 'La proposta è mostrata con un pulsante per confermare: non è ancora salvata.';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Validate the proposed macro-composition buckets, emit the widget and
+     * describe them. Buckets are a SUGGESTION: percentages are clamped 0-100 and
+     * invalid categories dropped, but the sum is NOT forced to 100 — the widget
+     * lets the user edit the numbers before applying and warns if they don't add
+     * up. Gated by the goal-proposal consent flag.
+     *
+     * @param  list<array<string, mixed>>  $buckets
+     */
+    private function describeGoalCompositionProposal(array $buckets, ?string $rationale): string
+    {
+        $rationale = $rationale !== null && trim($rationale) !== '' ? mb_substr(trim($rationale), 0, 1000) : null;
+
+        $valid = [];
+        foreach ($buckets as $b) {
+            $macro = is_string($b['macro_category'] ?? null) ? $b['macro_category'] : '';
+            $pct = is_numeric($b['percentage'] ?? null) ? (float) $b['percentage'] : null;
+            if (! in_array($macro, ['Liquidità', 'ETF', 'Cripto'], true)) {
+                continue;
+            }
+            if ($pct === null) {
+                continue;
+            }
+
+            $valid[] = ['macro_category' => $macro, 'percentage' => max(0.0, min(100.0, $pct))];
+        }
+
+        if ($valid === []) {
+            return 'Non ho una composizione valida da suggerire. Le macro-categorie ammesse sono Liquidità, ETF e Cripto, con percentuali 0-100.';
+        }
+
+        if (! $this->widgets->isGoalProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card. Prima CHIEDI esplicitamente all\'utente se vuole valutare una composizione target. Attendi il suo consenso.';
+        }
+
+        $total = 0.0;
+        foreach ($valid as $b) {
+            $total += $b['percentage'];
+        }
+
+        $this->widgets->add('goal_composition_proposal', [
+            'buckets' => $valid,
+            'rationale' => $rationale,
+            'total_pct' => round($total, 1),
+        ]);
+
+        $lines = ['Composizione target suggerita (modificabile prima di confermare):'];
+        foreach ($valid as $b) {
+            $lines[] = '  - '.$b['macro_category'].': '.$this->num($b['percentage'], 1).'%';
+        }
+        $lines[] = 'Totale: '.$this->num($total, 1).'%.';
+        if ($rationale !== null) {
+            $lines[] = 'Motivazione: '.$rationale;
+        }
+        $lines[] = 'È un suggerimento: l\'utente può correggere le percentuali sulla card prima di applicarle. Nulla è ancora salvato.';
+
+        return implode("\n", $lines);
+    }
+
     private function describeNetWorthBetween(string $from, string $to): string
     {
         try {
@@ -742,6 +1152,26 @@ class AdvisorToolFactory
         return $first instanceof Carbon && $last instanceof Carbon
             ? " Dati disponibili dal {$first->format('Y-m-d')} al {$last->format('Y-m-d')}."
             : '';
+    }
+
+    /**
+     * Parse a AAAA-MM-GG string and return it as a normalized Y-m-d string only
+     * if it is a valid FUTURE date; null otherwise. Used to validate the dates
+     * the model proposes for the goal and its milestones.
+     */
+    private function parseFutureDate(string $date): ?string
+    {
+        try {
+            $parsed = Carbon::createFromFormat('Y-m-d', $date);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $parsed instanceof Carbon || $parsed->isPast()) {
+            return null;
+        }
+
+        return $parsed->format('Y-m-d');
     }
 
     private function snapshotNear(Carbon $date): ?Snapshot

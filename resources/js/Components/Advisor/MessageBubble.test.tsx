@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Message } from '@/Components/Advisor/types';
 
 // ThinkingWithFacts spins timers/rng; stub it to a marker so the "thinking"
@@ -91,5 +92,22 @@ describe('MessageBubble', () => {
     it('falls back to a default error message when failed without an error', () => {
         render(<MessageBubble message={msg({ role: 'assistant', status: 'failed', error: null })} funFacts={[]} />);
         expect(screen.getByText(/Il consulente non ha risposto/)).toBeInTheDocument();
+    });
+
+    it('makes the failed message clickable to retry and calls onRetry with it', async () => {
+        const user = userEvent.setup();
+        const onRetry = vi.fn();
+        const failed = msg({ role: 'assistant', status: 'failed', error: 'Errore' });
+        render(<MessageBubble message={failed} funFacts={[]} onRetry={onRetry} />);
+
+        await user.click(screen.getByRole('button', { name: /Errore/ }));
+
+        expect(onRetry).toHaveBeenCalledTimes(1);
+        expect(onRetry).toHaveBeenCalledWith(failed);
+    });
+
+    it('shows no retry affordance when onRetry is not provided', () => {
+        render(<MessageBubble message={msg({ role: 'assistant', status: 'failed', error: 'Errore' })} funFacts={[]} />);
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 });

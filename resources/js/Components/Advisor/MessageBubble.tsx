@@ -1,10 +1,23 @@
 import { Markdown } from '@/Components/ui/Markdown';
-import { Sparkles, AlertTriangle } from 'lucide-react';
-import { type Message } from '@/Components/Advisor/types';
+import { Sparkles, AlertTriangle, RotateCw } from 'lucide-react';
+import { type Message, type GoalData } from '@/Components/Advisor/types';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
 import { AdvisorWidgets } from '@/Components/Advisor/AdvisorWidgets';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
-export function MessageBubble({ message, funFacts }: { message: Message; funFacts: string[] }) {
+export function MessageBubble({
+    message,
+    funFacts,
+    profile,
+    goal,
+    onRetry,
+}: {
+    message: Message;
+    funFacts: string[];
+    profile?: InvestorProfile | null;
+    goal?: GoalData | null;
+    onRetry?: (message: Message) => void;
+}) {
     if (message.role === 'user') {
         return (
             <div className="flex justify-end">
@@ -25,7 +38,20 @@ export function MessageBubble({ message, funFacts }: { message: Message; funFact
                 {failed ? (
                     <div className="flex items-start gap-2 text-sm text-red-500">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{message.error ?? 'Il consulente non ha risposto. Riprova.'}</span>
+                        {onRetry ? (
+                            <button
+                                type="button"
+                                onClick={() => onRetry(message)}
+                                className="inline-flex items-center gap-1.5 text-left text-red-500 transition-colors hover:text-red-600"
+                            >
+                                <span className="underline">
+                                    {message.error ?? 'Il consulente non ha risposto.'}
+                                </span>
+                                <RotateCw className="h-3.5 w-3.5 flex-shrink-0" />
+                            </button>
+                        ) : (
+                            <span>{message.error ?? 'Il consulente non ha risposto.'}</span>
+                        )}
                     </div>
                 ) : thinking ? (
                     <ThinkingWithFacts facts={funFacts} label={message.tool_activity ?? undefined} />
@@ -33,7 +59,7 @@ export function MessageBubble({ message, funFacts }: { message: Message; funFact
                     <>
                         <Markdown content={message.content} />
                         {message.widgets && message.widgets.length > 0 && (
-                            <AdvisorWidgets widgets={message.widgets} />
+                            <AdvisorWidgets widgets={message.widgets} profile={profile} goal={goal} />
                         )}
                     </>
                 )}

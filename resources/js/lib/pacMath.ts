@@ -21,20 +21,28 @@ export interface PacProjection {
  * PAC is added and itself compounds, until it reaches the target (or the cap).
  * A linear `remaining / monthly` ignores compounding and yields absurd century
  * ETAs on long-horizon goals, so we compound — same loop as the PHP.
+ *
+ * `annualIncreasePct` steps the monthly contribution up every 12 months (a
+ * growing PAC); pass 0 for a constant contribution. Mirrors
+ * AdvisorToolFactory::projectPacMonths — keep in step.
  */
 export function projectPac(
     currentNetWorth: number,
     target: number,
     monthlyAmount: number,
     annualReturn: number,
+    annualIncreasePct = 0,
 ): PacProjection {
     const monthlyRate = Math.pow(1 + annualReturn, 1 / 12) - 1;
+    const step = 1 + annualIncreasePct / 100;
     const balances: number[] = [currentNetWorth];
 
     let balance = currentNetWorth;
+    let contribution = monthlyAmount;
     let months = 0;
     while (balance < target && months < PAC_MAX_MONTHS) {
-        balance = balance * (1 + monthlyRate) + monthlyAmount;
+        if (months > 0 && months % 12 === 0) contribution *= step;
+        balance = balance * (1 + monthlyRate) + contribution;
         months++;
         balances.push(balance);
     }

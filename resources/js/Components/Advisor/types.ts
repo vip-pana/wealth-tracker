@@ -23,6 +23,8 @@ export interface PacSimulatorWidget {
         current_net_worth: number;
         target_value: number;
         monthly_amount: number;
+        /** Optional: absent on widgets persisted before the step-up feature. */
+        annual_increase_pct?: number;
         annual_return: number;
         annual_return_source: string;
         low_confidence: boolean;
@@ -103,6 +105,59 @@ export interface GoalSimulatorWidget {
     };
 }
 
+export interface ProfileProposalWidget {
+    type: 'profile_proposal';
+    data: {
+        horizon?: 'short' | 'medium' | 'long';
+        risk_tolerance?: 'low' | 'medium' | 'high';
+        objective?: string;
+        target_allocation?: string;
+        notes?: string;
+    };
+}
+
+export type MacroCategory = 'Liquidità' | 'ETF' | 'Cripto';
+
+/**
+ * The user's current goal, passed as a page prop. Goal-proposal widgets compare
+ * against it to render an already-applied state that survives a page refresh
+ * (their local applied state is lost on remount), mirroring how ProfileProposal
+ * uses the profile prop. Null when no goal exists yet.
+ */
+export interface GoalData {
+    name: string;
+    description: string | null;
+    target_value: number;
+    target_date: string | null;
+    milestones: { notes: string | null; target_value: number; target_date: string }[];
+    macro_allocations: { macro_category: MacroCategory; percentage: number }[];
+}
+
+export interface GoalCoreProposalWidget {
+    type: 'goal_core_proposal';
+    data: {
+        target_value?: number;
+        target_date?: string;
+        description?: string;
+    };
+}
+
+export interface GoalMilestonesProposalWidget {
+    type: 'goal_milestones_proposal';
+    data: {
+        milestones: { label: string | null; target_value: number; target_date: string }[];
+    };
+}
+
+export interface GoalCompositionProposalWidget {
+    type: 'goal_composition_proposal';
+    data: {
+        buckets: { macro_category: MacroCategory; percentage: number }[];
+        rationale: string | null;
+        total_pct: number;
+    };
+}
+
 export type Widget =
     | PacSimulatorWidget
     | PositionCardWidget
@@ -110,7 +165,11 @@ export type Widget =
     | NetWorthLineWidget
     | AllocationVsTargetWidget
     | PositionsTableWidget
-    | GoalSimulatorWidget;
+    | GoalSimulatorWidget
+    | ProfileProposalWidget
+    | GoalCoreProposalWidget
+    | GoalMilestonesProposalWidget
+    | GoalCompositionProposalWidget;
 
 export interface Message {
     id: number;
@@ -145,6 +204,7 @@ export const SUGGESTED_QUESTIONS = [
     'Quali sono i rischi principali del mio portafoglio?',
     'Cosa dovrei controllare questo mese?',
     'La mia esposizione a Bitcoin è troppo alta?',
+    'Aiutami a definire il mio profilo di rischio',
 ];
 
 /** Pick `count` distinct questions, varied by the session id so they're stable per session. */

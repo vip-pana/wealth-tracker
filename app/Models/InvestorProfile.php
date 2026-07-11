@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $risk_tolerance
  * @property string|null $objective
  * @property string|null $target_allocation
+ * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -20,5 +21,5 @@ class InvestorProfile extends Model
 {
     protected $table = 'investor_profile';
 
-    protected $fillable = ['horizon', 'risk_tolerance', 'objective', 'target_allocation'];
+    protected $fillable = ['horizon', 'risk_tolerance', 'objective', 'target_allocation', 'notes'];
 }

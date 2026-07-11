@@ -16,6 +16,7 @@ class StoreInvestorProfileRequest extends FormRequest
             'risk_tolerance' => ['nullable', 'in:low,medium,high'],
             'objective' => ['nullable', 'string', 'max:500'],
             'target_allocation' => ['nullable', 'string', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }
