@@ -1002,8 +1002,13 @@ class AdvisorToolFactory
             $value = is_numeric($m['target_value'] ?? null) ? (float) $m['target_value'] : null;
             $rawDate = is_string($m['target_date'] ?? null) ? trim($m['target_date']) : '';
             $date = $rawDate !== '' ? $this->parseFutureDate($rawDate) : null;
-
-            if ($value === null || $value <= 0.0 || $date === null) {
+            if ($value === null) {
+                continue;
+            }
+            if ($value <= 0.0) {
+                continue;
+            }
+            if ($date === null) {
                 continue;
             }
 
@@ -1051,8 +1056,10 @@ class AdvisorToolFactory
         foreach ($buckets as $b) {
             $macro = is_string($b['macro_category'] ?? null) ? $b['macro_category'] : '';
             $pct = is_numeric($b['percentage'] ?? null) ? (float) $b['percentage'] : null;
-
-            if (! in_array($macro, ['Liquidità', 'ETF', 'Cripto'], true) || $pct === null) {
+            if (! in_array($macro, ['Liquidità', 'ETF', 'Cripto'], true)) {
+                continue;
+            }
+            if ($pct === null) {
                 continue;
             }
 
@@ -1160,7 +1167,7 @@ class AdvisorToolFactory
             return null;
         }
 
-        if ($parsed === null || $parsed->isPast()) {
+        if (! $parsed instanceof Carbon || $parsed->isPast()) {
             return null;
         }
 
