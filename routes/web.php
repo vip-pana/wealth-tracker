@@ -10,6 +10,9 @@ use App\Http\Controllers\Advisor\RenameController as AdvisorRenameController;
 use App\Http\Controllers\Advisor\RetryMessageController as AdvisorRetryMessageController;
 use App\Http\Controllers\Advisor\StartChatController as AdvisorStartChatController;
 use App\Http\Controllers\Advisor\StatusController as AdvisorStatusController;
+use App\Http\Controllers\Advisor\StoreGoalCompositionController as AdvisorStoreGoalCompositionController;
+use App\Http\Controllers\Advisor\StoreGoalCoreController as AdvisorStoreGoalCoreController;
+use App\Http\Controllers\Advisor\StoreGoalMilestonesController as AdvisorStoreGoalMilestonesController;
 use App\Http\Controllers\Advisor\StoreProfileController as AdvisorStoreProfileController;
 use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
@@ -62,6 +65,9 @@ Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
 Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
 Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
 Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
+Route::post('/advisor/goal', AdvisorStoreGoalCoreController::class)->name('advisor.goal.store');
+Route::post('/advisor/goal/milestones', AdvisorStoreGoalMilestonesController::class)->name('advisor.goal.milestones.store');
+Route::post('/advisor/goal/composition', AdvisorStoreGoalCompositionController::class)->name('advisor.goal.composition.store');
 // Session-scoped routes — the {session} wildcard goes last so it can't shadow
 // the static segments above.
 Route::get('/advisor/{session}', AdvisorIndexController::class)->name('advisor.show');

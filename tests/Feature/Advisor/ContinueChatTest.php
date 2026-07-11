@@ -191,8 +191,17 @@ class ContinueChatTest extends TestCase
         yield 'bare si' => ['Sì', true];
         yield 'ok update it' => ['Ok aggiorna il profilo', true];
         yield 'va bene' => ['va bene', true];
+        yield 'lets update it (-iamo form)' => ['aggiorniamo direi', true];
+        yield 'im sure' => ['sono sicuro', true];
+        yield 'lets proceed' => ['procediamo pure', true];
+        yield 'do it' => ['fallo', true];
         yield 'plain answer is not consent' => ['Libertà finanziaria tra 20 anni', false];
         yield 'update-with-question is not consent' => ['Vuoi aggiornare il profilo?', false];
+        yield 'lets keep analysing is not consent' => ['continuiamo a discutere', false];
+        yield 'keep going a bit more is not consent' => ["continuiamo ancora un po' l'analisi", false];
+        yield 'not sure is not consent' => ['non sono sicuro', false];
+        yield 'no do it later is not consent' => ['no facciamo dopo', false];
+        yield 'do not update is not consent' => ['non aggiornare il profilo', false];
         yield 'empty is not consent' => ['', false];
     }
 
@@ -201,6 +210,32 @@ class ContinueChatTest extends TestCase
     {
         $action = app(ContinueChat::class);
         $method = new \ReflectionMethod($action, 'userConsentsToProfileUpdate');
+
+        $this->assertSame($expected, $method->invoke($action, $message));
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function goalConsentCases(): iterable
+    {
+        yield 'question is never consent' => ['Cosa cambierebbe se puntassi più in alto?', false];
+        yield 'bare si' => ['Sì', true];
+        yield 'set the goal' => ["Ok imposta l'obiettivo", true];
+        yield 'lets update the goal' => ["aggiorniamo l'obiettivo", true];
+        yield 'set the milestones' => ['impostiamo le tappe', true];
+        yield 'im sure' => ['sono sicuro', true];
+        yield 'plain answer is not consent' => ['Vorrei un milione entro il 2050', false];
+        yield 'not yet is not consent' => ['non ancora', false];
+        yield 'keep discussing is not consent' => ['continuiamo a discutere', false];
+        yield 'empty is not consent' => ['', false];
+    }
+
+    #[DataProvider('goalConsentCases')]
+    public function test_detects_explicit_consent_to_update_the_goal(string $message, bool $expected): void
+    {
+        $action = app(ContinueChat::class);
+        $method = new \ReflectionMethod($action, 'userConsentsToGoalUpdate');
 
         $this->assertSame($expected, $method->invoke($action, $message));
     }

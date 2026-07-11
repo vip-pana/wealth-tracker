@@ -94,20 +94,20 @@ describe('MessageBubble', () => {
         expect(screen.getByText(/Il consulente non ha risposto/)).toBeInTheDocument();
     });
 
-    it('offers a Riprova button on a failed message and calls onRetry with it', async () => {
+    it('makes the failed message clickable to retry and calls onRetry with it', async () => {
         const user = userEvent.setup();
         const onRetry = vi.fn();
         const failed = msg({ role: 'assistant', status: 'failed', error: 'Errore' });
         render(<MessageBubble message={failed} funFacts={[]} onRetry={onRetry} />);
 
-        await user.click(screen.getByRole('button', { name: /Riprova/ }));
+        await user.click(screen.getByRole('button', { name: /Errore/ }));
 
         expect(onRetry).toHaveBeenCalledTimes(1);
         expect(onRetry).toHaveBeenCalledWith(failed);
     });
 
-    it('shows no Riprova button when onRetry is not provided', () => {
+    it('shows no retry affordance when onRetry is not provided', () => {
         render(<MessageBubble message={msg({ role: 'assistant', status: 'failed', error: 'Errore' })} funFacts={[]} />);
-        expect(screen.queryByRole('button', { name: /Riprova/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 });

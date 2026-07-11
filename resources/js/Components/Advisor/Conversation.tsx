@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
 import { AlertTriangle, Send, ChevronDown } from 'lucide-react';
-import { type Status, type Message, type ActiveSession, pickQuestions } from '@/Components/Advisor/types';
+import { type Status, type Message, type ActiveSession, type GoalData, pickQuestions } from '@/Components/Advisor/types';
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
 import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
@@ -14,12 +14,14 @@ export function Conversation({
     configured,
     funFacts,
     profile,
+    goal,
     onSent,
 }: {
     session: ActiveSession;
     configured: boolean;
     funFacts: string[];
     profile: InvestorProfile | null;
+    goal: GoalData | null;
     onSent: () => void;
 }) {
     const [messages, setMessages] = useState<Message[]>(session.messages);
@@ -192,7 +194,7 @@ export function Conversation({
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
-                    {messages.map((m) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} onRetry={retry} />)}
+                    {messages.map((m, i) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} goal={goal} onRetry={i === messages.length - 1 ? retry : undefined} />)}
                     <div ref={bottomRef} />
                 </CardContent>
 
@@ -212,13 +214,13 @@ export function Conversation({
             {configured && !pending && (
                 <div className="border-t border-border p-3 space-y-2">
                     {!sending && messages.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {suggestions.map((q) => (
                                 <button
                                     key={q}
                                     type="button"
                                     onClick={() => void send(q)}
-                                    className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                                    className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                                 >
                                     {q}
                                 </button>

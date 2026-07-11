@@ -25,7 +25,7 @@ class IndexController extends Controller
     public function __invoke(?AdvisorSession $session = null): Response
     {
         $profile = InvestorProfile::query()->first();
-        $goal = Goal::query()->first();
+        $goal = Goal::query()->with(['milestones', 'categoryAllocations'])->first();
 
         // Opening a session marks it read, so its unread dot clears. A session
         // whose reply is still generating is left unread until it finishes and
@@ -51,6 +51,27 @@ class IndexController extends Controller
                 'notes' => $profile->notes,
             ] : null,
             'goalObjective' => $goal?->name,
+            'goal' => $goal instanceof Goal ? [
+                'name' => $goal->name,
+                'description' => $goal->description,
+                'target_value' => $goal->target_value,
+                'target_date' => $goal->target_date?->format('Y-m-d'),
+                'milestones' => $goal->milestones
+                    ->map(fn ($m): array => [
+                        'notes' => $m->notes,
+                        'target_value' => (float) $m->target_value,
+                        'target_date' => $m->target_date->format('Y-m-d'),
+                    ])
+                    ->all(),
+                'macro_allocations' => $goal->categoryAllocations
+                    ->filter(fn ($a): bool => $a->macro_category !== null)
+                    ->map(fn ($a): array => [
+                        'macro_category' => $a->macro_category,
+                        'percentage' => (float) $a->percentage,
+                    ])
+                    ->values()
+                    ->all(),
+            ] : null,
             'sessions' => $this->sessionList(),
             'activeSession' => $session instanceof AdvisorSession ? $this->serializeSession($session) : null,
             'funFacts' => $this->provider->isConfigured() ? $this->funFacts->run() : [],

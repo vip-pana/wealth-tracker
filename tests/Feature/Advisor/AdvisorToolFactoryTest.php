@@ -206,9 +206,10 @@ class AdvisorToolFactoryTest extends TestCase
         $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
         $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
         $collector->for($message);
-        // Most tests exercise tools other than the consent-gated proposal; allow
-        // it by default so those stay unaffected. The gate has its own tests.
+        // Most tests exercise tools other than the consent-gated proposals; allow
+        // them by default so those stay unaffected. The gates have their own tests.
         $collector->allowProfileProposal(true);
+        $collector->allowGoalProposal(true);
 
         return [$factory, $collector];
     }
@@ -284,6 +285,29 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('5%', $out);
         $this->assertStringContainsString('assunzione di pianificazione', $out);
         $this->assertStringContainsString('anni', $out);
+    }
+
+    public function test_simulate_pac_models_a_growing_contribution(): void
+    {
+        // A step-up PAC reaches the goal sooner than a flat one, and the reply
+        // states the annual growth. Uses a modest amount so the growth matters.
+        $flat = $this->tool($this->toolFor($this->portfolioContext), 'simulate_pac')->handle(monthly_amount: 500);
+        $growing = $this->tool($this->toolFor($this->portfolioContext), 'simulate_pac')->handle(monthly_amount: 500, annual_increase_pct: 10);
+
+        $this->assertStringContainsString('in crescita del 10', $growing);
+
+        // Extract the month count from each reply ("circa N mesi") and compare.
+        preg_match('/circa (\d+) mesi/', $flat, $flatM);
+        preg_match('/circa (\d+) mesi/', $growing, $growM);
+        $this->assertNotEmpty($flatM);
+        $this->assertNotEmpty($growM);
+        $this->assertLessThan((int) $flatM[1], (int) $growM[1]);
+
+        // The growing reply spells out the per-year contribution schedule so the
+        // model doesn't hand-compute it: year 1 is 500/mo, year 2 is +10%.
+        $this->assertStringContainsString('Piano dei versamenti', $growing);
+        $this->assertStringContainsString('Anno 1: 500,00€/mese', $growing);
+        $this->assertStringContainsString('Anno 2: 550,00€/mese', $growing);
     }
 
     public function test_uses_the_risk_profile_for_the_expected_return(): void
@@ -506,5 +530,120 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertCount(1, $widgets);
         $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
         $this->assertStringContainsString('nervoso', $widgets[0]['data']['notes']);
+    }
+
+    public function test_propose_goal_core_emits_a_proposal_widget(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_goal_core')->handle(
+            target_value: 1000000,
+            target_date: '2099-12-31',
+            description: 'Primo milione per libertà finanziaria',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('goal_core_proposal', $widgets[0]['type']);
+        $this->assertSame(1000000.0, $widgets[0]['data']['target_value']);
+        $this->assertSame('2099-12-31', $widgets[0]['data']['target_date']);
+        $this->assertStringContainsString('libertà', $widgets[0]['data']['description']);
+    }
+
+    public function test_propose_goal_core_rejects_a_past_target_date(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'propose_goal_core')->handle(
+            target_value: 1000000,
+            target_date: '2000-01-01',
+        );
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('non è valida o non è futura', $out);
+    }
+
+    public function test_propose_goal_core_emits_nothing_without_consent(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // goal proposal NOT allowed (default)
+
+        $out = $this->tool($factory, 'propose_goal_core')->handle(target_value: 1000000);
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('CHIEDI', $out);
+    }
+
+    public function test_propose_goal_milestones_drops_invalid_entries_and_maps_label(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà percorso', 'target_value' => 500000, 'target_date' => '2099-06-30'],
+            ['label' => 'Nel passato', 'target_value' => 250000, 'target_date' => '2000-01-01'], // dropped: past
+            ['label' => 'Senza valore', 'target_value' => 0, 'target_date' => '2099-01-01'],     // dropped: non-positive
+        ]);
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('goal_milestones_proposal', $widgets[0]['type']);
+        $this->assertCount(1, $widgets[0]['data']['milestones']);
+        $this->assertSame('Metà percorso', $widgets[0]['data']['milestones'][0]['label']);
+        $this->assertSame(500000.0, $widgets[0]['data']['milestones'][0]['target_value']);
+    }
+
+    public function test_propose_goal_composition_passes_buckets_through_even_when_sum_is_not_100(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_goal_composition')->handle(
+            buckets: [
+                ['macro_category' => 'ETF', 'percentage' => 70],
+                ['macro_category' => 'Liquidità', 'percentage' => 20],
+                ['macro_category' => 'Oro', 'percentage' => 10], // dropped: invalid macro
+            ],
+            rationale: 'Peso azionario alto coerente con orizzonte lungo.',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('goal_composition_proposal', $widgets[0]['type']);
+        $this->assertCount(2, $widgets[0]['data']['buckets']);
+        // Sum is 90 (the invalid Oro bucket was dropped) — passed through, not forced to 100.
+        $this->assertSame(90.0, $widgets[0]['data']['total_pct']);
+        $this->assertStringContainsString('orizzonte', $widgets[0]['data']['rationale']);
+    }
+
+    public function test_propose_goal_composition_clamps_percentages_to_0_100(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_goal_composition')->handle(buckets: [
+            ['macro_category' => 'ETF', 'percentage' => 150],
+            ['macro_category' => 'Cripto', 'percentage' => -5],
+        ]);
+
+        $widgets = $collector->widgets();
+        $this->assertSame(100.0, $widgets[0]['data']['buckets'][0]['percentage']);
+        $this->assertSame(0.0, $widgets[0]['data']['buckets'][1]['percentage']);
+    }
+
+    public function test_goal_proposal_is_gated_separately_from_the_profile_flag(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // Consent to the PROFILE must not unlock a GOAL proposal.
+        $collector->allowProfileProposal(true);
+
+        $out = $this->tool($factory, 'propose_goal_core')->handle(target_value: 1000000);
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('CHIEDI', $out);
     }
 }

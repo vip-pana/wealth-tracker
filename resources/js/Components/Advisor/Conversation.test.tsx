@@ -38,7 +38,7 @@ function session(over: Partial<ActiveSession> = {}): ActiveSession {
 function renderConversation(over: Partial<ActiveSession> = {}, onSent = vi.fn()) {
     render(
         <ToastContext.Provider value={pushToast}>
-            <Conversation session={session(over)} configured funFacts={[]} profile={null} onSent={onSent} />
+            <Conversation session={session(over)} configured funFacts={[]} profile={null} goal={null} onSent={onSent} />
         </ToastContext.Provider>,
     );
     return { onSent };

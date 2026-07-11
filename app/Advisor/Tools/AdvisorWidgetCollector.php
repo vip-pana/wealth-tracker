@@ -35,6 +35,28 @@ class AdvisorWidgetCollector
      */
     private bool $profileProposalAllowed = false;
 
+    /**
+     * Whether the goal-proposal tools (propose_goal_core / _milestones /
+     * _composition) may emit their widget this turn. Deliberately SEPARATE from
+     * the profile flag: consenting to a profile update must not unlock a goal
+     * write in the same turn, and vice-versa. One flag covers all three goal
+     * tools — they are one capability ("define my goal"), gated together.
+     */
+    private bool $goalProposalAllowed = false;
+
+    /**
+     * The proposal widget types that must be de-duplicated to the LAST one a
+     * confused model emits within a single reply's tool loop. Any type not
+     * listed here is kept as-is (a reply can legitimately carry several, e.g.
+     * two position cards).
+     */
+    private const array PROPOSAL_TYPES = [
+        'profile_proposal',
+        'goal_core_proposal',
+        'goal_milestones_proposal',
+        'goal_composition_proposal',
+    ];
+
     public function for(AdvisorMessage $message): void
     {
         $this->target = $message;
@@ -51,6 +73,16 @@ class AdvisorWidgetCollector
         return $this->profileProposalAllowed;
     }
 
+    public function allowGoalProposal(bool $allowed): void
+    {
+        $this->goalProposalAllowed = $allowed;
+    }
+
+    public function isGoalProposalAllowed(): bool
+    {
+        return $this->goalProposalAllowed;
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -64,30 +96,31 @@ class AdvisorWidgetCollector
     }
 
     /**
-     * The collected widgets. profile_proposal is de-duplicated keeping only the
-     * LAST one: a confused model can call propose_profile_update more than once
-     * within a single reply's tool loop, and only the final proposal should
-     * reach the UI. Other widget types are all kept (a reply can legitimately
-     * carry several — e.g. two different position cards).
+     * The collected widgets. Each proposal type (see PROPOSAL_TYPES) is
+     * de-duplicated keeping only the LAST one: a confused model can call a
+     * propose_* tool more than once within a single reply's tool loop, and only
+     * the final proposal of each kind should reach the UI. Other widget types
+     * are all kept (a reply can legitimately carry several — e.g. two different
+     * position cards).
      *
      * @return list<array{type: string, data: array<string, mixed>}>
      */
     public function widgets(): array
     {
-        $lastProposalIndex = null;
+        $lastIndexByType = [];
         foreach ($this->widgets as $i => $widget) {
-            if ($widget['type'] === 'profile_proposal') {
-                $lastProposalIndex = $i;
+            if (in_array($widget['type'], self::PROPOSAL_TYPES, true)) {
+                $lastIndexByType[$widget['type']] = $i;
             }
         }
 
-        if ($lastProposalIndex === null) {
+        if ($lastIndexByType === []) {
             return $this->widgets;
         }
 
         $out = [];
         foreach ($this->widgets as $i => $widget) {
-            if ($widget['type'] === 'profile_proposal' && $i !== $lastProposalIndex) {
+            if (isset($lastIndexByType[$widget['type']]) && $lastIndexByType[$widget['type']] !== $i) {
                 continue;
             }
             $out[] = $widget;
@@ -101,5 +134,6 @@ class AdvisorWidgetCollector
         $this->target = null;
         $this->widgets = [];
         $this->profileProposalAllowed = false;
+        $this->goalProposalAllowed = false;
     }
 }
