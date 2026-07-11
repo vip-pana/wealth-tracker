@@ -31,6 +31,7 @@ vi.mock('@inertiajs/react', () => ({
             reset: () => setState(initial),
         };
     },
+    Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 
 import { GoalFormDialog } from '@/Components/Goal/GoalFormDialog';

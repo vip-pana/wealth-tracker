@@ -28,10 +28,17 @@ interface Props {
 }
 
 export default function Advisor({ configured, profile, goalObjective, goal, sessions, activeSession, funFacts }: Props) {
+    // A `?ask=` query param (e.g. the "Ridefinisci con l'AI" button on the Goal
+    // page) opens a fresh composer prefilled with that question, so the user
+    // lands ready to send — or to tweak — rather than on the session list.
+    const prefill = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('ask') ?? ''
+        : '';
+
     const [profileOpen, setProfileOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
-    const [chatMode, setChatMode] = useState(false);
-    const [firstChat, setFirstChat] = useState('');
+    const [chatMode, setChatMode] = useState(prefill !== '');
+    const [firstChat, setFirstChat] = useState(prefill);
     const [startingChat, setStartingChat] = useState(false);
     const [animateEnter] = useState(claimEnterAnimation);
     // On phones/tablets the list and the conversation don't fit side by side, so
