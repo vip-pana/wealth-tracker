@@ -30,6 +30,7 @@ function session(over: Partial<ActiveSession> = {}): ActiveSession {
         title: 'Chat',
         status: 'done',
         error: null,
+        created_at: null,
         messages: [{ id: 1, role: 'assistant', content: 'Ciao', status: 'done', created_at: null }],
         ...over,
     };

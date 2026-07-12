@@ -129,6 +129,7 @@ class IndexController extends Controller
             'title' => $session->title,
             'status' => $session->status,
             'error' => $session->error,
+            'created_at' => $session->created_at?->toISOString(),
             'messages' => array_values($messages),
         ];
     }

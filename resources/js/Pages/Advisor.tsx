@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
+import { formatChatTimestamp } from '@/lib/formatters';
 import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import { type SessionSummary, type ActiveSession, type GoalData } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
@@ -146,6 +147,11 @@ export default function Advisor({ configured, profile, goalObjective, goal, sess
                                         <h2 className="min-w-0 flex-1 text-sm font-medium truncate flex items-center gap-2">
                                             <KindIcon kind={activeSession.kind} className="w-4 h-4 flex-shrink-0 text-primary" />
                                             <TypewriterText id={activeSession.id} text={activeSession.title ?? 'Sessione'} className="truncate" />
+                                            {activeSession.created_at && (
+                                                <span className="flex-shrink-0 text-xs font-normal text-muted-foreground">
+                                                    {formatChatTimestamp(activeSession.created_at)}
+                                                </span>
+                                            )}
                                         </h2>
                                         <Button
                                             variant="ghost" size="icon"

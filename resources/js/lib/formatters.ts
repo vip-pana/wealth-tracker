@@ -65,6 +65,22 @@ export function formatDateLabel(dateStr: string): string {
 }
 
 /**
+ * Format an ISO timestamp for a chat header: the date, plus the time when the
+ * timestamp falls on the current day (a same-day chat shows "oggi, 14:30").
+ */
+export function formatChatTimestamp(iso: string): string {
+    const date = new Date(iso);
+    const now = new Date();
+    const sameDay =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate();
+    const time = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (sameDay) return `oggi, ${time}`;
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+/**
  * Format a "YYYY-MM-DD" date string to a long day label.
  * e.g. "2025-01-15" → "15 Gennaio 2025"
  */

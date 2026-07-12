@@ -196,6 +196,7 @@ export interface ActiveSession {
     title: string | null;
     status: Status;
     error: string | null;
+    created_at: string | null;
     messages: Message[];
 }
 
