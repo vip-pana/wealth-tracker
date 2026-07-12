@@ -277,6 +277,9 @@ class AdvisorToolFactory
         return Tool::as('offer_profile_proposal')
             ->for('Usa questo strumento quando l\'intervista di profilazione ha coperto i temi necessari (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) e sei pronto a proporre il profilo. Mostra all\'utente un PULSANTE per generare la proposta, invece di chiedergli a parole se vuole procedere. Dopo averlo chiamato, riassumi brevemente a parole cosa hai capito e invita l\'utente a premere il pulsante per vedere la proposta.')
             ->using(function (): string {
+                if (! $this->widgets->isProfileOfferAllowed()) {
+                    return 'NON mostrare nessun pulsante di proposta ora: questa non è una sessione di definizione del profilo. Rispondi normalmente alla domanda dell\'utente.';
+                }
                 $this->activity->report('Sto preparando la proposta di profilo…');
                 $this->widgets->add('proposal_offer', ['kind' => 'profile']);
 
@@ -293,6 +296,9 @@ class AdvisorToolFactory
         return Tool::as('offer_goal_proposal')
             ->for('Usa questo strumento quando la conversazione ha chiarito abbastanza sull\'OBIETTIVO (importo, data, scopo, ed eventualmente tappe o composizione) e sei pronto a proporlo. Mostra all\'utente un PULSANTE per generare la proposta, invece di chiedergli a parole se vuole procedere. Dopo averlo chiamato, riassumi brevemente cosa hai capito e invitalo a premere il pulsante.')
             ->using(function (): string {
+                if (! $this->widgets->isGoalOfferAllowed()) {
+                    return 'NON mostrare nessun pulsante di proposta ora: questa non è una sessione di definizione dell\'obiettivo. Rispondi normalmente alla domanda dell\'utente.';
+                }
                 $this->activity->report('Sto preparando la proposta di obiettivo…');
                 $this->widgets->add('proposal_offer', ['kind' => 'goal']);
 

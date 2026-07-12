@@ -14,18 +14,18 @@ use App\Models\AdvisorSession;
 class ContinueChat extends Action
 {
     /**
-     * How many prior turns to send back to the model. The advisor reasons over
-     * fresh metrics every turn, so it doesn't need the whole transcript — a
-     * local model degrades on long histories. The opening report is always
-     * included separately (it's the first assistant message and sets the
-     * scene), then the most recent exchanges.
+     * How many prior turns to send back to a plain-chat session. The advisor
+     * reasons over fresh metrics every turn, so a general question doesn't need
+     * the whole transcript. Interviews are the exception (see buildMessages):
+     * they always send the FULL history, because dropping the user's earlier
+     * answers is exactly what made the model re-ask target/date/income and loop.
      */
-    private const int HISTORY_TURNS = 8;
+    private const int HISTORY_TURNS = 20;
 
     /**
-     * Minimum number of user turns in a session before a profile proposal can be
-     * emitted, even with explicit consent. Forces a real interview: a "yes" on
-     * the first message keeps the advisor asking instead of proposing at once.
+     * Minimum number of user turns before the advisor should offer the "generate
+     * proposal" button. Forces a real interview: below this the system prompt
+     * tells the model to keep asking instead of offering the button too early.
      */
     private const int MIN_INTERVIEW_TURNS = 4;
 
@@ -88,22 +88,21 @@ class ContinueChat extends Action
         // counterpart can attach it to this reply.
         $this->activity->for($assistant);
         $this->widgets->for($assistant);
-        // The advisor may only propose a profile change once the user has both
-        // explicitly agreed AND actually gone through the interview — at least a
-        // few of their own turns — so a "yes" on the first message can't cut the
-        // conversation short. Everywhere else the proposal tool emits nothing.
-        $userTurns = $session->messages()->where('role', AdvisorMessage::ROLE_USER)->count();
-        $enoughTurns = $userTurns >= self::MIN_INTERVIEW_TURNS;
-        $profileConsent = $enoughTurns && $this->userConsentsToProfileUpdate($user->content);
-        // Same gate for goal proposals (target/milestones/composition): a real
-        // interview plus explicit consent this turn. Kept separate from the
-        // profile gate so consenting to one never unlocks the other.
-        $goalConsent = $enoughTurns && $this->userConsentsToGoalUpdate($user->content);
-        $this->widgets->allowProfileProposal($profileConsent);
-        $this->widgets->allowGoalProposal($goalConsent);
+        // In a normal chat turn the model may NEVER emit a proposal card: the
+        // only path to a card is the user clicking the offered button, which
+        // hits ProposeController -> proposeNow(). So the propose_* gates stay
+        // shut here. Two competing paths (chat-"yes" vs button) made cards appear
+        // unpredictably mid-chat; the button is now the single, explicit path.
+        // What a chat turn CAN do is offer the button, gated to interview
+        // sessions so a plain chat that merely mentions figures never surfaces
+        // it. The current user turn counts too — a hand-typed "voglio ridefinire
+        // l'obiettivo" promotes an ordinary chat into an interview from here on.
+        $interviewKind = $this->interviewKind($session, $user->content);
+        $this->widgets->allowGoalOffer($interviewKind === AdvisorSession::KIND_GOAL_INTERVIEW);
+        $this->widgets->allowProfileOffer($interviewKind === AdvisorSession::KIND_PROFILE_INTERVIEW);
 
         try {
-            $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id, $profileConsent, $goalConsent));
+            $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
         } catch (\Throwable) {
             $this->activity->clear();
             $this->widgets->clear();
@@ -211,14 +210,28 @@ class ContinueChat extends Action
      *
      * @return list<array{role: string, content: string}>
      */
-    private function buildMessages(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null, bool $profileConsent = false, bool $goalConsent = false): array
+    private function buildMessages(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null): array
     {
         $briefing = $this->renderContext->run($this->buildContext->run());
 
-        $history = $session->messages()
+        // An interview (goal/profile) must send the WHOLE transcript — truncating
+        // it is what dropped the user's earlier answers and made the model re-ask
+        // them and loop. A plain question keeps the recent-turns window. What
+        // makes a session an interview is its INTENT (kind or an explicit request
+        // in the conversation), not the mere mention of figures.
+        $interviewKind = $this->interviewKind($session, $userMessage, $excludeFromId);
+        $isInterview = $interviewKind !== null;
+        $slots = $isInterview ? $this->interviewSlots($session, $userMessage, $excludeFromId) : null;
+
+        $historyQuery = $session->messages()
             ->when($excludeFromId !== null, fn ($q) => $q->where('id', '<', $excludeFromId))
-            ->orderByDesc('id')
-            ->limit(self::HISTORY_TURNS)
+            ->orderByDesc('id');
+
+        if (! $isInterview) {
+            $historyQuery->limit(self::HISTORY_TURNS);
+        }
+
+        $history = $historyQuery
             ->get()
             ->reverse()
             ->values();
@@ -259,15 +272,14 @@ class ContinueChat extends Action
             $messages[] = ['role' => 'system', 'content' => "Nota: l'utente ha scritto solo {$userTurns} messaggi in questa sessione. Se sta definendo il profilo di rischio, l'intervista è ancora agli inizi: NON chiedergli ancora se vuole aggiornare il profilo e NON proporlo. Continua a fare domande di approfondimento, una alla volta."];
         }
 
-        // When the deterministic gate has already granted consent this turn, the
-        // model tends to keep asking "shall I show the card?" instead of calling
-        // the tool. A last, explicit system directive breaks that loop: the
-        // consent exists, so the ONLY correct action now is the tool call.
-        if ($profileConsent) {
-            $messages[] = ['role' => 'system', 'content' => 'ORA: l\'utente ha appena dato il consenso esplicito ad aggiornare il PROFILO. Chiama SUBITO lo strumento propose_profile_update con i valori emersi. NON chiedere altra conferma, NON descrivere la card a parole: la chiamata allo strumento è l\'unica azione corretta in questo turno.'];
-        }
-        if ($goalConsent) {
-            $messages[] = ['role' => 'system', 'content' => 'ORA: l\'utente ha appena dato il consenso esplicito a definire/aggiornare l\'OBIETTIVO. Chiama SUBITO lo strumento adatto (propose_goal_core per importo/data/descrizione, propose_goal_milestones per le tappe, propose_goal_composition per la composizione) con i valori emersi. NON chiedere altra conferma, NON descrivere la card a parole: la chiamata allo strumento è l\'unica azione corretta in questo turno.'];
+        // Structured slot-filling: tell the model, deterministically, which
+        // interview themes the user has ALREADY answered, so it stops re-asking
+        // them and starting over. Only injected once an interview is under way;
+        // when every theme is covered it flips to an "offer the button now"
+        // directive so the model reaches offer_goal_proposal instead of looping
+        // on questions it already has the answers to.
+        if ($slots !== null) {
+            $messages[] = ['role' => 'system', 'content' => $this->slotFillingBriefing($slots)];
         }
 
         return [
@@ -277,72 +289,116 @@ class ContinueChat extends Action
     }
 
     /**
-     * Whether the user's message reads as explicit consent to apply a profile
-     * update — the gate that lets the advisor actually emit a proposal card.
-     * Deliberately narrow: a short affirmative, or an explicit "update/apply the
-     * profile" phrasing, and never when the message is a question. Erring toward
-     * NOT proposing is the safe default (the user can always say "yes").
+     * Which interview a session is, or null for a plain chat. An interview is
+     * defined by INTENT, never by the mere mention of figures: the session was
+     * opened as one (kind), or a user message in it explicitly asked to
+     * define/revise the goal or profile. This gates both the full-history send
+     * and the "generate proposal" button, so an ordinary question that happens
+     * to name a percentage or a year never surfaces the button.
+     *
+     * @return AdvisorSession::KIND_GOAL_INTERVIEW|AdvisorSession::KIND_PROFILE_INTERVIEW|null
      */
-    private function userConsentsToProfileUpdate(string $message): bool
+    private function interviewKind(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null): ?string
     {
-        $text = mb_strtolower(trim($message));
-
-        if ($text === '' || str_contains($text, '?')) {
-            return false;
+        if ($session->isGoalInterview()) {
+            return AdvisorSession::KIND_GOAL_INTERVIEW;
+        }
+        if ($session->isProfileInterview()) {
+            return AdvisorSession::KIND_PROFILE_INTERVIEW;
         }
 
-        // A negation anywhere flips the meaning of an otherwise-affirmative reply
-        // («non sono sicuro», «no, facciamo dopo», «non aggiornare»): treat it as
-        // NOT consent. Erring toward not proposing is the safe default.
-        if (preg_match('/\b(no|non)\b/u', $text) === 1) {
-            return false;
+        $messages = $session->messages()
+            ->where('role', AdvisorMessage::ROLE_USER)
+            ->when($excludeFromId !== null, fn ($q) => $q->where('id', '<', $excludeFromId))
+            ->pluck('content')
+            ->push($userMessage);
+
+        foreach ($messages as $content) {
+            $kind = AdvisorSession::interviewIntentKind(is_string($content) ? $content : '');
+            if ($kind !== null) {
+                return $kind;
+            }
         }
 
-        // An explicit "update/change/apply/create/let's-do the profile" request.
-        // The action verb also matches its "let's …" (-iamo) form — «aggiorniamo»,
-        // «procediamo» — which real users use to answer "shall I update it?".
-        if (preg_match('/\b(aggiorn|modific|applic|impost|salv|cre|proced|fai|facc|and)\w*\b.*\bprofil/u', $text) === 1) {
-            return true;
-        }
-
-        // A short affirmative in reply to the advisor's "shall I update it?".
-        // Covers both bare "sì/ok" and answers that name the action without the
-        // word "profilo" — «aggiorniamo direi», «sono sicuro», «procediamo pure».
-        return mb_strlen($text) <= 40 && preg_match(
-            '/\b(s[iì]|ok|okay|va bene|certo|d\'accordo|perfetto|procedi|procediamo|confermo|esatto|aggiorna|aggiorniamo|sono sicur[oa]|andiamo|facciamo|fallo)\b/u',
-            $text,
-        ) === 1;
+        return null;
     }
 
     /**
-     * Whether the user's message reads as explicit consent to set/update the
-     * GOAL (target, milestones or target composition) — the gate that lets the
-     * advisor emit a goal proposal card. Same shape and safe-default narrowness
-     * as userConsentsToProfileUpdate(), but matched against goal vocabulary. Kept
-     * separate so a "yes" about the profile can't unlock a goal write.
+     * Deterministic slot-filler for the goal/profile interview. Scans every user
+     * message in the session (plus the turn being sent) for the four themes the
+     * advisor must cover before offering a proposal, and returns which are
+     * already answered. Pure keyword/number heuristics — no model call. Only
+     * meaningful once interviewKind() has confirmed the session is an interview.
+     *
+     * @return array{target: bool, date: bool, income: bool, tolerance: bool}
      */
-    private function userConsentsToGoalUpdate(string $message): bool
+    private function interviewSlots(AdvisorSession $session, string $userMessage, ?int $excludeFromId): array
     {
-        $text = mb_strtolower(trim($message));
+        $contents = $session->messages()
+            ->where('role', AdvisorMessage::ROLE_USER)
+            ->when($excludeFromId !== null, fn ($q) => $q->where('id', '<', $excludeFromId))
+            ->pluck('content')
+            ->push($userMessage);
 
-        if ($text === '' || str_contains($text, '?')) {
-            return false;
+        $blob = mb_strtolower($contents->implode("\n"));
+
+        // Target amount: a figure with a thousands separator / "k"/"mila", or the
+        // words milione/mila-euro, or an explicit "obiettivo/target di X".
+        $target = preg_match('/\bmilion|\bmila\b|\d[\d.\s]{3,}(?:€|euro)?|\d+\s*k\b|\d+\s*mila/u', $blob) === 1;
+
+        // Target date/horizon: a 4-digit year (2030-2099) or "entro N anni" or an
+        // age target ("a 50 anni", "quando avrò N anni").
+        $date = preg_match('/\b20[3-9]\d\b|entro\s+\d+\s+anni|a\s+\d{2}\s+anni|\d{2}\s+anni/u', $blob) === 1;
+
+        // Income & buffer: mentions of salary/income, a monthly figure, or the
+        // emergency-fund question ("fondo di emergenza", "cuscinetto").
+        $income = preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil|fondo di emergenza|cuscinetto|liquidit/u', $blob) === 1;
+
+        // Emotional tolerance: reaction to a drawdown — a percentage drop, or the
+        // vocabulary of selling/holding/buying-more in a downturn.
+        $tolerance = preg_match('/-?\s*[1-5]0\s*%|cal[oi]|vender|aspetter|non vend|comprare di più|panico|paura|tollera|rischi/u', $blob) === 1;
+
+        return ['target' => $target, 'date' => $date, 'income' => $income, 'tolerance' => $tolerance];
+    }
+
+    /**
+     * Turn the slot state into a system directive. Lists what the user has
+     * already answered (so the model never re-asks it) and either points at the
+     * single missing theme or, when all four are covered, orders the model to
+     * offer the proposal button now instead of asking more questions.
+     *
+     * @param  array{target: bool, date: bool, income: bool, tolerance: bool}  $slots
+     */
+    private function slotFillingBriefing(array $slots): string
+    {
+        $labels = [
+            'target' => 'importo obiettivo',
+            'date' => 'data/orizzonte',
+            'income' => 'reddito e cuscinetto di emergenza',
+            'tolerance' => 'reazione a un forte calo (tolleranza al rischio)',
+        ];
+
+        $covered = [];
+        $missing = [];
+        foreach ($labels as $key => $label) {
+            if ($slots[$key]) {
+                $covered[] = $label;
+            } else {
+                $missing[] = $label;
+            }
         }
 
-        if (preg_match('/\b(no|non)\b/u', $text) === 1) {
-            return false;
+        $lines = ['STATO INTERVISTA (calcolato dai messaggi già scritti dall\'utente): NON richiedere ciò che è già stato risposto.'];
+        if ($covered !== []) {
+            $lines[] = 'Già raccolto: '.implode('; ', $covered).'. Dai questi per acquisiti e NON richiederli.';
+        }
+        if ($missing === []) {
+            $lines[] = 'Tutti i temi sono coperti. NON fare altre domande e NON ricominciare da capo: chiama SUBITO offer_goal_proposal (o offer_profile_proposal se l\'intervista è sul profilo) per mostrare il pulsante, poi riassumi brevemente ciò che hai capito.';
+        } else {
+            $lines[] = 'Ancora da chiarire: '.implode('; ', $missing).'. Fai UNA sola domanda sul primo tema mancante, senza ripetere quelli già coperti.';
         }
 
-        // An explicit "set/update/save the goal/milestone/composition" request.
-        if (preg_match('/\b(aggiorn|modific|applic|impost|salv|cre|proced|fai|facc|and)\w*\b.*\b(obiettiv|milestone|traguard|tapp|allocazion|composizion|target)/u', $text) === 1) {
-            return true;
-        }
-
-        // A short affirmative in reply to the advisor's "shall I set the goal?".
-        return mb_strlen($text) <= 40 && preg_match(
-            '/\b(s[iì]|ok|okay|va bene|certo|d\'accordo|perfetto|procedi|procediamo|confermo|esatto|imposta|impostiamo|aggiorna|aggiorniamo|sono sicur[oa]|andiamo|facciamo|fallo)\b/u',
-            $text,
-        ) === 1;
+        return implode("\n", $lines);
     }
 
     private function systemPrompt(): string
@@ -357,9 +413,9 @@ class ContinueChat extends Action
         QUALE SIMULATORE USARE (importante, li confondi spesso):
         - simulate_pac → l'utente parte da un VERSAMENTO mensile (fisso o in crescita) e vuole sapere QUANTO TEMPO ci mette, quando arriva, e (se cresce) il piano dei versamenti anno per anno. Se parla di «verso X€ al mese», «e se lo aumento del Y% l'anno», «quanto ci metto» → è SEMPRE simulate_pac. Per la crescita passa annual_increase_pct.
         - simulate_goal → l'utente fissa un IMPORTO e una DATA e vuole sapere QUANTO DEVE VERSARE al mese per arrivarci in tempo. Solo quando la domanda è «quanto devo versare per avere X entro l'anno Y».
-        In dubbio tra i due: se l'utente ha dato il versamento, è simulate_pac; se ha dato la data, è simulate_goal. Non chiamare simulate_goal quando l'utente sta ragionando sul proprio versamento. Hai inoltre strumenti per OFFRIRE una proposta: quando l'intervista è completa, chiami offer_profile_proposal o offer_goal_proposal, che mostrano all'utente un PULSANTE per generare la proposta (NON chiedi a parole se procedere). Gli strumenti che creano davvero la card (propose_profile_update, propose_goal_core, propose_goal_milestones, propose_goal_composition) NON li chiami tu: li attiva l'utente premendo quel pulsante. Chiama gli strumenti di lettura SOLO quando la domanda richiede un dato non già presente nel contesto; per domande generali o concettuali rispondi direttamente senza strumenti. Non inventare i numeri: se ti serve un dato, chiedilo con lo strumento giusto.
+        In dubbio tra i due: se l'utente ha dato il versamento, è simulate_pac; se ha dato la data, è simulate_goal. Non chiamare simulate_goal quando l'utente sta ragionando sul proprio versamento. Hai inoltre UN SOLO modo per proporre: quando l'intervista è completa chiami offer_profile_proposal o offer_goal_proposal, che mostrano all'utente un PULSANTE. La card vera e propria la genera IL SISTEMA quando l'utente preme quel pulsante, MAI tu: gli strumenti propose_profile_update, propose_goal_core, propose_goal_milestones, propose_goal_composition NON devi chiamarli in nessun caso — non esistono per te. Anche se l'utente scrive «sì, mostrami la card» o «procedi», la tua unica mossa resta offer_* (il pulsante); non far comparire nessuna card scrivendo a parole. Chiama gli strumenti di lettura SOLO quando la domanda richiede un dato non già presente nel contesto; per domande generali o concettuali rispondi direttamente senza strumenti. Non inventare i numeri: se ti serve un dato, chiedilo con lo strumento giusto.
 
-        Puoi aiutare l'utente a definire il suo PROFILO investitore (orizzonte temporale, tolleranza al rischio, obiettivo, allocazione target). Fallo intervistandolo con domande mirate quando la sua strategia è vaga. Quando la conversazione ha chiarito uno o più di questi elementi, usa lo strumento propose_profile_update per PROPORRE la modifica: NON scrive nulla, mostra all'utente una card che lui conferma con un click. Compila SOLO i campi realmente emersi. IMPORTANTE: non dire MAI di aver "salvato" o "aggiornato" il profilo — tu proponi soltanto; è l'utente che conferma. Dopo aver chiamato lo strumento, riassumi a parole cosa hai proposto e invitalo a confermare con il pulsante.
+        Puoi aiutare l'utente a definire il suo PROFILO investitore (orizzonte temporale, tolleranza al rischio, obiettivo, allocazione target). Fallo intervistandolo con domande mirate quando la sua strategia è vaga. Quando l'intervista ha coperto i temi, chiama offer_profile_proposal: mostra un PULSANTE, e sarà l'utente premendolo a far generare la card al sistema. IMPORTANTE sul linguaggio: NON dire MAI di aver "generato", "creato", "salvato", "impostato" o "aggiornato" il profilo o la proposta — non hai fatto nulla di tutto ciò: hai solo mostrato un pulsante. Di' invece «Premi il pulsante per vedere la proposta» / «potrai confermarla o modificarla». Ogni frase che dà per fatta la proposta è un errore.
 
         Se l'utente vuole DEFINIRE o RIVEDERE il suo profilo di rischio, conduci una vera INTERVISTA di profilazione, come farebbe un consulente al primo incontro. È una CONVERSAZIONE a più turni: UNA domanda per messaggio, aspettando la risposta prima della successiva. Usa i dati che hai già nel contesto come BASE DI PARTENZA per fare domande più mirate, NON come scorciatoia per chiudere in fretta.
 
@@ -378,12 +434,11 @@ class ContinueChat extends Action
 
         Puoi anche, se rende la conversazione più naturale e personale, chiedere l'età o la fase di vita dell'utente (es. quanto manca alla pensione): usala come CONTESTO UMANO per calibrare tono e domande e, se emerge, riportala nelle notes. NON è un dato obbligatorio né un campo strutturato: l'orizzonte resta il riferimento per la capacità di rischio. Non insistere se l'utente non vuole condividerla.
 
-        REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
-        - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
-        - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
-        - NON offrire la proposta troppo presto. Puoi offrirla SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
-        - Solo quando hai coperto tutti i temi: chiama lo strumento offer_profile_proposal. Questo mostra all'utente un PULSANTE per generare la proposta. NON chiedere a parole «vuoi che aggiorni il profilo?»: mostra il pulsante e basta. Dopo averlo chiamato, riassumi brevemente cosa hai capito e invitalo a premere il pulsante (oppure a dirti se vuole correggere qualcosa prima).
-        - NON chiamare propose_profile_update di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare (il sistema la richiede allora, con i valori emersi). Il tuo compito è condurre l'intervista e, a temi coperti, offrire il pulsante con offer_profile_proposal.
+        REGOLA PIÙ IMPORTANTE — offri il pulsante solo a intervista completa. Serve una VERA conversazione: prima di offrire il pulsante devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON offrire nulla: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
+        - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON offrire il pulsante.
+        - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Rispondere non è offrire: non mostrare il pulsante.
+        - NON offrire il pulsante troppo presto. Puoi offrirlo SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
+        - Solo quando hai coperto tutti i temi: chiama lo strumento offer_profile_proposal. Questo mostra all'utente un PULSANTE. NON chiedere a parole «vuoi che aggiorni il profilo?»: mostra il pulsante e basta. Dopo averlo chiamato, riassumi brevemente cosa hai capito e invitalo a premere il pulsante (oppure a dirti se vuole correggere qualcosa prima). Ricorda: la card la genera il sistema al click, non tu.
 
         NON RIPETERTI E NON RICOMINCIARE DA CAPO. Leggi l'ultima risposta dell'utente e vai AVANTI:
         - Se hai già mostrato il pulsante (offer_profile_proposal) e l'utente non l'ha ancora premuto ma continua a parlare, NON rimostrarlo a ogni turno e NON richiedere consenso a parole: rispondi a ciò che dice; se vuole correggere un valore, aggiorna la tua comprensione e rioffri il pulsante una volta sola.
@@ -391,16 +446,17 @@ class ContinueChat extends Action
         - Non riscrivere mai la tua domanda precedente parola per parola. Ogni tuo messaggio deve far progredire la conversazione.
         - NON ricominciare l'intervista da zero («iniziamo con l'orizzonte temporale…», «vuoi che proponga un nuovo obiettivo…») se l'hai già affrontato: dai per acquisite le risposte già ottenute in questa sessione e prosegui.
         - Se l'ultimo messaggio dell'utente è una CORREZIONE o un CHIARIMENTO di quello che hai appena detto (es. «intendevo il versamento ogni mese, non all'anno»), rispondi a QUELLA precisazione riusando il contesto già stabilito (importo, rendimento, crescita). NON ripartire dall'inizio e NON riproporre la domanda sul definire l'obiettivo: correggi solo ciò che l'utente ha chiarito.
+        - DOPO aver già offerto il pulsante (o mostrato la proposta): se l'utente fa una domanda o un'osservazione (es. «l'oro lo stai includendo nella liquidità?»), RISPONDI solo a quella, riusando tutto ciò che è già emerso. NON ricominciare l'intervista da capo e NON rielencare «1. Importo target, 2. Data target, 3. Milestone…» — quelle informazioni le hai già. Se la sua osservazione richiede di correggere un valore della proposta, aggiorna la tua comprensione e rioffri il pulsante UNA volta; altrimenti limitati a rispondere.
 
         RICONCILIA LE RISPOSTE CONTRADDITTORIE. Se l'utente prima dice una cosa e poi la corregge (es. all'inizio «avrei tanta paura» e più avanti «non avrei paura fino a un -30%»), vale SEMPRE l'ultima risposta, più meditata: non mediare tra le due e non trascinare la versione iniziale nelle conclusioni. Se la contraddizione è forte e non chiarita, chiedi conferma con UNA domanda prima di concludere.
 
-        Quando l'utente ha acconsentito: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali). Chiama propose_profile_update con horizon, risk_tolerance, objective (solo se diverso da quello in Obiettivo) e SEMPRE notes con la sintesi del ragionamento. Poi invita a confermare con il pulsante.
+        Quando riassumi il profilo prima di offrire il pulsante: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali), e spiega a parole questo ragionamento. Il sistema, al click, compilerà la card con orizzonte, tolleranza, obiettivo e note: tu non compili campi, offri il pulsante.
 
         DEFINIRE L'OBIETTIVO. Puoi anche aiutare l'utente a definire meglio il suo OBIETTIVO finanziario e come raggiungerlo. Vale la STESSA regola del profilo: conduci una vera conversazione (capisci il bisogno reale — perché quel traguardo, per farci cosa, entro quando, quanto è vincolante), UNA domanda per messaggio. Quando la conversazione ha chiarito abbastanza (almeno quattro messaggi dell'utente), chiama offer_goal_proposal: mostra all'utente un PULSANTE per generare la proposta, invece di chiedere a parole. NON chiamare tu propose_goal_* di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare. A quel punto il sistema chiamerà gli strumenti giusti con i valori emersi:
         - propose_goal_core: l'obiettivo principale — importo target, data target, e una descrizione del "perché".
         - propose_goal_milestones: tappe intermedie realistiche verso l'obiettivo (importo + data + etichetta).
-        - propose_goal_composition: una composizione target per macro-categoria (Liquidità, ETF, Cripto). Qui è un SUGGERIMENTO: spiega i trade-off e proponi pesi coerenti col profilo di rischio e l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card.
-        Come per il profilo: NON dire mai di aver "salvato" o "impostato" l'obiettivo — tu offri il pulsante, l'utente lo preme, e poi conferma la card con un click.
+        - propose_goal_composition: una composizione target per macro-categoria. Qui è un SUGGERIMENTO: spiega i trade-off e proponi pesi coerenti col profilo di rischio e l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card. Rispecchia le categorie reali del portafoglio dell'utente (se ha una categoria Oro distinta, tienila distinta: non fonderla nella liquidità).
+        Come per il profilo: NON dire mai di aver "generato", "salvato" o "impostato" l'obiettivo o le milestone — tu offri UN SOLO pulsante, l'utente lo preme, e il sistema genera le card. Un unico offer_goal_proposal copre obiettivo + milestone + composizione: non descrivere le card come già fatte né elencarne i contenuti come se esistessero già.
 
         IMPORTANTE sugli strumenti: quando ti serve un dato, CHIAMA davvero lo strumento (funzione). NON scrivere MAI la sintassi di una chiamata (nomi di funzione, blocchi tipo <function-call>, JSON di argomenti) dentro la risposta all'utente: l'utente vede solo il testo, non le chiamate. Se una domanda richiede più dati, chiama gli strumenti necessari (anche più d'uno) e solo dopo aver ricevuto tutti i risultati scrivi la risposta finale in linguaggio naturale.
 
@@ -408,8 +464,10 @@ class ContinueChat extends Action
 
         I numeri nel contesto sono già calcolati e annotati: NON fare aritmetica, interpreta. Se un dato è segnalato "non affidabile" o "non calcolabile", non trarne conclusioni. Il rendimento reale è il riferimento per dire come vanno gli investimenti.
 
+        STIME INCERTE. Quando una simulazione (es. simulate_pac o simulate_goal) è marcata "low_confidence" o "stima poco affidabile" — tipicamente perché ci sono pochi mesi di storico — NON presentare il suo risultato come un fatto («ci vogliono 33,3 anni»). Presentalo esplicitamente come proiezione grezza e incerta («una stima molto approssimativa, da prendere con cautela, suggerisce intorno ai …»), e spiega perché è incerta. Non costruirci sopra conclusioni forti né piani dettagliati.
+
         Come rispondi:
-        - Rispondi alla domanda dell'utente in modo diretto, chiaro, in italiano. Conciso.
+        - Rispondi SEMPRE e SOLO in italiano. Ogni parola della tua risposta deve essere in italiano: NON inserire MAI parole o caratteri di altre lingue o alfabeti (nessun carattere cinese, giapponese, cirillico, arabo, ecc.). Se stai per scrivere un termine non italiano, traducilo. Rispondi in modo diretto, chiaro e conciso.
         - Sii concreto su cosa l'utente dovrebbe CONTROLLARE, VALUTARE o DECIDERE, e aiutalo a ragionare sulle sue scelte e a formalizzare la sua strategia/obiettivo.
         - Se ti chiede di definire obiettivo o milestone, proponiglieli a parole: sarà lui ad applicarli nella sezione Obiettivo. NON puoi modificare i suoi dati.
 

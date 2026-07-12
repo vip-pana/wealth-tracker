@@ -35,7 +35,7 @@ class StartChatController extends Controller
         // messages) so the request returns immediately and the app stays
         // navigable while the local model works. The title previews the question.
         $session = AdvisorSession::create([
-            'kind' => AdvisorSession::KIND_CHAT,
+            'kind' => $this->kindFor($data['message']),
             'title' => Str::limit($data['message'], 60),
             'status' => AdvisorSession::STATUS_DONE,
         ]);
@@ -57,5 +57,16 @@ class StartChatController extends Controller
         ContinueChatJob::dispatch($user->id, $assistant->id);
 
         return response()->json(['session_id' => $session->id]);
+    }
+
+    /**
+     * Tag the new session as a goal/profile interview when the opening message
+     * states that intent (the "Ridefinisci con l'AI" button, the profile
+     * starter), otherwise a plain chat. Only interview sessions surface the
+     * "generate proposal" button.
+     */
+    private function kindFor(string $message): string
+    {
+        return AdvisorSession::interviewIntentKind($message) ?? AdvisorSession::KIND_CHAT;
     }
 }

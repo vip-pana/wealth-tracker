@@ -60,4 +60,23 @@ class AdvisorWidgetCollectorTest extends TestCase
         $this->assertSame('profile_proposal', $widgets[1]['type']);
         $this->assertSame('high', $widgets[1]['data']['risk_tolerance']);
     }
+
+    public function test_offer_gates_default_closed_and_toggle_independently(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+
+        // Closed by default: a plain chat must not surface the proposal button.
+        $this->assertFalse($collector->isGoalOfferAllowed());
+        $this->assertFalse($collector->isProfileOfferAllowed());
+
+        // Opening one gate never opens the other.
+        $collector->allowGoalOffer(true);
+        $this->assertTrue($collector->isGoalOfferAllowed());
+        $this->assertFalse($collector->isProfileOfferAllowed());
+
+        // clear() resets both.
+        $collector->for(new AdvisorMessage);
+        $collector->clear();
+        $this->assertFalse($collector->isGoalOfferAllowed());
+    }
 }

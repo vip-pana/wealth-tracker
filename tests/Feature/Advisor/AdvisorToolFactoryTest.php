@@ -210,6 +210,8 @@ class AdvisorToolFactoryTest extends TestCase
         // them by default so those stay unaffected. The gates have their own tests.
         $collector->allowProfileProposal(true);
         $collector->allowGoalProposal(true);
+        $collector->allowProfileOffer(true);
+        $collector->allowGoalOffer(true);
 
         return [$factory, $collector];
     }
@@ -653,10 +655,11 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame('goal', $widgets[0]['data']['kind']);
     }
 
-    public function test_offer_does_not_need_the_consent_gate(): void
+    public function test_offer_is_gated_to_interview_sessions(): void
     {
-        // Offering a button is not proposing, so it works even with the proposal
-        // gates closed (the click later opens the gate via the propose endpoint).
+        // The offer button must NOT appear in a plain chat: with the offer gate
+        // closed, the tool emits no widget and tells the model to answer normally.
+        // (In production the gate is opened only for a goal/profile interview.)
         $collector = new AdvisorWidgetCollector;
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn($this->portfolioContext);
@@ -664,12 +667,12 @@ class AdvisorToolFactoryTest extends TestCase
         $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
         $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
         $collector->for($message);
-        // gates NOT armed
+        // offer gate NOT armed
 
-        $this->tool($factory, 'offer_profile_proposal')->handle();
+        $out = $this->tool($factory, 'offer_goal_proposal')->handle();
 
-        $this->assertCount(1, $collector->widgets());
-        $this->assertSame('proposal_offer', $collector->widgets()[0]['type']);
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('non è una sessione', mb_strtolower($out));
     }
 
     public function test_goal_proposal_is_gated_separately_from_the_profile_flag(): void

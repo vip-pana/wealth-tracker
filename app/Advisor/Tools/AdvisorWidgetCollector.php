@@ -45,6 +45,18 @@ class AdvisorWidgetCollector
     private bool $goalProposalAllowed = false;
 
     /**
+     * Whether the offer_*_proposal tools may emit their "generate proposal"
+     * BUTTON this turn. Distinct from the proposal flags above: the button is
+     * offered during the interview (before consent), while the proposal cards
+     * fire only after the user clicks it. Gated so the button appears ONLY in a
+     * goal/profile interview — a plain chat that happens to mention figures must
+     * never surface it (the model would otherwise call offer_* on its own).
+     */
+    private bool $goalOfferAllowed = false;
+
+    private bool $profileOfferAllowed = false;
+
+    /**
      * The proposal widget types that must be de-duplicated to the LAST one a
      * confused model emits within a single reply's tool loop. Any type not
      * listed here is kept as-is (a reply can legitimately carry several, e.g.
@@ -81,6 +93,26 @@ class AdvisorWidgetCollector
     public function isGoalProposalAllowed(): bool
     {
         return $this->goalProposalAllowed;
+    }
+
+    public function allowGoalOffer(bool $allowed): void
+    {
+        $this->goalOfferAllowed = $allowed;
+    }
+
+    public function isGoalOfferAllowed(): bool
+    {
+        return $this->goalOfferAllowed;
+    }
+
+    public function allowProfileOffer(bool $allowed): void
+    {
+        $this->profileOfferAllowed = $allowed;
+    }
+
+    public function isProfileOfferAllowed(): bool
+    {
+        return $this->profileOfferAllowed;
     }
 
     /**
@@ -135,5 +167,7 @@ class AdvisorWidgetCollector
         $this->widgets = [];
         $this->profileProposalAllowed = false;
         $this->goalProposalAllowed = false;
+        $this->goalOfferAllowed = false;
+        $this->profileOfferAllowed = false;
     }
 }
