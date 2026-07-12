@@ -20,10 +20,15 @@ export function GoalSimulator({ data }: { data: GoalSimulatorWidget['data'] }) {
     const [year, setYear] = useState(Math.max(startYear + 1, initialYear));
 
     const required = useMemo(() => {
-        // Aim at year-end so the horizon matches the year the user picks.
-        const months = monthsUntil(`${year}-12-31`);
+        // At the initial target/year, use the exact month count the backend
+        // computed (data.months) so the figure matches the prose reply — the JS
+        // monthsUntil() and PHP's diffInMonths() can differ by a month, which
+        // shifted the result by a few euro. Recompute only once the user drags a
+        // slider to a different target or year.
+        const untouched = target === Math.round(data.target_value) && year === initialYear;
+        const months = untouched ? data.months : monthsUntil(`${year}-12-31`);
         return requiredMonthlyContribution(data.current_net_worth, target, months, data.annual_return);
-    }, [data.current_net_worth, data.annual_return, target, year]);
+    }, [data.current_net_worth, data.annual_return, data.months, data.target_value, initialYear, target, year]);
 
     return (
         <Card className="mt-3">
