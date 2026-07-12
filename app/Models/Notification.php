@@ -40,6 +40,8 @@ class Notification extends Model
 
     public const TYPE_BANK_CONSENT_EXPIRED = 'bank_consent_expired';
 
+    public const TYPE_SNAPSHOT_SKIPPED = 'snapshot_skipped';
+
     protected $fillable = ['type', 'level', 'title', 'body', 'action_url', 'dedupe_key', 'read_at'];
 
     #[\Override]
