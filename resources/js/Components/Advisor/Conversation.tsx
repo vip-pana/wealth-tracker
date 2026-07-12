@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
-import { AlertTriangle, Send, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Send, ChevronDown, Sparkles } from 'lucide-react';
 import { type Status, type Message, type ActiveSession, type GoalData, pickQuestions } from '@/Components/Advisor/types';
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
@@ -45,6 +45,27 @@ export function Conversation({
 
     // 3 starters, stable for this session (don't reshuffle on every keystroke).
     const suggestions = useMemo(() => pickQuestions(session.id, 3), [session.id]);
+
+    // Deterministic fallback for the "generate the proposal" button. The model
+    // is supposed to offer it (offer_* tool → proposal_offer widget) once the
+    // interview is complete, but it often keeps summarising in words instead. So
+    // once the user has had a real interview (4+ turns) and no proposal/offer is
+    // already on screen, we surface the button ourselves. The kind is inferred
+    // from the opening message: an "obiettivo/milestone" interview vs a
+    // "profilo di rischio" one; default to profile (the common case).
+    const fallbackOffer = useMemo<'profile' | 'goal' | null>(() => {
+        const userTurns = messages.filter((m) => m.role === 'user').length;
+        if (userTurns < 4) return null;
+        const alreadyShown = messages.some((m) =>
+            (m.widgets ?? []).some((w) =>
+                w.type === 'proposal_offer' || w.type === 'profile_proposal'
+                || w.type === 'goal_core_proposal' || w.type === 'goal_milestones_proposal' || w.type === 'goal_composition_proposal',
+            ),
+        );
+        if (alreadyShown) return null;
+        const opening = messages.find((m) => m.role === 'user')?.content.toLowerCase() ?? '';
+        return /\bobiettiv|milestone|traguard|tapp/.test(opening) ? 'goal' : 'profile';
+    }, [messages]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         bottomRef.current?.scrollIntoView({ behavior });
@@ -230,6 +251,16 @@ export function Conversation({
 
             {configured && !pending && (
                 <div className="border-t border-border p-3 space-y-2">
+                    {!sending && fallbackOffer && (
+                        <button
+                            type="button"
+                            onClick={() => void propose(fallbackOffer)}
+                            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                        >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {fallbackOffer === 'goal' ? 'Genera la proposta di obiettivo' : 'Genera la proposta di profilo'}
+                        </button>
+                    )}
                     {!sending && messages.length > 0 && (
                         <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {suggestions.map((q) => (

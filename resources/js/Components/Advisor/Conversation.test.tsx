@@ -140,3 +140,51 @@ describe('Conversation — report status transitions', () => {
         await waitFor(() => expect(pushToast).toHaveBeenCalledWith('Generazione non riuscita.', 'error'));
     });
 });
+
+describe('Conversation — proposal offer fallback', () => {
+    // Build an interview with N user turns (the model may never call the offer
+    // tool, so the frontend surfaces the button itself after enough turns).
+    function interview(openingText: string, userTurns: number): Message[] {
+        const msgs: Message[] = [];
+        for (let i = 0; i < userTurns; i++) {
+            msgs.push({ id: i * 2 + 1, role: 'user', content: i === 0 ? openingText : `risposta ${i}`, status: 'done', created_at: null });
+            msgs.push({ id: i * 2 + 2, role: 'assistant', content: `domanda ${i}`, status: 'done', created_at: null });
+        }
+        return msgs;
+    }
+
+    it('does not show the fallback before four user turns', () => {
+        renderConversation({ messages: interview('definisci il mio profilo di rischio', 3) });
+        expect(screen.queryByRole('button', { name: /Genera la proposta/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the profile fallback after four user turns', () => {
+        renderConversation({ messages: interview('aiutami col mio profilo di rischio', 4) });
+        expect(screen.getByRole('button', { name: /Genera la proposta di profilo/ })).toBeInTheDocument();
+    });
+
+    it('shows the goal fallback when the interview is about the objective', () => {
+        renderConversation({ messages: interview('vorrei ridefinire il mio obiettivo', 4) });
+        expect(screen.getByRole('button', { name: /Genera la proposta di obiettivo/ })).toBeInTheDocument();
+    });
+
+    it('hides the fallback once a proposal is already on screen', () => {
+        const msgs = interview('definisci il mio profilo di rischio', 4);
+        msgs[msgs.length - 1] = {
+            ...msgs[msgs.length - 1],
+            widgets: [{ type: 'profile_proposal', data: { horizon: 'long' } }],
+        };
+        renderConversation({ messages: msgs });
+        expect(screen.queryByRole('button', { name: /Genera la proposta/ })).not.toBeInTheDocument();
+    });
+
+    it('posts to the propose endpoint when the fallback is clicked', async () => {
+        const user = userEvent.setup();
+        axiosPost.mockResolvedValue({ data: { assistant: { id: 99, role: 'assistant', content: '', status: 'pending', created_at: null } } });
+        renderConversation({ messages: interview('profilo di rischio', 4) });
+
+        await user.click(screen.getByRole('button', { name: /Genera la proposta di profilo/ }));
+
+        expect(axiosPost.mock.calls[0][0]).toBe('/advisor/1/propose/profile');
+    });
+});
