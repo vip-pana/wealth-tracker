@@ -629,6 +629,49 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame(0.0, $widgets[0]['data']['buckets'][1]['percentage']);
     }
 
+    public function test_offer_profile_proposal_emits_a_proposal_offer_button(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'offer_profile_proposal')->handle();
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('proposal_offer', $widgets[0]['type']);
+        $this->assertSame('profile', $widgets[0]['data']['kind']);
+        // The offer only shows a button; it must not itself claim to have proposed.
+        $this->assertStringContainsString('pulsante', mb_strtolower($out));
+    }
+
+    public function test_offer_goal_proposal_emits_a_goal_offer_button(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'offer_goal_proposal')->handle();
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('proposal_offer', $widgets[0]['type']);
+        $this->assertSame('goal', $widgets[0]['data']['kind']);
+    }
+
+    public function test_offer_does_not_need_the_consent_gate(): void
+    {
+        // Offering a button is not proposing, so it works even with the proposal
+        // gates closed (the click later opens the gate via the propose endpoint).
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // gates NOT armed
+
+        $this->tool($factory, 'offer_profile_proposal')->handle();
+
+        $this->assertCount(1, $collector->widgets());
+        $this->assertSame('proposal_offer', $collector->widgets()[0]['type']);
+    }
+
     public function test_goal_proposal_is_gated_separately_from_the_profile_flag(): void
     {
         $collector = new AdvisorWidgetCollector;

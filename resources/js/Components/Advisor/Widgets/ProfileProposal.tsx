@@ -98,9 +98,11 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
                         </Button>
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    Nulla viene salvato finché non premi «Applica». Puoi sempre modificarlo dal tuo profilo.
-                </p>
+                {(state === 'idle' || state === 'saving') && (
+                    <p className="text-xs text-muted-foreground">
+                        Nulla viene salvato finché non premi «Applica». Puoi sempre modificarlo dal tuo profilo.
+                    </p>
+                )}
             </CardContent>
         </Card>
     );

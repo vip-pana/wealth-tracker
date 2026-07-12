@@ -9,6 +9,7 @@ import { ProfileProposal } from '@/Components/Advisor/Widgets/ProfileProposal';
 import { GoalCoreProposal } from '@/Components/Advisor/Widgets/GoalCoreProposal';
 import { GoalMilestonesProposal } from '@/Components/Advisor/Widgets/GoalMilestonesProposal';
 import { GoalCompositionProposal } from '@/Components/Advisor/Widgets/GoalCompositionProposal';
+import { ProposalOffer } from '@/Components/Advisor/Widgets/ProposalOffer';
 import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import type { Widget, GoalData } from '@/Components/Advisor/types';
 
@@ -17,7 +18,7 @@ import type { Widget, GoalData } from '@/Components/Advisor/types';
  * widget's `type` to its component; an unknown type (e.g. an older client
  * meeting a newer widget) is skipped rather than crashing the message.
  */
-export function AdvisorWidgets({ widgets, profile, goal }: { widgets: Widget[]; profile?: InvestorProfile | null; goal?: GoalData | null }) {
+export function AdvisorWidgets({ widgets, profile, goal, onPropose }: { widgets: Widget[]; profile?: InvestorProfile | null; goal?: GoalData | null; onPropose?: (kind: 'profile' | 'goal') => void }) {
     return (
         <>
             {widgets.map((widget, i) => {
@@ -44,6 +45,8 @@ export function AdvisorWidgets({ widgets, profile, goal }: { widgets: Widget[]; 
                         return <GoalMilestonesProposal key={i} data={widget.data} goal={goal} />;
                     case 'goal_composition_proposal':
                         return <GoalCompositionProposal key={i} data={widget.data} goal={goal} />;
+                    case 'proposal_offer':
+                        return <ProposalOffer key={i} data={widget.data} onPropose={onPropose} />;
                     default:
                         return null;
                 }
