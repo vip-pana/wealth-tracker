@@ -538,7 +538,8 @@ class AdvisorToolFactory
             return implode("\n", $lines);
         }
 
-        $lines[] = 'Stima (con capitalizzazione composta): circa '.$months.' mesi, ovvero '.$this->num($months / 12, 1).' anni, per raggiungere l\'obiettivo.';
+        $lines[] = 'Stima (con capitalizzazione composta): '.$months.' mesi, ovvero '.$this->num($months / 12, 1).' anni, per raggiungere l\'obiettivo.';
+        $lines[] = 'IMPORTANTE: riporta all\'utente ESATTAMENTE questi valori ('.$months.' mesi, '.$this->num($months / 12, 1).' anni), senza arrotondarli né ricalcolarli: sono gli stessi mostrati nel simulatore interattivo, quindi devono coincidere.';
 
         // Per-year contribution schedule: with a step-up the monthly amount
         // changes each year, so spell it out rather than making the user (or the
@@ -885,7 +886,8 @@ class AdvisorToolFactory
         if ($required <= 0.0) {
             $lines[] = 'Con il solo patrimonio attuale e questo rendimento raggiungi già l\'obiettivo entro la data: nessun versamento aggiuntivo necessario.';
         } else {
-            $lines[] = 'Versamento mensile necessario: circa '.$this->eur($required).'.';
+            $lines[] = 'Versamento mensile necessario: '.$this->eur($required).'.';
+            $lines[] = 'IMPORTANTE: riporta all\'utente ESATTAMENTE questa cifra ('.$this->eur($required).'), senza arrotondarla né ricalcolarla a modo tuo: è lo stesso numero mostrato nel simulatore interattivo, quindi devono coincidere.';
         }
 
         return implode("\n", $lines);
