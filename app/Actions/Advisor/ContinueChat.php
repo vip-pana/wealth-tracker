@@ -93,18 +93,17 @@ class ContinueChat extends Action
         // few of their own turns — so a "yes" on the first message can't cut the
         // conversation short. Everywhere else the proposal tool emits nothing.
         $userTurns = $session->messages()->where('role', AdvisorMessage::ROLE_USER)->count();
-        $this->widgets->allowProfileProposal(
-            $userTurns >= self::MIN_INTERVIEW_TURNS && $this->userConsentsToProfileUpdate($user->content),
-        );
+        $enoughTurns = $userTurns >= self::MIN_INTERVIEW_TURNS;
+        $profileConsent = $enoughTurns && $this->userConsentsToProfileUpdate($user->content);
         // Same gate for goal proposals (target/milestones/composition): a real
         // interview plus explicit consent this turn. Kept separate from the
         // profile gate so consenting to one never unlocks the other.
-        $this->widgets->allowGoalProposal(
-            $userTurns >= self::MIN_INTERVIEW_TURNS && $this->userConsentsToGoalUpdate($user->content),
-        );
+        $goalConsent = $enoughTurns && $this->userConsentsToGoalUpdate($user->content);
+        $this->widgets->allowProfileProposal($profileConsent);
+        $this->widgets->allowGoalProposal($goalConsent);
 
         try {
-            $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
+            $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id, $profileConsent, $goalConsent));
         } catch (\Throwable) {
             $this->activity->clear();
             $this->widgets->clear();
@@ -166,7 +165,7 @@ class ContinueChat extends Action
      *
      * @return list<array{role: string, content: string}>
      */
-    private function buildMessages(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null): array
+    private function buildMessages(AdvisorSession $session, string $userMessage, ?int $excludeFromId = null, bool $profileConsent = false, bool $goalConsent = false): array
     {
         $briefing = $this->renderContext->run($this->buildContext->run());
 
@@ -212,6 +211,17 @@ class ContinueChat extends Action
         $userTurns = $session->messages()->where('role', AdvisorMessage::ROLE_USER)->count();
         if ($userTurns < self::MIN_INTERVIEW_TURNS) {
             $messages[] = ['role' => 'system', 'content' => "Nota: l'utente ha scritto solo {$userTurns} messaggi in questa sessione. Se sta definendo il profilo di rischio, l'intervista è ancora agli inizi: NON chiedergli ancora se vuole aggiornare il profilo e NON proporlo. Continua a fare domande di approfondimento, una alla volta."];
+        }
+
+        // When the deterministic gate has already granted consent this turn, the
+        // model tends to keep asking "shall I show the card?" instead of calling
+        // the tool. A last, explicit system directive breaks that loop: the
+        // consent exists, so the ONLY correct action now is the tool call.
+        if ($profileConsent) {
+            $messages[] = ['role' => 'system', 'content' => 'ORA: l\'utente ha appena dato il consenso esplicito ad aggiornare il PROFILO. Chiama SUBITO lo strumento propose_profile_update con i valori emersi. NON chiedere altra conferma, NON descrivere la card a parole: la chiamata allo strumento è l\'unica azione corretta in questo turno.'];
+        }
+        if ($goalConsent) {
+            $messages[] = ['role' => 'system', 'content' => 'ORA: l\'utente ha appena dato il consenso esplicito a definire/aggiornare l\'OBIETTIVO. Chiama SUBITO lo strumento adatto (propose_goal_core per importo/data/descrizione, propose_goal_milestones per le tappe, propose_goal_composition per la composizione) con i valori emersi. NON chiedere altra conferma, NON descrivere la card a parole: la chiamata allo strumento è l\'unica azione corretta in questo turno.'];
         }
 
         return [
@@ -328,8 +338,9 @@ class ContinueChat extends Action
         - NON chiedere all'utente se vuole aggiornare il profilo troppo presto. Puoi chiederlo SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
         - Solo quando hai coperto tutti i temi: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
         - Chiama propose_profile_update SOLO dopo che l'utente ha acconsentito esplicitamente (es. «sì», «ok aggiornalo», «procedi»). Solo allora, e una volta sola.
+        - APPENA l'utente acconsente («sì», «procedi», «imposta», «confermo»), la tua prossima azione DEVE essere CHIAMARE lo strumento (propose_profile_update o il propose_goal_* pertinente): NON chiedere di nuovo conferma, NON dire «vuoi che ti mostri la card?», NON descrivere la card a parole. Chiamare lo strumento È il modo in cui mostri la card. Richiedere il consenso una seconda volta quando è già stato dato è un errore che blocca la conversazione.
 
-        (Nota tecnica: se chiami propose_profile_update senza che l'utente abbia acconsentito, lo strumento non mostrerà nulla e ti dirà di chiedere prima il consenso. Non insistere: chiedi il consenso a parole.)
+        (Nota tecnica: se chiami propose_profile_update senza che l'utente abbia acconsentito, lo strumento non mostrerà nulla e ti dirà di chiedere prima il consenso. Non insistere: chiedi il consenso a parole. Ma se il consenso c'è già stato, chiama subito lo strumento invece di richiederlo.)
 
         NON RIPETERTI E NON RICOMINCIARE DA CAPO. Leggi l'ultima risposta dell'utente e vai AVANTI:
         - Se hai chiesto «vuoi che aggiorni il profilo o preferisci continuare?» e l'utente ha risposto in modo affermativo (es. «aggiorniamo», «sono sicuro», «procedi», «sì»), quello è il consenso: chiama propose_profile_update. NON riproporre la stessa domanda: farlo di nuovo è un errore che blocca la conversazione.
