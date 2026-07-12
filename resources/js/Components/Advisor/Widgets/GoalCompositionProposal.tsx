@@ -112,9 +112,11 @@ export function GoalCompositionProposal({ data, goal }: { data: GoalCompositionP
                         </Button>
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    È un suggerimento: modifica le percentuali come preferisci. Applicando sostituisci l&apos;allocazione target attuale.
-                </p>
+                {(state === 'idle' || state === 'saving') && (
+                    <p className="text-xs text-muted-foreground">
+                        È un suggerimento: modifica le percentuali come preferisci. Applicando sostituisci l&apos;allocazione target attuale.
+                    </p>
+                )}
             </CardContent>
         </Card>
     );

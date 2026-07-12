@@ -87,9 +87,11 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                         </Button>
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    Applicando sostituisci le tappe intermedie attuali. Nulla viene salvato finché non premi «Applica».
-                </p>
+                {(state === 'idle' || state === 'saving') && (
+                    <p className="text-xs text-muted-foreground">
+                        Applicando sostituisci le tappe intermedie attuali. Nulla viene salvato finché non premi «Applica».
+                    </p>
+                )}
             </CardContent>
         </Card>
     );
