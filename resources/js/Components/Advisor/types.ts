@@ -158,6 +158,13 @@ export interface GoalCompositionProposalWidget {
     };
 }
 
+export interface ProposalOfferWidget {
+    type: 'proposal_offer';
+    data: {
+        kind: 'profile' | 'goal';
+    };
+}
+
 export type Widget =
     | PacSimulatorWidget
     | PositionCardWidget
@@ -169,7 +176,8 @@ export type Widget =
     | ProfileProposalWidget
     | GoalCoreProposalWidget
     | GoalMilestonesProposalWidget
-    | GoalCompositionProposalWidget;
+    | GoalCompositionProposalWidget
+    | ProposalOfferWidget;
 
 export interface Message {
     id: number;

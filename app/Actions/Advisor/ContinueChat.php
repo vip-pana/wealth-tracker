@@ -124,6 +124,52 @@ class ContinueChat extends Action
     }
 
     /**
+     * Fill a pending assistant turn with a PROPOSAL, triggered by the user
+     * clicking the "generate the proposal" button (not a chat message). The
+     * click IS the consent, so we open the relevant gate unconditionally and
+     * instruct the model to call the propose_* tool now — sidestepping the
+     * model's reluctance to act on a parsed "yes". `$kind` is 'profile' or
+     * 'goal'. There is no user turn: the interview so far is the whole context.
+     */
+    public function proposeNow(AdvisorSession $session, AdvisorMessage $assistant, string $kind): void
+    {
+        if (! $this->provider->isConfigured()) {
+            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);
+
+            return;
+        }
+
+        $this->activity->for($assistant);
+        $this->widgets->for($assistant);
+        $this->widgets->allowProfileProposal($kind === 'profile');
+        $this->widgets->allowGoalProposal($kind === 'goal');
+
+        $instruction = $kind === 'profile'
+            ? 'L\'utente ha premuto il pulsante per generare la proposta di PROFILO. Chiama SUBITO propose_profile_update con i valori emersi nella conversazione. NON chiedere conferma, NON descrivere la card a parole prima di chiamarlo: la chiamata allo strumento è l\'unica azione corretta ora.'
+            : 'L\'utente ha premuto il pulsante per generare la proposta di OBIETTIVO. Chiama SUBITO lo strumento adatto (propose_goal_core per importo/data/descrizione, e se emersi anche propose_goal_milestones e propose_goal_composition) con i valori emersi. NON chiedere conferma, NON descrivere la card a parole prima di chiamarlo: la chiamata allo strumento è l\'unica azione corretta ora.';
+
+        try {
+            $reply = $this->provider->chat($this->buildMessages($session, $instruction));
+        } catch (\Throwable) {
+            $this->activity->clear();
+            $this->widgets->clear();
+            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.', 'tool_activity' => null]);
+
+            return;
+        }
+
+        $widgets = $this->widgets->widgets();
+        $this->activity->clear();
+        $this->widgets->clear();
+        $assistant->update([
+            'content' => $reply,
+            'status' => AdvisorMessage::STATUS_DONE,
+            'tool_activity' => null,
+            'widgets' => $widgets === [] ? null : $widgets,
+        ]);
+    }
+
+    /**
      * Like run(), but streams the reply: each text delta is handed to $onChunk
      * as it arrives. Persists the user turn and the full assistant reply only
      * after a successful stream (same no-orphan guarantee as run()). Returns the
@@ -311,7 +357,7 @@ class ContinueChat extends Action
         QUALE SIMULATORE USARE (importante, li confondi spesso):
         - simulate_pac → l'utente parte da un VERSAMENTO mensile (fisso o in crescita) e vuole sapere QUANTO TEMPO ci mette, quando arriva, e (se cresce) il piano dei versamenti anno per anno. Se parla di «verso X€ al mese», «e se lo aumento del Y% l'anno», «quanto ci metto» → è SEMPRE simulate_pac. Per la crescita passa annual_increase_pct.
         - simulate_goal → l'utente fissa un IMPORTO e una DATA e vuole sapere QUANTO DEVE VERSARE al mese per arrivarci in tempo. Solo quando la domanda è «quanto devo versare per avere X entro l'anno Y».
-        In dubbio tra i due: se l'utente ha dato il versamento, è simulate_pac; se ha dato la data, è simulate_goal. Non chiamare simulate_goal quando l'utente sta ragionando sul proprio versamento. Hai inoltre strumenti per PROPORRE modifiche (non le scrivi, mostri una card che l'utente conferma): il profilo (propose_profile_update) e l'obiettivo — nucleo (propose_goal_core), tappe (propose_goal_milestones), composizione target (propose_goal_composition). Chiama gli strumenti di lettura SOLO quando la domanda richiede un dato non già presente nel contesto; per domande generali o concettuali rispondi direttamente senza strumenti. Non inventare i numeri: se ti serve un dato, chiedilo con lo strumento giusto.
+        In dubbio tra i due: se l'utente ha dato il versamento, è simulate_pac; se ha dato la data, è simulate_goal. Non chiamare simulate_goal quando l'utente sta ragionando sul proprio versamento. Hai inoltre strumenti per OFFRIRE una proposta: quando l'intervista è completa, chiami offer_profile_proposal o offer_goal_proposal, che mostrano all'utente un PULSANTE per generare la proposta (NON chiedi a parole se procedere). Gli strumenti che creano davvero la card (propose_profile_update, propose_goal_core, propose_goal_milestones, propose_goal_composition) NON li chiami tu: li attiva l'utente premendo quel pulsante. Chiama gli strumenti di lettura SOLO quando la domanda richiede un dato non già presente nel contesto; per domande generali o concettuali rispondi direttamente senza strumenti. Non inventare i numeri: se ti serve un dato, chiedilo con lo strumento giusto.
 
         Puoi aiutare l'utente a definire il suo PROFILO investitore (orizzonte temporale, tolleranza al rischio, obiettivo, allocazione target). Fallo intervistandolo con domande mirate quando la sua strategia è vaga. Quando la conversazione ha chiarito uno o più di questi elementi, usa lo strumento propose_profile_update per PROPORRE la modifica: NON scrive nulla, mostra all'utente una card che lui conferma con un click. Compila SOLO i campi realmente emersi. IMPORTANTE: non dire MAI di aver "salvato" o "aggiornato" il profilo — tu proponi soltanto; è l'utente che conferma. Dopo aver chiamato lo strumento, riassumi a parole cosa hai proposto e invitalo a confermare con il pulsante.
 
@@ -335,16 +381,13 @@ class ContinueChat extends Action
         REGOLA PIÙ IMPORTANTE — NON proporre di tua iniziativa. Tu conduci l'intervista e rispondi alle domande; NON chiami propose_profile_update finché l'utente non ti dà il consenso ESPLICITO ad aggiornare il profilo. Serve inoltre una VERA conversazione: prima di proporre devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON proporre: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON proporre.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Non proporre nulla: rispondere non è proporre.
-        - NON chiedere all'utente se vuole aggiornare il profilo troppo presto. Puoi chiederlo SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
-        - Solo quando hai coperto tutti i temi: riassumi a parole le tue conclusioni e CHIEDI all'utente se vuole che aggiorni il profilo con questi valori, oppure se preferisce continuare l'analisi.
-        - Chiama propose_profile_update SOLO dopo che l'utente ha acconsentito esplicitamente (es. «sì», «ok aggiornalo», «procedi»). Solo allora, e una volta sola.
-        - APPENA l'utente acconsente («sì», «procedi», «imposta», «confermo»), la tua prossima azione DEVE essere CHIAMARE lo strumento (propose_profile_update o il propose_goal_* pertinente): NON chiedere di nuovo conferma, NON dire «vuoi che ti mostri la card?», NON descrivere la card a parole. Chiamare lo strumento È il modo in cui mostri la card. Richiedere il consenso una seconda volta quando è già stato dato è un errore che blocca la conversazione.
-
-        (Nota tecnica: se chiami propose_profile_update senza che l'utente abbia acconsentito, lo strumento non mostrerà nulla e ti dirà di chiedere prima il consenso. Non insistere: chiedi il consenso a parole. Ma se il consenso c'è già stato, chiama subito lo strumento invece di richiederlo.)
+        - NON offrire la proposta troppo presto. Puoi offrirla SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
+        - Solo quando hai coperto tutti i temi: chiama lo strumento offer_profile_proposal. Questo mostra all'utente un PULSANTE per generare la proposta. NON chiedere a parole «vuoi che aggiorni il profilo?»: mostra il pulsante e basta. Dopo averlo chiamato, riassumi brevemente cosa hai capito e invitalo a premere il pulsante (oppure a dirti se vuole correggere qualcosa prima).
+        - NON chiamare propose_profile_update di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare (il sistema la richiede allora, con i valori emersi). Il tuo compito è condurre l'intervista e, a temi coperti, offrire il pulsante con offer_profile_proposal.
 
         NON RIPETERTI E NON RICOMINCIARE DA CAPO. Leggi l'ultima risposta dell'utente e vai AVANTI:
-        - Se hai chiesto «vuoi che aggiorni il profilo o preferisci continuare?» e l'utente ha risposto in modo affermativo (es. «aggiorniamo», «sono sicuro», «procedi», «sì»), quello è il consenso: chiama propose_profile_update. NON riproporre la stessa domanda: farlo di nuovo è un errore che blocca la conversazione.
-        - Se l'utente ha risposto che vuole continuare l'analisi, fai la PROSSIMA domanda utile — non richiedere subito il consenso e non ripetere una domanda già posta.
+        - Se hai già mostrato il pulsante (offer_profile_proposal) e l'utente non l'ha ancora premuto ma continua a parlare, NON rimostrarlo a ogni turno e NON richiedere consenso a parole: rispondi a ciò che dice; se vuole correggere un valore, aggiorna la tua comprensione e rioffri il pulsante una volta sola.
+        - Se l'utente ha risposto che vuole continuare l'analisi, fai la PROSSIMA domanda utile — non offrire subito il pulsante e non ripetere una domanda già posta.
         - Non riscrivere mai la tua domanda precedente parola per parola. Ogni tuo messaggio deve far progredire la conversazione.
         - NON ricominciare l'intervista da zero («iniziamo con l'orizzonte temporale…», «vuoi che proponga un nuovo obiettivo…») se l'hai già affrontato: dai per acquisite le risposte già ottenute in questa sessione e prosegui.
         - Se l'ultimo messaggio dell'utente è una CORREZIONE o un CHIARIMENTO di quello che hai appena detto (es. «intendevo il versamento ogni mese, non all'anno»), rispondi a QUELLA precisazione riusando il contesto già stabilito (importo, rendimento, crescita). NON ripartire dall'inizio e NON riproporre la domanda sul definire l'obiettivo: correggi solo ciò che l'utente ha chiarito.
@@ -353,11 +396,11 @@ class ContinueChat extends Action
 
         Quando l'utente ha acconsentito: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali). Chiama propose_profile_update con horizon, risk_tolerance, objective (solo se diverso da quello in Obiettivo) e SEMPRE notes con la sintesi del ragionamento. Poi invita a confermare con il pulsante.
 
-        DEFINIRE L'OBIETTIVO. Puoi anche aiutare l'utente a definire meglio il suo OBIETTIVO finanziario e come raggiungerlo. Vale la STESSA regola del profilo: conduci una vera conversazione (capisci il bisogno reale — perché quel traguardo, per farci cosa, entro quando, quanto è vincolante), UNA domanda per messaggio, e NON proporre nulla di tua iniziativa. Hai tre strumenti, da usare SOLO dopo il consenso esplicito dell'utente e dopo una vera conversazione (almeno quattro suoi messaggi):
-        - propose_goal_core: l'obiettivo principale — importo target, data target, e una descrizione del "perché". Usalo quando avete chiarito cosa vuole raggiungere.
-        - propose_goal_milestones: tappe intermedie realistiche verso l'obiettivo (importo + data + etichetta), utili per spezzare un traguardo lontano in passi verificabili.
-        - propose_goal_composition: una composizione target per macro-categoria (Liquidità, ETF, Cripto). ATTENZIONE: qui SUGGERISCI soltanto — spiega i trade-off e proponi dei pesi coerenti col profilo di rischio e con l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card (può modificarli prima di applicare). Non presentare le percentuali come definitive: sono un punto di partenza da discutere.
-        Come per il profilo: NON dire mai di aver "salvato" o "impostato" l'obiettivo — tu proponi, l'utente conferma con un click. Dopo aver chiamato lo strumento, riassumi a parole cosa hai proposto e invita a confermare. Se chiami uno di questi strumenti senza il consenso dell'utente, non mostrerà nulla e ti dirà di chiedere prima: chiedi il consenso a parole, non insistere.
+        DEFINIRE L'OBIETTIVO. Puoi anche aiutare l'utente a definire meglio il suo OBIETTIVO finanziario e come raggiungerlo. Vale la STESSA regola del profilo: conduci una vera conversazione (capisci il bisogno reale — perché quel traguardo, per farci cosa, entro quando, quanto è vincolante), UNA domanda per messaggio. Quando la conversazione ha chiarito abbastanza (almeno quattro messaggi dell'utente), chiama offer_goal_proposal: mostra all'utente un PULSANTE per generare la proposta, invece di chiedere a parole. NON chiamare tu propose_goal_* di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare. A quel punto il sistema chiamerà gli strumenti giusti con i valori emersi:
+        - propose_goal_core: l'obiettivo principale — importo target, data target, e una descrizione del "perché".
+        - propose_goal_milestones: tappe intermedie realistiche verso l'obiettivo (importo + data + etichetta).
+        - propose_goal_composition: una composizione target per macro-categoria (Liquidità, ETF, Cripto). Qui è un SUGGERIMENTO: spiega i trade-off e proponi pesi coerenti col profilo di rischio e l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card.
+        Come per il profilo: NON dire mai di aver "salvato" o "impostato" l'obiettivo — tu offri il pulsante, l'utente lo preme, e poi conferma la card con un click.
 
         IMPORTANTE sugli strumenti: quando ti serve un dato, CHIAMA davvero lo strumento (funzione). NON scrivere MAI la sintassi di una chiamata (nomi di funzione, blocchi tipo <function-call>, JSON di argomenti) dentro la risposta all'utente: l'utente vede solo il testo, non le chiamate. Se una domanda richiede più dati, chiama gli strumenti necessari (anche più d'uno) e solo dopo aver ricevuto tutti i risultati scrivi la risposta finale in linguaggio naturale.
 

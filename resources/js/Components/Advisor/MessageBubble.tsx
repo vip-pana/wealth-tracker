@@ -11,12 +11,14 @@ export function MessageBubble({
     profile,
     goal,
     onRetry,
+    onPropose,
 }: {
     message: Message;
     funFacts: string[];
     profile?: InvestorProfile | null;
     goal?: GoalData | null;
     onRetry?: (message: Message) => void;
+    onPropose?: (kind: 'profile' | 'goal') => void;
 }) {
     if (message.role === 'user') {
         return (
@@ -59,7 +61,7 @@ export function MessageBubble({
                     <>
                         <Markdown content={message.content} />
                         {message.widgets && message.widgets.length > 0 && (
-                            <AdvisorWidgets widgets={message.widgets} profile={profile} goal={goal} />
+                            <AdvisorWidgets widgets={message.widgets} profile={profile} goal={goal} onPropose={onPropose} />
                         )}
                     </>
                 )}

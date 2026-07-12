@@ -148,6 +148,23 @@ export function Conversation({
         }
     };
 
+    // Generate a proposal card on demand: the user clicked the "genera la
+    // proposta" button the advisor offered. Adds NO user turn — only a pending
+    // assistant turn the server creates and the poll below fills. The click is
+    // the consent, so the backend opens the gate and forces the propose tool.
+    const propose = async (kind: 'profile' | 'goal') => {
+        if (sendingRef.current) return;
+        const tempAssistantId = -Date.now();
+        setMessages((m) => [...m, { id: tempAssistantId, role: 'assistant', content: '', status: 'pending', created_at: null }]);
+        try {
+            const { data } = await axios.post<{ assistant: Message }>(`/advisor/${session.id}/propose/${kind}`);
+            setMessages((m) => [...m.filter((x) => x.id !== tempAssistantId), data.assistant]);
+        } catch {
+            pushToast('Non è stato possibile generare la proposta. Riprova.', 'error');
+            setMessages((m) => m.filter((x) => x.id !== tempAssistantId));
+        }
+    };
+
     // A chat reply is being generated when the last message is a pending
     // assistant turn. Poll the session until it resolves (mirrors the report
     // poll, but keyed on the message rather than the session status).
@@ -194,7 +211,7 @@ export function Conversation({
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
-                    {messages.map((m, i) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} goal={goal} onRetry={i === messages.length - 1 ? retry : undefined} />)}
+                    {messages.map((m, i) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} goal={goal} onRetry={i === messages.length - 1 ? retry : undefined} onPropose={propose} />)}
                     <div ref={bottomRef} />
                 </CardContent>
 
