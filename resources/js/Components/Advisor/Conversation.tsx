@@ -156,10 +156,26 @@ export function Conversation({
         }
     };
 
-    // Retry a failed assistant reply in place: ask the server to regenerate it,
-    // then flip it back to pending so the poll effect below resumes and fills it.
+    // Retry a failed assistant reply. A normal chat turn is preceded by the
+    // user's message, so we ask the server to regenerate it in place. A PROPOSAL
+    // turn has no user message before it (the button, not a chat message,
+    // triggered it) — retrying it as a chat turn would wrongly continue the
+    // conversation, so instead we drop the failed turn and re-run the proposal.
     const retry = async (failed: Message) => {
         if (sendingRef.current) return;
+        const idx = messages.findIndex((x) => x.id === failed.id);
+        const prev = idx > 0 ? messages[idx - 1] : undefined;
+        const isProposalTurn = !prev || prev.role === 'assistant';
+
+        if (isProposalTurn) {
+            const opening = messages.find((m) => m.role === 'user')?.content.toLowerCase() ?? '';
+            const kind: 'profile' | 'goal' = /\bobiettiv|milestone|traguard|tapp/.test(opening) ? 'goal' : 'profile';
+            setMessages((m) => m.filter((x) => x.id !== failed.id));
+            await propose(kind);
+
+            return;
+        }
+
         setMessages((m) => m.map((x) => (x.id === failed.id ? { ...x, status: 'pending', error: null, content: '' } : x)));
         try {
             await axios.post(`/advisor/${session.id}/message/${failed.id}/retry`);

@@ -188,3 +188,25 @@ describe('Conversation — proposal offer fallback', () => {
         expect(axiosPost.mock.calls[0][0]).toBe('/advisor/1/propose/profile');
     });
 });
+
+describe('Conversation — retry on a proposal turn', () => {
+    it('re-runs the proposal endpoint (not chat retry) for a failed proposal turn', async () => {
+        const user = userEvent.setup();
+        axiosPost.mockResolvedValue({ data: { assistant: { id: 99, role: 'assistant', content: '', status: 'pending', created_at: null } } });
+        // A proposal turn has NO user message right before it: two assistants in a
+        // row, the last one failed.
+        const msgs: Message[] = [
+            { id: 1, role: 'user', content: 'definisci il mio profilo di rischio', status: 'done', created_at: null },
+            { id: 2, role: 'assistant', content: 'ok', status: 'done', created_at: null },
+            { id: 3, role: 'assistant', content: '', status: 'failed', error: 'boom', created_at: null },
+        ];
+        renderConversation({ messages: msgs });
+
+        // The failed bubble is a clickable button whose label is the error text.
+        await user.click(screen.getByRole('button', { name: /boom/ }));
+
+        expect(axiosPost.mock.calls[0][0]).toBe('/advisor/1/propose/profile');
+        // It must NOT hit the chat-retry endpoint.
+        expect(axiosPost.mock.calls.every((c) => !String(c[0]).includes('/retry'))).toBe(true);
+    });
+});
