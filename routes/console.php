@@ -11,3 +11,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('prices:fetch')->dailyAt('06:00');
+// Take a daily snapshot at 06:15, after the price fetch, but only if every
+// source refreshed cleanly (the command skips + notifies otherwise).
+Schedule::command('snapshots:daily')->dailyAt('06:15');
+// Keep the Scalable CLI session alive: its refresh token rotates on use, so a
+// ping every 6h (well inside the refresh window) prevents the session lapsing
+// between the once-a-day sync/snapshot.
+Schedule::command('scalable:keep-alive')->everySixHours();
