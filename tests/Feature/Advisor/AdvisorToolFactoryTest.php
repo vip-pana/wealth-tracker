@@ -296,9 +296,9 @@ class AdvisorToolFactoryTest extends TestCase
 
         $this->assertStringContainsString('in crescita del 10', $growing);
 
-        // Extract the month count from each reply ("circa N mesi") and compare.
-        preg_match('/circa (\d+) mesi/', $flat, $flatM);
-        preg_match('/circa (\d+) mesi/', $growing, $growM);
+        // Extract the month count from each reply ("N mesi") and compare.
+        preg_match('/(\d+) mesi/', $flat, $flatM);
+        preg_match('/(\d+) mesi/', $growing, $growM);
         $this->assertNotEmpty($flatM);
         $this->assertNotEmpty($growM);
         $this->assertLessThan((int) $flatM[1], (int) $growM[1]);
