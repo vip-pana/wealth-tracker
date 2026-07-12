@@ -21,7 +21,6 @@ class InterviewSlotsTest extends TestCase
     private function briefing(array $slots): string
     {
         $method = new ReflectionMethod(ContinueChat::class, 'slotFillingBriefing');
-        $method->setAccessible(true);
 
         return (string) $method->invoke(app(ContinueChat::class), $slots);
     }
@@ -29,7 +28,6 @@ class InterviewSlotsTest extends TestCase
     private function slots(AdvisorSession $session, string $userMessage): array
     {
         $method = new ReflectionMethod(ContinueChat::class, 'interviewSlots');
-        $method->setAccessible(true);
 
         /** @var array{target: bool, date: bool, income: bool, tolerance: bool} $slots */
         $slots = $method->invoke(app(ContinueChat::class), $session, $userMessage, null);
@@ -66,7 +64,6 @@ class InterviewSlotsTest extends TestCase
     private function kind(AdvisorSession $session, string $userMessage): ?string
     {
         $method = new ReflectionMethod(ContinueChat::class, 'interviewKind');
-        $method->setAccessible(true);
 
         /** @var AdvisorSession::KIND_GOAL_INTERVIEW|AdvisorSession::KIND_PROFILE_INTERVIEW|null $kind */
         $kind = $method->invoke(app(ContinueChat::class), $session, $userMessage, null);
