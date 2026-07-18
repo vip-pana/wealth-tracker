@@ -3,17 +3,22 @@ import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { Button } from '@/Components/ui/button';
 import { Plus } from 'lucide-react';
 import { MilestoneFormRow } from '@/Components/Goal/MilestoneFormRow';
-import type { MilestoneFormItem } from '@/Components/Goal/types';
+import type { AllocationFormItem, MilestoneFormItem } from '@/Components/Goal/types';
+import type { Category } from '@/types/models';
 
 export function MilestonesSection({
     items,
+    categories,
     onAdd,
     onUpdate,
+    onUpdateAllocation,
     onRemove,
 }: {
     items: MilestoneFormItem[];
+    categories: Pick<Category, 'id' | 'name' | 'color' | 'macro_category'>[];
     onAdd: () => void;
     onUpdate: (idx: number, field: string, value: string) => void;
+    onUpdateAllocation: (idx: number, allocation: AllocationFormItem[]) => void;
     onRemove: (idx: number) => void;
 }) {
     return (
@@ -26,7 +31,9 @@ export function MilestonesSection({
                         item={item}
                         idx={idx}
                         isLast={idx === items.length - 1}
+                        categories={categories}
                         onUpdate={onUpdate}
+                        onUpdateAllocation={onUpdateAllocation}
                         onRemove={onRemove}
                     />
                 ))}

@@ -79,6 +79,7 @@ export interface GoalMilestone {
     rationale?: string | null;
     target_value: number;
     target_date: string; // "YYYY-MM-DD"
+    allocation?: { category_id: number | null; percentage: number }[];
 }
 
 export interface Goal {

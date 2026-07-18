@@ -4,10 +4,9 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
-import { AllocationSection } from '@/Components/Goal/AllocationSection';
 import { MilestonesSection } from '@/Components/Goal/MilestonesSection';
 import type { AllocationFormItem, MilestoneFormItem, GoalFormData } from '@/Components/Goal/types';
 import type { Category } from '@/types/models';
@@ -26,20 +25,23 @@ export function GoalFormDialog({
 }) {
     const isEdit = goal !== null;
 
+    const buildMilestones = (): MilestoneFormItem[] =>
+        goal?.milestones.map((m) => ({
+            notes: m.notes ?? '',
+            target_value: String(m.target_value),
+            target_date: m.target_date,
+            allocation: (m.allocation ?? []).map((a) => ({
+                category_id: String(a.category_id ?? ''),
+                percentage: String(a.percentage),
+            })),
+        })) ?? [];
+
     const { data, setData, post, put, processing, errors, reset } = useForm<GoalFormData>({
         name: goal?.name ?? '',
         description: goal?.description ?? '',
         target_value: goal ? String(goal.target_value) : '',
         target_date: goal?.target_date ?? '',
-        category_allocations: goal?.categoryAllocations.map((a) => ({
-            category_id: String(a.category_id ?? ''),
-            percentage: String(a.percentage),
-        })) ?? [],
-        milestones: goal?.milestones.map((m) => ({
-            notes: m.notes ?? '',
-            target_value: String(m.target_value),
-            target_date: m.target_date,
-        })) ?? [],
+        milestones: buildMilestones(),
     });
 
     useEffect(() => {
@@ -49,29 +51,21 @@ export function GoalFormDialog({
                 description: goal?.description ?? '',
                 target_value: goal ? String(goal.target_value) : '',
                 target_date: goal?.target_date ?? '',
-                category_allocations: goal?.categoryAllocations.map((a) => ({
-                    category_id: String(a.category_id ?? ''),
-                    percentage: String(a.percentage),
-                })) ?? [],
-                milestones: goal?.milestones.map((m) => ({
-                    notes: m.notes ?? '',
-                    target_value: String(m.target_value),
-                    target_date: m.target_date,
-                })) ?? [],
+                milestones: buildMilestones(),
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, goal]);
 
-    const updateCategoryAlloc = (idx: number, field: string, value: string) => {
-        const updated = [...(data.category_allocations as AllocationFormItem[])];
-        updated[idx] = { ...updated[idx], [field]: value };
-        setData('category_allocations', updated);
-    };
-
     const updateMilestone = (idx: number, field: string, value: string) => {
         const updated = [...(data.milestones as MilestoneFormItem[])];
         updated[idx] = { ...updated[idx], [field]: value };
+        setData('milestones', updated);
+    };
+
+    const updateMilestoneAllocation = (idx: number, allocation: AllocationFormItem[]) => {
+        const updated = [...(data.milestones as MilestoneFormItem[])];
+        updated[idx] = { ...updated[idx], allocation };
         setData('milestones', updated);
     };
 
@@ -156,40 +150,17 @@ export function GoalFormDialog({
                             </div>
                         </div>
 
-                        {/* Category allocations */}
-                        <div className="rounded-md border border-border p-4">
-                            <AllocationSection
-                                title="Target allocation per categoria"
-                                items={data.category_allocations as AllocationFormItem[]}
-                                onAdd={() => setData('category_allocations', [...(data.category_allocations as AllocationFormItem[]), { category_id: '', percentage: '' }])}
-                                onUpdate={updateCategoryAlloc}
-                                onRemove={(idx) => setData('category_allocations', (data.category_allocations as AllocationFormItem[]).filter((_, i) => i !== idx))}
-                                renderSelect={(item, idx) => (
-                                    <div className="relative">
-                                        <select
-                                            value={(item as AllocationFormItem).category_id ?? ''}
-                                            onChange={(e) => updateCategoryAlloc(idx, 'category_id', e.target.value)}
-                                            className="w-full h-9 appearance-none rounded-md border border-input bg-background pl-3 pr-8 text-sm"
-                                        >
-                                            <option value="">Seleziona categoria</option>
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                                    </div>
-                                )}
-                            />
-                        </div>
                     </div>
 
-                    {/* Milestones */}
+                    {/* Milestones — each carries its own target allocation (the glide-path) */}
                     <div className="space-y-4">
                         <div className="rounded-md border border-border p-4">
                             <MilestonesSection
                                 items={data.milestones as MilestoneFormItem[]}
-                                onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', target_value: '', target_date: '' }])}
+                                categories={categories}
+                                onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', target_value: '', target_date: '', allocation: [] }])}
                                 onUpdate={updateMilestone}
+                                onUpdateAllocation={updateMilestoneAllocation}
                                 onRemove={(idx) => setData('milestones', (data.milestones as MilestoneFormItem[]).filter((_, i) => i !== idx))}
                             />
                         </div>

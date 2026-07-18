@@ -1,24 +1,35 @@
 import { useState } from 'react';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
-import type { MilestoneFormItem } from '@/Components/Goal/types';
+import { AllocationSection } from '@/Components/Goal/AllocationSection';
+import type { AllocationFormItem, MilestoneFormItem } from '@/Components/Goal/types';
+import type { Category } from '@/types/models';
 
 export function MilestoneFormRow({
     item,
     idx,
     isLast,
+    categories,
     onUpdate,
+    onUpdateAllocation,
     onRemove,
 }: {
     item: MilestoneFormItem;
     idx: number;
     isLast: boolean;
+    categories: Pick<Category, 'id' | 'name' | 'color' | 'macro_category'>[];
     onUpdate: (idx: number, field: string, value: string) => void;
+    onUpdateAllocation: (idx: number, allocation: AllocationFormItem[]) => void;
     onRemove: (idx: number) => void;
 }) {
     const [noteOpen, setNoteOpen] = useState(!!item.notes);
+
+    const updateAlloc = (aIdx: number, field: string, value: string) => {
+        const updated = item.allocation.map((a, i) => (i === aIdx ? { ...a, [field]: value } : a));
+        onUpdateAllocation(idx, updated);
+    };
 
     return (
         <div className="flex gap-3">
@@ -94,6 +105,32 @@ export function MilestoneFormRow({
                         + Aggiungi nota
                     </button>
                 )}
+
+                {/* Per-milestone target allocation (the glide-path step) */}
+                <div className="rounded-md border border-border/60 p-2.5">
+                    <AllocationSection
+                        title="Allocazione target a questa tappa"
+                        items={item.allocation}
+                        onAdd={() => onUpdateAllocation(idx, [...item.allocation, { category_id: '', percentage: '' }])}
+                        onUpdate={updateAlloc}
+                        onRemove={(aIdx) => onUpdateAllocation(idx, item.allocation.filter((_, i) => i !== aIdx))}
+                        renderSelect={(alloc, aIdx) => (
+                            <div className="relative">
+                                <select
+                                    value={(alloc as AllocationFormItem).category_id ?? ''}
+                                    onChange={(e) => updateAlloc(aIdx, 'category_id', e.target.value)}
+                                    className="w-full h-9 appearance-none rounded-md border border-input bg-background pl-3 pr-8 text-sm"
+                                >
+                                    <option value="">Seleziona categoria</option>
+                                    {categories.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                        )}
+                    />
+                </div>
             </div>
         </div>
     );

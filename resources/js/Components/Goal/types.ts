@@ -24,6 +24,7 @@ export interface MilestoneFormItem {
     notes: string;
     target_value: string;
     target_date: string;
+    allocation: AllocationFormItem[];
 }
 
 export type GoalFormData = {
@@ -31,6 +32,5 @@ export type GoalFormData = {
     description: string;
     target_value: string;
     target_date: string;
-    category_allocations: AllocationFormItem[];
     milestones: MilestoneFormItem[];
 };

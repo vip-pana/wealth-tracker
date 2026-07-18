@@ -58,19 +58,20 @@ beforeEach(() => {
     put.mockClear();
 });
 
-describe('GoalFormDialog — allocations', () => {
-    it('adds an allocation row when "Aggiungi" is clicked', async () => {
+describe('GoalFormDialog — per-milestone allocation', () => {
+    it('adds an allocation row inside a milestone', async () => {
         renderDialog();
-        // Two "Aggiungi" buttons exist (allocation + one on milestones is
-        // "Aggiungi milestone"); the plain "Aggiungi" is the allocation adder.
-        const addAlloc = screen.getByRole('button', { name: 'Aggiungi' });
+        // No allocation UI until a milestone exists.
         expect(screen.queryByText('Seleziona categoria')).not.toBeInTheDocument();
-        await userEvent.click(addAlloc);
+        await userEvent.click(screen.getByRole('button', { name: /Aggiungi milestone/ }));
+        // The milestone now carries its own allocation section with an adder.
+        await userEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
         expect(screen.getByText('Seleziona categoria')).toBeInTheDocument();
     });
 
     it('shows the running allocation total and flags completion at 100%', async () => {
         renderDialog();
+        await userEvent.click(screen.getByRole('button', { name: /Aggiungi milestone/ }));
         await userEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
         const pctInput = screen.getByPlaceholderText('0');
         await userEvent.type(pctInput, '100');
@@ -79,19 +80,15 @@ describe('GoalFormDialog — allocations', () => {
 
     it('removes an allocation row', async () => {
         renderDialog();
+        await userEvent.click(screen.getByRole('button', { name: /Aggiungi milestone/ }));
         await userEvent.click(screen.getByRole('button', { name: 'Aggiungi' }));
         expect(screen.getByText('Seleziona categoria')).toBeInTheDocument();
-        // The trash icon button sits in the allocation row.
-        const removeBtns = screen.getAllByRole('button');
-        // Click the icon-only button that precedes the % input's row — find by
-        // being inside the same row as the select.
         const select = screen.getByText('Seleziona categoria').closest('div')!;
         const row = select.parentElement!.parentElement!;
         const rowButtons = within(row).getAllByRole('button');
         const trash = rowButtons[rowButtons.length - 1];
         await userEvent.click(trash);
         expect(screen.queryByText('Seleziona categoria')).not.toBeInTheDocument();
-        expect(removeBtns.length).toBeGreaterThan(0);
     });
 });
 

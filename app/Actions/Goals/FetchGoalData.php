@@ -78,6 +78,11 @@ class FetchGoalData extends Action
                     'rationale' => $m->rationale,
                     'target_value' => $m->target_value,
                     'target_date' => $m->target_date->format('Y-m-d'),
+                    'allocation' => $m->categoryAllocations
+                        ->map(fn ($a) => [
+                            'category_id' => $a->category_id,
+                            'percentage' => $a->percentage,
+                        ])->values()->toArray(),
                 ])->values()->toArray();
 
             $goalData = [
