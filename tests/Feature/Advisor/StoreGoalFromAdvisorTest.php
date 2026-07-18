@@ -69,8 +69,33 @@ class StoreGoalFromAdvisorTest extends TestCase
         $this->assertDatabaseHas('goal_milestones', ['notes' => 'Metà', 'action' => 'Sposta 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000.0, 'deleted_at' => null]);
         // The old milestone is gone from the active set (soft-deleted).
         $this->assertDatabaseMissing('goal_milestones', ['notes' => 'Vecchia', 'deleted_at' => null]);
-        // Composition untouched.
-        $this->assertSame(1, $goal->categoryAllocations()->count());
+        // The global composition (milestone_id null) is untouched.
+        $this->assertSame(1, $goal->categoryAllocations()->whereNull('milestone_id')->count());
+    }
+
+    public function test_milestones_persist_their_own_target_allocation(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azioni']);
+        $liquidita = Category::factory()->create(['name' => 'Liquidità']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                ['notes' => 'Metà', 'target_value' => 500000, 'target_date' => '2080-01-01', 'allocation' => [
+                    ['category' => 'Azioni', 'percentage' => 70],
+                    ['category' => 'Liquidità', 'percentage' => 30],
+                ]],
+            ],
+        ])->assertRedirect();
+
+        $milestone = $goal->milestones()->firstOrFail();
+        $this->assertSame(2, $milestone->categoryAllocations()->count());
+        $this->assertDatabaseHas('goal_category_allocations', [
+            'milestone_id' => $milestone->id, 'category_id' => $azioni->id, 'percentage' => 70.0,
+        ]);
+        $this->assertDatabaseHas('goal_category_allocations', [
+            'milestone_id' => $milestone->id, 'category_id' => $liquidita->id, 'percentage' => 30.0,
+        ]);
     }
 
     public function test_composition_replaces_only_allocations_leaving_milestones_intact(): void

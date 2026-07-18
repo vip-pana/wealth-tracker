@@ -11,6 +11,7 @@ use App\Models\GoalCategoryAllocation;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 use Prism\Prism\Facades\Tool;
+use Prism\Prism\Schema\ArraySchema;
 use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
@@ -366,9 +367,11 @@ class AdvisorToolFactory
     private function proposeGoalMilestones(): PrismTool
     {
         $today = Carbon::now()->format('Y-m-d');
+        $categories = $this->goalCategoryNames();
+        $list = implode(', ', $categories);
 
         return Tool::as('propose_goal_milestones')
-            ->for('Proponi delle tappe intermedie (milestone) verso l\'obiettivo: ognuna con importo, data, etichetta, un\'AZIONE concreta e il suo RAZIONALE. NON salva: mostra una card che l\'utente conferma. Usalo quando avete ragionato su come scomporre l\'obiettivo in traguardi intermedi realistici. Le tappe devono essere quelle di un vero consulente: non basta l\'importo, servono azione e spiegazione.')
+            ->for('Proponi delle tappe intermedie (milestone) verso l\'obiettivo: ognuna con importo, data, etichetta, un\'AZIONE concreta, il suo RAZIONALE e l\'ALLOCAZIONE TARGET a quella tappa. NON salva: mostra una card che l\'utente conferma. Usalo quando avete ragionato su come scomporre l\'obiettivo in traguardi intermedi realistici. Le tappe devono essere quelle di un vero consulente: non basta l\'importo, servono azione, spiegazione e come dovrebbe essere allocato il portafoglio a quel punto (il "glide-path": tipicamente si riduce il rischio avvicinandosi all\'obiettivo).')
             ->withArrayParameter(
                 'milestones',
                 'Elenco delle tappe intermedie proposte, in ordine cronologico.',
@@ -381,6 +384,19 @@ class AdvisorToolFactory
                         new StringSchema('rationale', 'Il PERCHÉ di questa azione: il ragionamento che faresti come consulente (es. "Avvicinandoti all\'obiettivo il rischio di sequenza dei rendimenti aumenta: ridurre gli asset volatili protegge il capitale accumulato"). Chiaro e concreto, spiega anche i termini tecnici che usi.'),
                         new NumberSchema('target_value', 'Importo della tappa in euro, es. 500000.'),
                         new StringSchema('target_date', "Data della tappa in formato AAAA-MM-GG, futura (dopo {$today})."),
+                        new ArraySchema(
+                            'allocation',
+                            'L\'allocazione target del portafoglio a questa tappa, usando le CATEGORIE REALI dell\'utente ('.$list.'), tutte incluse e con percentuali che sommano 100%. Rappresenta come dovrebbe essere composto il portafoglio una volta raggiunta la tappa.',
+                            new ObjectSchema(
+                                'bucket',
+                                'Una categoria con la sua quota target a questa tappa.',
+                                [
+                                    new EnumSchema('category', 'La categoria (una tra quelle reali dell\'utente).', $categories),
+                                    new NumberSchema('percentage', 'Quota percentuale (0-100).'),
+                                ],
+                                requiredFields: ['category', 'percentage'],
+                            ),
+                        ),
                     ],
                     requiredFields: ['target_value', 'target_date'],
                 ),
@@ -1190,8 +1206,9 @@ class AdvisorToolFactory
             $rationale = is_string($m['rationale'] ?? null) && trim($m['rationale']) !== ''
                 ? mb_substr(trim($m['rationale']), 0, 800)
                 : null;
+            $allocation = $this->validMilestoneAllocation($m['allocation'] ?? null);
 
-            $valid[] = ['label' => $label, 'action' => $action, 'rationale' => $rationale, 'target_value' => $value, 'target_date' => $date];
+            $valid[] = ['label' => $label, 'action' => $action, 'rationale' => $rationale, 'target_value' => $value, 'target_date' => $date, 'allocation' => $allocation];
         }
 
         if ($valid === []) {
@@ -1214,10 +1231,48 @@ class AdvisorToolFactory
             if ($m['rationale'] !== null) {
                 $lines[] = '    Perché: '.$m['rationale'];
             }
+            if ($m['allocation'] !== []) {
+                $parts = array_map(fn (array $b): string => $b['category'].' '.$this->num($b['percentage'], 1).'%', $m['allocation']);
+                $lines[] = '    Allocazione: '.implode(', ', $parts);
+            }
         }
         $lines[] = 'La proposta è mostrata con un pulsante per confermare: non è ancora salvata.';
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Validate a milestone's target allocation: keep only real category names,
+     * clamp each 0-100, and accept the set only when it sums to ~100. A missing
+     * or non-100 allocation degrades to [] (the milestone is still valid, just
+     * without a glide-path step) — we don't reject the whole milestone over it.
+     *
+     * @return list<array{category: string, percentage: float}>
+     */
+    private function validMilestoneAllocation(mixed $allocation): array
+    {
+        if (! is_array($allocation)) {
+            return [];
+        }
+
+        $allowed = $this->goalCategoryNames();
+        $out = [];
+        $total = 0.0;
+        foreach ($allocation as $b) {
+            if (! is_array($b)) {
+                continue;
+            }
+            $category = is_string($b['category'] ?? null) ? $b['category'] : '';
+            $pct = is_numeric($b['percentage'] ?? null) ? (float) $b['percentage'] : null;
+            if (! in_array($category, $allowed, true) || $pct === null) {
+                continue;
+            }
+            $clamped = max(0.0, min(100.0, $pct));
+            $out[] = ['category' => $category, 'percentage' => $clamped];
+            $total += $clamped;
+        }
+
+        return abs($total - 100.0) <= 0.5 ? $out : [];
     }
 
     /**

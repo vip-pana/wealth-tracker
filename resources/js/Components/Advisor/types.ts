@@ -143,7 +143,14 @@ export interface GoalCoreProposalWidget {
 export interface GoalMilestonesProposalWidget {
     type: 'goal_milestones_proposal';
     data: {
-        milestones: { label: string | null; action: string | null; rationale: string | null; target_value: number; target_date: string }[];
+        milestones: {
+            label: string | null;
+            action: string | null;
+            rationale: string | null;
+            target_value: number;
+            target_date: string;
+            allocation: { category: string; percentage: number }[];
+        }[];
     };
 }
 

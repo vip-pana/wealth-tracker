@@ -662,6 +662,44 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame('Sposta il 5% da Bitcoin a Obbligazioni.', $widgets[0]['data']['milestones'][0]['action']);
         $this->assertSame('Riduce la volatilità avvicinandosi al target.', $widgets[0]['data']['milestones'][0]['rationale']);
         $this->assertSame(500000.0, $widgets[0]['data']['milestones'][0]['target_value']);
+        // No allocation given → degrades to an empty glide-path step.
+        $this->assertSame([], $widgets[0]['data']['milestones'][0]['allocation']);
+    }
+
+    public function test_propose_goal_milestones_carries_a_valid_per_milestone_allocation(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà', 'target_value' => 500000, 'target_date' => '2099-06-30', 'allocation' => [
+                ['category' => 'Azioni', 'percentage' => 70],
+                ['category' => 'Liquidità', 'percentage' => 30],
+            ]],
+        ]);
+
+        $alloc = $collector->widgets()[0]['data']['milestones'][0]['allocation'];
+        $this->assertCount(2, $alloc);
+        $this->assertSame('Azioni', $alloc[0]['category']);
+        $this->assertSame(70.0, $alloc[0]['percentage']);
+    }
+
+    public function test_propose_goal_milestones_drops_an_allocation_that_is_not_100(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        // Sums to 80 → the whole allocation degrades to [] (milestone still kept).
+        $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà', 'target_value' => 500000, 'target_date' => '2099-06-30', 'allocation' => [
+                ['category' => 'Azioni', 'percentage' => 50],
+                ['category' => 'Liquidità', 'percentage' => 30],
+            ]],
+        ]);
+
+        $this->assertSame([], $collector->widgets()[0]['data']['milestones'][0]['allocation']);
     }
 
     public function test_propose_goal_composition_refuses_a_composition_that_is_not_100(): void

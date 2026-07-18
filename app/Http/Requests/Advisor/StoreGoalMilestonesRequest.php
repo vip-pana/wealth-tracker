@@ -18,6 +18,9 @@ class StoreGoalMilestonesRequest extends FormRequest
             'milestones.*.rationale' => ['nullable', 'string', 'max:800'],
             'milestones.*.target_value' => ['required', 'numeric', 'min:0'],
             'milestones.*.target_date' => ['required', 'date'],
+            'milestones.*.allocation' => ['nullable', 'array'],
+            'milestones.*.allocation.*.category' => ['required', 'string', 'exists:categories,name'],
+            'milestones.*.allocation.*.percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

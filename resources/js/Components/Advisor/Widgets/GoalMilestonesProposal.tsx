@@ -42,6 +42,7 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                 rationale: m.rationale,
                 target_value: m.target_value,
                 target_date: m.target_date,
+                allocation: m.allocation,
             })),
         }, {
             preserveScroll: true,
@@ -75,6 +76,9 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                             )}
                             {m.rationale && (
                                 <p><span className="font-medium text-foreground">Perché: </span><span className="text-muted-foreground">{m.rationale}</span></p>
+                            )}
+                            {m.allocation.length > 0 && (
+                                <p><span className="font-medium text-foreground">Allocazione: </span><span className="text-muted-foreground">{m.allocation.map((a) => `${a.category} ${a.percentage}%`).join(' · ')}</span></p>
                             )}
                         </li>
                     ))}
