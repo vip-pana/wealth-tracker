@@ -149,7 +149,9 @@ export interface GoalMilestonesProposalWidget {
             rationale: string | null;
             target_value: number;
             target_date: string;
-            allocation: { category: string; percentage: number }[];
+            // Optional: widgets persisted before per-milestone allocation existed
+            // carry no `allocation` key, so it can be undefined on old messages.
+            allocation?: { category: string; percentage: number }[];
         }[];
     };
 }
