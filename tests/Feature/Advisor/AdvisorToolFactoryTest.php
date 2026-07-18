@@ -212,6 +212,7 @@ class AdvisorToolFactoryTest extends TestCase
         $collector->allowGoalProposal(true);
         $collector->allowProfileOffer(true);
         $collector->allowGoalOffer(true);
+        $collector->allowProfileFact(true);
 
         return [$factory, $collector];
     }
@@ -556,6 +557,46 @@ class AdvisorToolFactoryTest extends TestCase
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
         $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
+    }
+
+    public function test_confirm_profile_fact_emits_a_confirmation_card_directly(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 2000);
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame('profile_proposal', $widgets[0]['type']);
+        $this->assertSame(2000.0, $widgets[0]['data']['income_monthly']);
+        $this->assertStringContainsString('Applica', $out);
+    }
+
+    public function test_confirm_profile_fact_emits_nothing_when_not_allowed(): void
+    {
+        // Same as armedFactory but without opening the profile-fact gate.
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // profile-fact gate NOT opened (default closed)
+
+        $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 2000);
+
+        $this->assertSame([], $collector->widgets());
+    }
+
+    public function test_confirm_profile_fact_drops_an_invalid_emergency_fund(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'confirm_profile_fact')->handle(emergency_fund: 'gold-bars', income_monthly: 1800);
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
+        $this->assertSame(1800.0, $widgets[0]['data']['income_monthly']);
     }
 
     public function test_propose_goal_core_emits_a_proposal_widget(): void

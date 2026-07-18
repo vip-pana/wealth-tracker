@@ -57,6 +57,15 @@ class AdvisorWidgetCollector
     private bool $profileOfferAllowed = false;
 
     /**
+     * Whether confirm_profile_fact may emit its confirmation card this turn.
+     * Unlike profileProposalAllowed (gated behind interview consent), this is
+     * open on every ordinary chat turn: it's for a plain factual statement
+     * ("my income is now 2000"), which still emits only a one-click confirm
+     * card — never a silent write — so it's safe without the consent gate.
+     */
+    private bool $profileFactAllowed = false;
+
+    /**
      * The proposal widget types that must be de-duplicated to the LAST one a
      * confused model emits within a single reply's tool loop. Any type not
      * listed here is kept as-is (a reply can legitimately carry several, e.g.
@@ -113,6 +122,16 @@ class AdvisorWidgetCollector
     public function isProfileOfferAllowed(): bool
     {
         return $this->profileOfferAllowed;
+    }
+
+    public function allowProfileFact(bool $allowed): void
+    {
+        $this->profileFactAllowed = $allowed;
+    }
+
+    public function isProfileFactAllowed(): bool
+    {
+        return $this->profileFactAllowed;
     }
 
     /**
@@ -195,5 +214,6 @@ class AdvisorWidgetCollector
         $this->goalProposalAllowed = false;
         $this->goalOfferAllowed = false;
         $this->profileOfferAllowed = false;
+        $this->profileFactAllowed = false;
     }
 }

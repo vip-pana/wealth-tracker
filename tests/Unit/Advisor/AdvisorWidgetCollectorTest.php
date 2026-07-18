@@ -99,4 +99,17 @@ class AdvisorWidgetCollectorTest extends TestCase
         $collector->clear();
         $this->assertFalse($collector->isGoalOfferAllowed());
     }
+
+    public function test_profile_fact_gate_defaults_closed_and_clears(): void
+    {
+        $collector = new AdvisorWidgetCollector;
+        $this->assertFalse($collector->isProfileFactAllowed());
+
+        $collector->allowProfileFact(true);
+        $this->assertTrue($collector->isProfileFactAllowed());
+
+        $collector->for(new AdvisorMessage);
+        $collector->clear();
+        $this->assertFalse($collector->isProfileFactAllowed());
+    }
 }

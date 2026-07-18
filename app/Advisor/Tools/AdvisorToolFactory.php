@@ -48,6 +48,7 @@ class AdvisorToolFactory
             $this->listPositions(),
             $this->simulateGoal(),
             $this->proposeProfileUpdate(),
+            $this->confirmProfileFact(),
             $this->proposeGoalCore(),
             $this->proposeGoalMilestones(),
             $this->proposeGoalComposition(),
@@ -262,6 +263,31 @@ class AdvisorToolFactory
                 $this->activity->report('Sto preparando una proposta per il tuo profilo…');
 
                 return $this->describeProfileProposal($horizon, $risk_tolerance, $income_monthly, $emergency_fund, $notes);
+            });
+    }
+
+    /**
+     * Update a factual profile field the user stated OUTRIGHT in an ordinary
+     * chat ("il mio reddito è salito a 2000", "ora ho un fondo di emergenza
+     * separato") — no profiling interview, no button. Emits the same one-click
+     * confirmation card as propose_profile_update (so it still never writes
+     * silently), but is allowed on any chat turn (isProfileFactAllowed), because
+     * confirming a plain fact doesn't need the interview-consent gate. Kept
+     * distinct from propose_profile_update, which is the reasoned end-of-
+     * interview proposal (with notes/synthesis) and stays consent-gated.
+     */
+    private function confirmProfileFact(): PrismTool
+    {
+        return Tool::as('confirm_profile_fact')
+            ->for('Usalo quando l\'utente DICHIARA direttamente un dato del suo profilo in chat, per aggiornarlo subito (senza intervista). Esempi: «il mio reddito è salito a 2000», «ora ho un fondo di emergenza separato», «il mio orizzonte è cambiato, ora è a lungo termine». Mostra una card di conferma con un solo click: NON salva da solo. Compila SOLO i campi che l\'utente ha effettivamente dichiarato in questo messaggio; lascia vuoti gli altri. Dopo averlo chiamato, conferma a parole cosa aggiornerai e invita a premere Applica.')
+            ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short", "medium", "long". Ometti se non dichiarato.', required: false)
+            ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low", "medium", "high". Ometti se non dichiarato.', required: false)
+            ->withNumberParameter('income_monthly', 'Reddito netto mensile in euro, es. 2000. Ometti se non dichiarato.', required: false)
+            ->withStringParameter('emergency_fund', 'Fondo di emergenza: uno tra "none", "partial", "separate". Ometti se non dichiarato.', required: false)
+            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null): string {
+                $this->activity->report('Sto aggiornando il tuo profilo…');
+
+                return $this->describeProfileFact($horizon, $risk_tolerance, $income_monthly, $emergency_fund);
             });
     }
 
@@ -1023,6 +1049,59 @@ class AdvisorToolFactory
             $lines[] = '  - Note: '.$notes;
         }
         $lines[] = 'La proposta è mostrata all\'utente con un pulsante per confermare: non è ancora salvata.';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Emit a one-click confirmation card for a factual profile field the user
+     * stated directly in chat. Reuses the profile_proposal widget (same card,
+     * same POST /advisor/profile write path), but is gated on isProfileFactAllowed
+     * — open on ordinary chat turns — instead of the interview-consent gate.
+     * Enum/number values are validated the same way; invalid ones are dropped.
+     */
+    private function describeProfileFact(?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund): string
+    {
+        $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
+        $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
+        $income = is_numeric($incomeMonthly) && (float) $incomeMonthly >= 0.0 ? round((float) $incomeMonthly, 2) : null;
+        $emergencyFund = in_array($emergencyFund, ['none', 'partial', 'separate'], true) ? $emergencyFund : null;
+
+        $proposed = array_filter([
+            'horizon' => $horizon,
+            'risk_tolerance' => $riskTolerance,
+            'income_monthly' => $income,
+            'emergency_fund' => $emergencyFund,
+        ], fn ($v): bool => $v !== null);
+
+        if ($proposed === []) {
+            return 'Non ho capito quale dato del profilo aggiornare. Chiedi all\'utente di precisare (reddito, cuscinetto, orizzonte o tolleranza).';
+        }
+
+        if (! $this->widgets->isProfileFactAllowed()) {
+            return 'Non posso aggiornare il profilo in questo contesto. Rispondi normalmente.';
+        }
+
+        $this->widgets->add('profile_proposal', $proposed);
+
+        $horizonLabels = ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo'];
+        $riskLabels = ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta'];
+        $fundLabels = ['none' => 'nessun fondo separato', 'partial' => 'parziale', 'separate' => 'fondo separato'];
+
+        $lines = ['Aggiornamento del profilo (da confermare con un click):'];
+        if ($horizon !== null) {
+            $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
+        }
+        if ($riskTolerance !== null) {
+            $lines[] = '  - Tolleranza al rischio: '.$riskLabels[$riskTolerance];
+        }
+        if ($income !== null) {
+            $lines[] = '  - Reddito mensile: '.$this->eur($income);
+        }
+        if ($emergencyFund !== null) {
+            $lines[] = '  - Cuscinetto di emergenza: '.$fundLabels[$emergencyFund];
+        }
+        $lines[] = 'La card è mostrata con un pulsante Applica: non è ancora salvata.';
 
         return implode("\n", $lines);
     }

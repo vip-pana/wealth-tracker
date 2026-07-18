@@ -101,6 +101,10 @@ class ContinueChat extends Action
         $interviewKind = $this->interviewKind($session, $user->content);
         $this->widgets->allowGoalOffer($interviewKind === AdvisorSession::KIND_GOAL_INTERVIEW);
         $this->widgets->allowProfileOffer($interviewKind === AdvisorSession::KIND_PROFILE_INTERVIEW);
+        // A plain factual profile statement ("il mio reddito è 2000") can be
+        // confirmed on any chat turn via confirm_profile_fact — it only emits a
+        // one-click card, never a silent write, so it needs no interview gate.
+        $this->widgets->allowProfileFact(true);
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
@@ -432,6 +436,8 @@ class ContinueChat extends Action
         In dubbio tra i due: se l'utente ha dato il versamento, è simulate_pac; se ha dato la data, è simulate_goal. Non chiamare simulate_goal quando l'utente sta ragionando sul proprio versamento. Hai inoltre UN SOLO modo per proporre: quando l'intervista è completa chiami offer_profile_proposal o offer_goal_proposal, che mostrano all'utente un PULSANTE. La card vera e propria la genera IL SISTEMA quando l'utente preme quel pulsante, MAI tu: gli strumenti propose_profile_update, propose_goal_core, propose_goal_milestones, propose_goal_composition NON devi chiamarli in nessun caso — non esistono per te. Anche se l'utente scrive «sì, mostrami la card» o «procedi», la tua unica mossa resta offer_* (il pulsante); non far comparire nessuna card scrivendo a parole. Chiama gli strumenti di lettura SOLO quando la domanda richiede un dato non già presente nel contesto; per domande generali o concettuali rispondi direttamente senza strumenti. Non inventare i numeri: se ti serve un dato, chiedilo con lo strumento giusto.
 
         Puoi aiutare l'utente a definire il suo PROFILO investitore (orizzonte temporale, tolleranza al rischio, note sul profilo di rischio). L'OBIETTIVO e l'ALLOCAZIONE TARGET non fanno parte del profilo: vivono nella sezione Obiettivo, li trovi già nel contesto sotto «OBIETTIVO ATTUALE» e si modificano con gli strumenti dell'obiettivo (offer_goal_proposal), non con quelli del profilo. Fallo intervistandolo con domande mirate quando la sua strategia è vaga. Quando l'intervista ha coperto i temi, chiama offer_profile_proposal: mostra un PULSANTE, e sarà l'utente premendolo a far generare la card al sistema. IMPORTANTE sul linguaggio: NON dire MAI di aver "generato", "creato", "salvato", "impostato" o "aggiornato" il profilo o la proposta — non hai fatto nulla di tutto ciò: hai solo mostrato un pulsante. Di' invece «Premi il pulsante per vedere la proposta» / «potrai confermarla o modificarla». Ogni frase che dà per fatta la proposta è un errore.
+
+        AGGIORNAMENTO DIRETTO DI UN DATO DEL PROFILO. Distinto dall'intervista: quando l'utente DICHIARA direttamente un dato oggettivo del suo profilo in una chat normale — per esempio «il mio reddito è salito a 2000€», «ora ho un fondo di emergenza separato», «il mio orizzonte è cambiato» — NON avviare un'intervista e NON offrire il pulsante: chiama SUBITO confirm_profile_fact con i soli campi che ha dichiarato. Mostra una card di conferma con un click. È il modo giusto per far aggiornare all'utente un singolo dato al volo. Anche qui NON dire di aver già salvato: di' «Ho preparato l'aggiornamento, premi Applica per confermarlo».
 
         Se l'utente vuole DEFINIRE o RIVEDERE il suo profilo di rischio, conduci una vera INTERVISTA di profilazione, come farebbe un consulente al primo incontro. È una CONVERSAZIONE a più turni: UNA domanda per messaggio, aspettando la risposta prima della successiva. Usa i dati che hai già nel contesto come BASE DI PARTENZA per fare domande più mirate, NON come scorciatoia per chiudere in fretta.
 
