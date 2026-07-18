@@ -4,17 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { PieChart, Check, AlertTriangle } from 'lucide-react';
-import type { GoalCompositionProposalWidget, GoalData, MacroCategory } from '@/Components/Advisor/types';
+import type { GoalCompositionProposalWidget, GoalData } from '@/Components/Advisor/types';
 
 /**
- * Does the goal's current macro composition already match these buckets (same
+ * Does the goal's current composition already match these buckets (same
  * categories and percentages)? If so the proposal was applied before, so we
  * render the applied state after a refresh.
  */
 function alreadyApplied(data: GoalCompositionProposalWidget['data'], goal: GoalData | null | undefined): boolean {
-    if (!goal || goal.macro_allocations.length !== data.buckets.length || data.buckets.length === 0) return false;
-    const current = new Map(goal.macro_allocations.map((a) => [a.macro_category, a.percentage]));
-    return data.buckets.every((b) => current.get(b.macro_category) === b.percentage);
+    if (!goal || goal.allocations.length !== data.buckets.length || data.buckets.length === 0) return false;
+    const current = new Map(goal.allocations.map((a) => [a.category, a.percentage]));
+    return data.buckets.every((b) => current.get(b.category) === b.percentage);
 }
 
 /**
@@ -27,7 +27,7 @@ function alreadyApplied(data: GoalCompositionProposalWidget['data'], goal: GoalD
  * can still apply (a deliberate, soft guard, matching the manual goal form).
  */
 export function GoalCompositionProposal({ data, goal }: { data: GoalCompositionProposalWidget['data']; goal?: GoalData | null }) {
-    const [rows, setRows] = useState<{ macro_category: MacroCategory; percentage: number }[]>(
+    const [rows, setRows] = useState<{ category: string; percentage: number }[]>(
         data.buckets.map((b) => ({ ...b })),
     );
     const [state, setState] = useState<'idle' | 'saving' | 'applied' | 'dismissed'>(
@@ -47,7 +47,7 @@ export function GoalCompositionProposal({ data, goal }: { data: GoalCompositionP
     const apply = () => {
         setState('saving');
         router.post('/advisor/goal/composition', {
-            macro_allocations: rows.map((r) => ({ macro_category: r.macro_category, percentage: r.percentage })),
+            allocations: rows.map((r) => ({ category: r.category, percentage: r.percentage })),
         }, {
             preserveScroll: true,
             preserveState: true,
@@ -70,8 +70,8 @@ export function GoalCompositionProposal({ data, goal }: { data: GoalCompositionP
 
                 <div className="space-y-1.5">
                     {rows.map((row, i) => (
-                        <div key={row.macro_category} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="font-medium">{row.macro_category}</span>
+                        <div key={row.category} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-medium">{row.category}</span>
                             <div className="flex items-center gap-1">
                                 <Input
                                     type="number"
@@ -82,7 +82,7 @@ export function GoalCompositionProposal({ data, goal }: { data: GoalCompositionP
                                     onChange={(e) => setPct(i, e.target.value)}
                                     disabled={state === 'saving' || state === 'applied'}
                                     className="h-7 w-20 text-right"
-                                    aria-label={`Percentuale ${row.macro_category}`}
+                                    aria-label={`Percentuale ${row.category}`}
                                 />
                                 <span className="text-muted-foreground">%</span>
                             </div>

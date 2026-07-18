@@ -61,6 +61,26 @@ class InvestorProfileTest extends TestCase
         $this->assertSame('Tollera i cali.', $context['investorProfile']['notes']);
     }
 
+    public function test_stores_income_and_emergency_fund(): void
+    {
+        $this->post('/advisor/profile', [
+            'income_monthly' => 2000,
+            'emergency_fund' => 'none',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('investor_profile', ['income_monthly' => 2000, 'emergency_fund' => 'none']);
+
+        $context = app(BuildAdvisorContext::class)->run();
+        $this->assertSame(2000.0, $context['investorProfile']['income_monthly']);
+        $this->assertSame('none', $context['investorProfile']['emergency_fund']);
+    }
+
+    public function test_rejects_an_invalid_emergency_fund_value(): void
+    {
+        $this->post('/advisor/profile', ['emergency_fund' => 'gold-bars'])
+            ->assertSessionHasErrors('emergency_fund');
+    }
+
     public function test_context_profile_is_null_when_unset(): void
     {
         $context = app(BuildAdvisorContext::class)->run();

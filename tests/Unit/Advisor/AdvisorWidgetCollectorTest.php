@@ -61,6 +61,26 @@ class AdvisorWidgetCollectorTest extends TestCase
         $this->assertSame('high', $widgets[1]['data']['risk_tolerance']);
     }
 
+    public function test_keeps_only_the_last_proposal_offer_button(): void
+    {
+        // A confused model can call offer_goal_proposal twice in one reply; only
+        // one button must reach the UI.
+        $collector = $this->armed();
+        $collector->add('proposal_offer', ['kind' => 'goal']);
+        $collector->add('proposal_offer', ['kind' => 'goal']);
+
+        $this->assertCount(1, $collector->widgets());
+    }
+
+    public function test_offer_buttons_of_different_kinds_are_both_kept(): void
+    {
+        $collector = $this->armed();
+        $collector->add('proposal_offer', ['kind' => 'goal']);
+        $collector->add('proposal_offer', ['kind' => 'profile']);
+
+        $this->assertCount(2, $collector->widgets());
+    }
+
     public function test_offer_gates_default_closed_and_toggle_independently(): void
     {
         $collector = new AdvisorWidgetCollector;

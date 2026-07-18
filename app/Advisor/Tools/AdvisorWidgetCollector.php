@@ -128,10 +128,13 @@ class AdvisorWidgetCollector
     }
 
     /**
-     * The collected widgets. Each proposal type (see PROPOSAL_TYPES) is
-     * de-duplicated keeping only the LAST one: a confused model can call a
-     * propose_* tool more than once within a single reply's tool loop, and only
-     * the final proposal of each kind should reach the UI. Other widget types
+     * The collected widgets, de-duplicated. Each proposal type (see
+     * PROPOSAL_TYPES) and each proposal_offer button is kept only ONCE — the
+     * LAST one — because a confused model can call a proposal or offer tool more
+     * than once within a single reply's tool loop, and only the final one of
+     * each kind should reach the UI (a duplicate offer button rendered twice).
+     * The offer button is keyed by type+kind so a goal offer and a profile offer
+     * (never expected together) wouldn't cancel each other. Other widget types
      * are all kept (a reply can legitimately carry several — e.g. two different
      * position cards).
      *
@@ -139,26 +142,49 @@ class AdvisorWidgetCollector
      */
     public function widgets(): array
     {
-        $lastIndexByType = [];
+        $lastIndexByKey = [];
         foreach ($this->widgets as $i => $widget) {
-            if (in_array($widget['type'], self::PROPOSAL_TYPES, true)) {
-                $lastIndexByType[$widget['type']] = $i;
+            $key = $this->dedupKey($widget);
+            if ($key !== null) {
+                $lastIndexByKey[$key] = $i;
             }
         }
 
-        if ($lastIndexByType === []) {
+        if ($lastIndexByKey === []) {
             return $this->widgets;
         }
 
         $out = [];
         foreach ($this->widgets as $i => $widget) {
-            if (isset($lastIndexByType[$widget['type']]) && $lastIndexByType[$widget['type']] !== $i) {
+            $key = $this->dedupKey($widget);
+            if ($key !== null && $lastIndexByKey[$key] !== $i) {
                 continue;
             }
             $out[] = $widget;
         }
 
         return $out;
+    }
+
+    /**
+     * The de-dup key for a widget, or null when the widget is not de-duplicated.
+     * Proposal cards de-dup by type; the proposal_offer button by type+kind.
+     *
+     * @param  array{type: string, data: array<string, mixed>}  $widget
+     */
+    private function dedupKey(array $widget): ?string
+    {
+        if (in_array($widget['type'], self::PROPOSAL_TYPES, true)) {
+            return $widget['type'];
+        }
+
+        if ($widget['type'] === 'proposal_offer') {
+            $kind = is_string($widget['data']['kind'] ?? null) ? $widget['data']['kind'] : '';
+
+            return 'proposal_offer:'.$kind;
+        }
+
+        return null;
     }
 
     public function clear(): void

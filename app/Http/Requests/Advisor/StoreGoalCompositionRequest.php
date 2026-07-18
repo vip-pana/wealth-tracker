@@ -12,9 +12,9 @@ class StoreGoalCompositionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'macro_allocations' => ['required', 'array', 'min:1'],
-            'macro_allocations.*.macro_category' => ['required', 'string', 'in:Liquidità,ETF,Cripto'],
-            'macro_allocations.*.percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'allocations' => ['required', 'array', 'min:1'],
+            'allocations.*.category' => ['required', 'string', 'exists:categories,name'],
+            'allocations.*.percentage' => ['required', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

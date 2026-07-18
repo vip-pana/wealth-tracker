@@ -50,7 +50,7 @@ describe('GoalMilestonesProposal', () => {
                         { notes: 'diverso', target_value: 500000, target_date: '2080-01-01' },
                         { notes: null, target_value: 750000, target_date: '2090-01-01' },
                     ],
-                    macro_allocations: [],
+                    allocations: [],
                 }}
             />,
         );

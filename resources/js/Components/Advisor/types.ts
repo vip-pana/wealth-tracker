@@ -110,11 +110,11 @@ export interface ProfileProposalWidget {
     data: {
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
+        income_monthly?: number;
+        emergency_fund?: 'none' | 'partial' | 'separate';
         notes?: string;
     };
 }
-
-export type MacroCategory = 'Liquidità' | 'ETF' | 'Cripto';
 
 /**
  * The user's current goal, passed as a page prop. Goal-proposal widgets compare
@@ -128,7 +128,7 @@ export interface GoalData {
     target_value: number;
     target_date: string | null;
     milestones: { notes: string | null; target_value: number; target_date: string }[];
-    macro_allocations: { macro_category: MacroCategory; percentage: number }[];
+    allocations: { category: string; percentage: number }[];
 }
 
 export interface GoalCoreProposalWidget {
@@ -150,7 +150,7 @@ export interface GoalMilestonesProposalWidget {
 export interface GoalCompositionProposalWidget {
     type: 'goal_composition_proposal';
     data: {
-        buckets: { macro_category: MacroCategory; percentage: number }[];
+        buckets: { category: string; percentage: number }[];
         rationale: string | null;
         total_pct: number;
     };

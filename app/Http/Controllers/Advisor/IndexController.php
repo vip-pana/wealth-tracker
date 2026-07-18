@@ -25,7 +25,7 @@ class IndexController extends Controller
     public function __invoke(?AdvisorSession $session = null): Response
     {
         $profile = InvestorProfile::query()->first();
-        $goal = Goal::query()->with(['milestones', 'categoryAllocations'])->first();
+        $goal = Goal::query()->with(['milestones', 'categoryAllocations.category'])->first();
 
         // Opening a session marks it read, so its unread dot clears. A session
         // whose reply is still generating is left unread until it finishes and
@@ -46,6 +46,8 @@ class IndexController extends Controller
             'profile' => $profile ? [
                 'horizon' => $profile->horizon,
                 'risk_tolerance' => $profile->risk_tolerance,
+                'income_monthly' => $profile->income_monthly,
+                'emergency_fund' => $profile->emergency_fund,
                 'notes' => $profile->notes,
             ] : null,
             'goal' => $goal instanceof Goal ? [
@@ -60,10 +62,9 @@ class IndexController extends Controller
                         'target_date' => $m->target_date->format('Y-m-d'),
                     ])
                     ->all(),
-                'macro_allocations' => $goal->categoryAllocations
-                    ->filter(fn ($a): bool => $a->macro_category !== null)
+                'allocations' => $goal->categoryAllocations
                     ->map(fn ($a): array => [
-                        'macro_category' => $a->macro_category,
+                        'category' => $a->category !== null ? $a->category->name : ($a->macro_category ?? 'Sconosciuta'),
                         'percentage' => (float) $a->percentage,
                     ])
                     ->values()

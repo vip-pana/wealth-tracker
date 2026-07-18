@@ -252,14 +252,16 @@ class AdvisorToolFactory
     private function proposeProfileUpdate(): PrismTool
     {
         return Tool::as('propose_profile_update')
-            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, reddito mensile, cuscinetto di emergenza, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
             ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short" (breve, <3 anni), "medium" (medio, 3-10 anni), "long" (lungo, 10+ anni). Ometti se non emerso.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low" (bassa), "medium" (media), "high" (alta). Ometti se non emerso.', required: false)
+            ->withNumberParameter('income_monthly', 'Reddito netto mensile in euro, es. 2000. Ometti se non emerso.', required: false)
+            ->withStringParameter('emergency_fund', 'Fondo di emergenza: uno tra "none" (nessun fondo separato, solo la liquidità del portafoglio), "partial" (parziale), "separate" (fondo separato dedicato). Ometti se non emerso.', required: false)
             ->withStringParameter('notes', 'Sintesi del ragionamento sul profilo di rischio (max 1000 caratteri): capacità di rischio (orizzonte, stabilità del reddito, cuscinetto di liquidità), tolleranza emotiva (reazione a un forte calo), e contesto rilevante. Compilalo quando hai condotto un\'intervista di profilazione, così il "perché" resta salvato.', required: false)
-            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, ?string $notes = null): string {
+            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null, ?string $notes = null): string {
                 $this->activity->report('Sto preparando una proposta per il tuo profilo…');
 
-                return $this->describeProfileProposal($horizon, $risk_tolerance, $notes);
+                return $this->describeProfileProposal($horizon, $risk_tolerance, $income_monthly, $emergency_fund, $notes);
             });
     }
 
@@ -371,19 +373,22 @@ class AdvisorToolFactory
      */
     private function proposeGoalComposition(): PrismTool
     {
+        $categories = $this->goalCategoryNames();
+        $list = implode(', ', $categories);
+
         return Tool::as('propose_goal_composition')
-            ->for('Suggerisci una composizione target del portafoglio per macro-categoria (Liquidità, ETF, Cripto), con una spiegazione del ragionamento. È un SUGGERIMENTO: la card mostra le percentuali proposte ma l\'utente può modificarle prima di applicare — non decidi tu i numeri finali. Usalo quando avete discusso come dovrebbe essere allocato il portafoglio per l\'obiettivo, coerentemente col profilo di rischio.')
+            ->for('Suggerisci una composizione target del portafoglio per categoria, con una spiegazione del ragionamento. È un SUGGERIMENTO: la card mostra le percentuali proposte ma l\'utente può modificarle prima di applicare — non decidi tu i numeri finali. Usa ESATTAMENTE le categorie reali dell\'utente ('.$list.'), includendole tutte, e le percentuali devono sommare 100%. Usalo quando avete discusso come dovrebbe essere allocato il portafoglio per l\'obiettivo, coerentemente col profilo di rischio.')
             ->withArrayParameter(
                 'buckets',
-                'Le macro-categorie con la percentuale suggerita. La somma dovrebbe avvicinarsi al 100%.',
+                'Le categorie con la percentuale suggerita. Includi TUTTE le categorie reali ('.$list.') e fai in modo che la somma sia 100%.',
                 new ObjectSchema(
                     'bucket',
-                    'Una macro-categoria con la sua quota suggerita.',
+                    'Una categoria con la sua quota suggerita.',
                     [
-                        new EnumSchema('macro_category', 'La macro-categoria.', ['Liquidità', 'ETF', 'Cripto']),
+                        new EnumSchema('category', 'La categoria (una tra quelle reali dell\'utente).', $categories),
                         new NumberSchema('percentage', 'Quota percentuale suggerita (0-100).'),
                     ],
-                    requiredFields: ['macro_category', 'percentage'],
+                    requiredFields: ['category', 'percentage'],
                 ),
             )
             ->withStringParameter('rationale', 'Spiegazione dei trade-off dietro questa composizione (max 1000 caratteri): perché questi pesi, come si legano al profilo di rischio e all\'orizzonte.', required: false)
@@ -393,6 +398,45 @@ class AdvisorToolFactory
                 /** @var list<array<string, mixed>> $buckets */
                 return $this->describeGoalCompositionProposal($buckets, $rationale);
             });
+    }
+
+    /**
+     * The real category names the goal composition should use: the categories of
+     * the goal's current target allocation, falling back to all portfolio
+     * categories. This keeps the advisor's proposal on the SAME categories the
+     * user already uses (so no bucket — e.g. Oro — silently disappears).
+     *
+     * make() builds every tool on each request, so this runs at tool-CONSTRUCTION
+     * time; it must not throw if the DB isn't reachable (e.g. a unit test with no
+     * migrated tables), or the whole chat surfaces "il modello non ha risposto".
+     * Degrade to an empty list — describeGoalCompositionProposal then rejects any
+     * bucket, which is the safe no-op.
+     *
+     * @return list<string>
+     */
+    private function goalCategoryNames(): array
+    {
+        try {
+            $goal = Goal::query()->with('categoryAllocations.category')->first();
+
+            if ($goal instanceof Goal) {
+                $names = $goal->categoryAllocations
+                    ->map(fn (GoalCategoryAllocation $a): ?string => $a->category !== null ? $a->category->name : $a->macro_category)
+                    ->filter(fn (?string $n): bool => $n !== null && $n !== '')
+                    ->unique()
+                    ->values();
+
+                if ($names->isNotEmpty()) {
+                    /** @var list<string> */
+                    return $names->all();
+                }
+            }
+
+            /** @var list<string> */
+            return Category::query()->orderBy('sort_order')->pluck('name')->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -926,15 +970,19 @@ class AdvisorToolFactory
      * enum is dropped (not proposed) so the model can't push an invalid value.
      * Returns without a widget when nothing valid was proposed.
      */
-    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, ?string $notes = null): string
+    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund, ?string $notes = null): string
     {
         $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
+        $income = is_numeric($incomeMonthly) && (float) $incomeMonthly >= 0.0 ? round((float) $incomeMonthly, 2) : null;
+        $emergencyFund = in_array($emergencyFund, ['none', 'partial', 'separate'], true) ? $emergencyFund : null;
         $notes = $notes !== null && trim($notes) !== '' ? mb_substr(trim($notes), 0, 1000) : null;
 
         $proposed = array_filter([
             'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
+            'income_monthly' => $income,
+            'emergency_fund' => $emergencyFund,
             'notes' => $notes,
         ], fn ($v): bool => $v !== null);
 
@@ -961,6 +1009,13 @@ class AdvisorToolFactory
         }
         if ($riskTolerance !== null) {
             $lines[] = '  - Tolleranza al rischio: '.$riskLabels[$riskTolerance];
+        }
+        if ($income !== null) {
+            $lines[] = '  - Reddito mensile: '.$this->eur($income);
+        }
+        if ($emergencyFund !== null) {
+            $fundLabels = ['none' => 'nessun fondo separato', 'partial' => 'parziale', 'separate' => 'fondo separato'];
+            $lines[] = '  - Cuscinetto di emergenza: '.$fundLabels[$emergencyFund];
         }
         if ($notes !== null) {
             $lines[] = '  - Note: '.$notes;
@@ -1085,31 +1140,41 @@ class AdvisorToolFactory
     {
         $rationale = $rationale !== null && trim($rationale) !== '' ? mb_substr(trim($rationale), 0, 1000) : null;
 
+        $allowed = $this->goalCategoryNames();
+
         $valid = [];
         foreach ($buckets as $b) {
-            $macro = is_string($b['macro_category'] ?? null) ? $b['macro_category'] : '';
+            $category = is_string($b['category'] ?? null) ? $b['category'] : '';
             $pct = is_numeric($b['percentage'] ?? null) ? (float) $b['percentage'] : null;
-            if (! in_array($macro, ['Liquidità', 'ETF', 'Cripto'], true)) {
+            if (! in_array($category, $allowed, true)) {
                 continue;
             }
             if ($pct === null) {
                 continue;
             }
 
-            $valid[] = ['macro_category' => $macro, 'percentage' => max(0.0, min(100.0, $pct))];
+            $valid[] = ['category' => $category, 'percentage' => max(0.0, min(100.0, $pct))];
         }
 
         if ($valid === []) {
-            return 'Non ho una composizione valida da suggerire. Le macro-categorie ammesse sono Liquidità, ETF e Cripto, con percentuali 0-100.';
-        }
-
-        if (! $this->widgets->isGoalProposalAllowed()) {
-            return 'NON proporre ancora. Non mostrare nessuna card. Prima CHIEDI esplicitamente all\'utente se vuole valutare una composizione target. Attendi il suo consenso.';
+            return 'Non ho una composizione valida da suggerire. Le categorie ammesse sono: '.implode(', ', $allowed).', con percentuali 0-100.';
         }
 
         $total = 0.0;
         foreach ($valid as $b) {
             $total += $b['percentage'];
+        }
+
+        // The composition must add up. A local/cloud model routinely drops a
+        // category (leaving e.g. 92%). Rather than emit a card the user has to
+        // fix by hand, refuse and tell the model to recompute to 100% including
+        // every real category — deterministic, not left to prompt obedience.
+        if (abs($total - 100.0) > 0.5) {
+            return 'La composizione proposta somma '.$this->num($total, 1).'%, non 100%. Ricalcola i pesi in modo che TUTTE le categorie reali ('.implode(', ', $allowed).') siano incluse e la somma faccia esattamente 100%, poi riprova. NON mostrare nessuna card finché non torna 100%.';
+        }
+
+        if (! $this->widgets->isGoalProposalAllowed()) {
+            return 'NON proporre ancora. Non mostrare nessuna card. Prima CHIEDI esplicitamente all\'utente se vuole valutare una composizione target. Attendi il suo consenso.';
         }
 
         $this->widgets->add('goal_composition_proposal', [
@@ -1120,7 +1185,7 @@ class AdvisorToolFactory
 
         $lines = ['Composizione target suggerita (modificabile prima di confermare):'];
         foreach ($valid as $b) {
-            $lines[] = '  - '.$b['macro_category'].': '.$this->num($b['percentage'], 1).'%';
+            $lines[] = '  - '.$b['category'].': '.$this->num($b['percentage'], 1).'%';
         }
         $lines[] = 'Totale: '.$this->num($total, 1).'%.';
         if ($rationale !== null) {

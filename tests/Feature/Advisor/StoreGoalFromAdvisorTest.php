@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Advisor;
 
+use App\Models\Category;
 use App\Models\Goal;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,31 +75,33 @@ class StoreGoalFromAdvisorTest extends TestCase
 
     public function test_composition_replaces_only_allocations_leaving_milestones_intact(): void
     {
+        $azioni = Category::factory()->create(['name' => 'Azioni']);
+        $liquidita = Category::factory()->create(['name' => 'Liquidità']);
         $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
-        $goal->categoryAllocations()->create(['category_id' => null, 'macro_category' => 'Cripto', 'percentage' => 100]);
+        $goal->categoryAllocations()->create(['category_id' => $azioni->id, 'macro_category' => null, 'percentage' => 100]);
         $goal->milestones()->create(['notes' => 'Tappa', 'target_value' => 100000, 'target_date' => '2050-01-01']);
 
         $this->post('/advisor/goal/composition', [
-            'macro_allocations' => [
-                ['macro_category' => 'ETF', 'percentage' => 70],
-                ['macro_category' => 'Liquidità', 'percentage' => 30],
+            'allocations' => [
+                ['category' => 'Azioni', 'percentage' => 70],
+                ['category' => 'Liquidità', 'percentage' => 30],
             ],
         ])->assertRedirect();
 
         $this->assertSame(2, $goal->categoryAllocations()->count());
-        $this->assertDatabaseHas('goal_category_allocations', ['macro_category' => 'ETF', 'percentage' => 70.0, 'deleted_at' => null]);
-        $this->assertDatabaseMissing('goal_category_allocations', ['macro_category' => 'Cripto', 'deleted_at' => null]);
+        $this->assertDatabaseHas('goal_category_allocations', ['category_id' => $azioni->id, 'percentage' => 70.0, 'deleted_at' => null]);
+        $this->assertDatabaseHas('goal_category_allocations', ['category_id' => $liquidita->id, 'percentage' => 30.0, 'deleted_at' => null]);
         // Milestones untouched.
         $this->assertSame(1, $goal->milestones()->count());
     }
 
-    public function test_composition_rejects_an_invalid_macro_category(): void
+    public function test_composition_rejects_an_unknown_category(): void
     {
         Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
 
         $this->post('/advisor/goal/composition', [
-            'macro_allocations' => [['macro_category' => 'Oro', 'percentage' => 100]],
-        ])->assertSessionHasErrors('macro_allocations.0.macro_category');
+            'allocations' => [['category' => 'Categoria Inesistente', 'percentage' => 100]],
+        ])->assertSessionHasErrors('allocations.0.category');
     }
 
     public function test_milestones_without_a_goal_redirect_with_an_error(): void

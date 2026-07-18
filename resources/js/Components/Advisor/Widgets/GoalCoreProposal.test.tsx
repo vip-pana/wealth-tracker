@@ -36,7 +36,7 @@ describe('GoalCoreProposal', () => {
                 data={{ target_value: 1000000, target_date: '2099-12-31' }}
                 goal={{
                     name: 'G', description: null, target_value: 1000000, target_date: '2099-12-31',
-                    milestones: [], macro_allocations: [],
+                    milestones: [], allocations: [],
                 }}
             />,
         );
@@ -50,7 +50,7 @@ describe('GoalCoreProposal', () => {
                 data={{ target_value: 1000000, target_date: '2099-12-31' }}
                 goal={{
                     name: 'G', description: null, target_value: 500000, target_date: '2099-12-31',
-                    milestones: [], macro_allocations: [],
+                    milestones: [], allocations: [],
                 }}
             />,
         );

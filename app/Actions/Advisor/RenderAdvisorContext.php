@@ -256,9 +256,22 @@ class RenderAdvisorContext extends Action
             return "PROFILO INVESTITORE: non compilato. Non assumere orizzonte o tolleranza al rischio: invita l'utente a definirlo per un'analisi più mirata.";
         }
 
-        $out = 'PROFILO INVESTITORE:';
+        $out = 'PROFILO INVESTITORE (già noto — NON richiedere questi dati, al massimo chiedi conferma se rilevante):';
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
+
+        if (is_numeric($profile['income_monthly'] ?? null)) {
+            $out .= "\n- Reddito mensile: ".$this->eur($profile['income_monthly']).' netti al mese.';
+        }
+
+        $fund = $this->labelOr($profile['emergency_fund'] ?? null, [
+            'none' => 'nessun fondo di emergenza separato (la liquidità del portafoglio è l\'unico cuscinetto)',
+            'partial' => 'fondo di emergenza parziale',
+            'separate' => 'fondo di emergenza separato dal portafoglio',
+        ]);
+        if ($fund !== 'non indicato') {
+            $out .= "\n- Cuscinetto di emergenza: ".$fund.'.';
+        }
 
         $notes = $profile['notes'] ?? null;
         if (is_string($notes) && $notes !== '') {

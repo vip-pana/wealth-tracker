@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
+import { Input } from '@/Components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -22,6 +23,8 @@ import { UserCog, Sparkles } from 'lucide-react';
 export interface InvestorProfile {
     horizon: string | null;
     risk_tolerance: string | null;
+    income_monthly: number | null;
+    emergency_fund: string | null;
     notes: string | null;
 }
 
@@ -42,6 +45,8 @@ export function ProfileDialog({
     const form = useForm({
         horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
+        income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
+        emergency_fund: profile?.emergency_fund ?? '',
     });
 
     // useForm seeds its data only once, so when the profile prop changes after a
@@ -54,9 +59,11 @@ export function ProfileDialog({
         setData({
             horizon: profile?.horizon ?? '',
             risk_tolerance: profile?.risk_tolerance ?? '',
+            income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
+            emergency_fund: profile?.emergency_fund ?? '',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.horizon, profile?.risk_tolerance]);
+    }, [profile?.horizon, profile?.risk_tolerance, profile?.income_monthly, profile?.emergency_fund]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,6 +101,30 @@ export function ProfileDialog({
                                     <SelectItem value="low">Bassa</SelectItem>
                                     <SelectItem value="medium">Media</SelectItem>
                                     <SelectItem value="high">Alta</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Reddito netto mensile</Label>
+                            <Input
+                                type="number"
+                                inputMode="decimal"
+                                min={0}
+                                value={form.data.income_monthly}
+                                onChange={(e) => form.setData('income_monthly', e.target.value)}
+                                placeholder="es. 2000"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Fondo di emergenza</Label>
+                            <Select value={form.data.emergency_fund} onValueChange={(v) => form.setData('emergency_fund', v)}>
+                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Nessuno separato</SelectItem>
+                                    <SelectItem value="partial">Parziale</SelectItem>
+                                    <SelectItem value="separate">Fondo separato</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

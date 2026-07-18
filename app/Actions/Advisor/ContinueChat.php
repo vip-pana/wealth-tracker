@@ -10,6 +10,7 @@ use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Contracts\AdvisorProvider;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
+use App\Models\InvestorProfile;
 
 class ContinueChat extends Action
 {
@@ -342,6 +343,14 @@ class ContinueChat extends Action
 
         $blob = mb_strtolower($contents->implode("\n"));
 
+        // A field the user has ALREADY persisted in the profile counts as covered
+        // even if it never came up in this conversation — the interview must not
+        // re-ask for it. The Goal (target/date) is likewise pre-known, but the
+        // OBIETTIVO ATTUALE briefing already carries it, so slots for target/date
+        // stay conversation-derived; income and tolerance are the ones the model
+        // kept re-asking despite the profile holding them.
+        $profile = InvestorProfile::query()->first();
+
         // Target amount: a figure with a thousands separator / "k"/"mila", or the
         // words milione/mila-euro, or an explicit "obiettivo/target di X".
         $target = preg_match('/\bmilion|\bmila\b|\d[\d.\s]{3,}(?:€|euro)?|\d+\s*k\b|\d+\s*mila/u', $blob) === 1;
@@ -350,13 +359,16 @@ class ContinueChat extends Action
         // age target ("a 50 anni", "quando avrò N anni").
         $date = preg_match('/\b20[3-9]\d\b|entro\s+\d+\s+anni|a\s+\d{2}\s+anni|\d{2}\s+anni/u', $blob) === 1;
 
-        // Income & buffer: mentions of salary/income, a monthly figure, or the
-        // emergency-fund question ("fondo di emergenza", "cuscinetto").
-        $income = preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil|fondo di emergenza|cuscinetto|liquidit/u', $blob) === 1;
+        // Income & buffer: covered if the profile persists a monthly income, else
+        // mentions of salary/income, a monthly figure, or the emergency-fund
+        // question ("fondo di emergenza", "cuscinetto").
+        $income = $profile?->income_monthly !== null
+            || preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil|fondo di emergenza|cuscinetto|liquidit/u', $blob) === 1;
 
-        // Emotional tolerance: reaction to a drawdown — a percentage drop, or the
-        // vocabulary of selling/holding/buying-more in a downturn.
-        $tolerance = preg_match('/-?\s*[1-5]0\s*%|cal[oi]|vender|aspetter|non vend|comprare di più|panico|paura|tollera|rischi/u', $blob) === 1;
+        // Emotional tolerance: covered if the profile already records a risk
+        // tolerance, else the reaction-to-a-drawdown vocabulary in this chat.
+        $tolerance = $profile?->risk_tolerance !== null
+            || preg_match('/-?\s*[1-5]0\s*%|cal[oi]|vender|aspetter|non vend|comprare di più|panico|paura|tollera|rischi/u', $blob) === 1;
 
         return ['target' => $target, 'date' => $date, 'income' => $income, 'tolerance' => $tolerance];
     }
@@ -447,15 +459,16 @@ class ContinueChat extends Action
         - NON ricominciare l'intervista da zero («iniziamo con l'orizzonte temporale…», «vuoi che proponga un nuovo obiettivo…») se l'hai già affrontato: dai per acquisite le risposte già ottenute in questa sessione e prosegui.
         - Se l'ultimo messaggio dell'utente è una CORREZIONE o un CHIARIMENTO di quello che hai appena detto (es. «intendevo il versamento ogni mese, non all'anno»), rispondi a QUELLA precisazione riusando il contesto già stabilito (importo, rendimento, crescita). NON ripartire dall'inizio e NON riproporre la domanda sul definire l'obiettivo: correggi solo ciò che l'utente ha chiarito.
         - DOPO aver già offerto il pulsante (o mostrato la proposta): se l'utente fa una domanda o un'osservazione (es. «l'oro lo stai includendo nella liquidità?»), RISPONDI solo a quella, riusando tutto ciò che è già emerso. NON ricominciare l'intervista da capo e NON rielencare «1. Importo target, 2. Data target, 3. Milestone…» — quelle informazioni le hai già. Se la sua osservazione richiede di correggere un valore della proposta, aggiorna la tua comprensione e rioffri il pulsante UNA volta; altrimenti limitati a rispondere.
+        - RISPETTA IL FOCUS DICHIARATO DALL'UTENTE. Se l'utente dice esplicitamente su cosa vuole lavorare (es. «l'obiettivo mi va bene, voglio solo rivedere le milestone» o «voglio sistemare l'allocazione»), CONCENTRATI su quello e NON riaprire i temi che ha dichiarato già a posto. Non re-interrogarlo sull'importo o sul "perché" dell'obiettivo se ti ha detto che quelli vanno bene: dai per acquisito ciò che è già nel contesto «OBIETTIVO ATTUALE» e passa direttamente al tema che l'utente vuole affrontare.
 
         RICONCILIA LE RISPOSTE CONTRADDITTORIE. Se l'utente prima dice una cosa e poi la corregge (es. all'inizio «avrei tanta paura» e più avanti «non avrei paura fino a un -30%»), vale SEMPRE l'ultima risposta, più meditata: non mediare tra le due e non trascinare la versione iniziale nelle conclusioni. Se la contraddizione è forte e non chiarita, chiedi conferma con UNA domanda prima di concludere.
 
-        Quando riassumi il profilo prima di offrire il pulsante: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali), e spiega a parole questo ragionamento. Il sistema, al click, compilerà la card con orizzonte, tolleranza e note: tu non compili campi, offri il pulsante.
+        Quando riassumi il profilo prima di offrire il pulsante: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali), e spiega a parole questo ragionamento. Il sistema, al click, compilerà la card con orizzonte, tolleranza, reddito mensile, cuscinetto di emergenza e note: tu non compili campi, offri il pulsante. Se orizzonte, tolleranza, reddito o cuscinetto sono GIÀ nel profilo (li vedi nel contesto «PROFILO INVESTITORE»), NON richiederli di nuovo: al massimo chiedi conferma se pensi siano cambiati.
 
         DEFINIRE L'OBIETTIVO. Puoi anche aiutare l'utente a definire meglio il suo OBIETTIVO finanziario e come raggiungerlo. Vale la STESSA regola del profilo: conduci una vera conversazione (capisci il bisogno reale — perché quel traguardo, per farci cosa, entro quando, quanto è vincolante), UNA domanda per messaggio. Quando la conversazione ha chiarito abbastanza (almeno quattro messaggi dell'utente), chiama offer_goal_proposal: mostra all'utente un PULSANTE per generare la proposta, invece di chiedere a parole. NON chiamare tu propose_goal_* di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare. A quel punto il sistema chiamerà gli strumenti giusti con i valori emersi:
         - propose_goal_core: l'obiettivo principale — importo target, data target, e una descrizione del "perché".
-        - propose_goal_milestones: tappe intermedie realistiche verso l'obiettivo (importo + data + etichetta).
-        - propose_goal_composition: una composizione target per macro-categoria. Qui è un SUGGERIMENTO: spiega i trade-off e proponi pesi coerenti col profilo di rischio e l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card. Rispecchia le categorie reali del portafoglio dell'utente (se ha una categoria Oro distinta, tienila distinta: non fonderla nella liquidità).
+        - propose_goal_milestones: tappe intermedie realistiche verso l'obiettivo. Per OGNI tappa il campo etichetta deve contenere DUE cose: un nome breve E l'AZIONE concreta da fare una volta raggiunta (es. «Metà percorso — inizia a ridurre il rischio: sposta ~5% da Bitcoin a strumenti più stabili»). L'utente vuole sapere COSA FARE a ogni tappa, non solo l'importo: un'etichetta senza azione non è utile.
+        - propose_goal_composition: una composizione target del portafoglio. Qui è un SUGGERIMENTO: spiega i trade-off e proponi pesi coerenti col profilo di rischio e l'orizzonte, ma i NUMERI FINALI li decide l'utente sulla card. Usa le CATEGORIE REALI dell'obiettivo attuale dell'utente (le trovi in «Allocazione target» nel contesto: es. Azioni, Obbligazioni, Oro, Bitcoin, Liquidità) — NON macro-categorie generiche, e NON omettere nessuna categoria esistente (se c'è l'Oro, includilo). Le percentuali devono sommare ESATTAMENTE 100%: ricontrolla la somma prima di proporre.
         Come per il profilo: NON dire mai di aver "generato", "salvato" o "impostato" l'obiettivo o le milestone — tu offri UN SOLO pulsante, l'utente lo preme, e il sistema genera le card. Un unico offer_goal_proposal copre obiettivo + milestone + composizione: non descrivere le card come già fatte né elencarne i contenuti come se esistessero già.
 
         IMPORTANTE sugli strumenti: quando ti serve un dato, CHIAMA davvero lo strumento (funzione). NON scrivere MAI la sintassi di una chiamata (nomi di funzione, blocchi tipo <function-call>, JSON di argomenti) dentro la risposta all'utente: l'utente vede solo il testo, non le chiamate. Se una domanda richiede più dati, chiama gli strumenti necessari (anche più d'uno) e solo dopo aver ricevuto tutti i risultati scrivi la risposta finale in linguaggio naturale.

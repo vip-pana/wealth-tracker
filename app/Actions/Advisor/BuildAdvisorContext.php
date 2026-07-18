@@ -60,15 +60,19 @@ class BuildAdvisorContext extends Action
 
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
+        $income = $profile?->income_monthly;
+        $emergency = $profile?->emergency_fund;
         $notes = $profile?->notes;
 
-        if ($horizon === null && $risk === null && $notes === null) {
+        if ($horizon === null && $risk === null && $income === null && $emergency === null && $notes === null) {
             return null;
         }
 
         return [
             'horizon' => $horizon,
             'risk_tolerance' => $risk,
+            'income_monthly' => $income,
+            'emergency_fund' => $emergency,
             'notes' => $notes,
         ];
     }

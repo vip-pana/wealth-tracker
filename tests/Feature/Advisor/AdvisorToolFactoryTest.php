@@ -531,6 +531,33 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('nervoso', $widgets[0]['data']['notes']);
     }
 
+    public function test_propose_profile_update_carries_income_and_emergency_fund(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            income_monthly: 2000,
+            emergency_fund: 'none',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertSame(2000.0, $widgets[0]['data']['income_monthly']);
+        $this->assertSame('none', $widgets[0]['data']['emergency_fund']);
+    }
+
+    public function test_propose_profile_update_drops_an_invalid_emergency_fund(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            risk_tolerance: 'high',
+            emergency_fund: 'invalid',
+        );
+
+        $widgets = $collector->widgets();
+        $this->assertCount(1, $widgets);
+        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
+    }
+
     public function test_propose_goal_core_emits_a_proposal_widget(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
@@ -594,14 +621,37 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame(500000.0, $widgets[0]['data']['milestones'][0]['target_value']);
     }
 
-    public function test_propose_goal_composition_passes_buckets_through_even_when_sum_is_not_100(): void
+    public function test_propose_goal_composition_refuses_a_composition_that_is_not_100(): void
     {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
+        Category::factory()->create(['name' => 'Oro']);
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        // The model dropped Oro, so the sum is 90 — the tool must refuse and emit
+        // no card, telling the model to recompute to 100% with every category.
+        $out = $this->tool($factory, 'propose_goal_composition')->handle(
+            buckets: [
+                ['category' => 'Azioni', 'percentage' => 70],
+                ['category' => 'Liquidità', 'percentage' => 20],
+            ],
+            rationale: 'Peso azionario alto coerente con orizzonte lungo.',
+        );
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('100%', $out);
+    }
+
+    public function test_propose_goal_composition_emits_the_card_when_it_sums_to_100(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
         $this->tool($factory, 'propose_goal_composition')->handle(
             buckets: [
-                ['macro_category' => 'ETF', 'percentage' => 70],
-                ['macro_category' => 'Liquidità', 'percentage' => 20],
-                ['macro_category' => 'Oro', 'percentage' => 10], // dropped: invalid macro
+                ['category' => 'Azioni', 'percentage' => 70],
+                ['category' => 'Liquidità', 'percentage' => 30],
             ],
             rationale: 'Peso azionario alto coerente con orizzonte lungo.',
         );
@@ -610,22 +660,26 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertCount(1, $widgets);
         $this->assertSame('goal_composition_proposal', $widgets[0]['type']);
         $this->assertCount(2, $widgets[0]['data']['buckets']);
-        // Sum is 90 (the invalid Oro bucket was dropped) — passed through, not forced to 100.
-        $this->assertSame(90.0, $widgets[0]['data']['total_pct']);
+        $this->assertSame(100.0, $widgets[0]['data']['total_pct']);
         $this->assertStringContainsString('orizzonte', $widgets[0]['data']['rationale']);
     }
 
-    public function test_propose_goal_composition_clamps_percentages_to_0_100(): void
+    public function test_propose_goal_composition_drops_unknown_categories(): void
     {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        // An unknown category is dropped; the remaining two still sum to 100.
         $this->tool($factory, 'propose_goal_composition')->handle(buckets: [
-            ['macro_category' => 'ETF', 'percentage' => 150],
-            ['macro_category' => 'Cripto', 'percentage' => -5],
+            ['category' => 'Azioni', 'percentage' => 70],
+            ['category' => 'Liquidità', 'percentage' => 30],
+            ['category' => 'Inesistente', 'percentage' => 50],
         ]);
 
         $widgets = $collector->widgets();
-        $this->assertSame(100.0, $widgets[0]['data']['buckets'][0]['percentage']);
-        $this->assertSame(0.0, $widgets[0]['data']['buckets'][1]['percentage']);
+        $this->assertCount(1, $widgets);
+        $this->assertCount(2, $widgets[0]['data']['buckets']);
     }
 
     public function test_offer_profile_proposal_emits_a_proposal_offer_button(): void
