@@ -32,84 +32,78 @@ class BuildAdvisorContext extends Action
         $dashboard = $this->fetchDashboardData->run();
         $extras = $this->computeExtras->run();
 
+        /** @var array<string, mixed> $portfolio */
+        $portfolio = $dashboard['portfolioMetrics'] ?? ['hasData' => false];
+
         return [
-            'portfolio' => $dashboard['portfolioMetrics'] ?? ['hasData' => false],
+            'portfolio' => $portfolio,
             'positionReturns' => $dashboard['positionReturns'] ?? null,
             'investorProfile' => $this->profile(),
+            'goal' => $this->goal($portfolio),
             'contribution' => $extras['contribution'] ?? null,
             'costs' => $extras['costs'] ?? null,
         ];
     }
 
     /**
-     * The user context the data can't reveal. Horizon and risk tolerance come
-     * only from the profile. Objective and target allocation default to the
-     * Goal section (their structured home) and are overridden by the profile's
-     * free-text fields when filled — each carries its resolved source so the
-     * model treats it as real, not inferred.
+     * The psychological side of the user the data can't reveal: horizon, risk
+     * tolerance and the free-text synthesis of the risk-profiling interview.
+     * The objective and target allocation are NOT here — they live in the Goal
+     * (their single source), assembled by goal() below.
      *
      * @return array<string, mixed>|null null only when there's nothing at all
      */
     private function profile(): ?array
     {
         $profile = InvestorProfile::query()->first();
-        $goal = Goal::query()->with('categoryAllocations.category')->first();
-
-        $objective = $this->resolveObjective($profile?->objective, $goal);
-        $allocation = $this->resolveAllocation($profile?->target_allocation, $goal);
 
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
         $notes = $profile?->notes;
 
-        if ($horizon === null && $risk === null && $objective === null && $allocation === null && $notes === null) {
+        if ($horizon === null && $risk === null && $notes === null) {
             return null;
         }
 
         return [
             'horizon' => $horizon,
             'risk_tolerance' => $risk,
-            'objective' => $objective,
-            'target_allocation' => $allocation,
             'notes' => $notes,
         ];
     }
 
     /**
-     * @return array{value: string, source: string}|null
+     * The objective as the user has already defined it in the Goal section —
+     * the single source of truth. Always assembled from the structured columns
+     * (name/target_value/target_date + GoalCategoryAllocation) so the advisor
+     * sees the real target and never re-asks the user for figures they've set.
+     *
+     * @param  array<string, mixed>  $portfolio
+     * @return array<string, mixed>|null null when no goal exists yet
      */
-    private function resolveObjective(?string $override, ?Goal $goal): ?array
+    private function goal(array $portfolio): ?array
     {
-        if ($override !== null && $override !== '') {
-            return ['value' => $override, 'source' => 'profile'];
-        }
-
-        if ($goal instanceof Goal) {
-            $value = $goal->name;
-            if ($goal->target_value > 0.0) {
-                $value .= ' (target '.number_format($goal->target_value, 0, ',', '.').'€'
-                    .($goal->target_date !== null ? ' entro il '.$goal->target_date->format('Y') : '').')';
-            }
-
-            return ['value' => $value, 'source' => 'goal'];
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array{value: string, source: string}|null
-     */
-    private function resolveAllocation(?string $override, ?Goal $goal): ?array
-    {
-        if ($override !== null && $override !== '') {
-            return ['value' => $override, 'source' => 'profile'];
-        }
+        $goal = Goal::query()->with('categoryAllocations.category')->first();
 
         if (! $goal instanceof Goal) {
             return null;
         }
 
+        $current = is_numeric($portfolio['totalNetWorth'] ?? null) ? (float) $portfolio['totalNetWorth'] : null;
+        $target = $goal->target_value > 0.0 ? $goal->target_value : null;
+
+        return [
+            'name' => $goal->name,
+            'target_value' => $target,
+            'target_year' => $goal->target_date?->format('Y'),
+            'target_allocation' => $this->targetAllocation($goal),
+            'current_value' => $current,
+            'remaining' => $target !== null && $current !== null ? max(0.0, $target - $current) : null,
+        ];
+    }
+
+    private function targetAllocation(Goal $goal): ?string
+    {
         $parts = $goal->categoryAllocations
             ->map(function (GoalCategoryAllocation $a): string {
                 $label = $a->category_id !== null
@@ -120,10 +114,6 @@ class BuildAdvisorContext extends Action
             })
             ->all();
 
-        if ($parts === []) {
-            return null;
-        }
-
-        return ['value' => implode(', ', $parts), 'source' => 'goal'];
+        return $parts === [] ? null : implode(', ', $parts);
     }
 }

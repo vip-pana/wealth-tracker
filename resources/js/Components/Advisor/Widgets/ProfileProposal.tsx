@@ -43,8 +43,6 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
     const rows: { label: string; value: string }[] = [];
     if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
     if (data.risk_tolerance) rows.push({ label: 'Tolleranza al rischio', value: RISK_LABELS[data.risk_tolerance] ?? data.risk_tolerance });
-    if (data.objective) rows.push({ label: 'Obiettivo', value: data.objective });
-    if (data.target_allocation) rows.push({ label: 'Allocazione target', value: data.target_allocation });
     if (data.notes) rows.push({ label: 'Note', value: data.notes });
 
     if (rows.length === 0) return null;

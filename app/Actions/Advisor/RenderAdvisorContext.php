@@ -37,6 +37,7 @@ class RenderAdvisorContext extends Action
         $lines[] = $this->volatilitySection($portfolio);
         $lines[] = $this->costsSection($context['costs'] ?? null);
         $lines[] = $this->contributionSection($context['contribution'] ?? null);
+        $lines[] = $this->objectiveSection($context['goal'] ?? null);
         $lines[] = $this->goalSection($portfolio);
         $lines[] = $this->profileSection($context['investorProfile'] ?? null);
 
@@ -162,6 +163,38 @@ class RenderAdvisorContext extends Action
     }
 
     /**
+     * The objective the user has ALREADY defined in the Goal section — always
+     * shown from the structured Goal data (name, target, year, target
+     * allocation, how much is left). The interview must never re-ask for a
+     * target the user has set; it confirms or refines what's here.
+     */
+    private function objectiveSection(mixed $goal): string
+    {
+        if (! is_array($goal)) {
+            return '';
+        }
+
+        $out = 'OBIETTIVO ATTUALE (già definito dall\'utente — NON richiedere di nuovo questi dati, al massimo aiutalo a confermarli o modificarli):';
+        $out .= "\n- Nome: ".$this->s($goal['name'] ?? '');
+
+        if (is_numeric($goal['target_value'] ?? null)) {
+            $year = is_string($goal['target_year'] ?? null) ? ' entro il '.$goal['target_year'] : '';
+            $out .= "\n- Target: ".$this->eur($goal['target_value']).$year.'.';
+        }
+
+        if (is_numeric($goal['current_value'] ?? null)) {
+            $left = is_numeric($goal['remaining'] ?? null) ? ' (mancano '.$this->eur($goal['remaining']).')' : '';
+            $out .= "\n- Valore attuale: ".$this->eur($goal['current_value']).$left.'.';
+        }
+
+        if (is_string($goal['target_allocation'] ?? null) && $goal['target_allocation'] !== '') {
+            $out .= "\n- Allocazione target: ".$goal['target_allocation'].'.';
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array<string, mixed>  $portfolio
      */
     private function goalSection(array $portfolio): string
@@ -174,7 +207,7 @@ class RenderAdvisorContext extends Action
         $g = $portfolio['goalEta'];
 
         if (($g['reached'] ?? false) === true) {
-            return 'OBIETTIVO: già raggiunto.';
+            return 'PROIEZIONE OBIETTIVO: già raggiunto.';
         }
 
         // The projection is the noisy part. When it's low-confidence, say so in
@@ -195,14 +228,12 @@ class RenderAdvisorContext extends Action
     private function profileSection(mixed $profile): string
     {
         if (! is_array($profile)) {
-            return "PROFILO INVESTITORE: non compilato. Non assumere orizzonte, rischio o obiettivo: invita l'utente a compilarlo per un'analisi più mirata.";
+            return "PROFILO INVESTITORE: non compilato. Non assumere orizzonte o tolleranza al rischio: invita l'utente a definirlo per un'analisi più mirata.";
         }
 
         $out = 'PROFILO INVESTITORE:';
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
-        $out .= "\n- Obiettivo: ".$this->sourced($profile['objective'] ?? null);
-        $out .= "\n- Allocazione target: ".$this->sourced($profile['target_allocation'] ?? null);
 
         $notes = $profile['notes'] ?? null;
         if (is_string($notes) && $notes !== '') {
@@ -218,17 +249,6 @@ class RenderAdvisorContext extends Action
     private function labelOr(mixed $value, array $map): string
     {
         return is_string($value) && isset($map[$value]) ? $map[$value] : 'non indicato';
-    }
-
-    private function sourced(mixed $field): string
-    {
-        if (! is_array($field) || ! is_string($field['value'] ?? null)) {
-            return 'non indicato';
-        }
-
-        $from = ($field['source'] ?? null) === 'goal' ? ' (dalla sezione Obiettivo)' : '';
-
-        return $this->userText($field['value']).$from;
     }
 
     private function s(mixed $value): string

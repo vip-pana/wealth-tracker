@@ -46,11 +46,8 @@ class IndexController extends Controller
             'profile' => $profile ? [
                 'horizon' => $profile->horizon,
                 'risk_tolerance' => $profile->risk_tolerance,
-                'objective' => $profile->objective,
-                'target_allocation' => $profile->target_allocation,
                 'notes' => $profile->notes,
             ] : null,
-            'goalObjective' => $goal?->name,
             'goal' => $goal instanceof Goal ? [
                 'name' => $goal->name,
                 'description' => $goal->description,

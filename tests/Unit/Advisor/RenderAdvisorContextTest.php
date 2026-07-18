@@ -111,19 +111,40 @@ class RenderAdvisorContextTest extends TestCase
         $this->assertStringContainsString('500', $out);
     }
 
-    public function test_profile_source_is_shown(): void
+    public function test_profile_shows_horizon_and_risk(): void
     {
         $out = (new RenderAdvisorContext)->run($this->context([
             'investorProfile' => [
                 'horizon' => 'long',
                 'risk_tolerance' => 'high',
-                'objective' => ['value' => 'Il primo milione', 'source' => 'goal'],
-                'target_allocation' => null,
+                'notes' => 'Tollera bene i cali.',
             ],
         ]));
 
+        $this->assertStringContainsString('PROFILO INVESTITORE', $out);
         $this->assertStringContainsString('lungo', $out);
+        $this->assertStringContainsString('alta', $out);
+        $this->assertStringContainsString('Tollera bene i cali.', $out);
+    }
+
+    public function test_objective_section_always_shows_the_goal_figures(): void
+    {
+        $out = (new RenderAdvisorContext)->run($this->context([
+            'goal' => [
+                'name' => 'Il primo milione',
+                'target_value' => 1000000,
+                'target_year' => '2051',
+                'target_allocation' => 'Azioni 65%, Bitcoin 15%',
+                'current_value' => 34632,
+                'remaining' => 965368,
+            ],
+        ]));
+
+        $this->assertStringContainsString('OBIETTIVO ATTUALE', $out);
         $this->assertStringContainsString('Il primo milione', $out);
-        $this->assertStringContainsString('dalla sezione Obiettivo', $out);
+        $this->assertStringContainsString('1.000.000€', $out);
+        $this->assertStringContainsString('2051', $out);
+        $this->assertStringContainsString('Azioni 65%', $out);
+        $this->assertStringContainsString('mancano', $out);
     }
 }

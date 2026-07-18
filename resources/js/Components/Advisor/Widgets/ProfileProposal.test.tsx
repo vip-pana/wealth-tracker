@@ -23,13 +23,13 @@ describe('ProfileProposal', () => {
 
     it('POSTs the proposal to /advisor/profile on Applica', async () => {
         const user = userEvent.setup();
-        render(<ProfileProposal data={{ horizon: 'short', objective: 'Casa' }} />);
+        render(<ProfileProposal data={{ horizon: 'short', notes: 'Prudente' }} />);
 
         await user.click(screen.getByRole('button', { name: 'Applica' }));
 
         expect(post).toHaveBeenCalledTimes(1);
         expect(post.mock.calls[0][0]).toBe('/advisor/profile');
-        expect(post.mock.calls[0][1]).toEqual({ horizon: 'short', objective: 'Casa' });
+        expect(post.mock.calls[0][1]).toEqual({ horizon: 'short', notes: 'Prudente' });
         // Partial reload of the profile prop so the profile dialog updates, while
         // preserveState keeps the open chat from remounting.
         expect(post.mock.calls[0][2]).toMatchObject({ preserveState: true, only: ['profile'] });
@@ -61,7 +61,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ horizon: 'long', risk_tolerance: 'high', objective: 'Qualcosa', target_allocation: null, notes: null }}
+                profile={{ horizon: 'long', risk_tolerance: 'high', notes: null }}
             />,
         );
         // Local state is gone after a refresh; matching the current profile means
@@ -74,7 +74,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ horizon: 'long', risk_tolerance: 'low', objective: null, target_allocation: null, notes: null }}
+                profile={{ horizon: 'long', risk_tolerance: 'low', notes: null }}
             />,
         );
         // risk_tolerance differs, so the proposal was not fully applied.

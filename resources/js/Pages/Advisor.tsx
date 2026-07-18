@@ -21,14 +21,13 @@ import { Sparkles, AlertTriangle, Trash2, UserCog, ChevronLeft } from 'lucide-re
 interface Props {
     configured: boolean;
     profile: InvestorProfile | null;
-    goalObjective: string | null;
     goal: GoalData | null;
     sessions: SessionSummary[];
     activeSession: ActiveSession | null;
     funFacts: string[];
 }
 
-export default function Advisor({ configured, profile, goalObjective, goal, sessions, activeSession, funFacts }: Props) {
+export default function Advisor({ configured, profile, goal, sessions, activeSession, funFacts }: Props) {
     // A `?ask=` query param (e.g. the "Ridefinisci con l'AI" button on the Goal
     // page) opens a fresh composer prefilled with that question, so the user
     // lands ready to send — or to tweak — rather than on the session list.
@@ -205,7 +204,6 @@ export default function Advisor({ configured, profile, goalObjective, goal, sess
                 open={profileOpen}
                 onClose={() => setProfileOpen(false)}
                 profile={profile}
-                goalObjective={goalObjective}
                 onDefineWithAi={() => {
                     setProfileOpen(false);
                     void startChat('Aiutami a definire il mio profilo di rischio');

@@ -45,7 +45,7 @@ export function GoalCoreProposal({ data, goal }: { data: GoalCoreProposalWidget[
         router.post('/advisor/goal', { ...data }, {
             preserveScroll: true,
             preserveState: true,
-            only: ['goal', 'goalObjective'],
+            only: ['goal'],
             onSuccess: () => setState('applied'),
             onError: () => setState('idle'),
         });

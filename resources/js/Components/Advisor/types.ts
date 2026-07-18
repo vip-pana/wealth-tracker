@@ -110,8 +110,6 @@ export interface ProfileProposalWidget {
     data: {
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
-        objective?: string;
-        target_allocation?: string;
         notes?: string;
     };
 }

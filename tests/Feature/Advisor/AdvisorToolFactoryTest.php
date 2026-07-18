@@ -464,8 +464,6 @@ class AdvisorToolFactoryTest extends TestCase
         $this->tool($factory, 'propose_profile_update')->handle(
             horizon: 'long',
             risk_tolerance: 'medium',
-            objective: 'Indipendenza finanziaria',
-            target_allocation: null,
         );
 
         $widgets = $collector->widgets();
@@ -473,9 +471,8 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame('profile_proposal', $widgets[0]['type']);
         $this->assertSame('long', $widgets[0]['data']['horizon']);
         $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
-        $this->assertSame('Indipendenza finanziaria', $widgets[0]['data']['objective']);
         // Fields not proposed are absent, not null.
-        $this->assertArrayNotHasKey('target_allocation', $widgets[0]['data']);
+        $this->assertArrayNotHasKey('notes', $widgets[0]['data']);
     }
 
     public function test_propose_profile_update_drops_an_invalid_enum_value(): void
