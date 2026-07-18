@@ -15,7 +15,7 @@ class FetchGoalData extends Action
     /** @return array<string, mixed> */
     public function run(): array
     {
-        $goal = Goal::with(['categoryAllocations', 'milestones'])->first();
+        $goal = Goal::with(['categoryAllocations', 'milestones.categoryAllocations'])->first();
 
         $categories = Category::orderBy('sort_order')->get();
 
@@ -47,7 +47,13 @@ class FetchGoalData extends Action
 
         $goalData = null;
         if ($goal !== null) {
-            $categoryAllocations = $goal->categoryAllocations
+            // The target shown as "vs current" is the CURRENT glide-path step —
+            // the next unreached milestone's allocation — not a single global
+            // target. Falls back to the goal's global allocation for a goal
+            // without per-milestone allocations.
+            $targetAllocation = $goal->currentTargetAllocation((float) ($currentNetWorth ?? 0));
+
+            $categoryAllocations = $targetAllocation
                 ->whereNull('macro_category')
                 ->map(fn ($a) => [
                     'category_id' => $a->category_id,
@@ -55,7 +61,7 @@ class FetchGoalData extends Action
                     'percentage' => $a->percentage,
                 ])->values()->toArray();
 
-            $macroAllocations = $goal->categoryAllocations
+            $macroAllocations = $targetAllocation
                 ->whereNotNull('macro_category')
                 ->map(fn ($a) => [
                     'category_id' => null,

@@ -214,6 +214,9 @@ class RenderAdvisorContext extends Action
             $label = is_string($m['label'] ?? null) && $m['label'] !== '' ? ' — '.$this->userText($m['label']) : '';
             $year = is_string($m['year'] ?? null) ? ' entro il '.$m['year'] : '';
             $out .= "\n  · ".$this->eur($m['value'] ?? null).$year.$label;
+            if (is_string($m['allocation'] ?? null) && $m['allocation'] !== '') {
+                $out .= ' (allocazione target: '.$m['allocation'].')';
+            }
         }
 
         return $out;

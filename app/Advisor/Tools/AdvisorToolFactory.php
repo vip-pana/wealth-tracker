@@ -841,10 +841,15 @@ class AdvisorToolFactory
             return 'Non ci sono ancora dati di portafoglio sufficienti.';
         }
 
-        $goal = Goal::query()->with('categoryAllocations.category')->first();
+        $goal = Goal::query()->with([
+            'categoryAllocations.category',
+            'milestones.categoryAllocations.category',
+        ])->first();
         $targets = [];
         if ($goal instanceof Goal) {
-            foreach ($goal->categoryAllocations as $a) {
+            // Compare against the CURRENT glide-path step (next unreached
+            // milestone's allocation), not a single global target.
+            foreach ($goal->currentTargetAllocation((float) $portfolio['totalNetWorth']) as $a) {
                 $label = $a->category_id !== null
                     ? ($a->category->name ?? 'Sconosciuta')
                     : ($a->macro_category ?? 'Sconosciuta');

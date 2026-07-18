@@ -10,6 +10,7 @@ use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
 use App\Models\GoalMilestone;
 use App\Models\InvestorProfile;
+use Illuminate\Support\Collection;
 
 class BuildAdvisorContext extends Action
 {
@@ -88,7 +89,10 @@ class BuildAdvisorContext extends Action
      */
     private function goal(array $portfolio): ?array
     {
-        $goal = Goal::query()->with(['categoryAllocations.category', 'milestones'])->first();
+        $goal = Goal::query()->with([
+            'categoryAllocations.category',
+            'milestones.categoryAllocations.category',
+        ])->first();
 
         if (! $goal instanceof Goal) {
             return null;
@@ -97,12 +101,17 @@ class BuildAdvisorContext extends Action
         $current = is_numeric($portfolio['totalNetWorth'] ?? null) ? (float) $portfolio['totalNetWorth'] : null;
         $target = $goal->target_value > 0.0 ? $goal->target_value : null;
 
+        // The "current" target allocation is the glide-path step the user is
+        // aiming for now: the next unreached milestone's allocation (or the
+        // global one for a pre-glide-path goal).
+        $currentAllocations = $goal->currentTargetAllocation($current ?? 0.0);
+
         return [
             'name' => $goal->name,
             'description' => $goal->description,
             'target_value' => $target,
             'target_year' => $goal->target_date?->format('Y'),
-            'target_allocation' => $this->targetAllocation($goal),
+            'target_allocation' => $this->formatAllocation($currentAllocations),
             'current_value' => $current,
             'remaining' => $target !== null && $current !== null ? max(0.0, $target - $current) : null,
             'milestones' => $this->milestones($goal),
@@ -110,7 +119,7 @@ class BuildAdvisorContext extends Action
     }
 
     /**
-     * @return list<array{value: float, year: string, label: string|null}>
+     * @return list<array{value: float, year: string, label: string|null, allocation: string|null}>
      */
     private function milestones(Goal $goal): array
     {
@@ -120,13 +129,17 @@ class BuildAdvisorContext extends Action
                 'value' => $m->target_value,
                 'year' => $m->target_date->format('Y'),
                 'label' => $m->notes,
+                'allocation' => $this->formatAllocation($m->categoryAllocations),
             ])
             ->all());
     }
 
-    private function targetAllocation(Goal $goal): ?string
+    /**
+     * @param  Collection<int, GoalCategoryAllocation>|\Illuminate\Database\Eloquent\Collection<int, GoalCategoryAllocation>  $allocations
+     */
+    private function formatAllocation($allocations): ?string
     {
-        $parts = $goal->categoryAllocations
+        $parts = $allocations
             ->map(function (GoalCategoryAllocation $a): string {
                 $label = $a->category_id !== null
                     ? ($a->category->name ?? 'Sconosciuta')

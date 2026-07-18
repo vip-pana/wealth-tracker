@@ -416,6 +416,25 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame(60.0, $azioniRow['target_pct']);
     }
 
+    public function test_allocation_vs_target_uses_the_next_milestones_allocation(): void
+    {
+        // portfolioContext totalNetWorth is 50000 (see setUp). The next unreached
+        // milestone is the 100k one; its allocation is the current target.
+        $azioni = Category::factory()->create(['name' => 'Azioni']);
+        $goal = Goal::create(['name' => 'FIRE', 'target_value' => 1000000, 'target_date' => '2050-01-01']);
+        $near = $goal->milestones()->create(['target_value' => 100000, 'target_date' => '2030-01-01']);
+        $far = $goal->milestones()->create(['target_value' => 500000, 'target_date' => '2040-01-01']);
+        $near->categoryAllocations()->create(['goal_id' => $goal->id, 'category_id' => $azioni->id, 'percentage' => 70]);
+        $far->categoryAllocations()->create(['goal_id' => $goal->id, 'category_id' => $azioni->id, 'percentage' => 40]);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'allocation_vs_target')->handle();
+
+        $azioniRow = collect($collector->widgets()[0]['data']['rows'])->firstWhere('name', 'Azioni');
+        // 70 (the NEAR milestone), not 40 (the far one).
+        $this->assertSame(70.0, $azioniRow['target_pct']);
+    }
+
     public function test_allocation_vs_target_reports_no_target_when_none_set(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
