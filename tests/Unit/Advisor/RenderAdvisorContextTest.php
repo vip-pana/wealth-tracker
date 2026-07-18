@@ -132,19 +132,43 @@ class RenderAdvisorContextTest extends TestCase
         $out = (new RenderAdvisorContext)->run($this->context([
             'goal' => [
                 'name' => 'Il primo milione',
+                'description' => 'Libertà finanziaria',
                 'target_value' => 1000000,
                 'target_year' => '2051',
                 'target_allocation' => 'Azioni 65%, Bitcoin 15%',
                 'current_value' => 34632,
                 'remaining' => 965368,
+                'milestones' => [
+                    ['value' => 250000, 'year' => '2036', 'label' => 'Primo quarto'],
+                    ['value' => 500000, 'year' => '2041', 'label' => 'Metà percorso'],
+                ],
             ],
         ]));
 
         $this->assertStringContainsString('OBIETTIVO ATTUALE', $out);
         $this->assertStringContainsString('Il primo milione', $out);
+        $this->assertStringContainsString('Libertà finanziaria', $out);
         $this->assertStringContainsString('1.000.000€', $out);
         $this->assertStringContainsString('2051', $out);
         $this->assertStringContainsString('Azioni 65%', $out);
         $this->assertStringContainsString('mancano', $out);
+        // The already-configured milestones must reach the model.
+        $this->assertStringContainsString('Milestone già configurate', $out);
+        $this->assertStringContainsString('250.000€', $out);
+        $this->assertStringContainsString('Primo quarto', $out);
+    }
+
+    public function test_objective_section_notes_when_no_milestones_configured(): void
+    {
+        $out = (new RenderAdvisorContext)->run($this->context([
+            'goal' => [
+                'name' => 'G',
+                'target_value' => 1000000,
+                'target_year' => '2051',
+                'milestones' => [],
+            ],
+        ]));
+
+        $this->assertStringContainsString('nessuna tappa intermedia configurata', $out);
     }
 }

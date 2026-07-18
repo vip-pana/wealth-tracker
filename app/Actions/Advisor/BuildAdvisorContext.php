@@ -8,6 +8,7 @@ use App\Actions\Action;
 use App\Actions\Dashboard\FetchDashboardData;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
+use App\Models\GoalMilestone;
 use App\Models\InvestorProfile;
 
 class BuildAdvisorContext extends Action
@@ -83,7 +84,7 @@ class BuildAdvisorContext extends Action
      */
     private function goal(array $portfolio): ?array
     {
-        $goal = Goal::query()->with('categoryAllocations.category')->first();
+        $goal = Goal::query()->with(['categoryAllocations.category', 'milestones'])->first();
 
         if (! $goal instanceof Goal) {
             return null;
@@ -94,12 +95,29 @@ class BuildAdvisorContext extends Action
 
         return [
             'name' => $goal->name,
+            'description' => $goal->description,
             'target_value' => $target,
             'target_year' => $goal->target_date?->format('Y'),
             'target_allocation' => $this->targetAllocation($goal),
             'current_value' => $current,
             'remaining' => $target !== null && $current !== null ? max(0.0, $target - $current) : null,
+            'milestones' => $this->milestones($goal),
         ];
+    }
+
+    /**
+     * @return list<array{value: float, year: string, label: string|null}>
+     */
+    private function milestones(Goal $goal): array
+    {
+        return array_values($goal->milestones
+            ->sortBy('target_value')
+            ->map(fn (GoalMilestone $m): array => [
+                'value' => $m->target_value,
+                'year' => $m->target_date->format('Y'),
+                'label' => $m->notes,
+            ])
+            ->all());
     }
 
     private function targetAllocation(Goal $goal): ?string

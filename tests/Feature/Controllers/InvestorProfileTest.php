@@ -97,4 +97,20 @@ class InvestorProfileTest extends TestCase
 
         $this->assertStringContainsString('ETF 60%', $context['goal']['target_allocation']);
     }
+
+    public function test_goal_context_carries_the_milestones_sorted_by_value(): void
+    {
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'description' => 'Libertà']);
+        $goal->milestones()->create(['target_value' => 500000, 'target_date' => '2041-01-01', 'notes' => 'Metà']);
+        $goal->milestones()->create(['target_value' => 250000, 'target_date' => '2036-01-01', 'notes' => 'Primo quarto']);
+
+        $context = app(BuildAdvisorContext::class)->run();
+
+        $this->assertSame('Libertà', $context['goal']['description']);
+        $this->assertCount(2, $context['goal']['milestones']);
+        $this->assertSame(250000.0, $context['goal']['milestones'][0]['value']);
+        $this->assertSame('2036', $context['goal']['milestones'][0]['year']);
+        $this->assertSame('Primo quarto', $context['goal']['milestones'][0]['label']);
+        $this->assertSame(500000.0, $context['goal']['milestones'][1]['value']);
+    }
 }

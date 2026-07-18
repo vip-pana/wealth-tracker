@@ -177,6 +177,10 @@ class RenderAdvisorContext extends Action
         $out = 'OBIETTIVO ATTUALE (già definito dall\'utente — NON richiedere di nuovo questi dati, al massimo aiutalo a confermarli o modificarli):';
         $out .= "\n- Nome: ".$this->s($goal['name'] ?? '');
 
+        if (is_string($goal['description'] ?? null) && $goal['description'] !== '') {
+            $out .= "\n- Descrizione: ".$this->userText($goal['description']);
+        }
+
         if (is_numeric($goal['target_value'] ?? null)) {
             $year = is_string($goal['target_year'] ?? null) ? ' entro il '.$goal['target_year'] : '';
             $out .= "\n- Target: ".$this->eur($goal['target_value']).$year.'.';
@@ -189,6 +193,27 @@ class RenderAdvisorContext extends Action
 
         if (is_string($goal['target_allocation'] ?? null) && $goal['target_allocation'] !== '') {
             $out .= "\n- Allocazione target: ".$goal['target_allocation'].'.';
+        }
+
+        $out .= $this->milestonesLines($goal['milestones'] ?? null);
+
+        return $out;
+    }
+
+    private function milestonesLines(mixed $milestones): string
+    {
+        if (! is_array($milestones) || $milestones === []) {
+            return "\n- Milestone: nessuna tappa intermedia configurata.";
+        }
+
+        $out = "\n- Milestone già configurate (tappe intermedie verso l'obiettivo):";
+        foreach ($milestones as $m) {
+            if (! is_array($m)) {
+                continue;
+            }
+            $label = is_string($m['label'] ?? null) && $m['label'] !== '' ? ' — '.$this->userText($m['label']) : '';
+            $year = is_string($m['year'] ?? null) ? ' entro il '.$m['year'] : '';
+            $out .= "\n  · ".$this->eur($m['value'] ?? null).$year.$label;
         }
 
         return $out;
