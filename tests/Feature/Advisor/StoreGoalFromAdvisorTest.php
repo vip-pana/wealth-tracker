@@ -61,12 +61,12 @@ class StoreGoalFromAdvisorTest extends TestCase
 
         $this->post('/advisor/goal/milestones', [
             'milestones' => [
-                ['notes' => 'Metà', 'target_value' => 500000, 'target_date' => '2080-01-01'],
+                ['notes' => 'Metà', 'action' => 'Sposta 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000, 'target_date' => '2080-01-01'],
             ],
         ])->assertRedirect();
 
         $this->assertSame(1, $goal->milestones()->count());
-        $this->assertDatabaseHas('goal_milestones', ['notes' => 'Metà', 'target_value' => 500000.0, 'deleted_at' => null]);
+        $this->assertDatabaseHas('goal_milestones', ['notes' => 'Metà', 'action' => 'Sposta 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000.0, 'deleted_at' => null]);
         // The old milestone is gone from the active set (soft-deleted).
         $this->assertDatabaseMissing('goal_milestones', ['notes' => 'Vecchia', 'deleted_at' => null]);
         // Composition untouched.

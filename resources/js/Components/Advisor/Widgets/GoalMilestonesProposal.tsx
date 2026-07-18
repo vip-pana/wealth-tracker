@@ -38,6 +38,8 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
         router.post('/advisor/goal/milestones', {
             milestones: data.milestones.map((m) => ({
                 notes: m.label,
+                action: m.action,
+                rationale: m.rationale,
                 target_value: m.target_value,
                 target_date: m.target_date,
             })),
@@ -59,13 +61,21 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                 </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3 space-y-3">
-                <ol className="space-y-1.5 text-xs">
+                <ol className="space-y-2.5 text-xs">
                     {data.milestones.map((m, i) => (
-                        <li key={i} className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-2">
-                            <span className="text-muted-foreground">{m.label ?? `Tappa ${i + 1}`}</span>
-                            <span className="font-medium sm:text-right">
-                                {formatCurrencyNoDecimals(m.target_value)} · {formatDateLong(m.target_date)}
-                            </span>
+                        <li key={i} className="space-y-1 border-l-2 border-border pl-2.5">
+                            <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-2">
+                                <span className="font-medium">{m.label ?? `Tappa ${i + 1}`}</span>
+                                <span className="text-muted-foreground sm:text-right">
+                                    {formatCurrencyNoDecimals(m.target_value)} · {formatDateLong(m.target_date)}
+                                </span>
+                            </div>
+                            {m.action && (
+                                <p><span className="font-medium text-foreground">Azione: </span><span className="text-muted-foreground">{m.action}</span></p>
+                            )}
+                            {m.rationale && (
+                                <p><span className="font-medium text-foreground">Perché: </span><span className="text-muted-foreground">{m.rationale}</span></p>
+                            )}
                         </li>
                     ))}
                 </ol>

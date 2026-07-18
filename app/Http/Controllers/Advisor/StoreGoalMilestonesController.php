@@ -30,8 +30,12 @@ class StoreGoalMilestonesController extends Controller
         $milestones = $request->input('milestones', []);
         foreach ($milestones as $milestone) {
             $notes = isset($milestone['notes']) ? (string) $milestone['notes'] : '';
+            $action = isset($milestone['action']) ? (string) $milestone['action'] : '';
+            $rationale = isset($milestone['rationale']) ? (string) $milestone['rationale'] : '';
             $goal->milestones()->create([
                 'notes' => $notes !== '' ? $notes : null,
+                'action' => $action !== '' ? $action : null,
+                'rationale' => $rationale !== '' ? $rationale : null,
                 'target_value' => (float) $milestone['target_value'],
                 'target_date' => (string) $milestone['target_date'],
             ]);

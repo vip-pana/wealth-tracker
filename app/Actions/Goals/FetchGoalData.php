@@ -68,6 +68,8 @@ class FetchGoalData extends Action
                 ->map(fn ($m) => [
                     'id' => $m->id,
                     'notes' => $m->notes,
+                    'action' => $m->action,
+                    'rationale' => $m->rationale,
                     'target_value' => $m->target_value,
                     'target_date' => $m->target_date->format('Y-m-d'),
                 ])->values()->toArray();

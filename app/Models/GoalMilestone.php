@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $goal_id
  * @property string|null $notes
+ * @property string|null $action
+ * @property string|null $rationale
  * @property float $target_value
  * @property Carbon $target_date
  * @property Carbon|null $deleted_at
@@ -21,7 +23,7 @@ class GoalMilestone extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['goal_id', 'notes', 'target_value', 'target_date'];
+    protected $fillable = ['goal_id', 'notes', 'action', 'rationale', 'target_value', 'target_date'];
 
     protected $casts = [
         'target_value' => 'float',

@@ -608,7 +608,7 @@ class AdvisorToolFactoryTest extends TestCase
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
-            ['label' => 'Metà percorso', 'target_value' => 500000, 'target_date' => '2099-06-30'],
+            ['label' => 'Metà percorso', 'action' => 'Sposta il 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità avvicinandosi al target.', 'target_value' => 500000, 'target_date' => '2099-06-30'],
             ['label' => 'Nel passato', 'target_value' => 250000, 'target_date' => '2000-01-01'], // dropped: past
             ['label' => 'Senza valore', 'target_value' => 0, 'target_date' => '2099-01-01'],     // dropped: non-positive
         ]);
@@ -618,6 +618,8 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame('goal_milestones_proposal', $widgets[0]['type']);
         $this->assertCount(1, $widgets[0]['data']['milestones']);
         $this->assertSame('Metà percorso', $widgets[0]['data']['milestones'][0]['label']);
+        $this->assertSame('Sposta il 5% da Bitcoin a Obbligazioni.', $widgets[0]['data']['milestones'][0]['action']);
+        $this->assertSame('Riduce la volatilità avvicinandosi al target.', $widgets[0]['data']['milestones'][0]['rationale']);
         $this->assertSame(500000.0, $widgets[0]['data']['milestones'][0]['target_value']);
     }
 

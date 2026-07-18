@@ -342,7 +342,7 @@ class AdvisorToolFactory
         $today = Carbon::now()->format('Y-m-d');
 
         return Tool::as('propose_goal_milestones')
-            ->for('Proponi delle tappe intermedie (milestone) verso l\'obiettivo: ognuna con un importo, una data e un\'etichetta. NON salva: mostra una card che l\'utente conferma. Usalo quando avete ragionato su come scomporre l\'obiettivo in traguardi intermedi realistici.')
+            ->for('Proponi delle tappe intermedie (milestone) verso l\'obiettivo: ognuna con importo, data, etichetta, un\'AZIONE concreta e il suo RAZIONALE. NON salva: mostra una card che l\'utente conferma. Usalo quando avete ragionato su come scomporre l\'obiettivo in traguardi intermedi realistici. Le tappe devono essere quelle di un vero consulente: non basta l\'importo, servono azione e spiegazione.')
             ->withArrayParameter(
                 'milestones',
                 'Elenco delle tappe intermedie proposte, in ordine cronologico.',
@@ -351,6 +351,8 @@ class AdvisorToolFactory
                     'Una tappa intermedia verso l\'obiettivo.',
                     [
                         new StringSchema('label', 'Breve etichetta della tappa, es. "Metà percorso". Facoltativa.'),
+                        new StringSchema('action', 'L\'AZIONE concreta da compiere una volta raggiunta questa tappa, in modo specifico e attuabile (es. "Sposta il 5% del portafoglio da Bitcoin a Obbligazioni e rivedi il PAC"). Se parli di una "fase di mantenimento" o di un cambio di strategia, spiega cosa significa in pratica.'),
+                        new StringSchema('rationale', 'Il PERCHÉ di questa azione: il ragionamento che faresti come consulente (es. "Avvicinandoti all\'obiettivo il rischio di sequenza dei rendimenti aumenta: ridurre gli asset volatili protegge il capitale accumulato"). Chiaro e concreto, spiega anche i termini tecnici che usi.'),
                         new NumberSchema('target_value', 'Importo della tappa in euro, es. 500000.'),
                         new StringSchema('target_date', "Data della tappa in formato AAAA-MM-GG, futura (dopo {$today})."),
                     ],
@@ -1103,8 +1105,14 @@ class AdvisorToolFactory
             $label = is_string($m['label'] ?? null) && trim($m['label']) !== ''
                 ? mb_substr(trim($m['label']), 0, 100)
                 : null;
+            $action = is_string($m['action'] ?? null) && trim($m['action']) !== ''
+                ? mb_substr(trim($m['action']), 0, 500)
+                : null;
+            $rationale = is_string($m['rationale'] ?? null) && trim($m['rationale']) !== ''
+                ? mb_substr(trim($m['rationale']), 0, 800)
+                : null;
 
-            $valid[] = ['label' => $label, 'target_value' => $value, 'target_date' => $date];
+            $valid[] = ['label' => $label, 'action' => $action, 'rationale' => $rationale, 'target_value' => $value, 'target_date' => $date];
         }
 
         if ($valid === []) {
@@ -1121,6 +1129,12 @@ class AdvisorToolFactory
         foreach ($valid as $m) {
             $label = $m['label'] !== null ? $m['label'].' — ' : '';
             $lines[] = '  - '.$label.$this->eur($m['target_value']).' entro il '.$m['target_date'];
+            if ($m['action'] !== null) {
+                $lines[] = '    Azione: '.$m['action'];
+            }
+            if ($m['rationale'] !== null) {
+                $lines[] = '    Perché: '.$m['rationale'];
+            }
         }
         $lines[] = 'La proposta è mostrata con un pulsante per confermare: non è ancora salvata.';
 

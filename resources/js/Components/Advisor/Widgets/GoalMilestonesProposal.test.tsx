@@ -11,21 +11,23 @@ import { GoalMilestonesProposal } from '@/Components/Advisor/Widgets/GoalMilesto
 
 const data = {
     milestones: [
-        { label: 'Metà', target_value: 500000, target_date: '2080-01-01' },
-        { label: null, target_value: 750000, target_date: '2090-01-01' },
+        { label: 'Metà', action: 'Sposta 5% da Bitcoin a Obbligazioni.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01' },
+        { label: null, action: null, rationale: null, target_value: 750000, target_date: '2090-01-01' },
     ],
 };
 
 describe('GoalMilestonesProposal', () => {
     beforeEach(() => post.mockReset());
 
-    it('lists the proposed milestones with a fallback label', () => {
+    it('lists the proposed milestones with a fallback label and shows action/rationale', () => {
         render(<GoalMilestonesProposal data={data} />);
         expect(screen.getByText('Metà')).toBeInTheDocument();
         expect(screen.getByText('Tappa 2')).toBeInTheDocument();
+        expect(screen.getByText(/Sposta 5% da Bitcoin/)).toBeInTheDocument();
+        expect(screen.getByText(/Riduce la volatilità/)).toBeInTheDocument();
     });
 
-    it('POSTs the milestones with label mapped to notes on Applica', async () => {
+    it('POSTs the milestones with label/action/rationale on Applica', async () => {
         const user = userEvent.setup();
         render(<GoalMilestonesProposal data={data} />);
 
@@ -34,8 +36,8 @@ describe('GoalMilestonesProposal', () => {
         expect(post.mock.calls[0][0]).toBe('/advisor/goal/milestones');
         expect(post.mock.calls[0][1]).toEqual({
             milestones: [
-                { notes: 'Metà', target_value: 500000, target_date: '2080-01-01' },
-                { notes: null, target_value: 750000, target_date: '2090-01-01' },
+                { notes: 'Metà', action: 'Sposta 5% da Bitcoin a Obbligazioni.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01' },
+                { notes: null, action: null, rationale: null, target_value: 750000, target_date: '2090-01-01' },
             ],
         });
     });

@@ -75,6 +75,8 @@ export interface GoalCategoryAllocation {
 export interface GoalMilestone {
     id: number;
     notes: string | null;
+    action?: string | null;
+    rationale?: string | null;
     target_value: number;
     target_date: string; // "YYYY-MM-DD"
 }
