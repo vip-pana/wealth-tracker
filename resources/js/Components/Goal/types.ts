@@ -22,6 +22,8 @@ export interface AllocationFormItem {
 
 export interface MilestoneFormItem {
     notes: string;
+    action: string;
+    rationale: string;
     target_value: string;
     target_date: string;
     allocation: AllocationFormItem[];

@@ -30,8 +30,12 @@ class UpdateController extends Controller
         $milestones = $request->input('milestones', []);
         foreach ($milestones as $milestone) {
             $notes = is_string($milestone['notes'] ?? null) ? $milestone['notes'] : '';
+            $action = is_string($milestone['action'] ?? null) ? $milestone['action'] : '';
+            $rationale = is_string($milestone['rationale'] ?? null) ? $milestone['rationale'] : '';
             $created = $goal->milestones()->create([
                 'notes' => $notes !== '' ? $notes : null,
+                'action' => $action !== '' ? $action : null,
+                'rationale' => $rationale !== '' ? $rationale : null,
                 'target_value' => is_numeric($milestone['target_value'] ?? null) ? (float) $milestone['target_value'] : 0.0,
                 'target_date' => is_string($milestone['target_date'] ?? null) ? $milestone['target_date'] : '',
             ]);

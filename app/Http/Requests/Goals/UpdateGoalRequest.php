@@ -18,6 +18,8 @@ class UpdateGoalRequest extends FormRequest
             'target_date' => ['nullable', 'date'],
             'milestones' => ['nullable', 'array'],
             'milestones.*.notes' => ['nullable', 'string'],
+            'milestones.*.action' => ['nullable', 'string', 'max:500'],
+            'milestones.*.rationale' => ['nullable', 'string', 'max:800'],
             'milestones.*.target_value' => ['required', 'numeric', 'min:0'],
             'milestones.*.target_date' => ['required', 'date'],
             'milestones.*.allocation' => ['nullable', 'array'],

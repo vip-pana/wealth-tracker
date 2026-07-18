@@ -91,8 +91,8 @@ export function MilestoneFormRow({
                     <textarea
                         value={item.notes}
                         onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
-                        placeholder="Note opzionali..."
-                        rows={3}
+                        placeholder="Etichetta breve, es. Metà percorso"
+                        rows={2}
                         autoFocus
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
@@ -102,9 +102,32 @@ export function MilestoneFormRow({
                         onClick={() => setNoteOpen(true)}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                        + Aggiungi nota
+                        + Aggiungi etichetta
                     </button>
                 )}
+
+                {/* Action + rationale: the consultant's "what to do here" and
+                    "why". Editable so the user can refine what the AI wrote. */}
+                <div className="space-y-0.5">
+                    <label className="text-xs text-muted-foreground">Azione</label>
+                    <textarea
+                        value={item.action}
+                        onChange={(e) => onUpdate(idx, 'action', e.target.value)}
+                        placeholder="Cosa fare una volta raggiunta questa tappa"
+                        rows={2}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                </div>
+                <div className="space-y-0.5">
+                    <label className="text-xs text-muted-foreground">Perché</label>
+                    <textarea
+                        value={item.rationale}
+                        onChange={(e) => onUpdate(idx, 'rationale', e.target.value)}
+                        placeholder="Il motivo di questa azione"
+                        rows={2}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                </div>
 
                 {/* Per-milestone target allocation (the glide-path step) */}
                 <div className="rounded-md border border-border/60 p-2.5">

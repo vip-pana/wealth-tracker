@@ -29,7 +29,7 @@ class GoalFormTest extends TestCase
             'name' => 'FIRE',
             'target_value' => 1000000,
             'milestones' => [
-                ['notes' => 'Primo quarto', 'target_value' => 250000, 'target_date' => '2036-01-01', 'allocation' => [
+                ['notes' => 'Primo quarto', 'action' => 'Ribilancia il portafoglio.', 'rationale' => 'Mantiene il profilo di rischio.', 'target_value' => 250000, 'target_date' => '2036-01-01', 'allocation' => [
                     ['category_id' => $azioni->id, 'percentage' => 70],
                     ['category_id' => $liquidita->id, 'percentage' => 30],
                 ]],
@@ -38,6 +38,8 @@ class GoalFormTest extends TestCase
 
         $goal = Goal::query()->firstOrFail();
         $milestone = $goal->milestones()->firstOrFail();
+        $this->assertSame('Ribilancia il portafoglio.', $milestone->action);
+        $this->assertSame('Mantiene il profilo di rischio.', $milestone->rationale);
         $this->assertSame(2, $milestone->categoryAllocations()->count());
         $this->assertDatabaseHas('goal_category_allocations', [
             'milestone_id' => $milestone->id, 'category_id' => $azioni->id, 'percentage' => 70.0,

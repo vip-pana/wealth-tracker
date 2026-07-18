@@ -28,6 +28,8 @@ export function GoalFormDialog({
     const buildMilestones = (): MilestoneFormItem[] =>
         goal?.milestones.map((m) => ({
             notes: m.notes ?? '',
+            action: m.action ?? '',
+            rationale: m.rationale ?? '',
             target_value: String(m.target_value),
             target_date: m.target_date,
             allocation: (m.allocation ?? []).map((a) => ({
@@ -158,7 +160,7 @@ export function GoalFormDialog({
                             <MilestonesSection
                                 items={data.milestones as MilestoneFormItem[]}
                                 categories={categories}
-                                onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', target_value: '', target_date: '', allocation: [] }])}
+                                onAdd={() => setData('milestones', [...(data.milestones as MilestoneFormItem[]), { notes: '', action: '', rationale: '', target_value: '', target_date: '', allocation: [] }])}
                                 onUpdate={updateMilestone}
                                 onUpdateAllocation={updateMilestoneAllocation}
                                 onRemove={(idx) => setData('milestones', (data.milestones as MilestoneFormItem[]).filter((_, i) => i !== idx))}
