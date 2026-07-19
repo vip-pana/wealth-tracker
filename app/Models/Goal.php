@@ -66,9 +66,68 @@ class Goal extends Model
             ?? $ordered->last();
 
         if ($next instanceof GoalMilestone && $next->categoryAllocations->isNotEmpty()) {
-            return $next->categoryAllocations->values();
+            // Percentages are resolved against the milestone's OWN target value
+            // (the level the allocation describes), so a cap of "50k" clamps the
+            // share at that level, not at the user's current net worth.
+            return self::applyAllocationCaps($next->categoryAllocations->values(), $next->target_value);
         }
 
         return $this->categoryAllocations->whereNull('milestone_id')->values();
+    }
+
+    /**
+     * Apply each row's absolute `cap_amount` to the allocation, adjusting the
+     * in-memory `percentage` of the returned instances (never persisted — every
+     * caller only reads them). When a row's `pct × targetValue` exceeds its cap,
+     * the row is clamped to `cap/targetValue` and the freed percentage is spread
+     * over the UNCAPPED rows in proportion to their weights. Several caps can
+     * bind at once; if every row is capped, the excess is left unallocated (the
+     * percentages sum to under 100) rather than silently forced back to 100.
+     *
+     * Mirrors applyAllocationCaps() in resources/js/lib/goalMath.ts — keep in step.
+     *
+     * @param  SupportCollection<int, GoalCategoryAllocation>  $rows
+     * @return SupportCollection<int, GoalCategoryAllocation>
+     */
+    private static function applyAllocationCaps(SupportCollection $rows, float $targetValue): SupportCollection
+    {
+        if ($targetValue <= 0.0) {
+            return $rows;
+        }
+
+        $binds = static function (GoalCategoryAllocation $a) use ($targetValue): ?float {
+            if ($a->cap_amount === null || $a->cap_amount < 0.0) {
+                return null;
+            }
+            $boundPct = ($a->cap_amount / $targetValue) * 100.0;
+
+            return $boundPct < $a->percentage ? $boundPct : null;
+        };
+
+        $freed = 0.0;
+        $uncappedTotal = 0.0;
+        foreach ($rows as $a) {
+            $boundPct = $binds($a);
+            if ($boundPct !== null) {
+                $freed += $a->percentage - $boundPct;
+            } else {
+                $uncappedTotal += $a->percentage;
+            }
+        }
+
+        if ($freed <= 0.0) {
+            return $rows;
+        }
+
+        foreach ($rows as $a) {
+            $boundPct = $binds($a);
+            if ($boundPct !== null) {
+                $a->percentage = $boundPct;
+            } elseif ($uncappedTotal > 0.0) {
+                $a->percentage += ($a->percentage / $uncappedTotal) * $freed;
+            }
+        }
+
+        return $rows;
     }
 }

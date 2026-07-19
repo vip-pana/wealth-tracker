@@ -25,6 +25,7 @@ class UpdateGoalRequest extends FormRequest
             'milestones.*.allocation' => ['nullable', 'array'],
             'milestones.*.allocation.*.category_id' => ['required', 'integer', 'exists:categories,id'],
             'milestones.*.allocation.*.percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'milestones.*.allocation.*.cap_amount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

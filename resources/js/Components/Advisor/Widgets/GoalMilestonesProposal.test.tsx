@@ -48,15 +48,15 @@ describe('GoalMilestonesProposal', () => {
         });
     });
 
-    it('renders as already applied when values and dates match (labels ignored)', () => {
+    it('renders as already applied when values, dates AND allocation match (labels ignored)', () => {
         render(
             <GoalMilestonesProposal
                 data={data}
                 goal={{
                     name: 'G', description: null, target_value: 1000000, target_date: null,
                     milestones: [
-                        { notes: 'diverso', target_value: 500000, target_date: '2080-01-01' },
-                        { notes: null, target_value: 750000, target_date: '2090-01-01' },
+                        { notes: 'diverso', target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
+                        { notes: null, target_value: 750000, target_date: '2090-01-01', allocation: [] },
                     ],
                     allocations: [],
                 }}
@@ -64,5 +64,30 @@ describe('GoalMilestonesProposal', () => {
         );
         expect(screen.getByText(/Tappe salvate/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Applica' })).not.toBeInTheDocument();
+    });
+
+    it('is NOT already applied when the proposal only adds a cap to matching milestones', () => {
+        // Same amounts/dates/percentages as stored, but the proposal introduces a
+        // liquidity cap. The card must let the user apply it, not show "saved".
+        const withCap = {
+            milestones: [
+                { label: 'Metà', action: null, rationale: null, target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30, cap_amount: 50000 }] },
+            ],
+        };
+        render(
+            <GoalMilestonesProposal
+                data={withCap}
+                goal={{
+                    name: 'G', description: null, target_value: 1000000, target_date: null,
+                    milestones: [
+                        // Stored without a cap.
+                        { notes: null, target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
+                    ],
+                    allocations: [],
+                }}
+            />,
+        );
+        expect(screen.queryByText(/Tappe salvate/)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Applica' })).toBeInTheDocument();
     });
 });

@@ -18,6 +18,12 @@ export interface AllocationFormItem {
     category_id?: string;
     macro_category?: string;
     percentage: string;
+    /**
+     * Optional absolute cap on this category at the milestone, in the portfolio's
+     * currency. Empty string = no cap. When set, the category stops tracking its
+     * percentage once `percentage × milestone target` would exceed it.
+     */
+    cap_amount?: string;
 }
 
 export interface MilestoneFormItem {

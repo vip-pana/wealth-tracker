@@ -116,7 +116,7 @@ export function MilestoneFormRow({
                     <AllocationSection
                         title="Allocazione target a questa tappa"
                         items={item.allocation}
-                        onAdd={() => onUpdateAllocation(idx, [...item.allocation, { category_id: '', percentage: '' }])}
+                        onAdd={() => onUpdateAllocation(idx, [...item.allocation, { category_id: '', percentage: '', cap_amount: '' }])}
                         onUpdate={updateAlloc}
                         onRemove={(aIdx) => onUpdateAllocation(idx, item.allocation.filter((_, i) => i !== aIdx))}
                         renderSelect={(alloc, aIdx) => (

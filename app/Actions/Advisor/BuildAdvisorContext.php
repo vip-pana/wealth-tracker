@@ -154,7 +154,16 @@ class BuildAdvisorContext extends Action
                     ? ($a->category->name ?? 'Sconosciuta')
                     : ($a->macro_category ?? 'Sconosciuta');
 
-                return $label.' '.rtrim(rtrim(number_format($a->percentage, 1, '.', ''), '0'), '.').'%';
+                $part = $label.' '.rtrim(rtrim(number_format($a->percentage, 1, '.', ''), '0'), '.').'%';
+
+                // A cap means "this category tracks the percentage until it would
+                // exceed this absolute amount, then it stops there". Spell it out
+                // so the advisor reasons on the rule, not just the raw percentage.
+                if ($a->cap_amount !== null) {
+                    $part .= ' (tetto massimo '.number_format($a->cap_amount, 0, ',', '.').')';
+                }
+
+                return $part;
             })
             ->all();
 

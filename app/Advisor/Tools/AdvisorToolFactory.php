@@ -423,6 +423,7 @@ class AdvisorToolFactory
                                 [
                                     new EnumSchema('category', 'La categoria (una tra quelle reali dell\'utente).', $categories),
                                     new NumberSchema('percentage', 'Quota percentuale (0-100).'),
+                                    new NumberSchema('cap_amount', 'FACOLTATIVO. Tetto massimo in valore assoluto per questa categoria a questa tappa (nella valuta del portafoglio, es. 50000). Quando la percentuale applicata all\'importo della tappa supererebbe questo tetto, la categoria si ferma al tetto e la quota eccedente viene ridistribuita sulle altre categorie senza tetto. Usalo quando l\'utente vuole che una categoria non cresca oltre una certa cifra (es. "la liquidità non oltre 50.000", "Bitcoin mai sopra 100.000"). Ometti se non c\'è un tetto.'),
                                 ],
                                 requiredFields: ['category', 'percentage'],
                             ),
@@ -1282,7 +1283,11 @@ class AdvisorToolFactory
                 $lines[] = '    Perché: '.$m['rationale'];
             }
             if ($m['allocation'] !== []) {
-                $parts = array_map(fn (array $b): string => $b['category'].' '.$this->num($b['percentage'], 1).'%', $m['allocation']);
+                $parts = array_map(function (array $b): string {
+                    $s = $b['category'].' '.$this->num($b['percentage'], 1).'%';
+
+                    return $b['cap_amount'] !== null ? $s.' (tetto '.$this->eur($b['cap_amount']).')' : $s;
+                }, $m['allocation']);
                 $lines[] = '    Allocazione: '.implode(', ', $parts);
             }
         }
@@ -1297,9 +1302,11 @@ class AdvisorToolFactory
      * or non-100 allocation degrades to [] (the milestone is still valid, just
      * without a glide-path step) — we don't reject the whole milestone over it.
      * Each kept entry carries the category's colour (same lookup as the donut)
-     * so the widget renders the glide-path bar in the user's category colours.
+     * so the widget renders the glide-path bar in the user's category colours,
+     * and an optional `cap_amount` — an absolute ceiling on that category at the
+     * milestone (currency-agnostic). A non-positive cap is dropped to null.
      *
-     * @return list<array{category: string, percentage: float, color: string}>
+     * @return list<array{category: string, percentage: float, color: string, cap_amount: float|null}>
      */
     private function validMilestoneAllocation(mixed $allocation): array
     {
@@ -1322,7 +1329,8 @@ class AdvisorToolFactory
             }
             $clamped = max(0.0, min(100.0, $pct));
             $colour = $colours[$category] ?? null;
-            $out[] = ['category' => $category, 'percentage' => $clamped, 'color' => is_string($colour) ? $colour : '#94a3b8'];
+            $cap = is_numeric($b['cap_amount'] ?? null) && (float) $b['cap_amount'] > 0.0 ? (float) $b['cap_amount'] : null;
+            $out[] = ['category' => $category, 'percentage' => $clamped, 'color' => is_string($colour) ? $colour : '#94a3b8', 'cap_amount' => $cap];
             $total += $clamped;
         }
 

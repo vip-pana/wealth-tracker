@@ -5,6 +5,7 @@ import {
     requiredMonthlyGrowth,
     requiredAnnualGrowth,
     formatPct,
+    applyAllocationCaps,
     pctOfTotal,
     allocationDeviation,
 } from '@/lib/goalMath';
@@ -120,5 +121,76 @@ describe('allocationDeviation', () => {
 
     it('treats a zero total as 0% current allocation', () => {
         expect(allocationDeviation(0, 0, 40)).toBeCloseTo(-40);
+    });
+});
+
+describe('applyAllocationCaps', () => {
+    // Azioni 50, Liquidità 15 (cap 50k), Bitcoin 25, Oro 5, Obblig 5.
+    const rows = [
+        { percentage: 50, cap: null },
+        { percentage: 15, cap: 50_000 },
+        { percentage: 25, cap: null },
+        { percentage: 5, cap: null },
+        { percentage: 5, cap: null },
+    ];
+
+    it('is a no-op when no cap is set', () => {
+        const none = rows.map((r) => ({ ...r, cap: null }));
+        expect(applyAllocationCaps(none, 1_000_000)).toEqual([50, 15, 25, 5, 5]);
+    });
+
+    it('is a no-op when the cap is not yet binding', () => {
+        // 15% of 250k = 37.5k ≤ 50k cap → unchanged.
+        expect(applyAllocationCaps(rows, 250_000)).toEqual([50, 15, 25, 5, 5]);
+    });
+
+    it('clamps a capped row and spreads the excess pro-rata over uncapped rows', () => {
+        // 15% of 1M = 150k > 50k. Capped → 5%; freed 10pp over the 85pp of
+        // uncapped rows in proportion to their weights.
+        const out = applyAllocationCaps(rows, 1_000_000);
+        expect(out[1]).toBeCloseTo(5); // liquidity → cap/target = 5%
+        expect(out[0]).toBeCloseTo(50 + (50 / 85) * 10); // Azioni
+        expect(out[2]).toBeCloseTo(25 + (25 / 85) * 10); // Bitcoin
+        expect(out.reduce((s, v) => s + v, 0)).toBeCloseTo(100);
+    });
+
+    it('supports multiple caps, spreading the excess only over uncapped rows', () => {
+        // Liquidità 15% cap 50k AND Bitcoin 25% cap 100k, at 1M.
+        // liq → 5% (freed 10), btc → 10% (freed 15) → 25pp over Azioni+Oro+Obblig
+        // (uncapped total 60pp).
+        const multi = [
+            { percentage: 50, cap: null }, // Azioni
+            { percentage: 15, cap: 50_000 }, // Liquidità → 5%
+            { percentage: 25, cap: 100_000 }, // Bitcoin → 10%
+            { percentage: 5, cap: null }, // Oro
+            { percentage: 5, cap: null }, // Obblig
+        ];
+        const out = applyAllocationCaps(multi, 1_000_000);
+        expect(out[1]).toBeCloseTo(5);
+        expect(out[2]).toBeCloseTo(10);
+        expect(out[0]).toBeCloseTo(50 + (50 / 60) * 25); // Azioni
+        expect(out[3]).toBeCloseTo(5 + (5 / 60) * 25); // Oro
+        expect(out.reduce((s, v) => s + v, 0)).toBeCloseTo(100);
+    });
+
+    it('leaves the excess unallocated (sum < 100) when every row is capped', () => {
+        // Both rows capped and binding, nothing uncapped to absorb the excess.
+        const allCapped = [
+            { percentage: 60, cap: 100_000 }, // → 10%
+            { percentage: 40, cap: 200_000 }, // → 20%
+        ];
+        const out = applyAllocationCaps(allCapped, 1_000_000);
+        expect(out[0]).toBeCloseTo(10);
+        expect(out[1]).toBeCloseTo(20);
+        expect(out.reduce((s, v) => s + v, 0)).toBeCloseTo(30); // deliberately < 100
+    });
+
+    it('ignores an out-of-reach cap (does not raise the percentage)', () => {
+        // Cap 500k on a 15% row at 1M = 150k < 500k → cap never binds → no-op.
+        const loose = [
+            { percentage: 85, cap: null },
+            { percentage: 15, cap: 500_000 },
+        ];
+        expect(applyAllocationCaps(loose, 1_000_000)).toEqual([85, 15]);
     });
 });

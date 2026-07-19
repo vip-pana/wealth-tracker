@@ -130,7 +130,12 @@ export interface GoalData {
     description: string | null;
     target_value: number;
     target_date: string | null;
-    milestones: { notes: string | null; target_value: number; target_date: string }[];
+    milestones: {
+        notes: string | null;
+        target_value: number;
+        target_date: string;
+        allocation?: { category: string; percentage: number; cap_amount?: number | null }[];
+    }[];
     allocations: { category: string; percentage: number }[];
 }
 
@@ -156,7 +161,10 @@ export interface GoalMilestonesProposalWidget {
             // carry no `allocation` key, so it can be undefined on old messages.
             // `color` (per-category, from the tool) is likewise optional — older
             // persisted widgets predate it and the bar falls back to grey.
-            allocation?: { category: string; percentage: number; color?: string }[];
+            // `cap_amount` is an optional absolute ceiling on the category at this
+            // milestone (currency-agnostic); when it binds, the bar shows the
+            // effective (post-cap, redistributed) share.
+            allocation?: { category: string; percentage: number; color?: string; cap_amount?: number | null }[];
         }[];
     };
 }

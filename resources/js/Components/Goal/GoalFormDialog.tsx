@@ -40,6 +40,7 @@ export function GoalFormDialog({
             allocation: (m.allocation ?? []).map((a) => ({
                 category_id: String(a.category_id ?? ''),
                 percentage: String(a.percentage),
+                cap_amount: a.cap_amount != null ? String(a.cap_amount) : '',
             })),
         })) ?? [];
 

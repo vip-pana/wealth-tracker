@@ -16,16 +16,18 @@ use Illuminate\Support\Carbon;
  * @property int|null $category_id
  * @property string|null $macro_category
  * @property float $percentage
+ * @property float|null $cap_amount
  * @property Carbon|null $deleted_at
  */
 class GoalCategoryAllocation extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['goal_id', 'milestone_id', 'category_id', 'macro_category', 'percentage'];
+    protected $fillable = ['goal_id', 'milestone_id', 'category_id', 'macro_category', 'percentage', 'cap_amount'];
 
     protected $casts = [
         'percentage' => 'float',
+        'cap_amount' => 'float',
     ];
 
     /** @return BelongsTo<Goal, $this> */

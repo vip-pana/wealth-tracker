@@ -82,6 +82,7 @@ class FetchGoalData extends Action
                         ->map(fn ($a) => [
                             'category_id' => $a->category_id,
                             'percentage' => $a->percentage,
+                            'cap_amount' => $a->cap_amount,
                         ])->values()->toArray(),
                 ])->values()->toArray();
 

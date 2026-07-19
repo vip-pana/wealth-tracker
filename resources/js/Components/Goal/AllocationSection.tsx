@@ -3,6 +3,7 @@ import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { Trash2, Plus } from 'lucide-react';
 import { allocationSum, formatPct } from '@/lib/goalMath';
+import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import type { AllocationFormItem } from '@/Components/Goal/types';
 
 export function AllocationSection({
@@ -44,6 +45,22 @@ export function AllocationSection({
                                     placeholder="0"
                                 />
                                 <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                            </div>
+                            <div className="relative w-32">
+                                {/* Optional absolute cap: this category stops tracking its
+                                    percentage once it would exceed this amount, and the
+                                    excess is redistributed to the uncapped categories.
+                                    Same formatted numeric input as the milestone target
+                                    value (thousands separators) so the amount is readable. */}
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={item.cap_amount ? formatCurrencyNoDecimals(parseInt(item.cap_amount, 10)) : ''}
+                                    onChange={(e) => onUpdate(idx, 'cap_amount', e.target.value.replace(/\D/g, ''))}
+                                    className="text-right font-mono"
+                                    placeholder="tetto"
+                                    aria-label="Tetto massimo (facoltativo)"
+                                />
                             </div>
                             <Button
                                 type="button"

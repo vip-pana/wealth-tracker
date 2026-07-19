@@ -50,6 +50,7 @@ class UpdateController extends Controller
                     'category_id' => is_numeric($alloc['category_id'] ?? null) ? (int) $alloc['category_id'] : null,
                     'macro_category' => null,
                     'percentage' => is_numeric($alloc['percentage'] ?? null) ? (float) $alloc['percentage'] : 0.0,
+                    'cap_amount' => is_numeric($alloc['cap_amount'] ?? null) ? (float) $alloc['cap_amount'] : null,
                 ]);
             }
         }

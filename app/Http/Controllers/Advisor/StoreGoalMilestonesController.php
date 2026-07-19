@@ -59,6 +59,7 @@ class StoreGoalMilestonesController extends Controller
                     'category_id' => $categoryIds[$name] ?? null,
                     'macro_category' => null,
                     'percentage' => is_numeric($alloc['percentage'] ?? null) ? (float) $alloc['percentage'] : 0.0,
+                    'cap_amount' => is_numeric($alloc['cap_amount'] ?? null) ? (float) $alloc['cap_amount'] : null,
                 ]);
             }
         }

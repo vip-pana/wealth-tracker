@@ -98,6 +98,29 @@ class StoreGoalFromAdvisorTest extends TestCase
         ]);
     }
 
+    public function test_milestones_persist_a_per_category_cap_amount(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        $liquidita = Category::factory()->create(['name' => 'Liquidità']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                ['notes' => 'Metà', 'target_value' => 500000, 'target_date' => '2080-01-01', 'allocation' => [
+                    ['category' => 'Azioni', 'percentage' => 85],
+                    ['category' => 'Liquidità', 'percentage' => 15, 'cap_amount' => 50000],
+                ]],
+            ],
+        ])->assertRedirect();
+
+        $milestone = $goal->milestones()->firstOrFail();
+        // The capped row stores its cap; the uncapped one stays null.
+        $this->assertDatabaseHas('goal_category_allocations', [
+            'milestone_id' => $milestone->id, 'category_id' => $liquidita->id, 'percentage' => 15.0, 'cap_amount' => 50000.0,
+        ]);
+        $this->assertNull($milestone->categoryAllocations()->whereNull('cap_amount')->firstOrFail()->cap_amount);
+    }
+
     public function test_composition_replaces_only_allocations_leaving_milestones_intact(): void
     {
         $azioni = Category::factory()->create(['name' => 'Azioni']);

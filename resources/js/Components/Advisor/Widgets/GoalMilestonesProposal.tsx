@@ -8,17 +8,34 @@ import { MilestoneAllocationBar } from '@/Components/Advisor/Widgets/MilestoneAl
 import type { GoalMilestonesProposalWidget, GoalData } from '@/Components/Advisor/types';
 
 /**
- * Do the goal's current milestones already match the proposed set (same values
- * and dates, same count)? If so the proposal was applied before, so we render
- * the applied state instead of re-offering it after a refresh. The advisor's
- * `label` maps to the stored `notes`, so labels aren't compared — only the
- * amounts and dates that define a milestone.
+ * A stable signature of an allocation set: "category:pct:cap" per row, sorted so
+ * order doesn't matter. Used to tell whether a proposed milestone differs from
+ * the stored one in its allocation OR its caps — not just its amount/date.
+ */
+function allocationSignature(
+    allocation: { category: string; percentage: number; cap_amount?: number | null }[] | undefined,
+): string {
+    return (allocation ?? [])
+        .map((a) => `${a.category}:${a.percentage}:${a.cap_amount ?? ''}`)
+        .sort()
+        .join('|');
+}
+
+/**
+ * Do the goal's current milestones already match the proposed set? Compares the
+ * count, each milestone's amount/date, AND its allocation including caps — so a
+ * proposal that only ADDS a cap to otherwise-identical milestones is NOT treated
+ * as already applied (that was the bug: the card showed "saved" and never let
+ * the user apply the cap). The advisor's `label` maps to `notes`, so labels
+ * aren't compared — only what defines the milestone and its glide-path.
  */
 function alreadyApplied(data: GoalMilestonesProposalWidget['data'], goal: GoalData | null | undefined): boolean {
     if (!goal || goal.milestones.length !== data.milestones.length || data.milestones.length === 0) return false;
-    return data.milestones.every((m, i) =>
-        m.target_value === goal.milestones[i]?.target_value && m.target_date === goal.milestones[i]?.target_date,
-    );
+    return data.milestones.every((m, i) => {
+        const stored = goal.milestones[i];
+        if (!stored || m.target_value !== stored.target_value || m.target_date !== stored.target_date) return false;
+        return allocationSignature(m.allocation) === allocationSignature(stored.allocation);
+    });
 }
 
 /**
@@ -81,7 +98,7 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                             {(m.allocation?.length ?? 0) > 0 && (
                                 <div className="space-y-1 pt-0.5">
                                     <span className="font-medium text-foreground">Allocazione target</span>
-                                    <MilestoneAllocationBar segments={m.allocation ?? []} />
+                                    <MilestoneAllocationBar segments={m.allocation ?? []} targetValue={m.target_value} />
                                 </div>
                             )}
                         </li>
