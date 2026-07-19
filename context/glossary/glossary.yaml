@@ -24,6 +24,9 @@ entities:
   Goal:
     definition: One savings goal with target value/date, category and macro allocation targets, milestones.
     relationship: "has many GoalCategoryAllocation and GoalMilestone; see app/Models/Goal.php"
+  BankTransaction:
+    definition: One cashflow movement (entrata/uscita) on a bank account, ingested from Enable Banking. Signed amount — negative is an outflow (DBIT), positive an inflow (CRDT). Distinct from Transaction (investment buys/sells). Raw EB payload kept in `raw`; `merchant_category_code` retained for future expense categorisation.
+    relationship: "belongs to BankAccount; see app/Models/BankTransaction.php. Imported by app/Actions/Transactions/ImportBankTransactions.php (command bank:import-transactions)"
 
 concepts:
   Pension entry:
