@@ -69,7 +69,7 @@ class Goal extends Model
             // Percentages are resolved against the milestone's OWN target value
             // (the level the allocation describes), so a cap of "50k" clamps the
             // share at that level, not at the user's current net worth.
-            return self::applyAllocationCaps($next->categoryAllocations->values(), $next->target_value);
+            return $this->applyAllocationCaps($next->categoryAllocations->values(), $next->target_value);
         }
 
         return $this->categoryAllocations->whereNull('milestone_id')->values();
@@ -89,7 +89,7 @@ class Goal extends Model
      * @param  SupportCollection<int, GoalCategoryAllocation>  $rows
      * @return SupportCollection<int, GoalCategoryAllocation>
      */
-    private static function applyAllocationCaps(SupportCollection $rows, float $targetValue): SupportCollection
+    private function applyAllocationCaps(SupportCollection $rows, float $targetValue): SupportCollection
     {
         if ($targetValue <= 0.0) {
             return $rows;

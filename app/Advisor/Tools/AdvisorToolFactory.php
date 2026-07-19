@@ -1310,7 +1310,10 @@ class AdvisorToolFactory
             }
             $category = is_string($b['category'] ?? null) ? $b['category'] : '';
             $pct = is_numeric($b['percentage'] ?? null) ? (float) $b['percentage'] : null;
-            if (! in_array($category, $allowed, true) || $pct === null) {
+            if (! in_array($category, $allowed, true)) {
+                continue;
+            }
+            if ($pct === null) {
                 continue;
             }
             $clamped = max(0.0, min(100.0, $pct));
@@ -1523,13 +1526,7 @@ class AdvisorToolFactory
         }
 
         $bulleted = '• '.$newFact;
-        $alreadyThere = false;
-        foreach ($lines as $line) {
-            if (mb_strtolower(ltrim($line, "• \t")) === mb_strtolower($newFact)) {
-                $alreadyThere = true;
-                break;
-            }
-        }
+        $alreadyThere = array_any($lines, fn ($line) => mb_strtolower(ltrim((string) $line, "• \t")) === mb_strtolower($newFact));
         if (! $alreadyThere) {
             $lines[] = $bulleted;
         }

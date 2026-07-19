@@ -206,9 +206,7 @@ class RenderAdvisorContext extends Action
             $out .= "\n- Allocazione target: ".$goal['target_allocation'].'.';
         }
 
-        $out .= $this->milestonesLines($goal['milestones'] ?? null);
-
-        return $out;
+        return $out.$this->milestonesLines($goal['milestones'] ?? null);
     }
 
     private function milestonesLines(mixed $milestones): string
