@@ -147,7 +147,7 @@ export function GoalFormDialog({
                                         setData('target_date', y ? `${y}-01-01` : '');
                                     }}
                                     placeholder="es. 2045"
-                                    className="font-mono w-24"
+                                    className="font-mono w-32"
                                 />
                             </div>
                         </div>
