@@ -10,6 +10,7 @@ export function MessageBubble({
     funFacts,
     profile,
     goal,
+    isLast,
     onRetry,
     onPropose,
 }: {
@@ -17,6 +18,7 @@ export function MessageBubble({
     funFacts: string[];
     profile?: InvestorProfile | null;
     goal?: GoalData | null;
+    isLast?: boolean;
     onRetry?: (message: Message) => void;
     onPropose?: (kind: 'profile' | 'goal') => void;
 }) {
@@ -61,7 +63,7 @@ export function MessageBubble({
                     <>
                         <Markdown content={message.content} />
                         {message.widgets && message.widgets.length > 0 && (
-                            <AdvisorWidgets widgets={message.widgets} profile={profile} goal={goal} onPropose={onPropose} />
+                            <AdvisorWidgets widgets={message.widgets} profile={profile} goal={goal} isLast={isLast} onPropose={onPropose} />
                         )}
                     </>
                 )}

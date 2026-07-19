@@ -169,7 +169,28 @@ describe('Conversation — proposal offer fallback', () => {
         expect(screen.getByRole('button', { name: /Genera la proposta di obiettivo/ })).toBeInTheDocument();
     });
 
-    it('hides the fallback once a proposal is already on screen', () => {
+    it('offers the goal fallback when the goal signal only appears mid-conversation', () => {
+        // The opening line is a plain analysis question; the goal intent surfaces
+        // in a later turn. The kind must reflect the WHOLE conversation, not just
+        // the opening — this is what mis-offered a profile button before.
+        const msgs = interview('come sta andando il portafoglio?', 4);
+        msgs[4] = { ...msgs[4], content: 'rivediamo le milestone e la target allocation' };
+        renderConversation({ messages: msgs });
+        expect(screen.getByRole('button', { name: /Genera la proposta di obiettivo/ })).toBeInTheDocument();
+    });
+
+    it('offers the goal fallback even when voice input mangles "milestone"/"allocation"', () => {
+        // Real speech-to-text output: "milestone"→"milson"/"mile son",
+        // "allocation"→"location". A strict exact-word match defaulted this to a
+        // profile offer even though the user was revising milestones.
+        const msgs = interview('senti una cosa', 4);
+        msgs[2] = { ...msgs[2], content: 'ha senso rivedere le milson per il primo punto della mile son' };
+        msgs[6] = { ...msgs[6], content: 'aggiornare la target location' };
+        renderConversation({ messages: msgs });
+        expect(screen.getByRole('button', { name: /Genera la proposta di obiettivo/ })).toBeInTheDocument();
+    });
+
+    it('hides the fallback while the button is the current (last) turn', () => {
         const msgs = interview('definisci il mio profilo di rischio', 4);
         msgs[msgs.length - 1] = {
             ...msgs[msgs.length - 1],
@@ -177,6 +198,21 @@ describe('Conversation — proposal offer fallback', () => {
         };
         renderConversation({ messages: msgs });
         expect(screen.queryByRole('button', { name: /Genera la proposta/ })).not.toBeInTheDocument();
+    });
+
+    it('re-surfaces the fallback when the user keeps talking after an offer', () => {
+        // The offer widget appeared earlier, then the user added a request (e.g. a
+        // liquidity cap). The buried button is stale — a fresh one must appear at
+        // the bottom instead of the fallback staying suppressed forever.
+        const msgs = interview('vorrei ridefinire le milestone', 4);
+        // Attach the offer to an assistant turn that is NOT the last message.
+        const lastAssistantIdx = msgs.map((m) => m.role).lastIndexOf('assistant');
+        msgs[lastAssistantIdx] = { ...msgs[lastAssistantIdx], widgets: [{ type: 'proposal_offer', data: { kind: 'goal' } }] };
+        // A newer user turn follows the offer.
+        msgs.push({ id: 999, role: 'user', content: 'aggiungi un tetto alla liquidità di 50k', status: 'done', created_at: null });
+
+        renderConversation({ messages: msgs });
+        expect(screen.getByRole('button', { name: /Genera la proposta di obiettivo/ })).toBeInTheDocument();
     });
 
     it('posts to the propose endpoint when the fallback is clicked', async () => {

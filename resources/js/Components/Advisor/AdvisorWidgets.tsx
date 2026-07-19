@@ -18,10 +18,18 @@ import type { Widget, GoalData } from '@/Components/Advisor/types';
  * widget's `type` to its component; an unknown type (e.g. an older client
  * meeting a newer widget) is skipped rather than crashing the message.
  */
-export function AdvisorWidgets({ widgets, profile, goal, onPropose }: { widgets: Widget[]; profile?: InvestorProfile | null; goal?: GoalData | null; onPropose?: (kind: 'profile' | 'goal') => void }) {
+export function AdvisorWidgets({ widgets, profile, goal, isLast, onPropose }: { widgets: Widget[]; profile?: InvestorProfile | null; goal?: GoalData | null; isLast?: boolean; onPropose?: (kind: 'profile' | 'goal') => void }) {
     return (
         <>
             {widgets.map((widget, i) => {
+                // The "generate the proposal" button (proposal_offer) is only
+                // meaningful on the latest turn: once the user keeps talking, that
+                // offer is superseded (a fresh button is surfaced at the bottom of
+                // the chat), so an old one buried up the thread is just confusing.
+                // Actual proposal cards stay — they carry content worth scrolling to.
+                if (widget.type === 'proposal_offer' && isLast === false) {
+                    return null;
+                }
                 switch (widget.type) {
                     case 'pac_simulator':
                         return <PacSimulator key={i} data={widget.data} />;

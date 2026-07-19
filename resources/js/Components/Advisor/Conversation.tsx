@@ -52,20 +52,41 @@ export function Conversation({
     // interview is complete, but it often keeps summarising in words instead. So
     // once the user has had a real interview (4+ turns) and no proposal/offer is
     // already on screen, we surface the button ourselves. The kind is inferred
-    // from the opening message: an "obiettivo/milestone" interview vs a
-    // "profilo di rischio" one; default to profile (the common case).
+    // from what the WHOLE conversation is about — goal (target amount, target
+    // allocation, milestones) vs risk profile — not just the opening line: a chat
+    // that turns to the goal several turns in must still offer the goal button.
+    // The goal keywords are matched loosely because voice input mangles them
+    // ("milestone"→"milson"/"mile son", "allocation"→"location"); a stricter
+    // exact-word test defaulted a milestone/allocation chat to profile. On a tie
+    // (both signals, or neither) prefer goal — the common reason to reach the
+    // button mid-analysis is refining the plan, and the profile default was what
+    // mis-offered a profile update when the user asked to revise the allocation.
     const fallbackOffer = useMemo<'profile' | 'goal' | null>(() => {
-        const userTurns = messages.filter((m) => m.role === 'user').length;
-        if (userTurns < 4) return null;
-        const alreadyShown = messages.some((m) =>
-            (m.widgets ?? []).some((w) =>
+        const userMessages = messages.filter((m) => m.role === 'user');
+        if (userMessages.length < 4) return null;
+        // "Already shown" must look only at the CURRENT tail of the conversation,
+        // not the whole history: an offer/proposal button that appeared earlier is
+        // stale once the user kept talking (e.g. added a liquidity cap after the
+        // first offer). If the last assistant turn already carries the button, we
+        // don't duplicate it; but if the user has spoken since, the old button is
+        // scrolled away and superseded, so we surface a fresh one at the bottom.
+        const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+        const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+        const buttonIsCurrent =
+            lastAssistant !== undefined
+            && (lastUser === undefined || lastAssistant.id > lastUser.id)
+            && (lastAssistant.widgets ?? []).some((w) =>
                 w.type === 'proposal_offer' || w.type === 'profile_proposal'
                 || w.type === 'goal_core_proposal' || w.type === 'goal_milestones_proposal' || w.type === 'goal_composition_proposal',
-            ),
-        );
-        if (alreadyShown) return null;
-        const opening = messages.find((m) => m.role === 'user')?.content.toLowerCase() ?? '';
-        return /\bobiettiv|milestone|traguard|tapp/.test(opening) ? 'goal' : 'profile';
+            );
+        if (buttonIsCurrent) return null;
+        const text = userMessages.map((m) => m.content.toLowerCase()).join(' ');
+        // Loose goal signals: obiettivo/target, milestone (+ voice manglings),
+        // traguardo/tappa, allocazione target (+ the "location" mishearing).
+        const goalSignal = /obiettiv|target|mile ?s?on|milestone|traguard|\btapp|alloca|allocation|location/.test(text);
+        const profileSignal = /profil|tolleranz|rischio|orizzont|reddito|cuscinett|emergenz/.test(text);
+        // Prefer goal on a tie; only fall to profile when it's the sole signal.
+        return profileSignal && !goalSignal ? 'profile' : 'goal';
     }, [messages]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
@@ -249,7 +270,7 @@ export function Conversation({
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
-                    {messages.map((m, i) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} goal={goal} onRetry={i === messages.length - 1 ? retry : undefined} onPropose={propose} />)}
+                    {messages.map((m, i) => <MessageBubble key={m.id} message={m} funFacts={funFacts} profile={profile} goal={goal} isLast={i === messages.length - 1} onRetry={i === messages.length - 1 ? retry : undefined} onPropose={propose} />)}
                     <div ref={bottomRef} />
                 </CardContent>
 
