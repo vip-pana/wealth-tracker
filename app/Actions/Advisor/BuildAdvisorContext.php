@@ -73,12 +73,11 @@ class BuildAdvisorContext extends Action
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
         $income = $profile?->income_monthly;
-        $emergency = $profile?->emergency_fund;
         $notes = $profile?->notes;
         $memory = $profile?->memory;
 
         if ($name === null && $age === null && $horizon === null && $risk === null
-            && $income === null && $emergency === null && $notes === null && $memory === null) {
+            && $income === null && $notes === null && $memory === null) {
             return null;
         }
 
@@ -88,7 +87,6 @@ class BuildAdvisorContext extends Action
             'horizon' => $horizon,
             'risk_tolerance' => $risk,
             'income_monthly' => $income,
-            'emergency_fund' => $emergency,
             'notes' => $notes,
             'memory' => $memory,
         ];

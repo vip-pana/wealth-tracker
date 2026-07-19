@@ -26,7 +26,6 @@ export interface InvestorProfile {
     horizon: string | null;
     risk_tolerance: string | null;
     income_monthly: number | null;
-    emergency_fund: string | null;
     notes: string | null;
     memory: string | null;
 }
@@ -51,7 +50,6 @@ export function ProfileDialog({
         horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
         income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
-        emergency_fund: profile?.emergency_fund ?? '',
         memory: profile?.memory ?? '',
     });
 
@@ -68,11 +66,10 @@ export function ProfileDialog({
             horizon: profile?.horizon ?? '',
             risk_tolerance: profile?.risk_tolerance ?? '',
             income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
-            emergency_fund: profile?.emergency_fund ?? '',
             memory: profile?.memory ?? '',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.name, profile?.birth_date, profile?.horizon, profile?.risk_tolerance, profile?.income_monthly, profile?.emergency_fund, profile?.memory]);
+    }, [profile?.name, profile?.birth_date, profile?.horizon, profile?.risk_tolerance, profile?.income_monthly, profile?.memory]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -133,29 +130,16 @@ export function ProfileDialog({
                             </Select>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <Label className="text-xs">Reddito netto mensile</Label>
-                            <Input
-                                type="number"
-                                inputMode="decimal"
-                                min={0}
-                                value={form.data.income_monthly}
-                                onChange={(e) => form.setData('income_monthly', e.target.value)}
-                                placeholder="es. 2000"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs">Fondo di emergenza</Label>
-                            <Select value={form.data.emergency_fund} onValueChange={(v) => form.setData('emergency_fund', v)}>
-                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">Nessuno separato</SelectItem>
-                                    <SelectItem value="partial">Parziale</SelectItem>
-                                    <SelectItem value="separate">Fondo separato</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Reddito netto mensile</Label>
+                        <Input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            value={form.data.income_monthly}
+                            onChange={(e) => form.setData('income_monthly', e.target.value)}
+                            placeholder="es. 2000"
+                        />
                     </div>
                     <div className="space-y-1">
                         <Label className="text-xs">Cose da ricordare</Label>

@@ -113,7 +113,6 @@ export interface ProfileProposalWidget {
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
         income_monthly?: number;
-        emergency_fund?: 'none' | 'partial' | 'separate';
         notes?: string;
         memory?: string;
     };

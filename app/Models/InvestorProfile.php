@@ -14,7 +14,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $horizon
  * @property string|null $risk_tolerance
  * @property float|null $income_monthly
- * @property string|null $emergency_fund
  * @property string|null $notes
  * @property string|null $memory
  * @property Carbon|null $created_at
@@ -24,7 +23,7 @@ class InvestorProfile extends Model
 {
     protected $table = 'investor_profile';
 
-    protected $fillable = ['name', 'birth_date', 'horizon', 'risk_tolerance', 'income_monthly', 'emergency_fund', 'notes', 'memory'];
+    protected $fillable = ['name', 'birth_date', 'horizon', 'risk_tolerance', 'income_monthly', 'notes', 'memory'];
 
     /** @var array<string, string> */
     protected $casts = [

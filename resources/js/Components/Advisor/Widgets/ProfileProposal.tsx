@@ -8,7 +8,6 @@ import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
 const HORIZON_LABELS: Record<string, string> = { short: 'Breve (< 3 anni)', medium: 'Medio (3-10 anni)', long: 'Lungo (10+ anni)' };
 const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
-const FUND_LABELS: Record<string, string> = { none: 'Nessun fondo separato', partial: 'Parziale', separate: 'Fondo separato' };
 
 /**
  * Is every proposed field already the current profile value? If so the proposal
@@ -47,7 +46,6 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
     if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
     if (data.risk_tolerance) rows.push({ label: 'Tolleranza al rischio', value: RISK_LABELS[data.risk_tolerance] ?? data.risk_tolerance });
     if (typeof data.income_monthly === 'number') rows.push({ label: 'Reddito mensile', value: `${data.income_monthly.toLocaleString('it-IT')} €` });
-    if (data.emergency_fund) rows.push({ label: 'Cuscinetto di emergenza', value: FUND_LABELS[data.emergency_fund] ?? data.emergency_fund });
     if (data.notes) rows.push({ label: 'Note', value: data.notes });
     if (data.memory) rows.push({ label: 'Da ricordare', value: data.memory });
 

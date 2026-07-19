@@ -288,15 +288,6 @@ class RenderAdvisorContext extends Action
             $out .= "\n- Reddito mensile: ".$this->eur($profile['income_monthly']).' netti al mese.';
         }
 
-        $fund = $this->labelOr($profile['emergency_fund'] ?? null, [
-            'none' => 'nessun fondo di emergenza separato (la liquidità del portafoglio è l\'unico cuscinetto)',
-            'partial' => 'fondo di emergenza parziale',
-            'separate' => 'fondo di emergenza separato dal portafoglio',
-        ]);
-        if ($fund !== 'non indicato') {
-            $out .= "\n- Cuscinetto di emergenza: ".$fund.'.';
-        }
-
         $notes = $profile['notes'] ?? null;
         if (is_string($notes) && $notes !== '') {
             $out .= "\n- Note sul profilo di rischio: ".$notes;

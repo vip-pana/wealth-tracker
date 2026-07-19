@@ -552,30 +552,17 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('nervoso', $widgets[0]['data']['notes']);
     }
 
-    public function test_propose_profile_update_carries_income_and_emergency_fund(): void
+    public function test_propose_profile_update_carries_income(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_profile_update')->handle(
             income_monthly: 2000,
-            emergency_fund: 'none',
         );
 
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
         $this->assertSame(2000.0, $widgets[0]['data']['income_monthly']);
-        $this->assertSame('none', $widgets[0]['data']['emergency_fund']);
-    }
-
-    public function test_propose_profile_update_drops_an_invalid_emergency_fund(): void
-    {
-        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
-        $this->tool($factory, 'propose_profile_update')->handle(
-            risk_tolerance: 'high',
-            emergency_fund: 'invalid',
-        );
-
-        $widgets = $collector->widgets();
-        $this->assertCount(1, $widgets);
+        // emergency_fund is no longer a profile field — it's the tagged buffer.
         $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
     }
 
@@ -703,15 +690,16 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertSame([], $collector->widgets());
     }
 
-    public function test_confirm_profile_fact_drops_an_invalid_emergency_fund(): void
+    public function test_confirm_profile_fact_carries_income(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
-        $this->tool($factory, 'confirm_profile_fact')->handle(emergency_fund: 'gold-bars', income_monthly: 1800);
+        $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 1800);
 
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
-        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
         $this->assertSame(1800.0, $widgets[0]['data']['income_monthly']);
+        // emergency_fund is no longer a profile field.
+        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
     }
 
     public function test_propose_goal_core_emits_a_proposal_widget(): void

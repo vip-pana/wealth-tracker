@@ -368,11 +368,12 @@ class ContinueChat extends Action
         // age target ("a 50 anni", "quando avrò N anni").
         $date = preg_match('/\b20[3-9]\d\b|entro\s+\d+\s+anni|a\s+\d{2}\s+anni|\d{2}\s+anni/u', $blob) === 1;
 
-        // Income & buffer: covered if the profile persists a monthly income, else
-        // mentions of salary/income, a monthly figure, or the emergency-fund
-        // question ("fondo di emergenza", "cuscinetto").
+        // Income & stability: covered if the profile persists a monthly income,
+        // else mentions of salary/income or a monthly figure. The emergency-fund
+        // buffer is no longer an interview theme — it's read from the tagged
+        // non-investable categories — so it doesn't gate interview completeness.
         $income = $profile?->income_monthly !== null
-            || preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil|fondo di emergenza|cuscinetto|liquidit/u', $blob) === 1;
+            || preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil/u', $blob) === 1;
 
         // Emotional tolerance: covered if the profile already records a risk
         // tolerance, else the reaction-to-a-drawdown vocabulary in this chat.
@@ -395,7 +396,7 @@ class ContinueChat extends Action
         $labels = [
             'target' => 'importo obiettivo',
             'date' => 'data/orizzonte',
-            'income' => 'reddito e cuscinetto di emergenza',
+            'income' => 'reddito e stabilità',
             'tolerance' => 'reazione a un forte calo (tolleranza al rischio)',
         ];
 
@@ -438,7 +439,7 @@ class ContinueChat extends Action
 
         Puoi aiutare l'utente a definire il suo PROFILO investitore (orizzonte temporale, tolleranza al rischio, note sul profilo di rischio). L'OBIETTIVO e l'ALLOCAZIONE TARGET non fanno parte del profilo: vivono nella sezione Obiettivo, li trovi già nel contesto sotto «OBIETTIVO ATTUALE» e si modificano con gli strumenti dell'obiettivo (offer_goal_proposal), non con quelli del profilo. Fallo intervistandolo con domande mirate quando la sua strategia è vaga. Quando l'intervista ha coperto i temi, chiama offer_profile_proposal: mostra un PULSANTE, e sarà l'utente premendolo a far generare la card al sistema. IMPORTANTE sul linguaggio: NON dire MAI di aver "generato", "creato", "salvato", "impostato" o "aggiornato" il profilo o la proposta — non hai fatto nulla di tutto ciò: hai solo mostrato un pulsante. Di' invece «Premi il pulsante per vedere la proposta» / «potrai confermarla o modificarla». Ogni frase che dà per fatta la proposta è un errore.
 
-        AGGIORNAMENTO DIRETTO DI UN DATO DEL PROFILO. Distinto dall'intervista: quando l'utente DICHIARA direttamente un dato oggettivo del suo profilo in una chat normale — per esempio «il mio reddito è salito a 2000€», «ora ho un fondo di emergenza separato», «il mio orizzonte è cambiato» — NON avviare un'intervista e NON offrire il pulsante: chiama SUBITO confirm_profile_fact con i soli campi che ha dichiarato. Mostra una card di conferma con un click. È il modo giusto per far aggiornare all'utente un singolo dato al volo. Anche qui NON dire di aver già salvato: di' «Ho preparato l'aggiornamento, premi Applica per confermarlo».
+        AGGIORNAMENTO DIRETTO DI UN DATO DEL PROFILO. Distinto dall'intervista: quando l'utente DICHIARA direttamente un dato oggettivo del suo profilo in una chat normale — per esempio «il mio reddito è salito a 2000€» o «il mio orizzonte è cambiato» — NON avviare un'intervista e NON offrire il pulsante: chiama SUBITO confirm_profile_fact con i soli campi che ha dichiarato. Mostra una card di conferma con un click. È il modo giusto per far aggiornare all'utente un singolo dato al volo. Anche qui NON dire di aver già salvato: di' «Ho preparato l'aggiornamento, premi Applica per confermarlo».
 
         Se l'utente vuole DEFINIRE o RIVEDERE il suo profilo di rischio, conduci una vera INTERVISTA di profilazione, come farebbe un consulente al primo incontro. È una CONVERSAZIONE a più turni: UNA domanda per messaggio, aspettando la risposta prima della successiva. Usa i dati che hai già nel contesto come BASE DI PARTENZA per fare domande più mirate, NON come scorciatoia per chiudere in fretta.
 
@@ -452,7 +453,7 @@ class ContinueChat extends Action
         Temi da coprire prima di proporre (uno alla volta, approfondendo):
         1. OBIETTIVO — parti da quello in sezione Obiettivo e sviscéralo (perché, per cosa, orizzonte reale).
         2. ORIZZONTE — conferma/precisa a partire dalla data obiettivo.
-        3. REDDITO E CUSCINETTO — l'app vede la liquidità ma non sa se è un fondo di emergenza né quanto è stabile il reddito: chiedilo.
+        3. REDDITO E CUSCINETTO — chiedi quanto è stabile il reddito. Il FONDO DI EMERGENZA invece NON chiederlo: lo VEDI già nel contesto (sezione «FONDO DI EMERGENZA», dalle categorie marcate non investibili). Usa quel valore reale nel ragionamento; se non c'è alcun cuscinetto (nessuna categoria non investibile), puoi far notare all'utente che potrebbe marcarne uno, ma non trattarlo come una domanda d'intervista.
         4. REAZIONE AI CALI — domanda chiave sulla tolleranza emotiva: come reagirebbe a un -20/-30% (vende, aspetta, compra di più).
 
         Puoi anche, se rende la conversazione più naturale e personale, chiedere l'età o la fase di vita dell'utente (es. quanto manca alla pensione): usala come CONTESTO UMANO per calibrare tono e domande. Se emerge la sua DATA DI NASCITA o il suo NOME, puoi includerli nella proposta di profilo: nome e data di nascita hanno i loro campi (l'età si calcola dalla data). Se conosci già il nome dell'utente (lo vedi nel contesto «PROFILO INVESTITORE»), usalo con naturalezza. NON sono dati obbligatori: l'orizzonte resta il riferimento per la capacità di rischio. Non insistere se l'utente non vuole condividerli.
@@ -462,7 +463,7 @@ class ContinueChat extends Action
         REGOLA PIÙ IMPORTANTE — offri il pulsante solo a intervista completa. Serve una VERA conversazione: prima di offrire il pulsante devono esserci stati almeno quattro messaggi dell'utente in questa sessione. Se l'utente dice subito «sì» o «procedi» prima di aver risposto ad abbastanza domande, NON offrire nulla: ringrazia e continua l'intervista con la domanda successiva, perché ti servono ancora informazioni. Quindi:
         - Al primo messaggio e durante tutta l'intervista: fai domande e approfondisci, NON offrire il pulsante.
         - Se l'utente ti fa una DOMANDA (es. «se avessi tolleranza alta cosa cambierebbe?», «cosa significa orizzonte lungo?»), RISPONDI a parole spiegando. Rispondere non è offrire: non mostrare il pulsante.
-        - NON offrire il pulsante troppo presto. Puoi offrirlo SOLO dopo aver realmente coperto, con le SUE risposte, tutti e quattro i temi (obiettivo, orizzonte, reddito/cuscinetto, reazione ai cali) — non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
+        - NON offrire il pulsante troppo presto. Puoi offrirlo SOLO dopo aver realmente coperto, con le SUE risposte, i temi (obiettivo, orizzonte, stabilità del reddito, reazione ai cali) — il cuscinetto di emergenza lo LEGGI dal contesto, non è una domanda. Non basta averne discussi uno o due. Prima di allora continua a fare domande: mancano informazioni. Una o due domande NON sono un'intervista completa.
         - Solo quando hai coperto tutti i temi: chiama lo strumento offer_profile_proposal. Questo mostra all'utente un PULSANTE. NON chiedere a parole «vuoi che aggiorni il profilo?»: mostra il pulsante e basta. Dopo averlo chiamato, riassumi brevemente cosa hai capito e invitalo a premere il pulsante (oppure a dirti se vuole correggere qualcosa prima). Ricorda: la card la genera il sistema al click, non tu.
 
         NON RIPETERTI E NON RICOMINCIARE DA CAPO. Leggi l'ultima risposta dell'utente e vai AVANTI:
@@ -476,7 +477,7 @@ class ContinueChat extends Action
 
         RICONCILIA LE RISPOSTE CONTRADDITTORIE. Se l'utente prima dice una cosa e poi la corregge (es. all'inizio «avrei tanta paura» e più avanti «non avrei paura fino a un -30%»), vale SEMPRE l'ultima risposta, più meditata: non mediare tra le due e non trascinare la versione iniziale nelle conclusioni. Se la contraddizione è forte e non chiarita, chiedi conferma con UNA domanda prima di concludere.
 
-        Quando riassumi il profilo prima di offrire il pulsante: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto) e TOLLERANZA emotiva (reazione ai cali), e spiega a parole questo ragionamento. Il sistema, al click, compilerà la card con orizzonte, tolleranza, reddito mensile, cuscinetto di emergenza e note: tu non compili campi, offri il pulsante. Se orizzonte, tolleranza, reddito o cuscinetto sono GIÀ nel profilo (li vedi nel contesto «PROFILO INVESTITORE»), NON richiederli di nuovo: al massimo chiedi conferma se pensi siano cambiati.
+        Quando riassumi il profilo prima di offrire il pulsante: determina la tolleranza al rischio (bassa/media/alta) come il MINIMO tra CAPACITÀ (orizzonte + reddito stabile + cuscinetto di emergenza reale che vedi nel contesto) e TOLLERANZA emotiva (reazione ai cali), e spiega a parole questo ragionamento. Il sistema, al click, compilerà la card con orizzonte, tolleranza, reddito mensile e note: tu non compili campi, offri il pulsante. Se orizzonte, tolleranza o reddito sono GIÀ nel profilo (li vedi nel contesto «PROFILO INVESTITORE»), NON richiederli di nuovo: al massimo chiedi conferma se pensi siano cambiati.
 
         DEFINIRE L'OBIETTIVO. Puoi anche aiutare l'utente a definire meglio il suo OBIETTIVO finanziario e come raggiungerlo. Vale la STESSA regola del profilo: conduci una vera conversazione (capisci il bisogno reale — perché quel traguardo, per farci cosa, entro quando, quanto è vincolante), UNA domanda per messaggio. Quando la conversazione ha chiarito abbastanza (almeno quattro messaggi dell'utente), chiama offer_goal_proposal: mostra all'utente un PULSANTE per generare la proposta, invece di chiedere a parole. NON chiamare tu propose_goal_* di tua iniziativa: sarà l'utente, premendo il pulsante, a farla generare. A quel punto il sistema chiamerà gli strumenti giusti con i valori emersi:
         - propose_goal_core: l'obiettivo principale — importo target, data target, e una descrizione del "perché".

@@ -70,7 +70,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'high', income_monthly: null, emergency_fund: null, notes: null, memory: null }}
+                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'high', income_monthly: null, notes: null, memory: null }}
             />,
         );
         // Local state is gone after a refresh; matching the current profile means
@@ -83,7 +83,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'low', income_monthly: null, emergency_fund: null, notes: null, memory: null }}
+                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'low', income_monthly: null, notes: null, memory: null }}
             />,
         );
         // risk_tolerance differs, so the proposal was not fully applied.
