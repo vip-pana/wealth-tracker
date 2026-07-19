@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { CheckCircle2, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
+import { MilestoneAllocationBar } from '@/Components/Advisor/Widgets/MilestoneAllocationBar';
 
 export function MilestoneAccordionItem({
     milestone,
+    segments = [],
     achieved,
     defaultOpen,
 }: {
     milestone: { id: number; target_value: number; target_date: string; notes: string | null; action?: string | null; rationale?: string | null };
+    segments?: { category: string; percentage: number; color?: string; cap_amount?: number | null }[];
     achieved: boolean;
     defaultOpen: boolean;
 }) {
     const [open, setOpen] = useState(defaultOpen);
-    const hasDetail = Boolean(milestone.notes || milestone.action || milestone.rationale);
+    const hasDetail = Boolean(milestone.notes || milestone.action || milestone.rationale || segments.length > 0);
 
     return (
         <div>
@@ -43,6 +46,12 @@ export function MilestoneAccordionItem({
                     )}
                     {milestone.rationale && (
                         <p className="text-xs whitespace-pre-wrap"><span className="font-medium">Perché: </span><span className="text-muted-foreground">{milestone.rationale}</span></p>
+                    )}
+                    {segments.length > 0 && (
+                        <div className="space-y-1 pt-0.5">
+                            <span className="text-xs font-medium">Allocazione target</span>
+                            <MilestoneAllocationBar segments={segments} targetValue={milestone.target_value} />
+                        </div>
                     )}
                 </div>
             )}

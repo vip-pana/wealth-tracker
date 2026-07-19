@@ -116,8 +116,8 @@ export function GoalProgress({
                 }
             />
 
-            {/* Progress + Milestones side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {/* Single column: progress, then composition, then milestones. The
+                accordions expand freely and everything reads top to bottom. */}
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -183,27 +183,6 @@ export function GoalProgress({
                     )}
                 </CardContent>
             </Card>
-
-            {sortedMilestones.length > 0 && (() => {
-                const nextIdx = sortedMilestones.findIndex((m) => current < m.target_value && m.target_date > today);
-                return (
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Milestone</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="divide-y divide-border">
-                                {sortedMilestones.map((m, idx) => {
-                                    const achieved = current >= m.target_value || m.target_date <= today;
-                                    const defaultOpen = idx === nextIdx || (nextIdx === -1 && idx === sortedMilestones.length - 1);
-                                    return <MilestoneAccordionItem key={m.id} milestone={m} achieved={achieved} defaultOpen={defaultOpen} />;
-                                })}
-                            </div>
-                        </CardContent>
-                    </Card>
-                );
-            })()}
-            </div>
 
             {/* Allocation comparison */}
             {(goal.categoryAllocations.length > 0 || goal.macroAllocations.length > 0) && (
@@ -284,6 +263,39 @@ export function GoalProgress({
                     </CardContent>
                 </Card>
             )}
+
+            {sortedMilestones.length > 0 && (() => {
+                const nextIdx = sortedMilestones.findIndex((m) => current < m.target_value && m.target_date > today);
+                return (
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Milestone</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border">
+                                {sortedMilestones.map((m, idx) => {
+                                    const achieved = current >= m.target_value || m.target_date <= today;
+                                    const defaultOpen = idx === nextIdx || (nextIdx === -1 && idx === sortedMilestones.length - 1);
+                                    // Map the milestone's stored allocation (keyed by
+                                    // category_id) to the bar's segments (name + colour),
+                                    // so the accordion shows the glide-path step like the
+                                    // advisor widget does.
+                                    const segments = (m.allocation ?? []).map((a) => {
+                                        const cat = categories.find((c) => c.id === a.category_id);
+                                        return {
+                                            category: cat?.name ?? 'Sconosciuta',
+                                            percentage: a.percentage,
+                                            color: cat?.color ?? undefined,
+                                            cap_amount: a.cap_amount ?? null,
+                                        };
+                                    });
+                                    return <MilestoneAccordionItem key={m.id} milestone={m} segments={segments} achieved={achieved} defaultOpen={defaultOpen} />;
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            })()}
 
         </div>
     );

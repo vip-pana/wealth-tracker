@@ -50,4 +50,35 @@ describe('MilestoneAccordionItem', () => {
         await userEvent.click(screen.getByRole('button'));
         expect(screen.queryByText('Prima tappa')).not.toBeInTheDocument();
     });
+
+    it('shows the target allocation bar when segments are provided', () => {
+        render(
+            <MilestoneAccordionItem
+                milestone={milestone({ notes: null })}
+                segments={[
+                    { category: 'Azioni', percentage: 70, color: '#3b82f6' },
+                    { category: 'Liquidità', percentage: 30, color: '#22c55e' },
+                ]}
+                achieved={false}
+                defaultOpen
+            />,
+        );
+        expect(screen.getByText('Allocazione target')).toBeInTheDocument();
+        const labels = [...document.querySelectorAll('span')].map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+        expect(labels).toContain('Azioni 70%');
+    });
+
+    it('expands to show the allocation even with no notes/action/rationale', async () => {
+        render(
+            <MilestoneAccordionItem
+                milestone={milestone({ notes: null })}
+                segments={[{ category: 'Azioni', percentage: 100, color: '#3b82f6' }]}
+                achieved={false}
+                defaultOpen={false}
+            />,
+        );
+        expect(screen.queryByText('Allocazione target')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button'));
+        expect(screen.getByText('Allocazione target')).toBeInTheDocument();
+    });
 });
