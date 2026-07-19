@@ -8,6 +8,7 @@ import { type Status, type Message, type ActiveSession, type GoalData, pickQuest
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
 import { ThinkingWithFacts } from '@/Components/Advisor/ThinkingWithFacts';
 import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
+import { AutoTextarea } from '@/Components/ui/AutoTextarea';
 
 export function Conversation({
     session,
@@ -292,7 +293,7 @@ export function Conversation({
                         </div>
                     )}
                     <div className="flex items-end gap-2">
-                        <textarea
+                        <AutoTextarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => {

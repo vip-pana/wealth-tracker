@@ -4,6 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { Loader2, MessageCircle, Send } from 'lucide-react';
 import { SUGGESTED_QUESTIONS } from '@/Components/Advisor/types';
 import { MessageBubble } from '@/Components/Advisor/MessageBubble';
+import { AutoTextarea } from '@/Components/ui/AutoTextarea';
 
 /**
  * The empty state for a not-yet-started conversation. Deliberately mirrors the
@@ -92,7 +93,7 @@ export function NewConversation({
                     ))}
                 </div>
                 <div className="flex items-end gap-2">
-                    <textarea
+                    <AutoTextarea
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                         onKeyDown={(e) => {
