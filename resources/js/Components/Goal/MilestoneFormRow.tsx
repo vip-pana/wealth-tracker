@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { ChevronDown, Trash2 } from 'lucide-react';
@@ -24,8 +23,6 @@ export function MilestoneFormRow({
     onUpdateAllocation: (idx: number, allocation: AllocationFormItem[]) => void;
     onRemove: (idx: number) => void;
 }) {
-    const [noteOpen, setNoteOpen] = useState(!!item.notes);
-
     const updateAlloc = (aIdx: number, field: string, value: string) => {
         const updated = item.allocation.map((a, i) => (i === aIdx ? { ...a, [field]: value } : a));
         onUpdateAllocation(idx, updated);
@@ -87,27 +84,19 @@ export function MilestoneFormRow({
                     </div>
                 </div>
 
-                {noteOpen ? (
+                {/* Label, action, rationale — each with an explicit heading so
+                    they don't blur together. Label is the short name; action is
+                    the "what to do here"; rationale is the "why". */}
+                <div className="space-y-0.5">
+                    <label className="text-xs text-muted-foreground">Etichetta</label>
                     <textarea
                         value={item.notes}
                         onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
                         placeholder="Etichetta breve, es. Metà percorso"
-                        rows={2}
-                        autoFocus
+                        rows={1}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => setNoteOpen(true)}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        + Aggiungi etichetta
-                    </button>
-                )}
-
-                {/* Action + rationale: the consultant's "what to do here" and
-                    "why". Editable so the user can refine what the AI wrote. */}
+                </div>
                 <div className="space-y-0.5">
                     <label className="text-xs text-muted-foreground">Azione</label>
                     <textarea

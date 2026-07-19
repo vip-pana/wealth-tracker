@@ -35,7 +35,9 @@ export function MilestoneAccordionItem({
             </button>
             {open && hasDetail && (
                 <div className="px-11 pb-3 space-y-1.5">
-                    {milestone.notes && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{milestone.notes}</p>}
+                    {milestone.notes && (
+                        <p className="text-xs whitespace-pre-wrap"><span className="font-medium">Etichetta: </span><span className="text-muted-foreground">{milestone.notes}</span></p>
+                    )}
                     {milestone.action && (
                         <p className="text-xs whitespace-pre-wrap"><span className="font-medium">Azione: </span><span className="text-muted-foreground">{milestone.action}</span></p>
                     )}
