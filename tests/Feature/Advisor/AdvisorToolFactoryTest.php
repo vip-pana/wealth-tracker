@@ -13,6 +13,7 @@ use App\Models\AdvisorSession;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
+use App\Models\InvestorProfile;
 use App\Models\Snapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -578,6 +579,101 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
     }
 
+    public function test_propose_profile_update_carries_the_personal_fields(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            name: 'Vincenzo',
+            birth_date: '1990-05-14',
+        );
+
+        $data = $collector->widgets()[0]['data'];
+        $this->assertSame('Vincenzo', $data['name']);
+        $this->assertSame('1990-05-14', $data['birth_date']);
+        // memory is no longer a profile-proposal field — it writes autonomously
+        // through remember_fact — so it never appears on the card payload.
+        $this->assertArrayNotHasKey('memory', $data);
+    }
+
+    public function test_remember_fact_writes_the_memory_immediately_without_a_card(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'remember_fact')->handle(fact: 'Preferisce ETF ad accumulo.');
+
+        // No confirmation widget: it saved on its own.
+        $this->assertSame([], $collector->widgets());
+        // Persisted straight onto the profile as a bulleted line.
+        $this->assertSame('• Preferisce ETF ad accumulo.', InvestorProfile::query()->first()?->memory);
+        // The tool text tells the model to relay what was stored.
+        $this->assertStringContainsString('memorizzato', $out);
+        $this->assertStringContainsString('ETF ad accumulo', $out);
+    }
+
+    public function test_remember_fact_appends_without_losing_the_existing(): void
+    {
+        InvestorProfile::create(['memory' => '• Non vuole obbligazioni.']);
+        [$factory] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'remember_fact')->handle(fact: 'Preferisce ETF ad accumulo.');
+
+        $this->assertSame(
+            "• Non vuole obbligazioni.\n• Preferisce ETF ad accumulo.",
+            InvestorProfile::query()->first()?->memory,
+        );
+    }
+
+    public function test_remember_fact_does_not_duplicate_an_existing_memory_fact(): void
+    {
+        InvestorProfile::create(['memory' => '• Non vuole obbligazioni.']);
+        [$factory] = $this->armedFactory($this->portfolioContext);
+        // Same fact (case-insensitive, with a bullet echoed) — must not double up.
+        $this->tool($factory, 'remember_fact')->handle(fact: '• non vuole obbligazioni.');
+
+        $this->assertSame('• Non vuole obbligazioni.', InvestorProfile::query()->first()?->memory);
+    }
+
+    public function test_remember_fact_does_not_write_when_not_allowed(): void
+    {
+        // Same as armedFactory but without opening the profile-fact gate.
+        $collector = new AdvisorWidgetCollector;
+        $build = Mockery::mock(BuildAdvisorContext::class);
+        $build->shouldReceive('run')->andReturn($this->portfolioContext);
+        $factory = new AdvisorToolFactory($build, new AdvisorToolActivityReporter, $collector);
+        $session = AdvisorSession::create(['kind' => 'chat', 'title' => 't', 'status' => 'pending']);
+        $message = AdvisorMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => '', 'status' => 'pending']);
+        $collector->for($message);
+        // profile-fact gate NOT opened (default closed)
+
+        $this->tool($factory, 'remember_fact')->handle(fact: 'Non vuole obbligazioni.');
+
+        $this->assertNull(InvestorProfile::query()->first());
+    }
+
+    public function test_propose_profile_update_drops_a_future_birth_date(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'propose_profile_update')->handle(
+            name: 'Vincenzo',
+            birth_date: '2999-01-01',
+        );
+
+        $data = $collector->widgets()[0]['data'];
+        $this->assertSame('Vincenzo', $data['name']);
+        $this->assertArrayNotHasKey('birth_date', $data);
+    }
+
+    public function test_confirm_profile_fact_carries_name(): void
+    {
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $this->tool($factory, 'confirm_profile_fact')->handle(
+            name: 'Vincenzo',
+        );
+
+        $data = $collector->widgets()[0]['data'];
+        $this->assertSame('Vincenzo', $data['name']);
+        // memory is not part of the confirm-fact card anymore.
+        $this->assertArrayNotHasKey('memory', $data);
+    }
+
     public function test_confirm_profile_fact_emits_a_confirmation_card_directly(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
@@ -687,8 +783,8 @@ class AdvisorToolFactoryTest extends TestCase
 
     public function test_propose_goal_milestones_carries_a_valid_per_milestone_allocation(): void
     {
-        Category::factory()->create(['name' => 'Azioni']);
-        Category::factory()->create(['name' => 'Liquidità']);
+        Category::factory()->create(['name' => 'Azioni', 'color' => '#3b82f6']);
+        Category::factory()->create(['name' => 'Liquidità', 'color' => '#22c55e']);
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
 
         $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
@@ -702,6 +798,10 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertCount(2, $alloc);
         $this->assertSame('Azioni', $alloc[0]['category']);
         $this->assertSame(70.0, $alloc[0]['percentage']);
+        // Each entry carries the category colour so the widget renders the
+        // glide-path bar in the user's colours.
+        $this->assertSame('#3b82f6', $alloc[0]['color']);
+        $this->assertSame('#22c55e', $alloc[1]['color']);
     }
 
     public function test_propose_goal_milestones_drops_an_allocation_that_is_not_100(): void

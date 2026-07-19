@@ -8,6 +8,7 @@ use App\Actions\Advisor\BuildAdvisorContext;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
+use App\Models\InvestorProfile;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 use Prism\Prism\Facades\Tool;
@@ -50,6 +51,7 @@ class AdvisorToolFactory
             $this->simulateGoal(),
             $this->proposeProfileUpdate(),
             $this->confirmProfileFact(),
+            $this->rememberFact(),
             $this->proposeGoalCore(),
             $this->proposeGoalMilestones(),
             $this->proposeGoalComposition(),
@@ -254,16 +256,18 @@ class AdvisorToolFactory
     private function proposeProfileUpdate(): PrismTool
     {
         return Tool::as('propose_profile_update')
-            ->for('Proponi una modifica al profilo investitore dell\'utente (orizzonte, tolleranza al rischio, reddito mensile, cuscinetto di emergenza, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->for('Proponi una modifica al profilo investitore dell\'utente (nome, data di nascita, orizzonte, tolleranza al rischio, reddito mensile, cuscinetto di emergenza, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). Per un fatto o preferenza durevole da RICORDARE (es. "non vuole obbligazioni") NON usare questo strumento: usa remember_fact, che salva subito. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->withStringParameter('name', 'Nome dell\'utente, se te l\'ha detto (es. "Vincenzo"). Ometti se non emerso.', required: false)
+            ->withStringParameter('birth_date', 'Data di nascita in formato AAAA-MM-GG (es. 1990-05-14), se emersa. Serve per l\'età. Ometti se non emersa.', required: false)
             ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short" (breve, <3 anni), "medium" (medio, 3-10 anni), "long" (lungo, 10+ anni). Ometti se non emerso.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low" (bassa), "medium" (media), "high" (alta). Ometti se non emerso.', required: false)
             ->withNumberParameter('income_monthly', 'Reddito netto mensile in euro, es. 2000. Ometti se non emerso.', required: false)
             ->withStringParameter('emergency_fund', 'Fondo di emergenza: uno tra "none" (nessun fondo separato, solo la liquidità del portafoglio), "partial" (parziale), "separate" (fondo separato dedicato). Ometti se non emerso.', required: false)
             ->withStringParameter('notes', 'Sintesi del ragionamento sul profilo di rischio (max 1000 caratteri): capacità di rischio (orizzonte, stabilità del reddito, cuscinetto di liquidità), tolleranza emotiva (reazione a un forte calo), e contesto rilevante. Compilalo quando hai condotto un\'intervista di profilazione, così il "perché" resta salvato.', required: false)
-            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null, ?string $notes = null): string {
+            ->using(function (?string $name = null, ?string $birth_date = null, ?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null, ?string $notes = null): string {
                 $this->activity->report('Sto preparando una proposta per il tuo profilo…');
 
-                return $this->describeProfileProposal($horizon, $risk_tolerance, $income_monthly, $emergency_fund, $notes);
+                return $this->describeProfileProposal($name, $birth_date, $horizon, $risk_tolerance, $income_monthly, $emergency_fund, $notes);
             });
     }
 
@@ -280,15 +284,41 @@ class AdvisorToolFactory
     private function confirmProfileFact(): PrismTool
     {
         return Tool::as('confirm_profile_fact')
-            ->for('Usalo quando l\'utente DICHIARA direttamente un dato del suo profilo in chat, per aggiornarlo subito (senza intervista). Esempi: «il mio reddito è salito a 2000», «ora ho un fondo di emergenza separato», «il mio orizzonte è cambiato, ora è a lungo termine». Mostra una card di conferma con un solo click: NON salva da solo. Compila SOLO i campi che l\'utente ha effettivamente dichiarato in questo messaggio; lascia vuoti gli altri. Dopo averlo chiamato, conferma a parole cosa aggiornerai e invita a premere Applica.')
+            ->for('Usalo quando l\'utente DICHIARA direttamente un dato del suo profilo in chat, per aggiornarlo subito (senza intervista). Esempi: «mi chiamo Vincenzo», «il mio reddito è salito a 2000», «ora ho un fondo di emergenza separato», «il mio orizzonte è cambiato, ora è a lungo termine». Per un fatto o preferenza durevole da RICORDARE (es. «ricordati che non voglio obbligazioni») NON usare questo strumento: usa remember_fact, che salva subito senza card. Mostra una card di conferma con un solo click: NON salva da solo. Compila SOLO i campi che l\'utente ha effettivamente dichiarato in questo messaggio; lascia vuoti gli altri. Dopo averlo chiamato, conferma a parole cosa aggiornerai e invita a premere Applica.')
+            ->withStringParameter('name', 'Nome dell\'utente, se l\'ha dichiarato (es. "Vincenzo"). Ometti se non dichiarato.', required: false)
             ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short", "medium", "long". Ometti se non dichiarato.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low", "medium", "high". Ometti se non dichiarato.', required: false)
             ->withNumberParameter('income_monthly', 'Reddito netto mensile in euro, es. 2000. Ometti se non dichiarato.', required: false)
             ->withStringParameter('emergency_fund', 'Fondo di emergenza: uno tra "none", "partial", "separate". Ometti se non dichiarato.', required: false)
-            ->using(function (?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null): string {
+            ->using(function (?string $name = null, ?string $horizon = null, ?string $risk_tolerance = null, int|float|null $income_monthly = null, ?string $emergency_fund = null): string {
                 $this->activity->report('Sto aggiornando il tuo profilo…');
 
-                return $this->describeProfileFact($horizon, $risk_tolerance, $income_monthly, $emergency_fund);
+                return $this->describeProfileFact($name, $horizon, $risk_tolerance, $income_monthly, $emergency_fund);
+            });
+    }
+
+    /**
+     * Remember ONE durable fact/preference about the user. Unlike every other
+     * profile tool, this one WRITES immediately (no confirmation card): the user
+     * asked for the memory field to be the single thing the advisor keeps up to
+     * date on its own, told after the fact rather than gated behind a click.
+     * The new fact is appended to the existing memory (mergedMemory: bulleted,
+     * de-duplicated, clamped), so an earlier one is never lost. Still gated on
+     * isProfileFactAllowed so it only writes during a real chat turn (a no-op
+     * on report generation / unit tests where no message is armed). The returned
+     * text tells the model exactly what was stored so it can report it back.
+     */
+    private function rememberFact(): PrismTool
+    {
+        return Tool::as('remember_fact')
+            ->for('Memorizza UN SOLO fatto o preferenza durevole dell\'utente, es. «non vuole obbligazioni», «preferisce ETF ad accumulo», «investe da 5 anni». A differenza degli altri strumenti del profilo, questo SALVA SUBITO da solo, senza card di conferma: è l\'unico dato del profilo che aggiorni in autonomia. Viene AGGIUNTO alla memoria esistente, non la sostituisce: passa solo il fatto NUOVO emerso ora. Usalo quando emerge una preferenza o un fatto durevole da tenere a mente. Dopo averlo chiamato, comunica all\'utente a parole che l\'hai memorizzato e mostragli esattamente cosa hai salvato.')
+            ->withStringParameter('fact', 'Il singolo fatto o preferenza durevole da ricordare, conciso, es. "Non vuole obbligazioni".')
+            ->using(function (string $fact): string {
+                if (! $this->widgets->isProfileFactAllowed()) {
+                    return 'Non posso aggiornare la memoria in questo contesto. Rispondi normalmente.';
+                }
+
+                return $this->storeMemoryFact($fact);
             });
     }
 
@@ -1019,8 +1049,10 @@ class AdvisorToolFactory
      * enum is dropped (not proposed) so the model can't push an invalid value.
      * Returns without a widget when nothing valid was proposed.
      */
-    private function describeProfileProposal(?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund, ?string $notes = null): string
+    private function describeProfileProposal(?string $name, ?string $birthDate, ?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund, ?string $notes = null): string
     {
+        $name = $name !== null && trim($name) !== '' ? mb_substr(trim($name), 0, 100) : null;
+        $birthDate = $birthDate !== null && trim($birthDate) !== '' ? $this->parsePastDate(trim($birthDate)) : null;
         $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
         $income = is_numeric($incomeMonthly) && (float) $incomeMonthly >= 0.0 ? round((float) $incomeMonthly, 2) : null;
@@ -1028,6 +1060,8 @@ class AdvisorToolFactory
         $notes = $notes !== null && trim($notes) !== '' ? mb_substr(trim($notes), 0, 1000) : null;
 
         $proposed = array_filter([
+            'name' => $name,
+            'birth_date' => $birthDate,
             'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
             'income_monthly' => $income,
@@ -1053,6 +1087,12 @@ class AdvisorToolFactory
         $riskLabels = ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta'];
 
         $lines = ['Proposta di profilo (da confermare):'];
+        if ($name !== null) {
+            $lines[] = '  - Nome: '.$name;
+        }
+        if ($birthDate !== null) {
+            $lines[] = '  - Data di nascita: '.$birthDate;
+        }
         if ($horizon !== null) {
             $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
         }
@@ -1081,14 +1121,16 @@ class AdvisorToolFactory
      * — open on ordinary chat turns — instead of the interview-consent gate.
      * Enum/number values are validated the same way; invalid ones are dropped.
      */
-    private function describeProfileFact(?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund): string
+    private function describeProfileFact(?string $name, ?string $horizon, ?string $riskTolerance, int|float|null $incomeMonthly, ?string $emergencyFund): string
     {
+        $name = $name !== null && trim($name) !== '' ? mb_substr(trim($name), 0, 100) : null;
         $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
         $income = is_numeric($incomeMonthly) && (float) $incomeMonthly >= 0.0 ? round((float) $incomeMonthly, 2) : null;
         $emergencyFund = in_array($emergencyFund, ['none', 'partial', 'separate'], true) ? $emergencyFund : null;
 
         $proposed = array_filter([
+            'name' => $name,
             'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
             'income_monthly' => $income,
@@ -1096,7 +1138,7 @@ class AdvisorToolFactory
         ], fn ($v): bool => $v !== null);
 
         if ($proposed === []) {
-            return 'Non ho capito quale dato del profilo aggiornare. Chiedi all\'utente di precisare (reddito, cuscinetto, orizzonte o tolleranza).';
+            return 'Non ho capito quale dato del profilo aggiornare. Chiedi all\'utente di precisare (nome, reddito, cuscinetto, orizzonte, tolleranza).';
         }
 
         if (! $this->widgets->isProfileFactAllowed()) {
@@ -1110,6 +1152,9 @@ class AdvisorToolFactory
         $fundLabels = ['none' => 'nessun fondo separato', 'partial' => 'parziale', 'separate' => 'fondo separato'];
 
         $lines = ['Aggiornamento del profilo (da confermare con un click):'];
+        if ($name !== null) {
+            $lines[] = '  - Nome: '.$name;
+        }
         if ($horizon !== null) {
             $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
         }
@@ -1251,8 +1296,10 @@ class AdvisorToolFactory
      * clamp each 0-100, and accept the set only when it sums to ~100. A missing
      * or non-100 allocation degrades to [] (the milestone is still valid, just
      * without a glide-path step) — we don't reject the whole milestone over it.
+     * Each kept entry carries the category's colour (same lookup as the donut)
+     * so the widget renders the glide-path bar in the user's category colours.
      *
-     * @return list<array{category: string, percentage: float}>
+     * @return list<array{category: string, percentage: float, color: string}>
      */
     private function validMilestoneAllocation(mixed $allocation): array
     {
@@ -1261,6 +1308,7 @@ class AdvisorToolFactory
         }
 
         $allowed = $this->goalCategoryNames();
+        $colours = Category::query()->pluck('color', 'name')->all();
         $out = [];
         $total = 0.0;
         foreach ($allocation as $b) {
@@ -1273,7 +1321,8 @@ class AdvisorToolFactory
                 continue;
             }
             $clamped = max(0.0, min(100.0, $pct));
-            $out[] = ['category' => $category, 'percentage' => $clamped];
+            $colour = $colours[$category] ?? null;
+            $out[] = ['category' => $category, 'percentage' => $clamped, 'color' => is_string($colour) ? $colour : '#94a3b8'];
             $total += $clamped;
         }
 
@@ -1419,6 +1468,100 @@ class AdvisorToolFactory
         }
 
         if (! $parsed instanceof Carbon || $parsed->isPast()) {
+            return null;
+        }
+
+        return $parsed->format('Y-m-d');
+    }
+
+    /**
+     * Compose the `memory` value for a profile-proposal card by APPENDING the new
+     * durable fact to what the profile already holds, so an earlier memory is
+     * never lost when the AI proposes a new one (the card POSTs the whole field,
+     * which replaces it). Deterministic — not left to the model. Memory is stored
+     * as one "• "-bulleted line per fact; a case-insensitive duplicate is skipped,
+     * and the result is clamped to the 2000-char column limit (oldest lines
+     * dropped first if it overflows). The manual profile dialog still replaces the
+     * field wholesale — this append path is only for the AI's proposal cards.
+     */
+    /**
+     * Append a durable fact to the profile memory and PERSIST it immediately —
+     * the one autonomous profile write (see rememberFact). Merges via
+     * mergedMemory (bulleted, de-duplicated, clamped) and saves onto the single
+     * InvestorProfile row, creating it if the user has none yet. Returns a
+     * confirmation the model relays to the user, telling them the fact was
+     * saved. When mergedMemory yields null (empty/blank fact) nothing is written.
+     */
+    private function storeMemoryFact(string $fact): string
+    {
+        $merged = $this->mergedMemory($fact);
+        if ($merged === null) {
+            return 'Non ho un fatto valido da ricordare. Chiedi all\'utente di precisare cosa vuole che tenga a mente.';
+        }
+
+        $profile = InvestorProfile::query()->first() ?? new InvestorProfile;
+        $profile->memory = $merged;
+        $profile->save();
+
+        return "Ho memorizzato questo nel profilo (salvato automaticamente, senza bisogno di conferma):\n  - ".trim($fact)
+            ."\nComunica all'utente che l'hai memorizzato e mostragli esattamente cosa hai salvato.";
+    }
+
+    private function mergedMemory(?string $newFact): ?string
+    {
+        $newFact = $newFact !== null ? trim($newFact) : '';
+        if ($newFact === '') {
+            return null;
+        }
+
+        // Strip a leading bullet the model might echo, then re-add ours.
+        $newFact = ltrim($newFact, "•- \t");
+        $existing = InvestorProfile::query()->first()?->memory;
+
+        $lines = [];
+        if (is_string($existing) && trim($existing) !== '') {
+            foreach (preg_split('/\R/', $existing) ?: [] as $line) {
+                $line = trim($line);
+                if ($line !== '') {
+                    $lines[] = $line;
+                }
+            }
+        }
+
+        $bulleted = '• '.$newFact;
+        $alreadyThere = false;
+        foreach ($lines as $line) {
+            if (mb_strtolower(ltrim($line, "• \t")) === mb_strtolower($newFact)) {
+                $alreadyThere = true;
+                break;
+            }
+        }
+        if (! $alreadyThere) {
+            $lines[] = $bulleted;
+        }
+
+        // Clamp to the column limit, dropping the oldest lines first if needed.
+        while (count($lines) > 1 && mb_strlen(implode("\n", $lines)) > 2000) {
+            array_shift($lines);
+        }
+
+        return mb_substr(implode("\n", $lines), 0, 2000);
+    }
+
+    /**
+     * Parse a birth date: a valid Y-m-d strictly in the past. Anything else
+     * (bad format, today/future) is dropped so the model can't set a nonsensical
+     * birth date. Mirrors the StoreInvestorProfileRequest `date|before:today` rule.
+     */
+    private function parsePastDate(string $date): ?string
+    {
+        try {
+            $parsed = Carbon::createFromFormat('Y-m-d', $date);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $parsed instanceof Carbon || ! $parsed->isPast()) {
             return null;
         }
 
