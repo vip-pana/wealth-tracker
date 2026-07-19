@@ -83,16 +83,16 @@ export function GoalFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica obiettivo' : 'Crea il tuo obiettivo'}</DialogTitle>
                     <DialogDescription className="sr-only">Definisci patrimonio obiettivo, allocazione target e milestone.</DialogDescription>
                 </DialogHeader>
-                {/* Two columns on wide screens: the base fields on the left, the
-                    longer allocation and milestone lists on the right, so the
-                    dialog reads across rather than scrolling down. Collapses to a
-                    single column on small screens. */}
-                <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                {/* Single column: milestones now carry label, action, rationale
+                    and their own allocation, so they need the full width — a
+                    narrow side column would cramp them. Base fields stack on top,
+                    milestones below. */}
+                <form onSubmit={submit} className="flex flex-col gap-6">
                     {/* Base info */}
                     <div className="space-y-4">
                         <div className="space-y-1">
@@ -168,7 +168,7 @@ export function GoalFormDialog({
                         </div>
                     </div>
 
-                    <DialogFooter className="lg:col-span-2 sm:justify-between">
+                    <DialogFooter className="sm:justify-between">
                         <Button asChild type="button" variant="ghost" size="sm" className="gap-1.5">
                             <Link href={`/advisor?ask=${encodeURIComponent(isEdit ? 'Aiutami a ridefinire il mio obiettivo e a rivedere le milestone.' : 'Aiutami a definire il mio obiettivo finanziario da zero.')}`}>
                                 <Sparkles className="h-4 w-4" />
