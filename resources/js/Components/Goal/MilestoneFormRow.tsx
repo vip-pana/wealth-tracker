@@ -1,7 +1,7 @@
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { ChevronDown, Trash2 } from 'lucide-react';
-import { Money } from '@/Components/ui/Money';
+import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import { AllocationSection } from '@/Components/Goal/AllocationSection';
 import type { AllocationFormItem, MilestoneFormItem } from '@/Components/Goal/types';
 import type { Category } from '@/types/models';
@@ -40,43 +40,36 @@ export function MilestoneFormRow({
 
             {/* Content */}
             <div className={`flex-1 space-y-2 ${isLast ? '' : 'pb-4'}`}>
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <div className="relative flex-1">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="space-y-0.5 flex-1">
+                        <label className="text-xs text-muted-foreground">Valore</label>
                         <Input
                             type="text"
-                            inputMode="decimal"
-                            value={item.target_value}
-                            onChange={(e) => onUpdate(idx, 'target_value', e.target.value)}
-                            placeholder="Valore es. 50000"
-                            className="font-mono pr-24 text-sm"
+                            inputMode="numeric"
+                            value={item.target_value ? formatCurrencyNoDecimals(parseInt(item.target_value, 10)) : ''}
+                            onChange={(e) => onUpdate(idx, 'target_value', e.target.value.replace(/\D/g, ''))}
+                            placeholder="es. 50.000 €"
+                            className="font-mono text-sm"
                         />
-                        {item.target_value && !isNaN(parseFloat(item.target_value)) && (
-                            <Money
-                                value={parseFloat(item.target_value)}
-                                variant="no-decimals"
-                                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono"
-                            />
-                        )}
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <Input
-                            type="number"
-                            min={2020}
-                            max={2100}
-                            step={1}
-                            value={item.target_date ? item.target_date.slice(0, 4) : ''}
-                            onChange={(e) => {
-                                const y = e.target.value;
-                                onUpdate(idx, 'target_date', y ? `${y}-01-01` : '');
-                            }}
-                            placeholder="Anno"
-                            className="font-mono text-sm flex-1 sm:flex-none sm:w-24"
-                        />
+                    <div className="flex gap-2 items-end">
+                        <div className="space-y-0.5 flex-1 sm:flex-none sm:w-28">
+                            <label className="text-xs text-muted-foreground">Anno</label>
+                            <Input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={4}
+                                value={(item.target_date ?? '').slice(0, 4)}
+                                onChange={(e) => onUpdate(idx, 'target_date', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                placeholder="es. 2045"
+                                className="font-mono text-sm w-full"
+                            />
+                        </div>
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive flex-shrink-0"
                             onClick={() => onRemove(idx)}
                         >
                             <Trash2 className="w-4 h-4" />

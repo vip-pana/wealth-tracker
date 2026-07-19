@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Flag, Check } from 'lucide-react';
 import { formatCurrencyNoDecimals, formatDateLong } from '@/lib/formatters';
+import { MilestoneAllocationBar } from '@/Components/Advisor/Widgets/MilestoneAllocationBar';
 import type { GoalMilestonesProposalWidget, GoalData } from '@/Components/Advisor/types';
 
 /**
@@ -78,7 +79,10 @@ export function GoalMilestonesProposal({ data, goal }: { data: GoalMilestonesPro
                                 <p><span className="font-medium text-foreground">Perché: </span><span className="text-muted-foreground">{m.rationale}</span></p>
                             )}
                             {(m.allocation?.length ?? 0) > 0 && (
-                                <p><span className="font-medium text-foreground">Allocazione: </span><span className="text-muted-foreground">{(m.allocation ?? []).map((a) => `${a.category} ${a.percentage}%`).join(' · ')}</span></p>
+                                <div className="space-y-1 pt-0.5">
+                                    <span className="font-medium text-foreground">Allocazione target</span>
+                                    <MilestoneAllocationBar segments={m.allocation ?? []} />
+                                </div>
                             )}
                         </li>
                     ))}

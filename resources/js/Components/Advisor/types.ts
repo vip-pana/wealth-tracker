@@ -154,7 +154,9 @@ export interface GoalMilestonesProposalWidget {
             target_date: string;
             // Optional: widgets persisted before per-milestone allocation existed
             // carry no `allocation` key, so it can be undefined on old messages.
-            allocation?: { category: string; percentage: number }[];
+            // `color` (per-category, from the tool) is likewise optional — older
+            // persisted widgets predate it and the bar falls back to grey.
+            allocation?: { category: string; percentage: number; color?: string }[];
         }[];
     };
 }

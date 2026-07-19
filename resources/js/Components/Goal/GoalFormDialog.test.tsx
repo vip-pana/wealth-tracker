@@ -29,6 +29,7 @@ vi.mock('@inertiajs/react', () => ({
             processing: false,
             errors: {},
             reset: () => setState(initial),
+            transform: () => {},
         };
     },
     Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,

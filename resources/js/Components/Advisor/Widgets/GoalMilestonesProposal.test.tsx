@@ -25,7 +25,12 @@ describe('GoalMilestonesProposal', () => {
         expect(screen.getByText('Tappa 2')).toBeInTheDocument();
         expect(screen.getByText(/Sposta 5% da Bitcoin/)).toBeInTheDocument();
         expect(screen.getByText(/Riduce la volatilità/)).toBeInTheDocument();
-        expect(screen.getByText(/Azioni 70% · Liquidità 30%/)).toBeInTheDocument();
+        // The allocation renders as a stacked bar with a legend (heading +
+        // per-category label spans), not the old "Azioni 70% · …" text.
+        expect(screen.getByText('Allocazione target')).toBeInTheDocument();
+        const legend = [...document.querySelectorAll('span')].map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+        expect(legend).toContain('Azioni 70%');
+        expect(legend).toContain('Liquidità 30%');
     });
 
     it('POSTs the milestones with label/action/rationale/allocation on Applica', async () => {

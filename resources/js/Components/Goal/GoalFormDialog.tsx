@@ -5,7 +5,7 @@ import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { Sparkles } from 'lucide-react';
-import { Money } from '@/Components/ui/Money';
+import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { MilestonesSection } from '@/Components/Goal/MilestonesSection';
 import type { AllocationFormItem, MilestoneFormItem, GoalFormData } from '@/Components/Goal/types';
@@ -25,24 +25,29 @@ export function GoalFormDialog({
 }) {
     const isEdit = goal !== null;
 
+    // The year fields hold a bare 4-digit year in form state (so the input
+    // stays freely editable); a stored AAAA-MM-GG date is reduced to its year on
+    // load and expanded back to a full date on submit.
+    const toYear = (date: string | null | undefined) => (date ?? '').slice(0, 4);
+
     const buildMilestones = (): MilestoneFormItem[] =>
         goal?.milestones.map((m) => ({
             notes: m.notes ?? '',
             action: m.action ?? '',
             rationale: m.rationale ?? '',
             target_value: String(m.target_value),
-            target_date: m.target_date,
+            target_date: toYear(m.target_date),
             allocation: (m.allocation ?? []).map((a) => ({
                 category_id: String(a.category_id ?? ''),
                 percentage: String(a.percentage),
             })),
         })) ?? [];
 
-    const { data, setData, post, put, processing, errors, reset } = useForm<GoalFormData>({
+    const { data, setData, post, put, processing, errors, reset, transform } = useForm<GoalFormData>({
         name: goal?.name ?? '',
         description: goal?.description ?? '',
         target_value: goal ? String(goal.target_value) : '',
-        target_date: goal?.target_date ?? '',
+        target_date: toYear(goal?.target_date),
         milestones: buildMilestones(),
     });
 
@@ -52,7 +57,7 @@ export function GoalFormDialog({
                 name: goal?.name ?? '',
                 description: goal?.description ?? '',
                 target_value: goal ? String(goal.target_value) : '',
-                target_date: goal?.target_date ?? '',
+                target_date: toYear(goal?.target_date),
                 milestones: buildMilestones(),
             });
         }
@@ -73,6 +78,15 @@ export function GoalFormDialog({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        // The year fields hold a bare 4-digit year while editing (so the input
+        // stays freely editable); expand them to a full AAAA-01-01 date, which
+        // is what the backend validates and stores.
+        const toDate = (year: string) => /^\d{4}$/.test(year) ? `${year}-01-01` : '';
+        transform((d) => ({
+            ...d,
+            target_date: toDate(d.target_date),
+            milestones: d.milestones.map((m) => ({ ...m, target_date: toDate(m.target_date) })),
+        }));
         const opts = { onSuccess: () => { reset(); onClose(); } };
         if (isEdit) {
             put(`/goal/${goal.id}`, opts);
@@ -83,7 +97,7 @@ export function GoalFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Modifica obiettivo' : 'Crea il tuo obiettivo'}</DialogTitle>
                     <DialogDescription className="sr-only">Definisci patrimonio obiettivo, allocazione target e milestone.</DialogDescription>
@@ -117,37 +131,26 @@ export function GoalFormDialog({
                         <div className="flex gap-4 items-start">
                             <div className="space-y-1 flex-1">
                                 <Label>Patrimonio obiettivo</Label>
-                                <div className="relative">
-                                    <Input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={data.target_value}
-                                        onChange={(e) => setData('target_value', e.target.value)}
-                                        placeholder="es. 500000"
-                                        className="font-mono pr-24"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono pointer-events-none">
-                                        {data.target_value && !isNaN(parseFloat(data.target_value))
-                                            ? <Money value={parseFloat(data.target_value)} variant="no-decimals" />
-                                            : ''}
-                                    </span>
-                                </div>
+                                <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={data.target_value ? formatCurrencyNoDecimals(parseInt(data.target_value, 10)) : ''}
+                                    onChange={(e) => setData('target_value', e.target.value.replace(/\D/g, ''))}
+                                    placeholder="es. 500.000 €"
+                                    className="font-mono"
+                                />
                                 {errors.target_value && <p className="text-xs text-destructive">{errors.target_value}</p>}
                             </div>
                             <div className="space-y-1 flex-shrink-0">
                                 <Label className="whitespace-nowrap">Anno target <OptionalHint /></Label>
                                 <Input
-                                    type="number"
-                                    min={2020}
-                                    max={2100}
-                                    step={1}
-                                    value={data.target_date ? data.target_date.slice(0, 4) : ''}
-                                    onChange={(e) => {
-                                        const y = e.target.value;
-                                        setData('target_date', y ? `${y}-01-01` : '');
-                                    }}
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    value={(data.target_date ?? '').slice(0, 4)}
+                                    onChange={(e) => setData('target_date', e.target.value.replace(/\D/g, '').slice(0, 4))}
                                     placeholder="es. 2045"
-                                    className="font-mono w-32"
+                                    className="font-mono w-40"
                                 />
                             </div>
                         </div>

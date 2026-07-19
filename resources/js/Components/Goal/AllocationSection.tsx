@@ -36,12 +36,10 @@ export function AllocationSection({
                             <div className="flex-1">{renderSelect(item, idx)}</div>
                             <div className="relative w-20">
                                 <Input
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    step={0.1}
+                                    type="text"
+                                    inputMode="decimal"
                                     value={item.percentage}
-                                    onChange={(e) => onUpdate(idx, 'percentage', e.target.value)}
+                                    onChange={(e) => onUpdate(idx, 'percentage', e.target.value.replace(/[^\d.]/g, ''))}
                                     className="text-right font-mono pr-6"
                                     placeholder="0"
                                 />
