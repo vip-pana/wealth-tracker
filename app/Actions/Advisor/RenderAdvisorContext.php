@@ -33,6 +33,7 @@ class RenderAdvisorContext extends Action
 
         $lines[] = $this->returnsSection($context['positionReturns'] ?? null);
         $lines[] = $this->allocationSection($portfolio);
+        $lines[] = $this->bufferSection($context['emergencyBuffer'] ?? null);
         $lines[] = $this->liquiditySection($portfolio);
         $lines[] = $this->volatilitySection($portfolio);
         $lines[] = $this->costsSection($context['costs'] ?? null);
@@ -100,6 +101,16 @@ class RenderAdvisorContext extends Action
         }
 
         return $out;
+    }
+
+    private function bufferSection(mixed $buffer): string
+    {
+        if (! is_numeric($buffer) || (float) $buffer <= 0.0) {
+            return '';
+        }
+
+        return 'FONDO DI EMERGENZA: '.$this->eur($buffer).' tenuti come cuscinetto (categorie marcate non investibili). '
+            .'Questo importo NON è incluso nelle metriche di investimento qui sopra (allocazione, rendimento, obiettivo): è liquidità ferma volutamente fuori dal portafoglio investito. Tienine conto quando valuti la capacità di rischio, ma non trattarlo come denaro da investire.';
     }
 
     /**

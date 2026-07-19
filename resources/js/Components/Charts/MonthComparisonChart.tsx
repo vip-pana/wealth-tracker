@@ -17,9 +17,10 @@ interface Props {
     data: MonthComparisonPoint[];
     months: [string, string] | null; // [prev, current] as YYYY-MM-DD
     title?: string;
+    note?: string;
 }
 
-export default function MonthComparisonChart({ data, months, title = 'Confronto tra snapshot' }: Props) {
+export default function MonthComparisonChart({ data, months, title = 'Confronto tra snapshot', note }: Props) {
     const hidden = useValuesHidden();
     const [prevDate, currDate] = months ?? ['Prec.', 'Attuale'];
 
@@ -32,6 +33,7 @@ export default function MonthComparisonChart({ data, months, title = 'Confronto 
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">{title}</CardTitle>
+                {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 {!months || visibleData.length === 0 ? (

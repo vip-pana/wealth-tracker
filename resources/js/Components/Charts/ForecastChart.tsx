@@ -18,9 +18,10 @@ import type { ForecastPoint } from '@/types/analytics';
 
 interface Props {
     data: ForecastPoint[];
+    note?: string;
 }
 
-export default function ForecastChart({ data }: Props) {
+export default function ForecastChart({ data, note }: Props) {
     const hidden = useValuesHidden();
     // Find the split point between historical and forecast
     const splitDate = findForecastSplitDate(data);
@@ -29,6 +30,7 @@ export default function ForecastChart({ data }: Props) {
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">Previsioni (prossimi 6 mesi)</CardTitle>
+                {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 {data.length === 0 ? (

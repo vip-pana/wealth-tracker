@@ -146,4 +146,21 @@ class DashboardBuildersTest extends TestCase
         $this->assertEqualsWithDelta(130.0, $data['momNetWorthSeries'][0]['total_value'], 0.01);
         $this->assertSame('2026-02-10', $data['momNetWorthSeries'][1]['date']);
     }
+
+    public function test_net_worth_series_layers_total_ex_pension_and_investable(): void
+    {
+        $etf = Category::factory()->create(['macro_category' => MacroCategory::ETF, 'investable' => true]);
+        $pension = Category::factory()->create(['macro_category' => MacroCategory::FondoPensione, 'investable' => true]);
+        $buffer = Category::factory()->create(['macro_category' => MacroCategory::Liquidita, 'investable' => false]);
+
+        $this->snapshot('2026-01-31', [$etf->id => 10000, $pension->id => 2000, $buffer->id => 3000]);
+
+        $point = app(FetchDashboardData::class)->run()['netWorthSeries'][0];
+
+        // Total = everything; ex_pension drops the 2000 pension; investable drops
+        // the 2000 pension AND the 3000 buffer.
+        $this->assertEqualsWithDelta(15000.0, $point['total_value'], 0.01);
+        $this->assertEqualsWithDelta(13000.0, $point['ex_pension'], 0.01);
+        $this->assertEqualsWithDelta(10000.0, $point['investable'], 0.01);
+    }
 }

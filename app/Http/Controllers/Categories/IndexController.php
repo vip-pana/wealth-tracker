@@ -39,6 +39,7 @@ class IndexController extends Controller
                 'color' => $c->color,
                 'sort_order' => $c->sort_order,
                 'macro_category' => $c->macro_category?->value,
+                'investable' => $c->investable,
                 'assets_count' => $c->assets_count,
             ]);
 

@@ -74,6 +74,7 @@ export type CategoryForm = {
     name: string;
     color: string;
     macro_category: string;
+    investable: boolean;
 };
 
 /** Mask an IBAN to first 4 + last 4 chars (e.g. IT09 ···· 0125); null if empty. */

@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string $color
  * @property int $sort_order
  * @property MacroCategory|null $macro_category
+ * @property bool $investable
  * @property int|null $assets_count
  * @property Carbon|null $deleted_at
  */
@@ -28,11 +29,12 @@ class Category extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['name', 'color', 'sort_order', 'macro_category'];
+    protected $fillable = ['name', 'color', 'sort_order', 'macro_category', 'investable'];
 
     protected $casts = [
         'sort_order' => 'integer',
         'macro_category' => MacroCategory::class,
+        'investable' => 'boolean',
     ];
 
     /** @return HasMany<Asset, $this> */

@@ -51,6 +51,7 @@ export function CategoryDialog({
         name:           editCategory?.name ?? '',
         color:          editCategory?.color ?? '#6366f1',
         macro_category: editCategory?.macro_category ?? '',
+        investable:     editCategory?.investable ?? true,
     });
 
     useEffect(() => {
@@ -59,6 +60,7 @@ export function CategoryDialog({
                 name:           editCategory?.name ?? '',
                 color:          editCategory?.color ?? '#6366f1',
                 macro_category: editCategory?.macro_category ?? '',
+                investable:     editCategory?.investable ?? true,
             });
         }
     }, [open, editCategory, setData]);
@@ -142,6 +144,23 @@ export function CategoryDialog({
                             </SelectContent>
                         </Select>
                     </div>
+                    {/* Emergency-fund / parked-cash categories stay in net worth but
+                        are excluded from investment metrics (allocation, return,
+                        volatility, the goal's target comparison). */}
+                    <label className="flex items-start gap-2.5 rounded-md border border-input p-3 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={!data.investable}
+                            onChange={(e) => setData('investable', !e.target.checked)}
+                            className="mt-0.5 h-4 w-4 cursor-pointer"
+                        />
+                        <span className="space-y-0.5">
+                            <span className="block text-sm font-medium">Fondo di emergenza (non investibile)</span>
+                            <span className="block text-xs text-muted-foreground">
+                                La liquidità qui resta nel patrimonio totale ma non viene contata come investimento (allocazione, rendimento, obiettivo).
+                            </span>
+                        </span>
+                    </label>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={handleClose}>
                             Annulla

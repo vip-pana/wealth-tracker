@@ -46,6 +46,8 @@ interface Props {
     momMacroMonthComparison: MacroComparisonPoint[];
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
+    hasBuffer: boolean;
+    hasIlliquid: boolean;
     latestSnapshot: string | null;
     goal: { name: string; target_value: number; target_date: string | null; milestones: { target_value: number }[] } | null;
     portfolioMetrics: PortfolioMetrics;
@@ -101,6 +103,8 @@ export default function Dashboard({
     momMacroMonthComparison,
     categories,
     hasData,
+    hasBuffer,
+    hasIlliquid,
     latestSnapshot,
     goal,
     portfolioMetrics,
@@ -133,6 +137,13 @@ export default function Dashboard({
     const lastPoint = series[series.length - 1];
     const prevPoint = series[series.length - 2];
     const totalChange = netWorthChangePct(prevPoint?.total_value, lastPoint?.total_value);
+
+    // The investment charts below (composition, variation, forecast) show the
+    // INVESTABLE portfolio — pension and the emergency-fund buffer are carved
+    // out. Spell that out under their titles, but only when there's actually
+    // something excluded (otherwise "investable" just means "everything").
+    const excluded = [hasBuffer ? 'fondo emergenza' : null, hasIlliquid ? 'fondo pensione' : null].filter(Boolean);
+    const investableNote = excluded.length > 0 ? `Solo parte investibile — esclude ${excluded.join(' e ')}` : undefined;
 
     // Get the two most recent dates for the comparison chart
     const snapshotMonths: [string, string] | null =
@@ -246,13 +257,13 @@ export default function Dashboard({
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <NetWorthLineChart data={series} goalTarget={goal?.target_value} goalName={goal?.name} />
-                    <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} />
-                    <GrowthRateChart data={momMode ? momGrowthRates : growthRates} title={momMode ? 'Variazione mensile (%)' : 'Variazione tra snapshot (%)'} />
+                    <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} note={investableNote} />
+                    <GrowthRateChart data={momMode ? momGrowthRates : growthRates} title={momMode ? 'Variazione mensile (%)' : 'Variazione tra snapshot (%)'} note={investableNote} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                    <StackedBarChart data={macroMode ? (momMode ? momMacroStackedBar : macroStackedBar) : (momMode ? momStackedBar : stackedBar)} categories={macroMode ? macroCategories : categories} />
-                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : (momMode ? momMonthComparison : monthComparison)} months={snapshotMonths} title={momMode ? 'Confronto tra mesi' : 'Confronto tra snapshot'} />
-                    <ForecastChart data={momMode ? momForecast : forecast} />
+                    <StackedBarChart data={macroMode ? (momMode ? momMacroStackedBar : macroStackedBar) : (momMode ? momStackedBar : stackedBar)} categories={macroMode ? macroCategories : categories} note={investableNote} />
+                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : (momMode ? momMonthComparison : monthComparison)} months={snapshotMonths} title={momMode ? 'Confronto tra mesi' : 'Confronto tra snapshot'} note={investableNote} />
+                    <ForecastChart data={momMode ? momForecast : forecast} note={investableNote} />
                 </div>
             </div>
         </>

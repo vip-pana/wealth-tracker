@@ -27,6 +27,7 @@ class UpdateCategoryRequest extends FormRequest
             'color' => 'sometimes|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'sort_order' => 'nullable|integer|min:0',
             'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],
+            'investable' => 'boolean',
         ];
     }
 }

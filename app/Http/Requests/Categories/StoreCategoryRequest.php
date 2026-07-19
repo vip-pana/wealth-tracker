@@ -23,6 +23,7 @@ class StoreCategoryRequest extends FormRequest
             'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'sort_order' => 'nullable|integer|min:0',
             'macro_category' => ['nullable', Rule::enum(MacroCategory::class)],
+            'investable' => 'boolean',
         ];
     }
 }

@@ -4,6 +4,8 @@ export interface Category {
     color: string;   // "#3b82f6"
     sort_order: number;
     macro_category: string | null;
+    /** false = an emergency-fund / parked-cash category, excluded from investment metrics. */
+    investable?: boolean;
     assets_count?: number;
 }
 

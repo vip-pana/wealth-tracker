@@ -23,19 +23,32 @@ class FetchGoalData extends Action
             ->orderByDesc('date')
             ->first();
 
-        $currentNetWorth = $latestSnapshot?->total_value;
+        // The goal measures the INVESTABLE portfolio: emergency-fund / parked-cash
+        // categories (investable = false) are money the user deliberately keeps
+        // out of the plan, so they're excluded from the current net worth and the
+        // current-vs-target allocation the goal compares against.
+        $nonInvestableIds = $categories
+            ->filter(fn (Category $c): bool => $c->investable === false)
+            ->pluck('id')
+            ->all();
 
-        $currentAllocation = $latestSnapshot
-            ? $latestSnapshot->categoryValues->map(fn ($v) => [
-                'category_id' => $v->category_id,
-                'value' => $v->value,
-            ])->values()->toArray()
-            : [];
+        $investableValues = $latestSnapshot
+            ? $latestSnapshot->categoryValues->reject(fn ($v): bool => in_array($v->category_id, $nonInvestableIds, true))
+            : collect();
+
+        $currentNetWorth = $latestSnapshot
+            ? (float) $investableValues->sum(fn ($v): float => (float) $v->value)
+            : null;
+
+        $currentAllocation = $investableValues->map(fn ($v) => [
+            'category_id' => $v->category_id,
+            'value' => $v->value,
+        ])->values()->toArray();
 
         $currentMacroAllocation = [];
         if ($latestSnapshot) {
             $macroTotals = [];
-            foreach ($latestSnapshot->categoryValues as $v) {
+            foreach ($investableValues as $v) {
                 $category = $categories->firstWhere('id', $v->category_id);
                 $macro = $category?->macro_category !== null ? $category->macro_category->value : 'Altro';
                 $macroTotals[$macro] = ($macroTotals[$macro] ?? 0.0) + $v->value;

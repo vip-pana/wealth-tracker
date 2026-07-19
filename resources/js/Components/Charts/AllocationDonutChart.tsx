@@ -12,9 +12,10 @@ import type { AllocationSlice } from '@/types/analytics';
 
 interface Props {
     data: AllocationSlice[];
+    note?: string;
 }
 
-export default function AllocationDonutChart({ data }: Props) {
+export default function AllocationDonutChart({ data, note }: Props) {
     const hidden = useValuesHidden();
     const total = data.reduce((s, d) => s + d.value, 0);
     const visible = data.filter((d) => d.value > 0);
@@ -23,6 +24,7 @@ export default function AllocationDonutChart({ data }: Props) {
         <Card>
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">Composizione attuale</CardTitle>
+                {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
             <CardContent className="px-3 pb-3">
                 <div className="donut-container">

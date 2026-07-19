@@ -37,6 +37,12 @@ class BuildAdvisorContext extends Action
         /** @var array<string, mixed> $portfolio */
         $portfolio = $dashboard['portfolioMetrics'] ?? ['hasData' => false];
 
+        // The emergency-fund buffer: value of the non-investable categories. It's
+        // in net worth but excluded from the investment metrics above, so the
+        // advisor is told about it explicitly rather than inferring it from a
+        // qualitative profile field.
+        $buffer = is_numeric($dashboard['bufferNetWorth'] ?? null) ? (float) $dashboard['bufferNetWorth'] : 0.0;
+
         return [
             'portfolio' => $portfolio,
             'positionReturns' => $dashboard['positionReturns'] ?? null,
@@ -44,6 +50,7 @@ class BuildAdvisorContext extends Action
             'goal' => $this->goal($portfolio),
             'contribution' => $extras['contribution'] ?? null,
             'costs' => $extras['costs'] ?? null,
+            'emergencyBuffer' => $buffer > 0.0 ? round($buffer, 2) : null,
         ];
     }
 

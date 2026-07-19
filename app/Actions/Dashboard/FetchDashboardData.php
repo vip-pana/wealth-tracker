@@ -46,20 +46,46 @@ class FetchDashboardData extends Action
             ->values()
             ->all();
 
+        // Non-investable categories (emergency fund / parked cash) stay in net
+        // worth but are carved out of the investment-only view, exactly like the
+        // pension carve-out — so allocation, growth, forecast and the portfolio
+        // metrics run on the investable subset. Exposed as its own total so the
+        // dashboard can show "investable + buffer" rather than hiding it.
+        /** @var array<int, int> $nonInvestableCategoryIds */
+        $nonInvestableCategoryIds = $allCategories
+            ->filter(fn (Category $c): bool => $c->investable === false)
+            ->map(fn (Category $c): int => $c->id)
+            ->values()
+            ->all();
+
+        // The set stripped from the investment view is the union of the two
+        // carve-outs (a category could in principle be both).
+        $excludedFromInvesting = array_values(array_unique([...$illiquidCategoryIds, ...$nonInvestableCategoryIds]));
+
         $latestSnapshot = $allSnapshots->last();
         $totalNetWorth = $latestSnapshot instanceof Snapshot ? (float) $latestSnapshot->total_value : 0.0;
         $illiquidTotal = $this->illiquidTotalFor($latestSnapshot, $illiquidCategoryIds);
+        $bufferTotal = $this->illiquidTotalFor($latestSnapshot, $nonInvestableCategoryIds);
         $liquidTotal = $totalNetWorth - $illiquidTotal;
+        $investableTotal = $totalNetWorth - $this->illiquidTotalFor($latestSnapshot, $excludedFromInvesting);
 
-        $liquidSnapshots = $this->stripIlliquid($allSnapshots, $illiquidCategoryIds);
-        $liquidCategories = $allCategories->reject(fn (Category $c): bool => in_array($c->id, $illiquidCategoryIds, true))->values();
+        // The net-worth chart shows three layers (total / ex-pension /
+        // investable), built from the FULL snapshots so no line dips just because
+        // money was reclassified into an excluded category. Build it BEFORE
+        // stripIlliquid(), which mutates the Snapshot objects in place — after
+        // that the "full" collection would already be stripped.
+        $netWorthSeries = $this->buildNetWorthSeries->runLayered($allSnapshots, $illiquidCategoryIds, $nonInvestableCategoryIds);
+        $momNetWorthSeries = $this->buildNetWorthSeries->runLayered($this->collapseToMonthly($allSnapshots), $illiquidCategoryIds, $nonInvestableCategoryIds);
+
+        $liquidSnapshots = $this->stripIlliquid($allSnapshots, $excludedFromInvesting);
+        $liquidCategories = $allCategories->reject(fn (Category $c): bool => in_array($c->id, $excludedFromInvesting, true))->values();
 
         $monthlySnapshots = $this->collapseToMonthly($liquidSnapshots);
 
         $goal = Goal::with('milestones')->first();
 
         return [
-            'netWorthSeries' => $this->buildNetWorthSeries->run($liquidSnapshots),
+            'netWorthSeries' => $netWorthSeries,
             'allocationData' => $this->buildAllocationData->run($liquidSnapshots, $liquidCategories),
             'stackedBar' => $this->buildStackedBar->run($liquidSnapshots, $liquidCategories),
             'growthRates' => $this->computeGrowthRates->run($liquidSnapshots),
@@ -68,7 +94,7 @@ class FetchDashboardData extends Action
             'macroAllocationData' => $this->buildMacroAllocationData->run($liquidSnapshots),
             'macroStackedBar' => $this->buildMacroStackedBar->run($liquidSnapshots),
             'macroMonthComparison' => $this->buildMacroMonthComparison->run($liquidSnapshots),
-            'momNetWorthSeries' => $this->buildNetWorthSeries->run($monthlySnapshots),
+            'momNetWorthSeries' => $momNetWorthSeries,
             'momStackedBar' => $this->buildStackedBar->run($monthlySnapshots, $liquidCategories),
             'momGrowthRates' => $this->computeGrowthRates->run($monthlySnapshots),
             'momMonthComparison' => $this->computeMonthComparison->run($monthlySnapshots, $liquidCategories),
@@ -87,6 +113,9 @@ class FetchDashboardData extends Action
             'illiquidNetWorth' => $illiquidTotal,
             'hasIlliquid' => $illiquidTotal > 0,
             'illiquidMacros' => MacroCategory::illiquidValues(),
+            'investableNetWorth' => $investableTotal,
+            'bufferNetWorth' => $bufferTotal,
+            'hasBuffer' => $bufferTotal > 0,
             'goal' => $goal ? [
                 'name' => $goal->name,
                 'target_value' => $goal->target_value,
