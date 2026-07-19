@@ -108,11 +108,14 @@ export interface GoalSimulatorWidget {
 export interface ProfileProposalWidget {
     type: 'profile_proposal';
     data: {
+        name?: string;
+        birth_date?: string;
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
         income_monthly?: number;
         emergency_fund?: 'none' | 'partial' | 'separate';
         notes?: string;
+        memory?: string;
     };
 }
 

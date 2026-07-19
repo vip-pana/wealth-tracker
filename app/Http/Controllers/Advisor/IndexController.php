@@ -44,11 +44,14 @@ class IndexController extends Controller
         return Inertia::render('Advisor', [
             'configured' => $this->provider->isConfigured(),
             'profile' => $profile ? [
+                'name' => $profile->name,
+                'birth_date' => $profile->birth_date?->format('Y-m-d'),
                 'horizon' => $profile->horizon,
                 'risk_tolerance' => $profile->risk_tolerance,
                 'income_monthly' => $profile->income_monthly,
                 'emergency_fund' => $profile->emergency_fund,
                 'notes' => $profile->notes,
+                'memory' => $profile->memory,
             ] : null,
             'goal' => $goal instanceof Goal ? [
                 'name' => $goal->name,

@@ -48,10 +48,12 @@ class BuildAdvisorContext extends Action
     }
 
     /**
-     * The psychological side of the user the data can't reveal: horizon, risk
-     * tolerance and the free-text synthesis of the risk-profiling interview.
-     * The objective and target allocation are NOT here — they live in the Goal
-     * (their single source), assembled by goal() below.
+     * The psychological side of the user the data can't reveal: name, age,
+     * horizon, risk tolerance, the free-text synthesis of the risk-profiling
+     * interview (notes) and durable personal memory. Age is derived from the
+     * birth date so the model reasons on a number, not a date. The objective and
+     * target allocation are NOT here — they live in the Goal (their single
+     * source), assembled by goal() below.
      *
      * @return array<string, mixed>|null null only when there's nothing at all
      */
@@ -59,22 +61,29 @@ class BuildAdvisorContext extends Action
     {
         $profile = InvestorProfile::query()->first();
 
+        $name = $profile?->name;
+        $age = $profile?->birth_date?->age;
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
         $income = $profile?->income_monthly;
         $emergency = $profile?->emergency_fund;
         $notes = $profile?->notes;
+        $memory = $profile?->memory;
 
-        if ($horizon === null && $risk === null && $income === null && $emergency === null && $notes === null) {
+        if ($name === null && $age === null && $horizon === null && $risk === null
+            && $income === null && $emergency === null && $notes === null && $memory === null) {
             return null;
         }
 
         return [
+            'name' => $name,
+            'age' => $age,
             'horizon' => $horizon,
             'risk_tolerance' => $risk,
             'income_monthly' => $income,
             'emergency_fund' => $emergency,
             'notes' => $notes,
+            'memory' => $memory,
         ];
     }
 

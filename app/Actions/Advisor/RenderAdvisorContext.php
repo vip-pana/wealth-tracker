@@ -260,6 +260,16 @@ class RenderAdvisorContext extends Action
         }
 
         $out = 'PROFILO INVESTITORE (già noto — NON richiedere questi dati, al massimo chiedi conferma se rilevante):';
+
+        $name = $profile['name'] ?? null;
+        if (is_string($name) && $name !== '') {
+            $out .= "\n- Nome: ".$name.' (rivolgiti a lui/lei per nome, con naturalezza).';
+        }
+
+        if (is_numeric($profile['age'] ?? null)) {
+            $out .= "\n- Età: ".(int) $profile['age'].' anni.';
+        }
+
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
 
@@ -279,6 +289,11 @@ class RenderAdvisorContext extends Action
         $notes = $profile['notes'] ?? null;
         if (is_string($notes) && $notes !== '') {
             $out .= "\n- Note sul profilo di rischio: ".$notes;
+        }
+
+        $memory = $profile['memory'] ?? null;
+        if (is_string($memory) && $memory !== '') {
+            $out .= "\n- Cose da ricordare su di lui/lei: ".$memory;
         }
 
         return $out;

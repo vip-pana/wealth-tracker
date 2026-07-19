@@ -21,11 +21,14 @@ import {
 import { UserCog, Sparkles } from 'lucide-react';
 
 export interface InvestorProfile {
+    name: string | null;
+    birth_date: string | null;
     horizon: string | null;
     risk_tolerance: string | null;
     income_monthly: number | null;
     emergency_fund: string | null;
     notes: string | null;
+    memory: string | null;
 }
 
 const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
@@ -43,10 +46,13 @@ export function ProfileDialog({
     onDefineWithAi: () => void;
 }) {
     const form = useForm({
+        name: profile?.name ?? '',
+        birth_date: profile?.birth_date ?? '',
         horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
         income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
         emergency_fund: profile?.emergency_fund ?? '',
+        memory: profile?.memory ?? '',
     });
 
     // useForm seeds its data only once, so when the profile prop changes after a
@@ -57,13 +63,16 @@ export function ProfileDialog({
     const { setData } = form;
     useEffect(() => {
         setData({
+            name: profile?.name ?? '',
+            birth_date: profile?.birth_date ?? '',
             horizon: profile?.horizon ?? '',
             risk_tolerance: profile?.risk_tolerance ?? '',
             income_monthly: profile?.income_monthly != null ? String(profile.income_monthly) : '',
             emergency_fund: profile?.emergency_fund ?? '',
+            memory: profile?.memory ?? '',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.horizon, profile?.risk_tolerance, profile?.income_monthly, profile?.emergency_fund]);
+    }, [profile?.name, profile?.birth_date, profile?.horizon, profile?.risk_tolerance, profile?.income_monthly, profile?.emergency_fund, profile?.memory]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,6 +90,25 @@ export function ProfileDialog({
                     Questo contesto rende l&apos;analisi tua, non generica. L&apos;obiettivo e l&apos;allocazione target si definiscono nella sezione Obiettivo.
                 </p>
                 <form onSubmit={submit} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs">Nome</Label>
+                            <Input
+                                type="text"
+                                value={form.data.name}
+                                onChange={(e) => form.setData('name', e.target.value)}
+                                placeholder="es. Vincenzo"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs">Data di nascita</Label>
+                            <Input
+                                type="date"
+                                value={form.data.birth_date}
+                                onChange={(e) => form.setData('birth_date', e.target.value)}
+                            />
+                        </div>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <Label className="text-xs">Orizzonte temporale</Label>
@@ -129,6 +157,16 @@ export function ProfileDialog({
                             </Select>
                         </div>
                     </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Cose da ricordare</Label>
+                        <textarea
+                            value={form.data.memory}
+                            onChange={(e) => form.setData('memory', e.target.value)}
+                            placeholder="Preferenze e fatti durevoli che il consulente terrà a mente (es. preferisco ETF ad accumulo, non voglio obbligazioni)"
+                            rows={2}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                    </div>
                     {profile?.notes && (
                         <div className="space-y-1">
                             <Label className="text-xs">Note sul profilo di rischio</Label>
@@ -162,6 +200,7 @@ export function ProfileDialog({
 
 export function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile | null; onEdit: () => void }) {
     const parts: string[] = [];
+    if (profile?.name) parts.push(profile.name);
     if (profile?.horizon) parts.push(`Orizzonte: ${HORIZON_LABELS[profile.horizon] ?? profile.horizon}`);
     if (profile?.risk_tolerance) parts.push(`Rischio: ${RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}`);
 

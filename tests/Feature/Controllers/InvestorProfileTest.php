@@ -81,6 +81,42 @@ class InvestorProfileTest extends TestCase
             ->assertSessionHasErrors('emergency_fund');
     }
 
+    public function test_stores_the_personal_fields(): void
+    {
+        $this->post('/advisor/profile', [
+            'name' => 'Vincenzo',
+            'birth_date' => '1990-05-14',
+            'memory' => 'Preferisce ETF ad accumulo.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('investor_profile', [
+            'name' => 'Vincenzo',
+            'memory' => 'Preferisce ETF ad accumulo.',
+        ]);
+        $this->assertSame('1990-05-14', InvestorProfile::first()?->birth_date?->format('Y-m-d'));
+    }
+
+    public function test_rejects_a_future_birth_date(): void
+    {
+        $this->post('/advisor/profile', ['birth_date' => now()->addYear()->format('Y-m-d')])
+            ->assertSessionHasErrors('birth_date');
+    }
+
+    public function test_context_derives_age_from_birth_date_and_carries_name_and_memory(): void
+    {
+        InvestorProfile::create([
+            'name' => 'Vincenzo',
+            'birth_date' => now()->subYears(35)->format('Y-m-d'),
+            'memory' => 'Non vuole obbligazioni.',
+        ]);
+
+        $context = app(BuildAdvisorContext::class)->run();
+
+        $this->assertSame('Vincenzo', $context['investorProfile']['name']);
+        $this->assertSame(35, $context['investorProfile']['age']);
+        $this->assertSame('Non vuole obbligazioni.', $context['investorProfile']['memory']);
+    }
+
     public function test_context_profile_is_null_when_unset(): void
     {
         $context = app(BuildAdvisorContext::class)->run();

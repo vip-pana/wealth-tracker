@@ -21,6 +21,15 @@ describe('ProfileProposal', () => {
         expect(screen.queryByText('Allocazione target')).not.toBeInTheDocument();
     });
 
+    it('renders the personal fields (name, birth date, memory) when proposed', () => {
+        render(<ProfileProposal data={{ name: 'Vincenzo', birth_date: '1990-05-14', memory: 'Preferisce ETF ad accumulo' }} />);
+        expect(screen.getByText('Nome')).toBeInTheDocument();
+        expect(screen.getByText('Vincenzo')).toBeInTheDocument();
+        expect(screen.getByText('Data di nascita')).toBeInTheDocument();
+        expect(screen.getByText('Da ricordare')).toBeInTheDocument();
+        expect(screen.getByText('Preferisce ETF ad accumulo')).toBeInTheDocument();
+    });
+
     it('POSTs the proposal to /advisor/profile on Applica', async () => {
         const user = userEvent.setup();
         render(<ProfileProposal data={{ horizon: 'short', notes: 'Prudente' }} />);
@@ -61,7 +70,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ horizon: 'long', risk_tolerance: 'high', income_monthly: null, emergency_fund: null, notes: null }}
+                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'high', income_monthly: null, emergency_fund: null, notes: null, memory: null }}
             />,
         );
         // Local state is gone after a refresh; matching the current profile means
@@ -74,7 +83,7 @@ describe('ProfileProposal', () => {
         render(
             <ProfileProposal
                 data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ horizon: 'long', risk_tolerance: 'low', income_monthly: null, emergency_fund: null, notes: null }}
+                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'low', income_monthly: null, emergency_fund: null, notes: null, memory: null }}
             />,
         );
         // risk_tolerance differs, so the proposal was not fully applied.

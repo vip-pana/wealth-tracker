@@ -127,6 +127,23 @@ class RenderAdvisorContextTest extends TestCase
         $this->assertStringContainsString('Tollera bene i cali.', $out);
     }
 
+    public function test_profile_shows_name_age_and_memory(): void
+    {
+        $out = (new RenderAdvisorContext)->run($this->context([
+            'investorProfile' => [
+                'name' => 'Vincenzo',
+                'age' => 35,
+                'horizon' => 'long',
+                'risk_tolerance' => 'high',
+                'memory' => 'Preferisce ETF ad accumulo.',
+            ],
+        ]));
+
+        $this->assertStringContainsString('Vincenzo', $out);
+        $this->assertStringContainsString('35 anni', $out);
+        $this->assertStringContainsString('Preferisce ETF ad accumulo.', $out);
+    }
+
     public function test_objective_section_always_shows_the_goal_figures(): void
     {
         $out = (new RenderAdvisorContext)->run($this->context([

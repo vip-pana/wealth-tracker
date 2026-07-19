@@ -42,11 +42,14 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
     );
 
     const rows: { label: string; value: string }[] = [];
+    if (data.name) rows.push({ label: 'Nome', value: data.name });
+    if (data.birth_date) rows.push({ label: 'Data di nascita', value: data.birth_date });
     if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
     if (data.risk_tolerance) rows.push({ label: 'Tolleranza al rischio', value: RISK_LABELS[data.risk_tolerance] ?? data.risk_tolerance });
     if (typeof data.income_monthly === 'number') rows.push({ label: 'Reddito mensile', value: `${data.income_monthly.toLocaleString('it-IT')} €` });
     if (data.emergency_fund) rows.push({ label: 'Cuscinetto di emergenza', value: FUND_LABELS[data.emergency_fund] ?? data.emergency_fund });
     if (data.notes) rows.push({ label: 'Note', value: data.notes });
+    if (data.memory) rows.push({ label: 'Da ricordare', value: data.memory });
 
     if (rows.length === 0) return null;
 
