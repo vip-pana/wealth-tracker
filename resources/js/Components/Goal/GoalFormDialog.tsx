@@ -114,8 +114,8 @@ export function GoalFormDialog({
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
+                        <div className="flex gap-4 items-start">
+                            <div className="space-y-1 flex-1">
                                 <Label>Patrimonio obiettivo</Label>
                                 <div className="relative">
                                     <Input
@@ -134,7 +134,7 @@ export function GoalFormDialog({
                                 </div>
                                 {errors.target_value && <p className="text-xs text-destructive">{errors.target_value}</p>}
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-shrink-0">
                                 <Label className="whitespace-nowrap">Anno target <OptionalHint /></Label>
                                 <Input
                                     type="number"
@@ -147,7 +147,7 @@ export function GoalFormDialog({
                                         setData('target_date', y ? `${y}-01-01` : '');
                                     }}
                                     placeholder="es. 2045"
-                                    className="font-mono"
+                                    className="font-mono w-24"
                                 />
                             </div>
                         </div>
