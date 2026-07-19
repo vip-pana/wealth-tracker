@@ -93,7 +93,7 @@ export function MilestoneFormRow({
                         value={item.notes}
                         onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
                         placeholder="Etichetta breve, es. Metà percorso"
-                        rows={1}
+                        rows={2}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
@@ -103,7 +103,7 @@ export function MilestoneFormRow({
                         value={item.action}
                         onChange={(e) => onUpdate(idx, 'action', e.target.value)}
                         placeholder="Cosa fare una volta raggiunta questa tappa"
-                        rows={2}
+                        rows={3}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
@@ -113,7 +113,7 @@ export function MilestoneFormRow({
                         value={item.rationale}
                         onChange={(e) => onUpdate(idx, 'rationale', e.target.value)}
                         placeholder="Il motivo di questa azione"
-                        rows={2}
+                        rows={3}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
