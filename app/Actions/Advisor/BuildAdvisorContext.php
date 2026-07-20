@@ -6,6 +6,7 @@ namespace App\Actions\Advisor;
 
 use App\Actions\Action;
 use App\Actions\Dashboard\FetchDashboardData;
+use App\Actions\Transactions\ComputeMonthlyExpense;
 use App\Actions\Transactions\ComputeMonthlySalary;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
@@ -19,6 +20,7 @@ class BuildAdvisorContext extends Action
         private readonly FetchDashboardData $fetchDashboardData,
         private readonly ComputeAdvisorExtras $computeExtras,
         private readonly ComputeMonthlySalary $computeMonthlySalary,
+        private readonly ComputeMonthlyExpense $computeMonthlyExpense,
     ) {}
 
     /**
@@ -42,7 +44,9 @@ class BuildAdvisorContext extends Action
         // The emergency-fund buffer: value of the non-investable categories. It's
         // in net worth but excluded from the investment metrics above, so the
         // advisor is told about it explicitly rather than inferring it from a
-        // qualitative profile field.
+        // qualitative profile field. Enriched with the coverage (months covered
+        // vs the configured target) so the model can reason about whether the
+        // fund should be topped up before investing more.
         $buffer = is_numeric($dashboard['bufferNetWorth'] ?? null) ? (float) $dashboard['bufferNetWorth'] : 0.0;
 
         return [
@@ -52,7 +56,44 @@ class BuildAdvisorContext extends Action
             'goal' => $this->goal($portfolio),
             'contribution' => $extras['contribution'] ?? null,
             'costs' => $extras['costs'] ?? null,
-            'emergencyBuffer' => $buffer > 0.0 ? round($buffer, 2) : null,
+            'emergencyFund' => $this->emergencyFund($buffer),
+        ];
+    }
+
+    /**
+     * The emergency fund: the real buffer plus its coverage. `monthsCovered` and
+     * `shortfall` are null when no expense has been observed yet (can't divide
+     * without a monthly burn) — the model then only reports the amount. Null as
+     * a whole when there's no buffer at all.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function emergencyFund(float $buffer): ?array
+    {
+        if ($buffer <= 0.0) {
+            return null;
+        }
+
+        $profile = InvestorProfile::query()->first();
+        $targetMonths = $profile !== null ? $profile->emergency_fund_months : 6;
+        $monthlyExpense = $this->computeMonthlyExpense->run();
+
+        $monthsCovered = null;
+        $targetAmount = null;
+        $shortfall = null;
+        if ($monthlyExpense !== null && $monthlyExpense > 0.0) {
+            $monthsCovered = round($buffer / $monthlyExpense, 1);
+            $targetAmount = round($monthlyExpense * $targetMonths, 2);
+            $shortfall = round(max(0.0, $targetAmount - $buffer), 2);
+        }
+
+        return [
+            'buffer' => round($buffer, 2),
+            'targetMonths' => $targetMonths,
+            'monthlyExpense' => $monthlyExpense,
+            'monthsCovered' => $monthsCovered,
+            'targetAmount' => $targetAmount,
+            'shortfall' => $shortfall,
         ];
     }
 
