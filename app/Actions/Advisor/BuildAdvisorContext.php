@@ -6,6 +6,7 @@ namespace App\Actions\Advisor;
 
 use App\Actions\Action;
 use App\Actions\Dashboard\FetchDashboardData;
+use App\Actions\Transactions\ComputeMonthlySalary;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
 use App\Models\GoalMilestone;
@@ -17,6 +18,7 @@ class BuildAdvisorContext extends Action
     public function __construct(
         private readonly FetchDashboardData $fetchDashboardData,
         private readonly ComputeAdvisorExtras $computeExtras,
+        private readonly ComputeMonthlySalary $computeMonthlySalary,
     ) {}
 
     /**
@@ -72,12 +74,16 @@ class BuildAdvisorContext extends Action
         $age = $profile?->birth_date?->age;
         $horizon = $profile?->horizon;
         $risk = $profile?->risk_tolerance;
-        $income = $profile?->income_monthly;
         $notes = $profile?->notes;
         $memory = $profile?->memory;
 
+        // Net monthly income is observed from bank transactions (the average
+        // recognised salary), never hand-entered — so it can't go stale. Null
+        // when no salary has been seen yet (bank not linked / no data).
+        $netMonthlyIncome = $this->computeMonthlySalary->run();
+
         if ($name === null && $age === null && $horizon === null && $risk === null
-            && $income === null && $notes === null && $memory === null) {
+            && $netMonthlyIncome === null && $notes === null && $memory === null) {
             return null;
         }
 
@@ -86,7 +92,7 @@ class BuildAdvisorContext extends Action
             'age' => $age,
             'horizon' => $horizon,
             'risk_tolerance' => $risk,
-            'income_monthly' => $income,
+            'net_monthly_income' => $netMonthlyIncome,
             'notes' => $notes,
             'memory' => $memory,
         ];

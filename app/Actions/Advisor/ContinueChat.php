@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Advisor;
 
 use App\Actions\Action;
+use App\Actions\Transactions\ComputeMonthlySalary;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Contracts\AdvisorProvider;
@@ -36,6 +37,7 @@ class ContinueChat extends Action
         private readonly AdvisorProvider $provider,
         private readonly AdvisorToolActivityReporter $activity,
         private readonly AdvisorWidgetCollector $widgets,
+        private readonly ComputeMonthlySalary $computeMonthlySalary,
     ) {}
 
     /**
@@ -368,11 +370,11 @@ class ContinueChat extends Action
         // age target ("a 50 anni", "quando avrò N anni").
         $date = preg_match('/\b20[3-9]\d\b|entro\s+\d+\s+anni|a\s+\d{2}\s+anni|\d{2}\s+anni/u', $blob) === 1;
 
-        // Income & stability: covered if the profile persists a monthly income,
-        // else mentions of salary/income or a monthly figure. The emergency-fund
-        // buffer is no longer an interview theme — it's read from the tagged
-        // non-investable categories — so it doesn't gate interview completeness.
-        $income = $profile?->income_monthly !== null
+        // Income & stability: covered if a salary is observed from bank
+        // transactions, else mentions of salary/income or a monthly figure. The
+        // emergency-fund buffer is no longer an interview theme — it's read from
+        // the tagged non-investable categories — so it doesn't gate completeness.
+        $income = $this->computeMonthlySalary->run() !== null
             || preg_match('/reddito|stipendio|guadagn|netto|al mese|mensil/u', $blob) === 1;
 
         // Emotional tolerance: covered if the profile already records a risk

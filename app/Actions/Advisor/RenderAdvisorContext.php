@@ -282,8 +282,8 @@ class RenderAdvisorContext extends Action
         $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
 
-        if (is_numeric($profile['income_monthly'] ?? null)) {
-            $out .= "\n- Reddito mensile: ".$this->eur($profile['income_monthly']).' netti al mese.';
+        if (is_numeric($profile['net_monthly_income'] ?? null)) {
+            $out .= "\n- Reddito netto mensile: ".$this->eur($profile['net_monthly_income']).' al mese, osservato dalle transazioni bancarie (media degli stipendi), non dichiarato a mano.';
         }
 
         $notes = $profile['notes'] ?? null;

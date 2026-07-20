@@ -45,7 +45,6 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
     if (data.birth_date) rows.push({ label: 'Data di nascita', value: data.birth_date });
     if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
     if (data.risk_tolerance) rows.push({ label: 'Tolleranza al rischio', value: RISK_LABELS[data.risk_tolerance] ?? data.risk_tolerance });
-    if (typeof data.income_monthly === 'number') rows.push({ label: 'Reddito mensile', value: `${data.income_monthly.toLocaleString('it-IT')} €` });
     if (data.notes) rows.push({ label: 'Note', value: data.notes });
     if (data.memory) rows.push({ label: 'Da ricordare', value: data.memory });
 

@@ -552,18 +552,18 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertStringContainsString('nervoso', $widgets[0]['data']['notes']);
     }
 
-    public function test_propose_profile_update_carries_income(): void
+    public function test_propose_profile_update_does_not_carry_income(): void
     {
+        // Income is no longer a profile field (observed from transactions), so
+        // the tool has no income parameter and the card never carries it.
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_profile_update')->handle(
-            income_monthly: 2000,
+            risk_tolerance: 'high',
         );
 
-        $widgets = $collector->widgets();
-        $this->assertCount(1, $widgets);
-        $this->assertSame(2000.0, $widgets[0]['data']['income_monthly']);
-        // emergency_fund is no longer a profile field — it's the tagged buffer.
-        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
+        $data = $collector->widgets()[0]['data'];
+        $this->assertArrayNotHasKey('income_monthly', $data);
+        $this->assertSame('high', $data['risk_tolerance']);
     }
 
     public function test_propose_profile_update_carries_the_personal_fields(): void
@@ -664,12 +664,12 @@ class AdvisorToolFactoryTest extends TestCase
     public function test_confirm_profile_fact_emits_a_confirmation_card_directly(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
-        $out = $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 2000);
+        $out = $this->tool($factory, 'confirm_profile_fact')->handle(risk_tolerance: 'high');
 
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
         $this->assertSame('profile_proposal', $widgets[0]['type']);
-        $this->assertSame(2000.0, $widgets[0]['data']['income_monthly']);
+        $this->assertSame('high', $widgets[0]['data']['risk_tolerance']);
         $this->assertStringContainsString('Applica', $out);
     }
 
@@ -685,21 +685,9 @@ class AdvisorToolFactoryTest extends TestCase
         $collector->for($message);
         // profile-fact gate NOT opened (default closed)
 
-        $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 2000);
+        $this->tool($factory, 'confirm_profile_fact')->handle(risk_tolerance: 'high');
 
         $this->assertSame([], $collector->widgets());
-    }
-
-    public function test_confirm_profile_fact_carries_income(): void
-    {
-        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
-        $this->tool($factory, 'confirm_profile_fact')->handle(income_monthly: 1800);
-
-        $widgets = $collector->widgets();
-        $this->assertCount(1, $widgets);
-        $this->assertSame(1800.0, $widgets[0]['data']['income_monthly']);
-        // emergency_fund is no longer a profile field.
-        $this->assertArrayNotHasKey('emergency_fund', $widgets[0]['data']);
     }
 
     public function test_propose_goal_core_emits_a_proposal_widget(): void
