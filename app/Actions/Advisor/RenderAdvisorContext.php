@@ -33,7 +33,7 @@ class RenderAdvisorContext extends Action
 
         $lines[] = $this->returnsSection($context['positionReturns'] ?? null);
         $lines[] = $this->allocationSection($portfolio);
-        $lines[] = $this->bufferSection($context['emergencyBuffer'] ?? null);
+        $lines[] = $this->bufferSection($context['emergencyFund'] ?? null);
         $lines[] = $this->liquiditySection($portfolio);
         $lines[] = $this->volatilitySection($portfolio);
         $lines[] = $this->costsSection($context['costs'] ?? null);
@@ -103,14 +103,54 @@ class RenderAdvisorContext extends Action
         return $out;
     }
 
-    private function bufferSection(mixed $buffer): string
+    private function bufferSection(mixed $fund): string
     {
+        if (! is_array($fund)) {
+            return '';
+        }
+
+        $buffer = $fund['buffer'] ?? null;
         if (! is_numeric($buffer) || (float) $buffer <= 0.0) {
             return '';
         }
 
-        return 'FONDO DI EMERGENZA: '.$this->eur($buffer).' tenuti come cuscinetto (categorie marcate non investibili). '
-            .'Questo importo NON è incluso nelle metriche di investimento qui sopra (allocazione, rendimento, obiettivo): è liquidità ferma volutamente fuori dal portafoglio investito. Tienine conto quando valuti la capacità di rischio, ma non trattarlo come denaro da investire.';
+        $out = 'FONDO DI EMERGENZA: '.$this->eur($buffer).' tenuti come cuscinetto (categorie marcate non investibili). '
+            .'Questo importo NON è incluso nelle metriche di investimento qui sopra (allocazione, rendimento, obiettivo): è liquidità ferma volutamente fuori dal portafoglio investito.';
+
+        $monthsCovered = $fund['monthsCovered'] ?? null;
+        $targetMonths = $fund['targetMonths'] ?? null;
+
+        // Coverage is only computable once expenses have been observed. Without
+        // it, report the amount alone (no invented months).
+        if (is_numeric($monthsCovered) && is_numeric($targetMonths)) {
+            $covered = (float) $monthsCovered;
+            $target = (int) $targetMonths;
+            $shortfall = $fund['shortfall'] ?? null;
+            $monthlyExpense = $fund['monthlyExpense'] ?? null;
+
+            $out .= "\nCopertura: circa ".$this->months($covered).' di spese coperte, su un obiettivo di '.$target.' mesi';
+            if (is_numeric($monthlyExpense)) {
+                $out .= ' (spesa media osservata '.$this->eur($monthlyExpense).'/mese).';
+            } else {
+                $out .= '.';
+            }
+
+            if ($covered + 0.05 < $target && is_numeric($shortfall) && (float) $shortfall > 0.0) {
+                $out .= "\nIl fondo è SOTTO l'obiettivo: mancano circa ".$this->eur($shortfall).'. '
+                    .'Segnalalo e suggerisci di dare priorità al completamento del fondo di emergenza prima di aumentare gli investimenti; è la base di sicurezza su cui poggia la capacità di rischio.';
+            } else {
+                $out .= "\nIl fondo COPRE l'obiettivo: confermalo brevemente come punto di forza e non trattarlo come denaro da investire.";
+            }
+        } else {
+            $out .= ' Tienine conto quando valuti la capacità di rischio, ma non trattarlo come denaro da investire. (La copertura in mesi non è calcolabile finché non ci sono transazioni di spesa osservate.)';
+        }
+
+        return $out;
+    }
+
+    private function months(float $n): string
+    {
+        return rtrim(rtrim(number_format($n, 1, ',', '.'), '0'), ',').' mesi';
     }
 
     /**
