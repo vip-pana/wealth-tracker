@@ -80,4 +80,17 @@ class CashflowUpdateTest extends TestCase
             ],
         ])->assertSessionHasErrors('changes.0.flow_type');
     }
+
+    public function test_saves_emergency_fund_target_months(): void
+    {
+        $this->patch('/cashflow/emergency-fund', ['target_months' => 9])->assertRedirect();
+
+        $this->assertDatabaseHas('investor_profile', ['emergency_fund_months' => 9]);
+    }
+
+    public function test_rejects_a_non_positive_target(): void
+    {
+        $this->patch('/cashflow/emergency-fund', ['target_months' => 0])
+            ->assertSessionHasErrors('target_months');
+    }
 }

@@ -9,7 +9,7 @@ import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
 import { Money } from '@/Components/ui/Money';
 import { formatDateLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import { ArrowLeftRight, EyeOff, Wallet, Info } from 'lucide-react';
+import { ArrowLeftRight, EyeOff, Wallet, Info, Shield } from 'lucide-react';
 
 type FlowType = 'income' | 'expense' | 'transfer';
 
@@ -33,6 +33,7 @@ interface Transaction {
 interface Props {
     accounts: Account[];
     transactions: Transaction[];
+    emergencyFund: { buffer: number; targetMonths: number | null };
 }
 
 const FLOW_OPTIONS: { value: FlowType; label: string }[] = [
@@ -77,7 +78,7 @@ function monthsBetween(from: string, to: string): number {
 
 type Edit = { flow_type: FlowType; excluded: boolean };
 
-export default function Cashflow({ accounts, transactions }: Props) {
+export default function Cashflow({ accounts, transactions, emergencyFund }: Props) {
     const [accountFilter, setAccountFilter] = useState<'all' | number>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | FlowType | 'excluded'>('all');
     const [dateFrom, setDateFrom] = useState('');
@@ -87,6 +88,8 @@ export default function Cashflow({ accounts, transactions }: Props) {
     // these without a round-trip, so filters and scroll survive until "Salva".
     const [edits, setEdits] = useState<Map<number, Edit>>(new Map());
     const [saving, setSaving] = useState(false);
+    const [targetMonths, setTargetMonths] = useState(emergencyFund.targetMonths ?? 6);
+    const [savingTarget, setSavingTarget] = useState(false);
 
     function toggleExpanded(id: number) {
         setExpanded((prev) => {
@@ -198,6 +201,44 @@ export default function Cashflow({ accounts, transactions }: Props) {
         };
     }, [inRange, effective, dateFrom, dateTo]);
 
+    // Average monthly expense over ALL history (every account, ignoring the
+    // date filter), so the emergency-fund coverage is a stable figure that
+    // doesn't shift as you filter the list. Uses effective values so unsaved
+    // edits still count.
+    const wholeHistoryMonthlyExpense = useMemo(() => {
+        let expense = 0;
+        let minDate = '';
+        let maxDate = '';
+        for (const t of transactions) {
+            if (t.date < minDate || minDate === '') minDate = t.date;
+            if (t.date > maxDate) maxDate = t.date;
+            const eff = effective(t);
+            if (eff.excluded || eff.flow_type !== 'expense') continue;
+            expense += t.amount;
+        }
+        const months = minDate ? monthsBetween(minDate, maxDate) : 1;
+        return expense / months;
+    }, [transactions, effective]);
+
+    // Emergency-fund coverage: how many months of expenses the buffer covers,
+    // and progress toward the configured target. monthlyExpense is negative
+    // (outflows), so take its magnitude.
+    const monthlyBurn = Math.abs(wholeHistoryMonthlyExpense);
+    const monthsCovered = monthlyBurn > 0 ? emergencyFund.buffer / monthlyBurn : 0;
+    const targetAmount = monthlyBurn * targetMonths;
+    const coveragePct = targetAmount > 0 ? Math.min(100, (emergencyFund.buffer / targetAmount) * 100) : 0;
+    const shortfall = Math.max(0, targetAmount - emergencyFund.buffer);
+    const targetDirty = targetMonths !== (emergencyFund.targetMonths ?? 6);
+
+    function saveTarget() {
+        setSavingTarget(true);
+        router.patch(
+            '/cashflow/emergency-fund',
+            { target_months: targetMonths },
+            { preserveScroll: true, preserveState: true, onFinish: () => setSavingTarget(false) },
+        );
+    }
+
     // The list narrows the in-range rows by the type filter. Filter on the
     // effective values so a row keeps matching even after an unsaved change.
     const filtered = useMemo(
@@ -245,6 +286,81 @@ export default function Cashflow({ accounts, transactions }: Props) {
                     <StatCard label="Uscite (periodo)" value={summary.expense} tone="text-red-500" />
                     <StatCard label="Netto (periodo)" value={summary.net} tone={summary.net >= 0 ? 'text-green-500' : 'text-red-500'} />
                 </div>
+
+                {/* Emergency fund */}
+                <Card>
+                    <CardContent className="p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                                <Shield className="w-4 h-4 text-primary" />
+                                <h2 className="text-sm font-semibold">Fondo di emergenza</h2>
+                                <span
+                                    tabIndex={0}
+                                    className="inline-flex cursor-help text-muted-foreground/70 hover:text-foreground"
+                                    title="Il fondo è il valore delle categorie non-investibili (liquidità parcheggiata). I mesi coperti = fondo ÷ spesa media mensile calcolata su TUTTO lo storico bancario (non sul filtro data), così la copertura è un numero stabile."
+                                    aria-label="Come funziona il fondo di emergenza"
+                                >
+                                    <Info className="w-3 h-3" />
+                                </span>
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                Obiettivo
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={60}
+                                    value={targetMonths}
+                                    onChange={(e) => setTargetMonths(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
+                                    className="w-14 rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                />
+                                mesi
+                                {targetDirty && (
+                                    <Button size="sm" onClick={saveTarget} disabled={savingTarget}>
+                                        {savingTarget ? '…' : 'Salva'}
+                                    </Button>
+                                )}
+                            </label>
+                        </div>
+
+                        {monthlyBurn === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                Servono transazioni di spesa per stimare la copertura del fondo.
+                            </p>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-0.5">Fondo attuale</p>
+                                        <p className="text-lg font-bold"><Money value={emergencyFund.buffer} /></p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-0.5">Mesi coperti</p>
+                                        <p className={cn('text-lg font-bold', monthsCovered >= targetMonths ? 'text-green-500' : 'text-amber-500')}>
+                                            {monthsCovered.toFixed(1)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-0.5">Obiettivo ({targetMonths} mesi)</p>
+                                        <p className="text-lg font-bold"><Money value={targetAmount} /></p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground mb-0.5">{shortfall > 0 ? 'Manca' : 'Raggiunto'}</p>
+                                        <p className={cn('text-lg font-bold', shortfall > 0 ? 'text-amber-500' : 'text-green-500')}>
+                                            {shortfall > 0 ? <Money value={shortfall} /> : '✓'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                    <div
+                                        className={cn('h-full rounded-full transition-all', coveragePct >= 100 ? 'bg-green-500' : 'bg-amber-500')}
+                                        style={{ width: `${coveragePct}%` }}
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-2 text-sm">

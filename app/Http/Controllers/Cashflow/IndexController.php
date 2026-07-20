@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Cashflow;
 
+use App\Actions\Dashboard\ComputeEmergencyBuffer;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
+use App\Models\InvestorProfile;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class IndexController extends Controller
 {
+    public function __construct(
+        private readonly ComputeEmergencyBuffer $computeBuffer,
+    ) {}
+
     public function __invoke(): Response
     {
         $accounts = BankAccount::query()
@@ -45,6 +51,10 @@ class IndexController extends Controller
         return Inertia::render('Cashflow', [
             'accounts' => $accounts->values(),
             'transactions' => $transactions->values(),
+            'emergencyFund' => [
+                'buffer' => round($this->computeBuffer->run(), 2),
+                'targetMonths' => InvestorProfile::query()->first()?->emergency_fund_months,
+            ],
         ]);
     }
 
