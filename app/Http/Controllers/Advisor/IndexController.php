@@ -48,7 +48,6 @@ class IndexController extends Controller
                 'birth_date' => $profile->birth_date?->format('Y-m-d'),
                 'horizon' => $profile->horizon,
                 'risk_tolerance' => $profile->risk_tolerance,
-                'income_monthly' => $profile->income_monthly,
                 'notes' => $profile->notes,
                 'memory' => $profile->memory,
             ] : null,

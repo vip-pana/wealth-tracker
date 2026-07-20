@@ -33,6 +33,9 @@ use App\Http\Controllers\Banking\CallbackController as BankingCallbackController
 use App\Http\Controllers\Banking\ConnectController as BankingConnectController;
 use App\Http\Controllers\Banking\DisconnectController as BankingDisconnectController;
 use App\Http\Controllers\Banking\LinkAccountController as BankingLinkAccountController;
+use App\Http\Controllers\Cashflow\IndexController as CashflowIndexController;
+use App\Http\Controllers\Cashflow\UpdateController as CashflowUpdateController;
+use App\Http\Controllers\Cashflow\UpdateEmergencyFundController;
 use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
 use App\Http\Controllers\Categories\IndexController as IndexCategoryController;
 use App\Http\Controllers\Categories\RestoreController as RestoreCategoryController;
@@ -81,6 +84,9 @@ Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advi
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
 Route::get('/pension', IndexPensionController::class)->name('pension.index');
+Route::get('/cashflow', CashflowIndexController::class)->name('cashflow.index');
+Route::patch('/cashflow', CashflowUpdateController::class)->name('cashflow.update');
+Route::patch('/cashflow/emergency-fund', UpdateEmergencyFundController::class)->name('cashflow.emergency-fund.update');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────
 Route::prefix('assets')->name('assets.')->group(function () {

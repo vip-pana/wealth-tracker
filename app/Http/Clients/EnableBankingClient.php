@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Clients;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -159,6 +160,144 @@ class EnableBankingClient
         return ['amount' => (float) $amount, 'currency' => $currency];
     }
 
+    /**
+     * One page of an account's transactions (by its session uid), each
+     * normalised for import. Mirrors accountBalance()'s failure contract:
+     * returns the page on success, the string 'unauthorized' when the bank
+     * rejects the session (401/403), the string 'rate_limited' when the bank's
+     * daily access quota is exhausted (429 — ASPSPs like Isybank consent to
+     * only a few reads per account per day), or null for any other failure.
+     * `continuationKey` (null = first page) and the returned `next_key`
+     * (null = no more pages) drive pagination by the caller.
+     *
+     * The amount is signed from `credit_debit_indicator` (DBIT = outflow,
+     * negative; CRDT = inflow, positive). The raw item is kept for later
+     * categorisation and debugging.
+     *
+     * @return array{items: list<array{external_id: string, amount: float, currency: string, booking_date: string, value_date: string|null, description: string|null, counterparty: string|null, merchant_category_code: string|null, raw: array<string, mixed>}>, next_key: string|null}|'unauthorized'|'rate_limited'|null
+     */
+    public function transactions(string $accountUid, ?string $continuationKey = null): array|string|null
+    {
+        $query = $continuationKey !== null ? ['continuation_key' => $continuationKey] : [];
+
+        $response = $this->request()?->get(self::BASE_URL.'/accounts/'.$accountUid.'/transactions', $query);
+
+        if ($response !== null && in_array($response->status(), [401, 403], true)) {
+            Log::warning('Enable Banking transactions unauthorized', ['status' => $response->status(), 'account' => $accountUid]);
+
+            return 'unauthorized';
+        }
+
+        if ($response !== null && $response->status() === 429) {
+            Log::warning('Enable Banking transactions rate limited', ['account' => $accountUid]);
+
+            return 'rate_limited';
+        }
+
+        if ($response === null || ! $response->successful()) {
+            Log::warning('Enable Banking transactions fetch failed', ['status' => $response?->status(), 'account' => $accountUid]);
+
+            return null;
+        }
+
+        $transactions = $response->json('transactions');
+
+        if (! is_array($transactions)) {
+            Log::warning('Enable Banking unexpected transactions shape', ['account' => $accountUid]);
+
+            return null;
+        }
+
+        $items = [];
+
+        foreach ($transactions as $transaction) {
+            $normalised = $this->normaliseTransaction($transaction);
+
+            if ($normalised !== null) {
+                $items[] = $normalised;
+            }
+        }
+
+        $nextKey = $response->json('continuation_key');
+
+        return [
+            'items' => $items,
+            'next_key' => is_string($nextKey) && $nextKey !== '' ? $nextKey : null,
+        ];
+    }
+
+    /**
+     * Map one raw Enable Banking transaction to our shape, or null if it lacks
+     * a stable id or a usable amount. The signed amount encodes direction:
+     * DBIT (debit) is a negative outflow, CRDT (credit) a positive inflow.
+     *
+     * @return array{external_id: string, amount: float, currency: string, booking_date: string, value_date: string|null, description: string|null, counterparty: string|null, merchant_category_code: string|null, raw: array<string, mixed>}|null
+     */
+    private function normaliseTransaction(mixed $item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $item */
+        $externalId = $item['entry_reference'] ?? $item['transaction_id'] ?? null;
+        if (! is_string($externalId) || $externalId === '') {
+            return null;
+        }
+
+        $transactionAmount = $item['transaction_amount'] ?? null;
+        if (! is_array($transactionAmount)) {
+            return null;
+        }
+
+        $amountRaw = $transactionAmount['amount'] ?? null;
+        $currency = $transactionAmount['currency'] ?? null;
+        if (! is_numeric($amountRaw) || ! is_string($currency)) {
+            return null;
+        }
+
+        $bookingDate = $item['booking_date'] ?? null;
+        if (! is_string($bookingDate) || $bookingDate === '') {
+            return null;
+        }
+
+        $indicator = $item['credit_debit_indicator'] ?? null;
+        $sign = $indicator === 'DBIT' ? -1.0 : 1.0;
+        $amount = $sign * abs((float) $amountRaw);
+
+        $valueDate = $item['value_date'] ?? null;
+        $description = $item['remittance_information'] ?? $item['note'] ?? null;
+        $counterparty = $sign < 0 ? ($item['creditor'] ?? null) : ($item['debtor'] ?? null);
+        $mcc = $item['merchant_category_code'] ?? null;
+
+        return [
+            'external_id' => $externalId,
+            'amount' => $amount,
+            'currency' => $currency,
+            'booking_date' => $bookingDate,
+            'value_date' => is_string($valueDate) && $valueDate !== '' ? $valueDate : null,
+            'description' => $this->stringOrNull($description),
+            'counterparty' => $this->stringOrNull($counterparty),
+            'merchant_category_code' => $this->stringOrNull($mcc),
+            'raw' => $item,
+        ];
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            return $value === '' ? null : $value;
+        }
+
+        if (is_array($value) || is_scalar($value)) {
+            $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            return $encoded === false ? null : $encoded;
+        }
+
+        return null;
+    }
+
     private function request(): ?PendingRequest
     {
         $jwt = $this->jwt();
@@ -168,7 +307,14 @@ class EnableBankingClient
 
         return Http::withToken($jwt)
             ->timeout(10)
-            ->retry(3, 200, throw: false);
+            // Don't retry a rate-limit (429) or an auth rejection (401/403):
+            // retrying only burns more of a rate-limited quota, and auth
+            // failures won't recover within the attempt window.
+            ->retry(3, 200, when: function (\Throwable $e): bool {
+                $status = $e instanceof RequestException ? $e->response->status() : 0;
+
+                return ! in_array($status, [401, 403, 429], true);
+            }, throw: false);
     }
 
     private function jwt(): ?string

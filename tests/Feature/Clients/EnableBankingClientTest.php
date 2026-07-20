@@ -152,4 +152,99 @@ class EnableBankingClientTest extends TestCase
         $this->assertSame([], $client->aspsps('IT'));
         $this->assertNull($client->accountBalance('acc-uid-1'));
     }
+
+    public function test_normalises_transactions_with_a_signed_amount(): void
+    {
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/transactions*' => Http::response([
+                'transactions' => [
+                    [
+                        'entry_reference' => 'tx-1',
+                        'transaction_amount' => ['amount' => '12.50', 'currency' => 'EUR'],
+                        'credit_debit_indicator' => 'DBIT',
+                        'booking_date' => '2026-07-01',
+                        'value_date' => '2026-07-02',
+                        'remittance_information' => 'Coffee',
+                        'creditor' => 'Bar Rossi',
+                        'merchant_category_code' => '5812',
+                    ],
+                    [
+                        'entry_reference' => 'tx-2',
+                        'transaction_amount' => ['amount' => '1800.00', 'currency' => 'EUR'],
+                        'credit_debit_indicator' => 'CRDT',
+                        'booking_date' => '2026-07-01',
+                        'debtor' => 'ACME SpA',
+                    ],
+                ],
+                'continuation_key' => null,
+            ]),
+        ]);
+
+        $page = $this->client()->transactions('acc-1');
+
+        $this->assertNull($page['next_key']);
+        $this->assertCount(2, $page['items']);
+
+        $debit = $page['items'][0];
+        $this->assertSame('tx-1', $debit['external_id']);
+        $this->assertEqualsWithDelta(-12.50, $debit['amount'], 0.001);
+        $this->assertSame('Coffee', $debit['description']);
+        $this->assertSame('Bar Rossi', $debit['counterparty']);
+        $this->assertSame('5812', $debit['merchant_category_code']);
+
+        $credit = $page['items'][1];
+        $this->assertEqualsWithDelta(1800.00, $credit['amount'], 0.001);
+        $this->assertSame('ACME SpA', $credit['counterparty']);
+    }
+
+    public function test_transactions_passes_the_continuation_key_through(): void
+    {
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/transactions*' => Http::response([
+                'transactions' => [], 'continuation_key' => 'next-page',
+            ]),
+        ]);
+
+        $page = $this->client()->transactions('acc-1', 'cursor-abc');
+
+        $this->assertSame('next-page', $page['next_key']);
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'continuation_key=cursor-abc'));
+    }
+
+    public function test_transactions_skips_items_without_a_stable_id(): void
+    {
+        Http::fake([
+            'api.enablebanking.com/accounts/acc-1/transactions*' => Http::response([
+                'transactions' => [
+                    ['transaction_amount' => ['amount' => '1.00', 'currency' => 'EUR'], 'credit_debit_indicator' => 'DBIT', 'booking_date' => '2026-07-01'],
+                ],
+                'continuation_key' => null,
+            ]),
+        ]);
+
+        $page = $this->client()->transactions('acc-1');
+
+        $this->assertSame([], $page['items']);
+    }
+
+    public function test_transactions_reports_unauthorized_on_a_rejected_session(): void
+    {
+        Http::fake(['api.enablebanking.com/accounts/*/transactions*' => Http::response('', 403)]);
+
+        $this->assertSame('unauthorized', $this->client()->transactions('acc-1'));
+    }
+
+    public function test_transactions_reports_rate_limited_on_429(): void
+    {
+        Http::fake(['api.enablebanking.com/accounts/*/transactions*' => Http::response(['error' => 'ASPSP_RATE_LIMIT_EXCEEDED'], 429)]);
+
+        $this->assertSame('rate_limited', $this->client()->transactions('acc-1'));
+    }
+
+    public function test_transactions_returns_null_on_failure(): void
+    {
+        Http::fake(['api.enablebanking.com/accounts/*/transactions*' => Http::response('', 500)]);
+
+        $this->assertNull($this->client()->transactions('acc-1'));
+    }
 }

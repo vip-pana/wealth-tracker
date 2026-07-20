@@ -61,18 +61,22 @@ class InvestorProfileTest extends TestCase
         $this->assertSame('Tollera i cali.', $context['investorProfile']['notes']);
     }
 
-    public function test_stores_income(): void
+    public function test_income_is_not_a_profile_field(): void
     {
+        // Net income is observed from bank transactions (ComputeMonthlySalary),
+        // never stored on the profile. Posting it is silently ignored, and the
+        // context exposes net_monthly_income (null with no transactions), not
+        // the old hand-entered income_monthly.
         $this->post('/advisor/profile', [
             'income_monthly' => 2000,
+            'horizon' => 'long',
         ])->assertRedirect();
 
-        $this->assertDatabaseHas('investor_profile', ['income_monthly' => 2000]);
+        $this->assertDatabaseHas('investor_profile', ['horizon' => 'long']);
 
         $context = app(BuildAdvisorContext::class)->run();
-        $this->assertSame(2000.0, $context['investorProfile']['income_monthly']);
-        // emergency_fund is no longer part of the profile.
-        $this->assertArrayNotHasKey('emergency_fund', $context['investorProfile']);
+        $this->assertArrayNotHasKey('income_monthly', $context['investorProfile']);
+        $this->assertNull($context['investorProfile']['net_monthly_income']);
     }
 
     public function test_stores_the_personal_fields(): void

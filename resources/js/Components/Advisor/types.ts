@@ -112,7 +112,6 @@ export interface ProfileProposalWidget {
         birth_date?: string;
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
-        income_monthly?: number;
         notes?: string;
         memory?: string;
     };
