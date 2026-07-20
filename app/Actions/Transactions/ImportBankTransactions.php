@@ -19,6 +19,7 @@ class ImportBankTransactions extends Action
     public function __construct(
         private readonly EnableBankingClient $enableBanking,
         private readonly PushNotification $notify,
+        private readonly ClassifyBankTransactions $classify,
     ) {}
 
     /**
@@ -56,6 +57,10 @@ class ImportBankTransactions extends Action
             $imported += $result;
             $accountsSynced++;
         }
+
+        // Auto-classify the newly imported rows. Manual (user-touched) rows are
+        // left intact, so this never overwrites a human decision.
+        $this->classify->run();
 
         return [
             'imported' => $imported,
