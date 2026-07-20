@@ -208,7 +208,7 @@ class EnableBankingClientTest extends TestCase
         $page = $this->client()->transactions('acc-1', 'cursor-abc');
 
         $this->assertSame('next-page', $page['next_key']);
-        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'continuation_key=cursor-abc'));
+        Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), 'continuation_key=cursor-abc'));
     }
 
     public function test_transactions_skips_items_without_a_stable_id(): void

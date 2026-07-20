@@ -17,7 +17,7 @@ class ClassifyBankTransactions extends Action
      *
      * @var list<string>
      */
-    private const TRANSFER_MARKERS = [
+    private const array TRANSFER_MARKERS = [
         'Revolut**',
         'Apple Pay Top-Up by *8222',
         'Payment from Panacciulli',
