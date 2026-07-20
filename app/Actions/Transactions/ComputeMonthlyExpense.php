@@ -46,8 +46,8 @@ class ComputeMonthlyExpense extends Action
 
     private function monthsBetween(string $from, string $to): int
     {
-        [$fy, $fm] = array_map('intval', explode('-', $from));
-        [$ty, $tm] = array_map('intval', explode('-', $to));
+        [$fy, $fm] = array_map(intval(...), explode('-', $from));
+        [$ty, $tm] = array_map(intval(...), explode('-', $to));
 
         return max(1, ($ty - $fy) * 12 + ($tm - $fm) + 1);
     }
