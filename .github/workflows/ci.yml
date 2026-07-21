@@ -6,10 +6,15 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  checks:
-    runs-on: ubuntu-latest
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  php:
+    name: PHP (Pint, PHPStan, Rector, PHPUnit)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
@@ -20,6 +25,13 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
       - name: Install Composer dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
@@ -27,6 +39,24 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+
+      - name: Lint (Pint)
+        run: composer lint
+
+      - name: Static analysis (PHPStan)
+        run: composer analyse
+
+      - name: Refactoring check (Rector)
+        run: composer rector
+
+      - name: Tests (PHPUnit)
+        run: php artisan test
+
+  js:
+    name: JS (ESLint, tsc, Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
       - name: Setup pnpm
         # No explicit version: action-setup reads packageManager in package.json
@@ -42,15 +72,6 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (Pint)
-        run: composer lint
-
-      - name: Static analysis (PHPStan)
-        run: composer analyse
-
-      - name: Refactoring check (Rector)
-        run: composer rector
-
       - name: Lint (ESLint)
         run: pnpm run lint
 
@@ -59,6 +80,3 @@ jobs:
 
       - name: Tests (Vitest)
         run: pnpm run test
-
-      - name: Tests (PHPUnit)
-        run: php artisan test
