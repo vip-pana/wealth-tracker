@@ -24,7 +24,13 @@ Canonical list is in `composer.json` / `package.json` scripts — reference, don
 ## Deploy
 
 <!-- exodia:section:deploy -->
-No deploy pipeline. The quality gate (pre-push hook in `.githooks/pre-push`, mirrored by `.github/workflows/ci.yml`) runs seven checks **in order, inside Docker**: Pint → PHPStan → Rector (dry-run) → ESLint → tsc → Vitest → PHPUnit. All must pass before push. Enable the hook with `composer setup-hooks`. Versions are released via git tags + `CHANGELOG.md` (current: `v1.0.0`).
+No deploy pipeline. The quality gate has two forms:
+- **Pre-push hook** (`.githooks/pre-push`, enable with `composer setup-hooks`): the same seven checks **in order, inside Docker**: Pint → PHPStan → Rector (dry-run) → ESLint → tsc → Vitest → PHPUnit.
+- **CI** (`.github/workflows/ci.yml`): the same checks split into two parallel jobs — a `php` job (Pint, PHPStan, Rector, PHPUnit, with a `vendor` cache keyed on `composer.lock`) and a `js` job (ESLint, tsc, Vitest, with pnpm cache). `concurrency` cancels superseded runs on the same ref.
+
+Dependency updates are automated by Dependabot (`.github/dependabot.yml`): weekly grouped PRs for composer, npm (pnpm-aware), and github-actions, all `chore(deps)`/`chore(ci)`.
+
+Releases are automated by release-please (`.github/workflows/release.yml`, config in `.release-please-config.json`, version tracked in `.release-please-manifest.json` + `version.txt`). It reads conventional commits on `main`, keeps a rolling release PR that bumps the version and updates `CHANGELOG.md`; merging that PR creates the git tag. Do not hand-edit `CHANGELOG.md` release sections or tag manually (current: `v1.0.0`).
 
 ## Backup & restore
 
