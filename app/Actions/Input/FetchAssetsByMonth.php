@@ -22,7 +22,7 @@ class FetchAssetsByMonth extends Action
         $illiquidMacros = MacroCategory::illiquidValues();
         $bankLinks = BankAccount::activeLinkKeys();
 
-        return Asset::with('category')
+        $assets = Asset::with('category')
             ->withCount('transactions')
             ->whereDate('date', $month)
             ->when($illiquidMacros !== [], function ($query) use ($illiquidMacros): void {
@@ -33,7 +33,7 @@ class FetchAssetsByMonth extends Action
             })
             ->orderBy('created_at')
             ->get()
-            ->map(function (Asset $a) use ($prices, $bankLinks) {
+            ->map(function (Asset $a) use ($prices, $bankLinks): array {
                 /** @var AssetPrice|null $priceRecord */
                 $priceRecord = $a->ticker !== null ? $prices->get($a->ticker) : null;
                 $price = $priceRecord?->price;
@@ -63,5 +63,8 @@ class FetchAssetsByMonth extends Action
                     ],
                 ];
             });
+
+        /** @var Collection<int, array{id: int, name: string, ticker: string|null, isin: string|null, expense_ratio: float|null, wallet_address: string|null, quantity: float|null, price: float|null, value: float, synced_at: string|null, sync_source: string|null, bank_linked: bool, transaction_managed: bool, date: string, notes: string|null, category_id: int, category: array{id: int, name: string, color: string, macro_category: string|null}}> $assets */
+        return $assets;
     }
 }

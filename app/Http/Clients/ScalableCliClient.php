@@ -134,7 +134,7 @@ class ScalableCliClient
             return null;
         }
 
-        $nextCursor = is_array($result) ? ($result['cursor'] ?? null) : null;
+        $nextCursor = $result['cursor'] ?? null;
 
         $normalised = [];
 
