@@ -131,7 +131,7 @@ class RenderAdvisorContextTest extends TestCase
     {
         $out = (new RenderAdvisorContext)->run($this->context([
             'investorProfile' => [
-                'name' => 'Vincenzo',
+                'name' => 'Mario',
                 'age' => 35,
                 'horizon' => 'long',
                 'risk_tolerance' => 'high',
@@ -139,7 +139,7 @@ class RenderAdvisorContextTest extends TestCase
             ],
         ]));
 
-        $this->assertStringContainsString('Vincenzo', $out);
+        $this->assertStringContainsString('Mario', $out);
         $this->assertStringContainsString('35 anni', $out);
         $this->assertStringContainsString('Preferisce ETF ad accumulo.', $out);
     }

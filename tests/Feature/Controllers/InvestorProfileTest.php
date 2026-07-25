@@ -82,13 +82,13 @@ class InvestorProfileTest extends TestCase
     public function test_stores_the_personal_fields(): void
     {
         $this->post('/advisor/profile', [
-            'name' => 'Vincenzo',
+            'name' => 'Mario',
             'birth_date' => '1990-05-14',
             'memory' => 'Preferisce ETF ad accumulo.',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('investor_profile', [
-            'name' => 'Vincenzo',
+            'name' => 'Mario',
             'memory' => 'Preferisce ETF ad accumulo.',
         ]);
         $this->assertSame('1990-05-14', InvestorProfile::first()?->birth_date?->format('Y-m-d'));
@@ -103,14 +103,14 @@ class InvestorProfileTest extends TestCase
     public function test_context_derives_age_from_birth_date_and_carries_name_and_memory(): void
     {
         InvestorProfile::create([
-            'name' => 'Vincenzo',
+            'name' => 'Mario',
             'birth_date' => now()->subYears(35)->format('Y-m-d'),
             'memory' => 'Non vuole obbligazioni.',
         ]);
 
         $context = app(BuildAdvisorContext::class)->run();
 
-        $this->assertSame('Vincenzo', $context['investorProfile']['name']);
+        $this->assertSame('Mario', $context['investorProfile']['name']);
         $this->assertSame(35, $context['investorProfile']['age']);
         $this->assertSame('Non vuole obbligazioni.', $context['investorProfile']['memory']);
     }

@@ -15,6 +15,13 @@ class ClassifyBankTransactionsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('transactions.self_transfer_name', 'Rossi');
+    }
+
     private function account(): BankAccount
     {
         $connection = BankConnection::create([
@@ -56,7 +63,7 @@ class ClassifyBankTransactionsTest extends TestCase
 
     public function test_marks_standing_order_to_self_as_transfer(): void
     {
-        $tx = $this->tx('t2', -300.0, ['ORDINE PERMANENTE DI BONIFICO Bonifico a favore di: Vincenzo Ivan Panacciulli']);
+        $tx = $this->tx('t2', -300.0, ['ORDINE PERMANENTE DI BONIFICO Bonifico a favore di: Mario Rossi']);
 
         app(ClassifyBankTransactions::class)->run();
 
@@ -74,7 +81,7 @@ class ClassifyBankTransactionsTest extends TestCase
 
     public function test_marks_payment_from_self_as_transfer(): void
     {
-        $tx = $this->tx('t4', 300.0, ['Budget di spese personali mensili', 'Payment from Panacciulli Vincenzo Ivan']);
+        $tx = $this->tx('t4', 300.0, ['Budget di spese personali mensili', 'Payment from Rossi Mario']);
 
         app(ClassifyBankTransactions::class)->run();
 
@@ -101,7 +108,7 @@ class ClassifyBankTransactionsTest extends TestCase
 
     public function test_positive_amount_is_income(): void
     {
-        $tx = $this->tx('t7', 1726.0, ['STIPENDIO O PENSIONE ... WEROAD S.P.A.']);
+        $tx = $this->tx('t7', 1726.0, ['STIPENDIO O PENSIONE ... ACME S.P.A.']);
 
         app(ClassifyBankTransactions::class)->run();
 

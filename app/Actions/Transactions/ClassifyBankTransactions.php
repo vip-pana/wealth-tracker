@@ -20,7 +20,6 @@ class ClassifyBankTransactions extends Action
     private const array TRANSFER_MARKERS = [
         'Revolut**',
         'Apple Pay Top-Up by *8222',
-        'Payment from Panacciulli',
     ];
 
     /**
@@ -67,9 +66,20 @@ class ClassifyBankTransactions extends Action
             }
         }
 
-        // Isybank standing order to self: "ORDINE PERMANENTE DI BONIFICO ... Panacciulli".
+        $selfName = config('transactions.self_transfer_name');
+
+        if (! is_string($selfName) || $selfName === '') {
+            return false;
+        }
+
+        // Revolut top-up from one's own account: "Payment from <name>".
+        if (stripos($note, 'Payment from '.$selfName) !== false) {
+            return true;
+        }
+
+        // Isybank standing order to self: "ORDINE PERMANENTE DI BONIFICO ... <name>".
         return stripos($note, 'ORDINE PERMANENTE DI BONIFICO') !== false
-            && stripos($note, 'Panacciulli') !== false;
+            && stripos($note, $selfName) !== false;
     }
 
     private function note(BankTransaction $transaction): string

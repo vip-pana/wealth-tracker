@@ -22,9 +22,9 @@ describe('ProfileProposal', () => {
     });
 
     it('renders the personal fields (name, birth date, memory) when proposed', () => {
-        render(<ProfileProposal data={{ name: 'Vincenzo', birth_date: '1990-05-14', memory: 'Preferisce ETF ad accumulo' }} />);
+        render(<ProfileProposal data={{ name: 'Mario', birth_date: '1990-05-14', memory: 'Preferisce ETF ad accumulo' }} />);
         expect(screen.getByText('Nome')).toBeInTheDocument();
-        expect(screen.getByText('Vincenzo')).toBeInTheDocument();
+        expect(screen.getByText('Mario')).toBeInTheDocument();
         expect(screen.getByText('Data di nascita')).toBeInTheDocument();
         expect(screen.getByText('Da ricordare')).toBeInTheDocument();
         expect(screen.getByText('Preferisce ETF ad accumulo')).toBeInTheDocument();

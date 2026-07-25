@@ -91,7 +91,7 @@ export function ProfileDialog({
                                 type="text"
                                 value={form.data.name}
                                 onChange={(e) => form.setData('name', e.target.value)}
-                                placeholder="es. Vincenzo"
+                                placeholder="es. Mario"
                             />
                         </div>
                         <div className="space-y-1">

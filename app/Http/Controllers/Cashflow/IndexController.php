@@ -42,7 +42,7 @@ class IndexController extends Controller
             'flow_type' => $t->flow_type,
             'excluded' => $t->excluded,
             'is_manual' => $t->is_manual,
-            // Salary credits carry a "STIPENDIO" marker in the note (e.g. WeRoad).
+            // Salary credits carry a "STIPENDIO" marker in the note.
             // The monthly-salary card averages these; totals stay client-side so
             // they follow the date filter.
             'is_salary' => stripos($this->note($t), 'STIPENDIO') !== false,

@@ -570,12 +570,12 @@ class AdvisorToolFactoryTest extends TestCase
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_profile_update')->handle(
-            name: 'Vincenzo',
+            name: 'Mario',
             birth_date: '1990-05-14',
         );
 
         $data = $collector->widgets()[0]['data'];
-        $this->assertSame('Vincenzo', $data['name']);
+        $this->assertSame('Mario', $data['name']);
         $this->assertSame('1990-05-14', $data['birth_date']);
         // memory is no longer a profile-proposal field — it writes autonomously
         // through remember_fact — so it never appears on the card payload.
@@ -639,12 +639,12 @@ class AdvisorToolFactoryTest extends TestCase
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_profile_update')->handle(
-            name: 'Vincenzo',
+            name: 'Mario',
             birth_date: '2999-01-01',
         );
 
         $data = $collector->widgets()[0]['data'];
-        $this->assertSame('Vincenzo', $data['name']);
+        $this->assertSame('Mario', $data['name']);
         $this->assertArrayNotHasKey('birth_date', $data);
     }
 
@@ -652,11 +652,11 @@ class AdvisorToolFactoryTest extends TestCase
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'confirm_profile_fact')->handle(
-            name: 'Vincenzo',
+            name: 'Mario',
         );
 
         $data = $collector->widgets()[0]['data'];
-        $this->assertSame('Vincenzo', $data['name']);
+        $this->assertSame('Mario', $data['name']);
         // memory is not part of the confirm-fact card anymore.
         $this->assertArrayNotHasKey('memory', $data);
     }

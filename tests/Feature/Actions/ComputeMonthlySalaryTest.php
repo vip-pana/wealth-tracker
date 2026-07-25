@@ -16,7 +16,7 @@ class ComputeMonthlySalaryTest extends TestCase
 
     private int $seq = 0;
 
-    private function salary(float $amount, string $date, string $note = 'STIPENDIO O PENSIONE WEROAD S.P.A.', bool $excluded = false): void
+    private function salary(float $amount, string $date, string $note = 'STIPENDIO O PENSIONE ACME S.P.A.', bool $excluded = false): void
     {
         $this->tx($amount, $date, $note, BankTransaction::FLOW_INCOME, $excluded);
     }
