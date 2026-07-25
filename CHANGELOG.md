@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.7](https://github.com/vip-pana/wealth-tracker/compare/v1.2.6...v1.2.7) (2026-07-25)
+
+
+### Documentation
+
+* add playbook for the Tailwind v4 dialog animation footgun ([#43](https://github.com/vip-pana/wealth-tracker/issues/43)) ([4766d4d](https://github.com/vip-pana/wealth-tracker/commit/4766d4d22e3a31f51c702b7c85e011c4ccd12d54))
+
+
+### Chores
+
+* **deps:** upgrade to Tailwind CSS v4 ([#41](https://github.com/vip-pana/wealth-tracker/issues/41)) ([bdff481](https://github.com/vip-pana/wealth-tracker/commit/bdff481aa0ddcf4ed45bf46125ed7c6faef884bf))
+
 ## [1.2.6](https://github.com/vip-pana/wealth-tracker/compare/v1.2.5...v1.2.6) (2026-07-25)
 
 
