@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.4](https://github.com/vip-pana/wealth-tracker/compare/v1.2.3...v1.2.4) (2026-07-25)
+
+
+### Chores
+
+* **deps:** bump @types/node from 25 to 26 ([#32](https://github.com/vip-pana/wealth-tracker/issues/32)) ([3fa2263](https://github.com/vip-pana/wealth-tracker/commit/3fa22632ae0924a52a0357fe472f40072b0e10fe))
+* **deps:** bump concurrently from 9 to 10 ([#34](https://github.com/vip-pana/wealth-tracker/issues/34)) ([3b945cb](https://github.com/vip-pana/wealth-tracker/commit/3b945cbdf3139729860f593f6d2efcffd8ef7d63))
+
 ## [1.2.3](https://github.com/vip-pana/wealth-tracker/compare/v1.2.2...v1.2.3) (2026-07-25)
 
 
