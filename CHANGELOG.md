@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.5](https://github.com/vip-pana/wealth-tracker/compare/v1.2.4...v1.2.5) (2026-07-25)
+
+
+### Chores
+
+* **deps:** bump @testing-library/jest-dom from 6 to 7 ([#35](https://github.com/vip-pana/wealth-tracker/issues/35)) ([9bb901b](https://github.com/vip-pana/wealth-tracker/commit/9bb901bb52382fe1f630e1926a67c344b46777d7))
+* **deps:** bump lucide-react from 0.x to 1 ([#37](https://github.com/vip-pana/wealth-tracker/issues/37)) ([d1b7c40](https://github.com/vip-pana/wealth-tracker/commit/d1b7c40081cf30508e79c4f5fe919656fbc0dd2c))
+
 ## [1.2.4](https://github.com/vip-pana/wealth-tracker/compare/v1.2.3...v1.2.4) (2026-07-25)
 
 
