@@ -57,7 +57,7 @@
         ],
         "lint": "@php ./vendor/bin/pint --test",
         "lint:fix": "@php ./vendor/bin/pint",
-        "analyse": "@php vendor/bin/phpstan analyse --memory-limit=256M",
+        "analyse": "@php vendor/bin/phpstan analyse --memory-limit=512M",
         "rector": "@php ./vendor/bin/rector process --dry-run",
         "rector:fix": "@php ./vendor/bin/rector process",
         "setup-hooks": "git config core.hooksPath .githooks"
