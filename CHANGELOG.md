@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.6](https://github.com/vip-pana/wealth-tracker/compare/v1.2.5...v1.2.6) (2026-07-25)
+
+
+### Chores
+
+* **deps:** bump @vitejs/plugin-react from 4 to 5 ([#38](https://github.com/vip-pana/wealth-tracker/issues/38)) ([9d4a023](https://github.com/vip-pana/wealth-tracker/commit/9d4a023b003e150aa6305e9132ca0b48a4163e52))
+* **deps:** bump laravel/tinker from 2 to 3 ([#40](https://github.com/vip-pana/wealth-tracker/issues/40)) ([22e91d5](https://github.com/vip-pana/wealth-tracker/commit/22e91d58cee44831a1f9c51c1e9c6e4d9af78212))
+
 ## [1.2.5](https://github.com/vip-pana/wealth-tracker/compare/v1.2.4...v1.2.5) (2026-07-25)
 
 
