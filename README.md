@@ -1,11 +1,31 @@
 # Wealth Tracker
 
-Personal wealth tracker: log assets by category each month, take monthly snapshots, and visualize net worth over time with charts and forecasts. No authentication — single-user local app.
+A single-user personal wealth tracker: log your assets by category each month,
+take point-in-time snapshots, and follow your net worth through charts,
+forecasts and a savings goal. No authentication — it's a local app for one
+person's own finances.
+
+## Features
+
+- **Dashboard** — net worth over time, allocation, and portfolio insights.
+- **Assets & snapshots** — log assets by category each month; freeze monthly
+  snapshots to track history honestly.
+- **Investments** — positions with true per-position return, transaction
+  history, and CSV export.
+- **Goal** — a savings goal with milestones and progress tracking.
+- **Cashflow** — optional bank-transaction ingestion (income vs. expense vs.
+  internal transfer), derived from open-banking data.
+- **AI advisor** — an in-app financial advisor that reasons over your own
+  portfolio. Runs against a local model (Ollama) by default, or a cloud model;
+  it interviews you to build a risk profile and helps you shape your goal,
+  without ever recommending specific buy/sell trades.
+- **Pension** — track a supplementary pension position.
 
 ## Stack
 
 - **Backend**: Laravel 12, PHP 8.4, SQLite
 - **Frontend**: React 19 + TypeScript (strict), Inertia.js v2, Tailwind CSS, Recharts
+- **AI**: [Prism](https://github.com/prism-php/prism) as the LLM transport (Ollama / Anthropic / OpenAI-compatible)
 - **Package manager**: pnpm
 
 ## Running with Docker (recommended)
@@ -17,7 +37,10 @@ docker compose up
 
 The app will be available at [http://localhost:8080](http://localhost:8080).
 
-The SQLite database is persisted in a named Docker volume (`sqlite_data`).
+The SQLite database lives on the host at `~/wealth-tracker-data/database.sqlite`
+(bind-mounted into the container), so it's a normal file you can back up or
+inspect. Override the location with `WEALTH_TRACKER_DATA_DIR`. See
+[docs/database.md](docs/database.md) for backups and restore.
 
 ### Accessing from a phone on the same Wi-Fi
 
@@ -87,6 +110,22 @@ To bypass once (discouraged): `git push --no-verify`.
 - **Database & backups** — [docs/database.md](docs/database.md)
 - **Enable Banking** (open-banking bank balances) —
   [docs/enable-banking-usage.md](docs/enable-banking-usage.md)
+
+### AI advisor
+
+The advisor is configured in `.env` via `ADVISOR_DRIVER`:
+
+- `ollama` (default) — a local model; set `OLLAMA_MODEL` (and `OLLAMA_BASE_URL`)
+  to a tool-capable model. Inert until a model is set.
+- `anthropic` — Claude via the Anthropic API (`ANTHROPIC_API_KEY`), model in
+  `ADVISOR_ANTHROPIC_MODEL`.
+- `regolo` — an OpenAI-compatible endpoint (`REGOLO_BASE_URL` / `REGOLO_API_KEY`
+  / `REGOLO_MODEL`).
+
+The advisor's system prompts live in `resources/advisor-prompts/*.txt`. Those
+files are gitignored; the committed `*.txt.example` files are used as a fallback,
+so the advisor works out of the box. Copy an `.example` to its `.txt` to
+customize a prompt without committing it.
 
 ### Scalable Capital sync
 
