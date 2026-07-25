@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/vip-pana/wealth-tracker/compare/v1.2.1...v1.2.2) (2026-07-25)
+
+
+### Chores
+
+* **deps:** bump the npm-minor group with 21 updates ([#28](https://github.com/vip-pana/wealth-tracker/issues/28)) ([27d035f](https://github.com/vip-pana/wealth-tracker/commit/27d035f70038347640fe4742e672d6427dc53d61))
+
 ## [1.2.1](https://github.com/vip-pana/wealth-tracker/compare/v1.2.0...v1.2.1) (2026-07-25)
 
 
