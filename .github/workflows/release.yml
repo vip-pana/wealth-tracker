@@ -14,7 +14,7 @@ jobs:
     steps:
       # Keeps a rolling "release" PR up to date from conventional commits on main.
       # Merging that PR bumps the version, updates CHANGELOG.md, and tags the release.
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           # A PAT (not the default GITHUB_TOKEN) so the release PR is authored by a
           # real user. PRs opened by github-actions[bot] are held as action_required
