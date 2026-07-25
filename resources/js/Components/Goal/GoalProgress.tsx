@@ -209,7 +209,7 @@ export function GoalProgress({
                         ) : (
                             <div className="flex flex-col lg:flex-row gap-6">
                                 {/* Donuts */}
-                                <div className="flex justify-center gap-4 sm:gap-10 lg:flex-shrink-0">
+                                <div className="flex justify-center gap-4 sm:gap-10 lg:shrink-0">
                                     <SmallDonut data={currentDonut} title="Attuale" />
                                     <SmallDonut data={targetDonut} title="Target" />
                                 </div>
@@ -233,7 +233,7 @@ export function GoalProgress({
                                                 <TableRow key={d.name} className="border-0 hover:bg-transparent">
                                                     <TableCell className="py-1 px-0">
                                                         <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                                                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                                                             <span className="font-medium text-sm">{d.name}</span>
                                                         </div>
                                                     </TableCell>

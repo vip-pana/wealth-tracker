@@ -22,7 +22,7 @@ export function SessionRow({ s, activeId, onRename, onOpen }: { s: SessionSummar
     if (editing) {
         return (
             <div className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1.5">
-                <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
+                <KindIcon kind={s.kind} className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <input
                     value={draft}
                     autoFocus
@@ -33,12 +33,12 @@ export function SessionRow({ s, activeId, onRename, onOpen }: { s: SessionSummar
                         else if (e.key === 'Escape') { e.preventDefault(); setEditing(false); }
                     }}
                     onBlur={commit}
-                    className="flex-1 min-w-0 bg-transparent text-sm focus:outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-sm focus:outline-hidden"
                 />
-                <button type="button" className="flex-shrink-0 text-muted-foreground hover:text-foreground" title="Salva" onMouseDown={(e) => { e.preventDefault(); commit(); }}>
+                <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" title="Salva" onMouseDown={(e) => { e.preventDefault(); commit(); }}>
                     <Check className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" className="flex-shrink-0 text-muted-foreground hover:text-foreground" title="Annulla" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }}>
+                <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" title="Annulla" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }}>
                     <X className="w-3.5 h-3.5" />
                 </button>
             </div>
@@ -53,21 +53,21 @@ export function SessionRow({ s, activeId, onRename, onOpen }: { s: SessionSummar
                 isActive ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
             )}
         >
-            <KindIcon kind={s.kind} className="w-3.5 h-3.5 flex-shrink-0" />
+            <KindIcon kind={s.kind} className="w-3.5 h-3.5 shrink-0" />
             <TypewriterText
                 id={s.id}
                 text={s.title ?? 'Sessione'}
                 className={cn('flex-1 min-w-0 truncate', s.unread && !isActive && 'font-semibold text-foreground')}
             />
             {s.generating
-                ? <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />
+                ? <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
                 : s.unread && !isActive
-                    ? <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" title="Risposta da leggere" />
+                    ? <span className="h-2 w-2 shrink-0 rounded-full bg-primary" title="Risposta da leggere" />
                     : null}
-            {s.status === 'failed' && <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-500" />}
+            {s.status === 'failed' && <AlertTriangle className="w-3 h-3 shrink-0 text-amber-500" />}
             <button
                 type="button"
-                className="flex-shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
                 title="Rinomina sessione"
                 onClick={(e) => { e.stopPropagation(); startEditing(); }}
             >

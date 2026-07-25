@@ -211,11 +211,11 @@ export default function Dashboard({
                         <Link href="/goal" className="contents">
                             <Card className="sm:col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
                                 <CardContent className="p-3 h-full flex items-center gap-4">
-                                    <Target className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                                    <Target className="w-5 h-5 text-amber-500 shrink-0" />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1.5">
                                             <span className="text-sm font-medium truncate">{goal.name}</span>
-                                            <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
                                                 <Money value={lastPoint.total_value} /> / <Money value={goal.target_value} />
                                                 {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
                                             </span>
@@ -234,7 +234,7 @@ export default function Dashboard({
                                             ))}
                                         </div>
                                     </div>
-                                    <span className="text-sm font-bold text-amber-500 flex-shrink-0">
+                                    <span className="text-sm font-bold text-amber-500 shrink-0">
                                         {((lastPoint.total_value / goal.target_value) * 100).toFixed(1)}%
                                     </span>
                                 </CardContent>

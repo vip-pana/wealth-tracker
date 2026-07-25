@@ -234,7 +234,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             />
                             {editAsset?.bank_linked ? (
                                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                    <Landmark className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-emerald-400" />
+                                    <Landmark className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-400" />
                                     <span>
                                         Nome, categoria e saldo sono gestiti dal conto bancario collegato. Per modificarli a mano, scollega il conto in Impostazioni → Conti bancari.
                                         {editAsset.synced_at && (
@@ -247,7 +247,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             )}
                             {anomaly && (
                                 <p className="flex items-start gap-1.5 text-xs text-amber-500">
-                                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                                     <span>
                                         Valore insolito: <strong>{anomaly.factor > 1 ? `${anomaly.factor.toFixed(1)}×` : `-${Math.round((1 - anomaly.factor) * 100)}%`}</strong> rispetto al mese precedente (<Money value={anomaly.prev} variant="no-decimals" />). Controlla che non sia un errore di battitura
                                         {anomalyConfirmed ? '; premi di nuovo Salva per confermare.' : '.'}
@@ -287,7 +287,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                                         />
                                         {editAsset?.transaction_managed ? (
                                             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                                <ReceiptText className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-400" />
+                                                <ReceiptText className="w-3.5 h-3.5 shrink-0 mt-0.5 text-indigo-400" />
                                                 <span>
                                                     La quantità è calcolata dalle transazioni importate dal broker. Per cambiarla, modifica le transazioni alla fonte e re-importa.
                                                 </span>
@@ -391,7 +391,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                             )}
                             {isEdit && editAsset?.sync_source === 'broker' && (
                                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                    <CandlestickChart className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-indigo-400" aria-hidden />
+                                    <CandlestickChart className="w-3.5 h-3.5 shrink-0 mt-0.5 text-indigo-400" aria-hidden />
                                     <span>
                                         Valore sincronizzato dal broker Scalable: {new Date(editAsset.synced_at!).toLocaleString('it-IT')}.
                                     </span>

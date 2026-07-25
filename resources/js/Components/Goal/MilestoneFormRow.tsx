@@ -31,8 +31,8 @@ export function MilestoneFormRow({
     return (
         <div className="flex gap-3">
             {/* Timeline spine */}
-            <div className="flex flex-col items-center flex-shrink-0 w-5">
-                <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 mt-2">
+            <div className="flex flex-col items-center shrink-0 w-5">
+                <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center shrink-0 mt-2">
                     <span className="text-[10px] font-bold text-primary">{idx + 1}</span>
                 </div>
                 {!isLast && <div className="w-px flex-1 bg-border mt-1" />}
@@ -69,7 +69,7 @@ export function MilestoneFormRow({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive flex-shrink-0"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
                             onClick={() => onRemove(idx)}
                         >
                             <Trash2 className="w-4 h-4" />
@@ -87,7 +87,7 @@ export function MilestoneFormRow({
                         onChange={(e) => onUpdate(idx, 'notes', e.target.value)}
                         placeholder="Etichetta breve, es. Metà percorso"
                         rows={1}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
                 <div className="space-y-0.5">
@@ -97,7 +97,7 @@ export function MilestoneFormRow({
                         onChange={(e) => onUpdate(idx, 'action', e.target.value)}
                         placeholder="Cosa fare una volta raggiunta questa tappa"
                         rows={3}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
                 <div className="space-y-0.5">
@@ -107,7 +107,7 @@ export function MilestoneFormRow({
                         onChange={(e) => onUpdate(idx, 'rationale', e.target.value)}
                         placeholder="Il motivo di questa azione"
                         rows={3}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                     />
                 </div>
 

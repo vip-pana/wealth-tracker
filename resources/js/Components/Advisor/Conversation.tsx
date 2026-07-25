@@ -270,7 +270,7 @@ export function Conversation({
                     )}
                     {status === 'failed' && (
                         <div className="flex items-start gap-2 text-sm text-red-500">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>{error ?? 'Generazione non riuscita.'}</span>
                         </div>
                     )}
@@ -282,7 +282,7 @@ export function Conversation({
                     <button
                         type="button"
                         onClick={() => scrollToBottom()}
-                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground animate-fade-in"
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-md backdrop-blur-sm transition-colors hover:text-foreground animate-fade-in"
                         title="Vai in fondo"
                     >
                         <ChevronDown className="h-3.5 w-3.5" />
@@ -304,7 +304,7 @@ export function Conversation({
                         </button>
                     )}
                     {!sending && messages.length > 0 && (
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
                             {suggestions.map((q) => (
                                 <button
                                     key={q}
@@ -329,7 +329,7 @@ export function Conversation({
                             }}
                             placeholder="Chiedi al tuo consulente…"
                             rows={1}
-                            className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                         />
                         <Button size="icon" onClick={() => void send()} disabled={sending || input.trim() === ''}>
                             <Send className="w-4 h-4" />

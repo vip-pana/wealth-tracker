@@ -166,7 +166,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                     Carica o scarica i tuoi dati in formato CSV.
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-2 shrink-0">
                                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                                     <Upload className="w-4 h-4 mr-2" />
                                     Importa CSV
@@ -191,7 +191,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="flex-shrink-0"
+                                className="shrink-0"
                                 onClick={() => backupForm.post('/backup', { preserveScroll: true })}
                                 disabled={backupForm.processing}
                             >
@@ -216,7 +216,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                 <div className="border-t border-border divide-y divide-border">
                                     {trashed.map((item) => (
                                         <div key={`${item.type}-${item.label}-${item.deleted_at}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                            <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{item.type}</span>
+                                            <span className="text-xs text-muted-foreground w-20 shrink-0">{item.type}</span>
                                             <span className="text-sm font-medium flex-1 truncate">{item.label}</span>
                                             {item.deleted_at && (
                                                 <span className="text-xs text-muted-foreground hidden sm:block">
@@ -258,7 +258,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                         <div className="divide-y divide-border">
                             {categories.map((cat) => (
                                 <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
                                     <span className="text-sm font-medium flex-1 flex items-center gap-1.5">
                                         {cat.name}
                                     </span>
@@ -271,7 +271,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                     <span className="text-xs text-muted-foreground w-16 text-right">
                                         {cat.assets_count} asset
                                     </span>
-                                    <div className="flex gap-1 flex-shrink-0">
+                                    <div className="flex gap-1 shrink-0">
                                         <Button
                                             variant="ghost"
                                             size="icon"

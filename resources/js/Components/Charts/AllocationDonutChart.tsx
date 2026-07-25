@@ -30,7 +30,7 @@ export default function AllocationDonutChart({ data, note }: Props) {
                 <div className="donut-container">
                     <div className="donut-layout flex flex-col items-center gap-4">
                     {/* Donut */}
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                         <PieChart width={170} height={170}>
                             <Pie
                                 data={visible}
@@ -81,7 +81,7 @@ export default function AllocationDonutChart({ data, note }: Props) {
                                 <tr key={entry.name}>
                                     <td className="py-1 pr-2">
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
                                             <span className="text-muted-foreground">{entry.name}</span>
                                         </div>
                                     </td>

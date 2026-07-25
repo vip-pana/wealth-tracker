@@ -126,7 +126,7 @@ export function GoalFormDialog({
                                 onChange={(e) => setData('description', e.target.value)}
                                 placeholder="Breve descrizione del tuo obiettivo"
                                 rows={3}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                             />
                         </div>
                         <div className="flex gap-4 items-start">
@@ -142,7 +142,7 @@ export function GoalFormDialog({
                                 />
                                 {errors.target_value && <p className="text-xs text-destructive">{errors.target_value}</p>}
                             </div>
-                            <div className="space-y-1 flex-shrink-0">
+                            <div className="space-y-1 shrink-0">
                                 <Label className="whitespace-nowrap">Anno target <OptionalHint /></Label>
                                 <Input
                                     type="text"

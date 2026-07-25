@@ -9,7 +9,7 @@ export function RestoreButton({ url }: { url: string }) {
         <Button
             variant="outline"
             size="sm"
-            className="h-8 flex-shrink-0"
+            className="h-8 shrink-0"
             onClick={() => post(url, { preserveScroll: true })}
             disabled={processing}
         >

@@ -209,21 +209,21 @@ export function ScalableConnectionCard({ state, transactionAssets }: { state: Sc
 
                         {timedOut && (
                             <p className="flex items-start gap-1.5 text-xs text-amber-500">
-                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden />
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
                                 <span>Codice scaduto o login non confermato. Clicca &laquo;Collega / Riconnetti&raquo; per riprovare.</span>
                             </p>
                         )}
 
                         {loginFlow.status === 'failed' && (
                             <p className="flex items-start gap-1.5 text-xs text-destructive">
-                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" aria-hidden />
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden />
                                 <span>{loginFlow.error ?? 'Login non riuscito.'} Riprova, oppure da terminale: <code className="font-mono">docker exec -it wealth-tracker-app-1 sc login</code></span>
                             </p>
                         )}
 
                         {!inProgress && state.cli_logged_in === false && loginFlow.status !== 'failed' && (
                             <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" aria-hidden />
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" aria-hidden />
                                 <span>
                                     Clicca &laquo;Collega / Riconnetti&raquo;: comparirà un link da aprire nel browser e un codice da inserire (con 2FA). Poi la sincronizzazione automatica riprende da sola.
                                 </span>

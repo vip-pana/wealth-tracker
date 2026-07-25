@@ -157,7 +157,7 @@ function NavItem({
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
             >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                <Icon className="w-4 h-4 shrink-0" />
                 {!collapsed && <span className="whitespace-nowrap">{label}</span>}
             </Link>
             {tooltip && createPortal(
@@ -222,7 +222,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                     <Menu className="w-5 h-5" />
                 </button>
-                <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
+                <TrendingUp className="w-5 h-5 text-primary shrink-0" />
                 <span className="font-bold text-base text-foreground">Wealth Tracker</span>
                 <div className="ml-auto">
                     <NotificationBell variant="icon" direction="down" />
@@ -242,7 +242,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className={cn(
                     'border-r border-border flex flex-col overflow-x-visible bg-background',
                     // Desktop: in-flow, collapsible width
-                    'lg:relative lg:flex-shrink-0 lg:translate-x-0 lg:transition-all lg:duration-300 lg:ease-in-out',
+                    'lg:relative lg:shrink-0 lg:translate-x-0 lg:transition-all lg:duration-300 lg:ease-in-out',
                     collapsed ? 'lg:w-[60px]' : 'lg:w-56',
                     // Mobile: off-canvas drawer
                     'fixed inset-y-0 left-0 z-50 w-56 transition-transform duration-300 ease-in-out',
@@ -254,7 +254,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     'flex items-center border-b border-border h-[60px] overflow-hidden',
                     showCollapsed ? 'justify-center px-0' : 'gap-2 px-4',
                 )}>
-                    <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
+                    <TrendingUp className="w-5 h-5 text-primary shrink-0" />
                     {!showCollapsed && (
                         <span className="font-bold text-base text-foreground whitespace-nowrap">Wealth Tracker</span>
                     )}
@@ -287,9 +287,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         title={theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}
                     >
                         {theme === 'dark' ? (
-                            <Sun className="w-4 h-4 flex-shrink-0" />
+                            <Sun className="w-4 h-4 shrink-0" />
                         ) : (
-                            <Moon className="w-4 h-4 flex-shrink-0" />
+                            <Moon className="w-4 h-4 shrink-0" />
                         )}
                         {!showCollapsed && <span>{theme === 'dark' ? 'Tema chiaro' : 'Tema scuro'}</span>}
                     </button>
@@ -302,9 +302,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         title={valuesHidden ? 'Mostra valori' : 'Nascondi valori'}
                     >
                         {valuesHidden ? (
-                            <EyeOff className="w-4 h-4 flex-shrink-0" />
+                            <EyeOff className="w-4 h-4 shrink-0" />
                         ) : (
-                            <Eye className="w-4 h-4 flex-shrink-0" />
+                            <Eye className="w-4 h-4 shrink-0" />
                         )}
                         {!showCollapsed && <span>{valuesHidden ? 'Mostra valori' : 'Nascondi valori'}</span>}
                     </button>
@@ -316,10 +316,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         )}
                     >
                         {showCollapsed ? (
-                            <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                            <ChevronRight className="w-4 h-4 shrink-0" />
                         ) : (
                             <>
-                                <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                                <ChevronLeft className="w-4 h-4 shrink-0" />
                                 <span>Comprimi</span>
                             </>
                         )}
