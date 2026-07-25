@@ -70,8 +70,8 @@ importers:
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
       '@types/node':
-        specifier: ^25.5.0
-        version: 25.5.0
+        specifier: ^26.1.1
+        version: 26.1.1
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -80,7 +80,7 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
         specifier: ^4.7.0
-        version: 4.7.0(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))
+        version: 4.7.0(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))
       autoprefixer:
         specifier: ^10.5.4
         version: 10.5.4(postcss@8.5.23)
@@ -107,7 +107,7 @@ importers:
         version: 20.11.1
       laravel-vite-plugin:
         specifier: ^1.2.0
-        version: 1.3.0(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))
+        version: 1.3.0(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))
       postcss:
         specifier: ^8.5.23
         version: 8.5.23
@@ -125,10 +125,10 @@ importers:
         version: 8.65.0(eslint@9.39.4(jiti@1.21.7))(typescript@6.0.3)
       vite:
         specifier: ^6.0.11
-        version: 6.4.1(@types/node@25.5.0)(jiti@1.21.7)
+        version: 6.4.1(@types/node@26.1.1)(jiti@1.21.7)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@25.5.0)(happy-dom@20.11.1)(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))
+        version: 4.1.10(@types/node@26.1.1)(happy-dom@20.11.1)(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))
 
 packages:
 
@@ -1169,6 +1169,9 @@ packages:
 
   '@types/node@25.5.0':
     resolution: {integrity: sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw==}
+
+  '@types/node@26.1.1':
+    resolution: {integrity: sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw==}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -2754,6 +2757,9 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
+
   update-browserslist-db@1.2.3:
     resolution: {integrity: sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==}
     hasBin: true
@@ -3957,6 +3963,10 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
+  '@types/node@26.1.1':
+    dependencies:
+      undici-types: 8.3.0
+
   '@types/react-dom@19.2.3(@types/react@19.2.17)':
     dependencies:
       '@types/react': 19.2.17
@@ -4064,7 +4074,7 @@ snapshots:
       '@typescript-eslint/types': 8.65.0
       eslint-visitor-keys: 5.0.1
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))':
     dependencies:
       '@babel/core': 7.29.0
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.0)
@@ -4072,7 +4082,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.1(@types/node@25.5.0)(jiti@1.21.7)
+      vite: 6.4.1(@types/node@26.1.1)(jiti@1.21.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -4085,13 +4095,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.10(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))':
+  '@vitest/mocker@4.1.10(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 6.4.1(@types/node@25.5.0)(jiti@1.21.7)
+      vite: 6.4.1(@types/node@26.1.1)(jiti@1.21.7)
 
   '@vitest/pretty-format@4.1.10':
     dependencies:
@@ -5099,10 +5109,10 @@ snapshots:
       - debug
       - supports-color
 
-  laravel-vite-plugin@1.3.0(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7)):
+  laravel-vite-plugin@1.3.0(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7)):
     dependencies:
       picocolors: 1.1.1
-      vite: 6.4.1(@types/node@25.5.0)(jiti@1.21.7)
+      vite: 6.4.1(@types/node@26.1.1)(jiti@1.21.7)
       vite-plugin-full-reload: 1.2.0
 
   levn@0.4.1:
@@ -5817,6 +5827,8 @@ snapshots:
 
   undici-types@7.18.2: {}
 
+  undici-types@8.3.0: {}
+
   update-browserslist-db@1.2.3(browserslist@4.28.7):
     dependencies:
       browserslist: 4.28.7
@@ -5870,7 +5882,7 @@ snapshots:
       picocolors: 1.1.1
       picomatch: 2.3.2
 
-  vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7):
+  vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.3)
@@ -5879,14 +5891,14 @@ snapshots:
       rollup: 4.60.0
       tinyglobby: 0.2.15
     optionalDependencies:
-      '@types/node': 25.5.0
+      '@types/node': 26.1.1
       fsevents: 2.3.3
       jiti: 1.21.7
 
-  vitest@4.1.10(@types/node@25.5.0)(happy-dom@20.11.1)(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7)):
+  vitest@4.1.10(@types/node@26.1.1)(happy-dom@20.11.1)(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7)):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(vite@6.4.1(@types/node@25.5.0)(jiti@1.21.7))
+      '@vitest/mocker': 4.1.10(vite@6.4.1(@types/node@26.1.1)(jiti@1.21.7))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
@@ -5903,10 +5915,10 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 6.4.1(@types/node@25.5.0)(jiti@1.21.7)
+      vite: 6.4.1(@types/node@26.1.1)(jiti@1.21.7)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 25.5.0
+      '@types/node': 26.1.1
       happy-dom: 20.11.1
     transitivePeerDependencies:
       - msw
