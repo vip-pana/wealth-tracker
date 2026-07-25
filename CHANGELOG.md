@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/vip-pana/wealth-tracker/compare/v1.2.2...v1.2.3) (2026-07-25)
+
+
+### Chores
+
+* **deps:** bump typescript from 5.9.3 to 6.0.3 ([#30](https://github.com/vip-pana/wealth-tracker/issues/30)) ([9a4233b](https://github.com/vip-pana/wealth-tracker/commit/9a4233bf4d957eb6743ae1be10d9d21bae4bd2f5))
+
 ## [1.2.2](https://github.com/vip-pana/wealth-tracker/compare/v1.2.1...v1.2.2) (2026-07-25)
 
 
