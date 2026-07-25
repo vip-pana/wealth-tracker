@@ -9,9 +9,8 @@
         "noEmit": true,
         "skipLibCheck": true,
         "resolveJsonModule": true,
-        "baseUrl": ".",
         "paths": {
-            "@/*": ["resources/js/*"]
+            "@/*": ["./resources/js/*"]
         },
         "types": ["vite/client", "node"]
     },
