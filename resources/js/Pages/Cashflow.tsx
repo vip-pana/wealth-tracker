@@ -454,7 +454,7 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
                                                             title={expanded.has(t.id) ? 'Comprimi' : 'Mostra tutta la descrizione'}
                                                             className={cn(
                                                                 'text-sm text-left hover:text-foreground min-w-0',
-                                                                expanded.has(t.id) ? 'whitespace-pre-wrap break-words' : 'truncate',
+                                                                expanded.has(t.id) ? 'whitespace-pre-wrap wrap-break-word' : 'truncate',
                                                             )}
                                                         >
                                                             {t.description || '—'}
@@ -522,7 +522,7 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
             </div>
 
             {edits.size > 0 && (
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
                     <div className="max-w-[1100px] mx-auto w-full flex items-center justify-between gap-3 p-3">
                         <span className="text-sm text-muted-foreground">
                             {edits.size} {edits.size === 1 ? 'modifica non salvata' : 'modifiche non salvate'}

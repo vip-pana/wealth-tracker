@@ -79,7 +79,7 @@ export function TypewriterText({ id, text, className }: { id: number; text: stri
         <span className={className}>
             {shown}
             {shouldAnimate && shown.length < text.length && (
-                <span className="inline-block w-[1px] animate-pulse">|</span>
+                <span className="inline-block w-px animate-pulse">|</span>
             )}
         </span>
     );

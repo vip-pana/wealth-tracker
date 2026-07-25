@@ -15,7 +15,7 @@ export function SectionHeading({
     return (
         <div className={cn('px-1 pt-2', className)}>
             <div className="flex items-center gap-2">
-                <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                <Icon className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>

@@ -79,7 +79,7 @@ export function NewConversation({
             </div>
 
             <div className="border-t border-border p-3 space-y-2">
-                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
                     {suggestions.map((q) => (
                         <button
                             key={q}
@@ -103,7 +103,7 @@ export function NewConversation({
                         placeholder="Chiedi al tuo consulente…"
                         rows={1}
                         autoFocus
-                        className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                     />
                     <Button size="icon" onClick={start} disabled={starting || value.trim() === ''}>
                         {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

@@ -31,7 +31,7 @@ describe('Money', () => {
         expect(el.textContent).toBe('€ 12.3k');
     });
 
-    it('keeps the real figure but adds the blur class when privacy is on', () => {
+    it('keeps the real figure but adds the blur-sm class when privacy is on', () => {
         const el = renderMoney(
             <PrivacyContext.Provider value={true}>
                 <Money value={1234.5} />

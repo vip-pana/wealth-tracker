@@ -89,7 +89,7 @@ export function NotificationBell({
                 title="Notifiche"
                 aria-label={count > 0 ? `Notifiche (${count} non lette)` : 'Notifiche'}
             >
-                <span className="relative flex-shrink-0">
+                <span className="relative shrink-0">
                     <Bell className={variant === 'icon' ? 'w-5 h-5' : 'w-4 h-4'} />
                     {count > 0 && (
                         <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
@@ -127,7 +127,7 @@ export function NotificationBell({
                                 const Icon = LEVEL_ICON[n.level] ?? Info;
                                 return (
                                     <div key={n.id} className="flex items-start gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors">
-                                        <Icon className={cn('w-4 h-4 flex-shrink-0 mt-0.5', LEVEL_COLOR[n.level] ?? '')} />
+                                        <Icon className={cn('w-4 h-4 shrink-0 mt-0.5', LEVEL_COLOR[n.level] ?? '')} />
                                         <button
                                             onClick={() => openNotification(n)}
                                             className="flex-1 min-w-0 text-left"
@@ -138,7 +138,7 @@ export function NotificationBell({
                                         </button>
                                         <button
                                             onClick={() => openNotification(n)}
-                                            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                                             aria-label="Segna come letta"
                                             title="Segna come letta"
                                         >

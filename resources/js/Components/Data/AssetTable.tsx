@@ -56,7 +56,7 @@ function DeleteButton({ asset }: { asset: Asset }) {
                     </p>
                     {asset.bank_linked && (
                         <p className="flex items-start gap-1.5 text-sm text-amber-500">
-                            <Landmark className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <Landmark className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>Questo asset è collegato a un conto bancario: verrà ricreato al prossimo aggiornamento dei saldi. Per rimuoverlo davvero, scollega prima il conto in Impostazioni → Conti bancari.</span>
                         </p>
                     )}
@@ -94,7 +94,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                         <div className="flex items-center gap-2">
                             {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                             <span
-                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                className="w-2 h-2 rounded-full shrink-0"
                                 style={{ backgroundColor: cat.color }}
                             />
                             <span className="text-sm font-medium">

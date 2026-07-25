@@ -140,7 +140,7 @@ export function ProfileDialog({
                             onChange={(e) => form.setData('memory', e.target.value)}
                             placeholder="Preferenze e fatti durevoli che il consulente terrà a mente (es. preferisco ETF ad accumulo, non voglio obbligazioni)"
                             rows={2}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                         />
                     </div>
                     {profile?.notes && (
@@ -183,12 +183,12 @@ export function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile |
     return (
         <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
             <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
-                <UserCog className="w-3.5 h-3.5 flex-shrink-0" />
+                <UserCog className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">
                     {parts.length > 0 ? parts.join(' · ') : 'Profilo non compilato — l’analisi sarà più mirata se lo imposti.'}
                 </span>
             </div>
-            <Button variant="ghost" size="sm" className="flex-shrink-0 h-7 text-xs" onClick={onEdit}>
+            <Button variant="ghost" size="sm" className="shrink-0 h-7 text-xs" onClick={onEdit}>
                 {parts.length > 0 ? 'Modifica' : 'Compila'}
             </Button>
         </div>

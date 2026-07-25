@@ -134,27 +134,27 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                         <div className={cn('h-full min-w-0 min-h-0', mobileView === 'list' && 'hidden lg:block')}>
                             {activeSession && !chatMode ? (
                                 <div key={activeSession.id} className="flex flex-col h-full min-h-0 gap-2">
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-7 w-7 flex-shrink-0 text-muted-foreground lg:hidden"
+                                            className="h-7 w-7 shrink-0 text-muted-foreground lg:hidden"
                                             onClick={() => setMobileView('list')}
                                             title="Torna alle sessioni"
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </Button>
                                         <h2 className="min-w-0 flex-1 text-sm font-medium truncate flex items-center gap-2">
-                                            <KindIcon kind={activeSession.kind} className="w-4 h-4 flex-shrink-0 text-primary" />
+                                            <KindIcon kind={activeSession.kind} className="w-4 h-4 shrink-0 text-primary" />
                                             <TypewriterText id={activeSession.id} text={activeSession.title ?? 'Sessione'} className="truncate" />
                                             {activeSession.created_at && (
-                                                <span className="flex-shrink-0 text-xs font-normal text-muted-foreground">
+                                                <span className="shrink-0 text-xs font-normal text-muted-foreground">
                                                     {formatChatTimestamp(activeSession.created_at)}
                                                 </span>
                                             )}
                                         </h2>
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                                             onClick={() => deleteSession(activeSession.id)}
                                             title="Elimina sessione"
                                         >

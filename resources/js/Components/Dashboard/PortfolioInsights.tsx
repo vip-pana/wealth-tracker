@@ -17,7 +17,7 @@ function Row({
 }) {
     return (
         <div className="flex items-start gap-3">
-            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <Icon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
             <div className="min-w-0">
                 <p className="text-sm">
                     <span className="text-muted-foreground">{label}: </span>

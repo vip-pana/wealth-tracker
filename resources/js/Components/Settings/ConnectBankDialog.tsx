@@ -36,7 +36,7 @@ export function ConnectBankDialog({ open, onClose, banks, redirectReady }: { ope
                 <div className="space-y-3">
                     {!redirectReady && (
                         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
                                 Serve un tunnel HTTPS attivo per il consenso. Avvia <code>cloudflared</code> e imposta <code>ENABLE_BANKING_REDIRECT_URL</code> (vedi <code>docs/enable-banking-usage.md</code>), altrimenti il collegamento fallirà.
                             </span>
@@ -46,7 +46,7 @@ export function ConnectBankDialog({ open, onClose, banks, redirectReady }: { ope
                         Scegli la tua banca: ti porteremo sul <strong>sito della banca</strong> per autorizzare l&apos;accesso, poi tornerai qui.
                     </p>
                     <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                        <ShieldCheck className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                        <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
                         <span>
                             Solo lettura del saldo: non possiamo muovere denaro. Le credenziali le inserisci sulla banca, non qui. Puoi scollegare quando vuoi.
                         </span>

@@ -35,13 +35,13 @@ export function MessageBubble({
     const thinking = message.status === 'pending' || (message.status === undefined && message.content === '');
     return (
         <div className="flex items-start gap-2">
-            <div className="mt-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
                 {failed ? (
                     <div className="flex items-start gap-2 text-sm text-red-500">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                         {onRetry ? (
                             <button
                                 type="button"
@@ -51,7 +51,7 @@ export function MessageBubble({
                                 <span className="underline">
                                     {message.error ?? 'Il consulente non ha risposto.'}
                                 </span>
-                                <RotateCw className="h-3.5 w-3.5 flex-shrink-0" />
+                                <RotateCw className="h-3.5 w-3.5 shrink-0" />
                             </button>
                         ) : (
                             <span>{message.error ?? 'Il consulente non ha risposto.'}</span>
