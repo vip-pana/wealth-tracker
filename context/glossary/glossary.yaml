@@ -1,0 +1,40 @@
+# Extended glossary terminology
+# Add entries as the team clarifies meanings or introduces new concepts.
+# Each entry: definition (required), plus optional relationship / synonyms / notes.
+
+entities:
+  Asset:
+    definition: One logged holding for a month — manual value or ticker + quantity priced live.
+    relationship: "belongs to Category; see app/Models/Asset.php"
+  Category:
+    definition: A bucket assets belong to, classified by a MacroCategory enum.
+    relationship: "has many Asset and SnapshotCategoryValue; see app/Models/Category.php"
+  MacroCategory:
+    definition: High-level class — Liquidità, ETF, Cripto, Fondo Pensione (the last is illiquid).
+    relationship: "enum on Category; see app/Enums/MacroCategory.php"
+  Snapshot:
+    definition: A dated photo of net worth, created manually, never auto-computed. Per-event, not per-month — several snapshots can share a calendar month. The dashboard's MoM toggle collapses each month to its last snapshot (see FetchDashboardData::collapseToMonthly); the per-snapshot mode keeps every one.
+    relationship: "has many SnapshotCategoryValue; see app/Models/Snapshot.php"
+  SnapshotCategoryValue:
+    definition: Per-category value frozen into a snapshot.
+    relationship: "belongs to Snapshot and Category"
+  AssetPrice:
+    definition: Last fetched live price for a ticker, with fetched_at timestamp.
+    relationship: "looked up by ticker when valuing Assets"
+  Goal:
+    definition: One savings goal with target value/date, category and macro allocation targets, milestones.
+    relationship: "has many GoalCategoryAllocation and GoalMilestone; see app/Models/Goal.php"
+  BankTransaction:
+    definition: One cashflow movement (entrata/uscita) on a bank account, ingested from Enable Banking. Signed amount — negative is an outflow (DBIT), positive an inflow (CRDT). Distinct from Transaction (investment buys/sells). Raw EB payload kept in `raw`; `merchant_category_code` retained for future expense categorisation.
+    relationship: "belongs to BankAccount; see app/Models/BankTransaction.php. Imported by app/Actions/Transactions/ImportBankTransactions.php (command bank:import-transactions)"
+
+concepts:
+  Pension entry:
+    definition: An annual, year-end, illiquid Asset under the Fondo Pensione macro category.
+    notes: "Tracked on its own page; excluded from liquid dashboards but counted in total net worth."
+  Stale price:
+    definition: A live price older than 24h or missing; flagged in the UI instead of shown as fresh.
+    notes: "See priceFreshness() in resources/js/lib/metrics.ts"
+  Advisor proposal:
+    definition: The advisor never writes user data directly. A propose_* tool emits a proposal widget (via AdvisorWidgetCollector) that renders as a confirm card; only the user's click POSTs to a write endpoint. Covers the investor profile (propose_profile_update → profile_proposal → POST /advisor/profile) and the goal (propose_goal_core/_milestones/_composition → goal_*_proposal → POST /advisor/goal[/milestones|/composition]).
+    notes: "Each write is deterministically gated: ContinueChat::complete() arms AdvisorWidgetCollector with a per-capability allow-flag (allowProfileProposal / allowGoalProposal, kept SEPARATE so consent to one never unlocks the other), set from MIN_INTERVIEW_TURNS + a userConsentsTo*Update() match on the user's message. A tool checks isProfileProposalAllowed()/isGoalProposalAllowed() before emitting. The goal-composition card is a SUGGESTION: percentages are editable before applying. Goal milestone/composition writes replace only their own slice, leaving the goal core intact."

@@ -1,0 +1,13 @@
+# Per-variant behavioral differences (any per-variant deviation from default behavior).
+# Populate as variants are introduced. Each entry captures only what differs from the default.
+#
+# Suggested shape, adapt as needed:
+#
+# variants:
+#   default:
+#     notes: "Baseline behavior."
+#   <variant_key>:
+#     <override_key>: <value>
+#     notes: "<what differs from default>"
+
+variants: {}

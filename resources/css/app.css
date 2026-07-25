@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Allocation donut: lay out the chart and its legend side-by-side only when
+ * the card itself is wide enough — not the viewport. Inside the 3-column
+ * dashboard grid each card is narrow on mid-size desktops (~1024–1280px),
+ * where a viewport breakpoint would still force a row and squash the legend.
+ * A container query keys the switch to the card's own width instead.
+ */
+@layer components {
+    /*
+     * Privacy toggle: <Money> adds .money-hidden when amounts are hidden. A
+     * light blur keeps the figure unreadable over the shoulder while still
+     * reading as "an amount is here". The blur stays on hover — it's not a
+     * peek affordance.
+     */
+    .money-hidden {
+        /* em-based so the blur scales with font size: a large total blurs
+           proportionally more than a small table figure, which a fixed px
+           blur leaves too legible. */
+        filter: blur(0.3em);
+        user-select: none;
+        cursor: default;
+    }
+
+    .donut-container {
+        container-type: inline-size;
+    }
+
+    @container (min-width: 20rem) {
+        .donut-layout {
+            flex-direction: row;
+            gap: 1.5rem;
+        }
+
+        .donut-legend {
+            flex: 1 1 0%;
+        }
+    }
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+        --radius: 0.5rem;
+    }
+
+    .dark {
+        --background: 0 0% 7%;
+        --foreground: 0 0% 98%;
+        --card: 0 0% 10%;
+        --card-foreground: 0 0% 98%;
+        --popover: 0 0% 10%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 0 0% 9%;
+        --secondary: 0 0% 15%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 64%;
+        --accent: 0 0% 18%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 16%;
+        --input: 0 0% 16%;
+        --ring: 0 0% 70%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer utilities {
+    @keyframes page-enter {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-page-enter {
+        animation: page-enter 0.25s ease-out;
+    }
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .animate-fade-in {
+        animation: fade-in 0.4s ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate-page-enter,
+        .animate-fade-in {
+            animation: none;
+        }
+    }
+}

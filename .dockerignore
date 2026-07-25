@@ -1,0 +1,15 @@
+vendor/
+node_modules/
+public/build/
+public/hot/
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.git/
+.phpunit.cache/

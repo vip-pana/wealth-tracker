@@ -1,0 +1,39 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8080:8000"
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/vendor
+      - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
+      - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
+      # Scalable CLI login session + signing key — survives container recreation.
+      - scalable-cli:/root/.config/scalable-cli
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/storage/app/database.sqlite
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: "30"
+      APP_URL: http://${DEV_HOST:-localhost}:8080
+      VITE_DEV_HOST: ${DEV_HOST:-localhost}
+      LARAVEL_BYPASS_ENV_CHECK: "1"
+      PNPM_HOME: /root/.local/share/pnpm
+      CI: "true"
+    command: >-
+      sh -c "mkdir -p /root/.config/scalable-cli &&
+      { [ -f /root/.config/scalable-cli/config.toml ] || printf '%s\n' '[auth]' 'session_backend = \"file\"' 'signing_key_backend = \"file\"' > /root/.config/scalable-cli/config.toml; } &&
+      touch /app/storage/app/database.sqlite &&
+      sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
+      php artisan migrate --force &&
+      pnpm install --frozen-lockfile --ignore-scripts &&
+      pnpm dlx concurrently -c '#93c5fd,#c4b5fd,#a78bfa,#fb7185,#fdba74' 'php artisan serve --host=0.0.0.0' 'while true; do php artisan queue:work --tries=1 --timeout=660 --max-time=3600 --sleep=3; echo \"[queue] worker exited, restarting in 2s\"; sleep 2; done' 'php artisan schedule:work' 'php artisan pail --timeout=0' 'pnpm dev --host' --names=server,queue,scheduler,logs,vite"
+
+volumes:
+  scalable-cli:
+
