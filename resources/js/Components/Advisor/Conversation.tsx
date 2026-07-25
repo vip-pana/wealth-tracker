@@ -43,6 +43,9 @@ export function Conversation({
     // local model concurrently, which returns an empty reply. This blocks the
     // second one immediately.
     const sendingRef = useRef(false);
+    // Monotonic source of temporary negative ids for optimistic rows, so the
+    // render stays pure (no Date.now()); replaced by the server's real ids.
+    const tempIdRef = useRef(0);
 
     // 3 starters, stable for this session (don't reshuffle on every keystroke).
     const suggestions = useMemo(() => pickQuestions(session.id, 3), [session.id]);
@@ -151,7 +154,8 @@ export function Conversation({
         setInput('');
         setSending(true);
         // Optimistic pair; replaced by the server's real rows on response.
-        const tempUserId = -Date.now();
+        tempIdRef.current -= 2;
+        const tempUserId = tempIdRef.current;
         const tempAssistantId = tempUserId - 1;
         setMessages((m) => [
             ...m,
