@@ -11,9 +11,9 @@
         { "type": "perf", "section": "Performance" },
         { "type": "refactor", "section": "Refactoring" },
         { "type": "revert", "section": "Reverts" },
-        { "type": "docs", "section": "Documentation", "hidden": true },
+        { "type": "docs", "section": "Documentation" },
         { "type": "style", "section": "Styles", "hidden": true },
-        { "type": "chore", "section": "Chores", "hidden": true },
+        { "type": "chore", "section": "Chores" },
         { "type": "test", "section": "Tests", "hidden": true },
         { "type": "ci", "section": "CI", "hidden": true }
       ]
