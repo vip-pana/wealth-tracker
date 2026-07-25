@@ -53,20 +53,18 @@ export function TypewriterText({ id, text, className }: { id: number; text: stri
     // Claim once at mount: the first render for the just-created id animates,
     // and the claim is cleared so a later refresh won't replay it.
     const [shouldAnimate] = useState(() => claimTitleAnimation(id));
-    const [shown, setShown] = useState(shouldAnimate ? '' : text);
+    // Chars revealed so far while animating; ignored (full text shown) when not.
+    const [revealed, setRevealed] = useState(0);
 
     useEffect(() => {
-        if (!shouldAnimate) {
-            setShown(text);
-            return;
-        }
+        if (!shouldAnimate) return;
         // Mark the reveal consumed so future remounts of this id (chat poll
         // re-rendering the list) don't replay it.
         consumeTitleAnimation(id);
         let i = 0;
         const timer = setInterval(() => {
             i += 1;
-            setShown(text.slice(0, i));
+            setRevealed(i);
             if (i >= text.length) clearInterval(timer);
         }, 32);
         return () => clearInterval(timer);
@@ -74,6 +72,8 @@ export function TypewriterText({ id, text, className }: { id: number; text: stri
         // retrigger the typewriter.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    const shown = shouldAnimate ? text.slice(0, revealed) : text;
 
     return (
         <span className={className}>

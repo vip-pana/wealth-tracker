@@ -71,6 +71,9 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
             date:           editAsset?.date ?? month,
             notes:          editAsset?.notes ?? '',
         });
+        // Re-seed the form's local UI state each time the dialog opens or the
+        // edited asset changes — a deliberate reset-on-open, not a render sync.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMode(editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual');
         setShowWallet(!!editAsset?.wallet_address);
         // eslint-disable-next-line react-hooks/exhaustive-deps
