@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.8](https://github.com/vip-pana/wealth-tracker/compare/v1.2.7...v1.2.8) (2026-07-26)
+
+
+### Documentation
+
+* record Inertia v3 blank-screen playbook and v3 opportunities ([#45](https://github.com/vip-pana/wealth-tracker/issues/45)) ([51ca3a5](https://github.com/vip-pana/wealth-tracker/commit/51ca3a52e6583e4c7228a83085a56f10073724ec))
+
+
+### Chores
+
+* **deps:** upgrade Inertia.js to v3 (react + laravel) ([#44](https://github.com/vip-pana/wealth-tracker/issues/44)) ([c459db2](https://github.com/vip-pana/wealth-tracker/commit/c459db2af3db8a0d4184f5f4dd742b3bd908e891))
+
 ## [1.2.7](https://github.com/vip-pana/wealth-tracker/compare/v1.2.6...v1.2.7) (2026-07-25)
 
 
