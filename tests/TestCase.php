@@ -48,6 +48,13 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('services.scalable.cash_category_id', 0);
         $app['config']->set('services.scalable.cli.enabled', false);
 
+        // Inertia v3 enables SSR by default, so rendering a page in a test would
+        // fire an HTTP call to the SSR server (localhost:5173/__inertia_ssr) —
+        // which doesn't exist under test and, with Http::preventStrayRequests(),
+        // 500s. Force SSR off here so it wins over both .env (CI copies
+        // .env.example, which has no such key) and phpunit.xml.
+        $app['config']->set('inertia.ssr.enabled', false);
+
         return $app;
     }
 }
