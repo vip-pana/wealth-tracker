@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.11](https://github.com/vip-pana/wealth-tracker/compare/v1.2.10...v1.2.11) (2026-07-26)
+
+
+### Chores
+
+* **deps:** migrate nunomaduro/larastan to larastan/larastan ([#54](https://github.com/vip-pana/wealth-tracker/issues/54)) ([dd11b83](https://github.com/vip-pana/wealth-tracker/commit/dd11b8342df81db8218229ddd03dd70ebf892d70))
+
 ## [1.2.10](https://github.com/vip-pana/wealth-tracker/compare/v1.2.9...v1.2.10) (2026-07-26)
 
 
