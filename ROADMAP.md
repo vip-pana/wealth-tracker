@@ -97,6 +97,38 @@ Sketch of the shape: a signed-JWT API client, balances flowing into an asset's
 behind a `/banking` connect → consent → callback → link → disconnect flow, with
 a Settings section to manage it.
 
+## Inertia v3 opportunities (now that we're on v3)
+
+The v2→v3 upgrade unlocked features we don't use yet. Ranked by value-to-effort
+for this app; none are required, they're refinements to reach for when touching
+the relevant area.
+
+- **Instant visits — HIGH value, LOW effort.** Inertia swaps to the target page
+  component immediately and merges server data when it arrives, so navigation
+  feels instant. Opt-in per visit/link. The app has 7 top-level pages the user
+  hops between; this is the single biggest perceived-speed win for the least
+  work — flip it on for the main nav links and measure. *Effort: hours.*
+- **`useHttp` for the advisor chat — MEDIUM value, MEDIUM effort.** The chat in
+  `Conversation.tsx` hand-rolls optimistic send + rollback + in-flight guards
+  with a raw axios call and manual `useState`. `useHttp` gives the same
+  reactive state (`processing`/`errors`/`progress`/`isDirty`) and cancellation
+  out of the box, shrinking that component's bespoke logic. Value is code
+  simplicity + fewer edge cases, not a user-visible change. *Effort: ~1 day,
+  touches a well-tested component so re-verify the 16 Conversation tests.*
+- **Optimistic updates on toggles — LOW/MEDIUM value, LOW effort.** Small
+  interactions (privacy hide/show, mark-notification-read, snapshot pin) could
+  apply instantly and auto-rollback on error via the router/Form option,
+  instead of waiting a round-trip. Nice polish; only worth it where the current
+  wait is actually noticeable. *Effort: hours per interaction.*
+- **`useLayoutProps` — LOW value here.** Lets layouts declare overridable
+  defaults without provide/inject. We have a single `AppLayout` and no
+  layout-prop juggling, so little to gain today; note it if the layout ever
+  grows variants. *Effort: n/a until needed.*
+- **Zero-config dev SSR — already in effect.** v3 does SSR in dev without a
+  separate Node server. We disabled it under test (`INERTIA_SSR_ENABLED=false`
+  in phpunit.xml) but it runs in dev; no action needed, listed so the behaviour
+  isn't mistaken for a regression.
+
 ## Explicitly out of scope (decided, not forgotten)
 
 Considered and set aside as a poor fit for a single-user personal tracker:
