@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.9](https://github.com/vip-pana/wealth-tracker/compare/v1.2.8...v1.2.9) (2026-07-26)
+
+
+### Chores
+
+* **deps:** bump laravel/framework from 12.64.0 to 13.22.0 ([#47](https://github.com/vip-pana/wealth-tracker/issues/47)) ([fc67837](https://github.com/vip-pana/wealth-tracker/commit/fc67837f0eff7eb4e19a97ee54e15e2328dd77c1))
+* **deps:** bump the npm-minor group with 3 updates ([#48](https://github.com/vip-pana/wealth-tracker/issues/48)) ([ac40063](https://github.com/vip-pana/wealth-tracker/commit/ac4006389d3604614687683f89bd5b2c69f0390e))
+* **deps:** bump vite and laravel-vite-plugin ([#49](https://github.com/vip-pana/wealth-tracker/issues/49)) ([129e14b](https://github.com/vip-pana/wealth-tracker/commit/129e14b988aa97d8ca90baa956db9b2b646c780a))
+
 ## [1.2.8](https://github.com/vip-pana/wealth-tracker/compare/v1.2.7...v1.2.8) (2026-07-26)
 
 
