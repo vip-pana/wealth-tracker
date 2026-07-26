@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.10](https://github.com/vip-pana/wealth-tracker/compare/v1.2.9...v1.2.10) (2026-07-26)
+
+
+### Chores
+
+* **deps:** bump @vitejs/plugin-react from 5.2.0 to 6.0.4 ([#52](https://github.com/vip-pana/wealth-tracker/issues/52)) ([ca7e52b](https://github.com/vip-pana/wealth-tracker/commit/ca7e52bafcc745931ddc5f69acaad4b6b9434033))
+* **deps:** bump laravel-vite-plugin in the npm-minor group ([#51](https://github.com/vip-pana/wealth-tracker/issues/51)) ([a25c515](https://github.com/vip-pana/wealth-tracker/commit/a25c5159c3c63f021e9e8bd729308fc47b6221ee))
+
 ## [1.2.9](https://github.com/vip-pana/wealth-tracker/compare/v1.2.8...v1.2.9) (2026-07-26)
 
 
