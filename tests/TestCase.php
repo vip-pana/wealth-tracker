@@ -6,6 +6,7 @@ namespace Tests;
 
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -16,6 +17,12 @@ abstract class TestCase extends BaseTestCase
 
         // Tests don't build frontend assets, so don't require the Vite manifest.
         $this->withoutVite();
+
+        // Laravel 13 renamed the CSRF middleware to PreventRequestForgery
+        // (ValidateCsrfToken now only extends it) and dropped the automatic
+        // test-environment exemption, so POST/PUT/DELETE requests in tests get
+        // a 419. Disable CSRF for the whole suite here — no test asserts on it.
+        $this->withoutMiddleware(PreventRequestForgery::class);
     }
 
     #[\Override]
