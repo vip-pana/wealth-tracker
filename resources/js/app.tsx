@@ -1,16 +1,21 @@
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import type { ResolvedComponent } from '@inertiajs/react';
 import '../css/app.css';
+
+type PageModule = { default: ResolvedComponent };
+const pages = import.meta.glob<PageModule>('./Pages/**/*.tsx');
 
 createInertiaApp({
     title: (title) => `${title} — Wealth Tracker`,
 
-    resolve: (name) =>
-        resolvePageComponent(
-            `./Pages/${name}.tsx`,
-            import.meta.glob('./Pages/**/*.tsx'),
-        ),
+    resolve: async (name) => {
+        const page = pages[`./Pages/${name}.tsx`];
+        if (!page) {
+            throw new Error(`Page not found: ./Pages/${name}.tsx`);
+        }
+        return (await page()).default;
+    },
 
     setup({ el, App, props }) {
         createRoot(el).render(<App {...props} />);
