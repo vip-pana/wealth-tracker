@@ -45,7 +45,6 @@ function renderProgress(over: {
             currentMacroAllocation={over.currentMacroAllocation ?? []}
             today={over.today ?? '2026-01-01'}
             onEdit={vi.fn()}
-            onDelete={vi.fn()}
         />,
     );
 }

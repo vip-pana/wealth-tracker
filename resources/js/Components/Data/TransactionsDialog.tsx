@@ -20,7 +20,7 @@ import { Money } from '@/Components/ui/Money';
 import type { PositionSummary, TransactionRow } from '@/types/models';
 
 // Only id (to fetch) and name (for the title) are needed, so any asset-like
-// object works — an Asset row from the table or a position from Investimenti.
+// object works — an Asset row from the table or a row of the positions card.
 interface AssetRef {
     id: number;
     name: string;

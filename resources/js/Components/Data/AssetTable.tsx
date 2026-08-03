@@ -28,6 +28,55 @@ interface Props {
     assets: Asset[];
     onEdit: (asset: Asset) => void;
     prices: Record<string, AssetPriceInfo>;
+    // Value of each asset in the most recent month before this one, keyed
+    // "category_id|name" (see FetchInputData::previousValues).
+    previousValues: Record<string, number>;
+}
+
+/**
+ * Change against the same asset a month earlier. Returns null when there is no
+ * comparable row (first tracked month, or an asset added this month), so the
+ * cell reads "—" instead of a misleading +100%.
+ *
+ * The percentage is dropped when the previous value was zero — a rise from zero
+ * has no meaningful percentage — but the absolute delta is still shown.
+ */
+function monthDelta(asset: Asset, previousValues: Record<string, number>): { delta: number; pct: number | null } | null {
+    const previous = previousValues[`${asset.category_id}|${asset.name}`];
+    if (previous === undefined) return null;
+
+    const delta = asset.value - previous;
+
+    return { delta, pct: previous !== 0 ? (delta / Math.abs(previous)) * 100 : null };
+}
+
+// One asset's month-over-month change, or a muted dash when incomparable.
+function DeltaCell({ asset, previousValues }: { asset: Asset; previousValues: Record<string, number> }) {
+    const change = monthDelta(asset, previousValues);
+
+    if (change === null) {
+        return <span className="text-muted-foreground" title="Nessun valore nel mese precedente">—</span>;
+    }
+
+    // An unchanged value is information ("invariato"), not absence, so it is
+    // shown plainly rather than coloured as a gain. Compared against half a cent
+    // rather than exact zero: a quantity-held asset re-priced identically lands
+    // on a float a hair off zero, which would otherwise render "+0,00 €".
+    if (Math.abs(change.delta) < 0.005) {
+        return <span className="text-muted-foreground">invariato</span>;
+    }
+
+    return (
+        <span className={change.delta > 0 ? 'text-green-500' : 'text-red-500'}>
+            {change.delta > 0 && '+'}
+            <Money value={change.delta} />
+            {change.pct !== null && (
+                <span className="text-xs">
+                    {' '}({change.pct > 0 && '+'}{change.pct.toFixed(1)}%)
+                </span>
+            )}
+        </span>
+    );
 }
 
 function DeleteButton({ asset }: { asset: Asset }) {
@@ -78,10 +127,15 @@ function DeleteButton({ asset }: { asset: Asset }) {
     );
 }
 
-function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets: Asset[]; onEdit: (a: Asset) => void; onViewTransactions: (a: Asset) => void; prices: Record<string, AssetPriceInfo> }) {
+function CategoryGroup({ assets, onEdit, onViewTransactions, prices, previousValues }: { assets: Asset[]; onEdit: (a: Asset) => void; onViewTransactions: (a: Asset) => void; prices: Record<string, AssetPriceInfo>; previousValues: Record<string, number> }) {
     const [open, setOpen] = useState(true);
     const cat = assets[0].category;
     const total = assets.reduce((sum, a) => sum + a.value, 0);
+
+    // The group's change sums only the assets that HAVE a previous value, so a
+    // newly added asset inflates the total without inflating the delta.
+    const comparable = assets.filter((a) => monthDelta(a, previousValues) !== null);
+    const groupDelta = comparable.reduce((sum, a) => sum + (monthDelta(a, previousValues)?.delta ?? 0), 0);
 
     return (
         <>
@@ -90,7 +144,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                 onClick={() => setOpen((o) => !o)}
             >
                 <TableCell colSpan={4} className="py-2 px-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                             <span
@@ -102,7 +156,15 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                             </span>
                             <span className="text-xs text-muted-foreground">({assets.length})</span>
                         </div>
-                        <Money value={total} className="text-sm font-mono font-semibold" />
+                        <div className="flex items-center gap-4 font-mono">
+                            <Money value={total} className="text-sm font-semibold" />
+                            {comparable.length > 0 && Math.abs(groupDelta) >= 0.005 && (
+                                <span className={cn('text-xs', groupDelta > 0 ? 'text-green-500' : 'text-red-500')}>
+                                    {groupDelta > 0 && '+'}
+                                    <Money value={groupDelta} />
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </TableCell>
             </TableRow>
@@ -200,6 +262,9 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
                     <TableCell className="text-right font-mono">
                         <Money value={asset.value} />
                     </TableCell>
+                    <TableCell className="text-right font-mono whitespace-nowrap">
+                        <DeltaCell asset={asset} previousValues={previousValues} />
+                    </TableCell>
                     <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                             {asset.transaction_managed && (
@@ -231,7 +296,7 @@ function CategoryGroup({ assets, onEdit, onViewTransactions, prices }: { assets:
     );
 }
 
-export default function AssetTable({ assets, onEdit, prices }: Props) {
+export default function AssetTable({ assets, onEdit, prices, previousValues }: Props) {
     const [txAsset, setTxAsset] = useState<Asset | null>(null);
 
     if (assets.length === 0) {
@@ -243,6 +308,10 @@ export default function AssetTable({ assets, onEdit, prices }: Props) {
     }
 
     const total = assets.reduce((sum, a) => sum + a.value, 0);
+    // Same rule as the per-category delta: only assets with a previous value
+    // count, so adding an asset this month doesn't read as growth.
+    const comparable = assets.filter((a) => monthDelta(a, previousValues) !== null);
+    const totalDelta = comparable.reduce((sum, a) => sum + (monthDelta(a, previousValues)?.delta ?? 0), 0);
 
     // Group by category_id preserving sort order
     const groups = new Map<number, Asset[]>();
@@ -258,19 +327,28 @@ export default function AssetTable({ assets, onEdit, prices }: Props) {
                     <TableRow>
                         <TableHead>Asset</TableHead>
                         <TableHead className="text-right">Valore</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">vs mese prec.</TableHead>
                         <TableHead className="text-right w-20">Azioni</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {[...groups.entries()].map(([categoryId, groupAssets]) => (
-                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} onViewTransactions={setTxAsset} prices={prices} />
+                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} onViewTransactions={setTxAsset} prices={prices} previousValues={previousValues} />
                     ))}
                 </TableBody>
             </Table>
 
-            <div className="flex justify-between items-center px-4 py-3 border-t border-border bg-muted/40 rounded-b-md">
+            <div className="flex justify-between items-center gap-3 px-4 py-3 border-t border-border bg-muted/40 rounded-b-md">
                 <span className="text-sm font-medium text-muted-foreground">Totale mese</span>
-                <Money value={total} className="font-bold text-base font-mono" />
+                <div className="flex items-center gap-4 font-mono">
+                    <Money value={total} className="font-bold text-base" />
+                    {comparable.length > 0 && Math.abs(totalDelta) >= 0.005 && (
+                        <span className={cn('text-sm', totalDelta > 0 ? 'text-green-500' : 'text-red-500')}>
+                            {totalDelta > 0 && '+'}
+                            <Money value={totalDelta} />
+                        </span>
+                    )}
+                </div>
             </div>
 
             <TransactionsDialog asset={txAsset} onClose={() => setTxAsset(null)} />
