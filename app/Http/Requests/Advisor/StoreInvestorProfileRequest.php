@@ -14,7 +14,8 @@ class StoreInvestorProfileRequest extends FormRequest
         return [
             'name' => ['nullable', 'string', 'max:100'],
             'birth_date' => ['nullable', 'date', 'before:today'],
-            'horizon' => ['nullable', 'in:short,medium,long'],
+            // No `horizon`: it is derived from the goal's target date
+            // (Goal::horizon()), so it is deliberately not writable here.
             'risk_tolerance' => ['nullable', 'in:low,medium,high'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'memory' => ['nullable', 'string', 'max:2000'],

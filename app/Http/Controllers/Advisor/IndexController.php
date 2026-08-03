@@ -46,7 +46,8 @@ class IndexController extends Controller
             'profile' => $profile ? [
                 'name' => $profile->name,
                 'birth_date' => $profile->birth_date?->format('Y-m-d'),
-                'horizon' => $profile->horizon,
+                // Read-only: derived from the goal's target date, not stored.
+                'horizon' => $goal?->horizon(),
                 'risk_tolerance' => $profile->risk_tolerance,
                 'notes' => $profile->notes,
                 'memory' => $profile->memory,

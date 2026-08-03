@@ -9,9 +9,8 @@ person's own finances.
 
 - **Dashboard** — net worth over time, allocation, and portfolio insights.
 - **Assets & snapshots** — log assets by category each month; freeze monthly
-  snapshots to track history honestly.
-- **Investments** — positions with true per-position return, transaction
-  history, and CSV export.
+  snapshots to track history honestly. The same section shows the share
+  positions with their true per-position return and transaction history.
 - **Goal** — a savings goal with milestones and progress tracking.
 - **Cashflow** — optional bank-transaction ingestion (income vs. expense vs.
   internal transfer), derived from open-banking data.

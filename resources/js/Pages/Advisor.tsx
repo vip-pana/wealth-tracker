@@ -8,7 +8,7 @@ import { Button } from '@/Components/ui/button';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { formatChatTimestamp } from '@/lib/formatters';
-import { ProfileDialog, type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
+import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import { type SessionSummary, type ActiveSession, type GoalData } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
 import { TypewriterText, markSessionForTitleAnimation } from '@/Components/Advisor/TypewriterText';
@@ -35,7 +35,6 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
         ? new URLSearchParams(window.location.search).get('ask') ?? ''
         : '';
 
-    const [profileOpen, setProfileOpen] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [chatMode, setChatMode] = useState(prefill !== '');
     const [firstChat, setFirstChat] = useState(prefill);
@@ -101,9 +100,12 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                     title="Consulente AI"
                     subtitle="Genera un'analisi o parla col tuo consulente — le sessioni restano salvate"
                     actions={
-                        <Button variant="outline" size="sm" onClick={() => setProfileOpen(true)}>
+                        // Profile and goal describe one thing, so they live
+                        // together on the Goal page; the advisor links there
+                        // instead of owning a second edit surface.
+                        <Button variant="outline" size="sm" onClick={() => router.visit('/goal')}>
                             <UserCog className="w-4 h-4 mr-1" />
-                            Profilo
+                            Profilo e obiettivo
                         </Button>
                     }
                 />
@@ -200,15 +202,6 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                 )}
             </div>
 
-            <ProfileDialog
-                open={profileOpen}
-                onClose={() => setProfileOpen(false)}
-                profile={profile}
-                onDefineWithAi={() => {
-                    setProfileOpen(false);
-                    void startChat('Aiutami a definire il mio profilo di rischio');
-                }}
-            />
         </>
     );
 }

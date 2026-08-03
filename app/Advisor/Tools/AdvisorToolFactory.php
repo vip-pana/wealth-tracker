@@ -256,16 +256,15 @@ class AdvisorToolFactory
     private function proposeProfileUpdate(): PrismTool
     {
         return Tool::as('propose_profile_update')
-            ->for('Proponi una modifica al profilo investitore dell\'utente (nome, data di nascita, orizzonte, tolleranza al rischio, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). Il fondo di emergenza NON è un campo del profilo: lo deduci dal cuscinetto reale già nel contesto (categorie non investibili), non chiederlo. Il REDDITO non è un campo del profilo: è osservato automaticamente dalle transazioni bancarie (lo VEDI già nel contesto come «Reddito netto mensile»), non chiederlo per salvarlo. Per un fatto o preferenza durevole da RICORDARE (es. "non vuole obbligazioni") NON usare questo strumento: usa remember_fact, che salva subito. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
+            ->for('Proponi una modifica al profilo investitore dell\'utente (nome, data di nascita, tolleranza al rischio, note sul profilo di rischio) quando la conversazione ha chiarito uno o più di questi elementi. Il profilo NON contiene obiettivo o allocazione target: quelli vivono nella sezione Obiettivo e si modificano con i relativi strumenti (propose_goal_core / propose_goal_composition). L\'ORIZZONTE temporale non è un campo del profilo: è derivato dalla data target dell\'obiettivo (lo VEDI già nel contesto), quindi per cambiarlo si sposta quella data con propose_goal_core, non da qui. Il fondo di emergenza NON è un campo del profilo: lo deduci dal cuscinetto reale già nel contesto (categorie non investibili), non chiederlo. Il REDDITO non è un campo del profilo: è osservato automaticamente dalle transazioni bancarie (lo VEDI già nel contesto come «Reddito netto mensile»), non chiederlo per salvarlo. Per un fatto o preferenza durevole da RICORDARE (es. "non vuole obbligazioni") NON usare questo strumento: usa remember_fact, che salva subito. NON salva: mostra all\'utente una proposta che lui conferma con un click. Compila SOLO i campi realmente emersi dalla conversazione; lascia vuoti gli altri. Dopo averlo chiamato, spiega a parole cosa hai proposto e invita l\'utente a confermare.')
             ->withStringParameter('name', 'Nome dell\'utente, se te l\'ha detto (es. "Mario"). Ometti se non emerso.', required: false)
             ->withStringParameter('birth_date', 'Data di nascita in formato AAAA-MM-GG (es. 1990-05-14), se emersa. Serve per l\'età. Ometti se non emersa.', required: false)
-            ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short" (breve, <3 anni), "medium" (medio, 3-10 anni), "long" (lungo, 10+ anni). Ometti se non emerso.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low" (bassa), "medium" (media), "high" (alta). Ometti se non emerso.', required: false)
             ->withStringParameter('notes', 'Sintesi del ragionamento sul profilo di rischio (max 1000 caratteri): capacità di rischio (orizzonte, stabilità del reddito, cuscinetto di liquidità), tolleranza emotiva (reazione a un forte calo), e contesto rilevante. Compilalo quando hai condotto un\'intervista di profilazione, così il "perché" resta salvato.', required: false)
-            ->using(function (?string $name = null, ?string $birth_date = null, ?string $horizon = null, ?string $risk_tolerance = null, ?string $notes = null): string {
+            ->using(function (?string $name = null, ?string $birth_date = null, ?string $risk_tolerance = null, ?string $notes = null): string {
                 $this->activity->report('Sto preparando una proposta per il tuo profilo…');
 
-                return $this->describeProfileProposal($name, $birth_date, $horizon, $risk_tolerance, $notes);
+                return $this->describeProfileProposal($name, $birth_date, $risk_tolerance, $notes);
             });
     }
 
@@ -282,14 +281,13 @@ class AdvisorToolFactory
     private function confirmProfileFact(): PrismTool
     {
         return Tool::as('confirm_profile_fact')
-            ->for('Usalo quando l\'utente DICHIARA direttamente un dato del suo profilo in chat, per aggiornarlo subito (senza intervista). Esempi: «mi chiamo Mario», «il mio orizzonte è cambiato, ora è a lungo termine». Il fondo di emergenza NON è un campo del profilo: si gestisce marcando le categorie come non investibili, non qui. Il REDDITO non è un campo del profilo: è osservato dalle transazioni bancarie, non aggiornarlo qui. Per un fatto o preferenza durevole da RICORDARE (es. «ricordati che non voglio obbligazioni») NON usare questo strumento: usa remember_fact, che salva subito senza card. Mostra una card di conferma con un solo click: NON salva da solo. Compila SOLO i campi che l\'utente ha effettivamente dichiarato in questo messaggio; lascia vuoti gli altri. Dopo averlo chiamato, conferma a parole cosa aggiornerai e invita a premere Applica.')
+            ->for('Usalo quando l\'utente DICHIARA direttamente un dato del suo profilo in chat, per aggiornarlo subito (senza intervista). Esempi: «mi chiamo Mario», «ora tollero meno il rischio». L\'ORIZZONTE temporale non è un campo del profilo: è derivato dalla data target dell\'obiettivo, quindi se l\'utente dice «il mio orizzonte è cambiato» usa propose_goal_core per spostare la data dell\'obiettivo, non questo strumento. Il fondo di emergenza NON è un campo del profilo: si gestisce marcando le categorie come non investibili, non qui. Il REDDITO non è un campo del profilo: è osservato dalle transazioni bancarie, non aggiornarlo qui. Per un fatto o preferenza durevole da RICORDARE (es. «ricordati che non voglio obbligazioni») NON usare questo strumento: usa remember_fact, che salva subito senza card. Mostra una card di conferma con un solo click: NON salva da solo. Compila SOLO i campi che l\'utente ha effettivamente dichiarato in questo messaggio; lascia vuoti gli altri. Dopo averlo chiamato, conferma a parole cosa aggiornerai e invita a premere Applica.')
             ->withStringParameter('name', 'Nome dell\'utente, se l\'ha dichiarato (es. "Mario"). Ometti se non dichiarato.', required: false)
-            ->withStringParameter('horizon', 'Orizzonte temporale: uno tra "short", "medium", "long". Ometti se non dichiarato.', required: false)
             ->withStringParameter('risk_tolerance', 'Tolleranza al rischio: uno tra "low", "medium", "high". Ometti se non dichiarato.', required: false)
-            ->using(function (?string $name = null, ?string $horizon = null, ?string $risk_tolerance = null): string {
+            ->using(function (?string $name = null, ?string $risk_tolerance = null): string {
                 $this->activity->report('Sto aggiornando il tuo profilo…');
 
-                return $this->describeProfileFact($name, $horizon, $risk_tolerance);
+                return $this->describeProfileFact($name, $risk_tolerance);
             });
     }
 
@@ -1046,24 +1044,22 @@ class AdvisorToolFactory
      * enum is dropped (not proposed) so the model can't push an invalid value.
      * Returns without a widget when nothing valid was proposed.
      */
-    private function describeProfileProposal(?string $name, ?string $birthDate, ?string $horizon, ?string $riskTolerance, ?string $notes = null): string
+    private function describeProfileProposal(?string $name, ?string $birthDate, ?string $riskTolerance, ?string $notes = null): string
     {
         $name = $name !== null && trim($name) !== '' ? mb_substr(trim($name), 0, 100) : null;
         $birthDate = $birthDate !== null && trim($birthDate) !== '' ? $this->parsePastDate(trim($birthDate)) : null;
-        $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
         $notes = $notes !== null && trim($notes) !== '' ? mb_substr(trim($notes), 0, 1000) : null;
 
         $proposed = array_filter([
             'name' => $name,
             'birth_date' => $birthDate,
-            'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
             'notes' => $notes,
         ], fn ($v): bool => $v !== null);
 
         if ($proposed === []) {
-            return 'Non ho abbastanza elementi per proporre una modifica al profilo. Chiedi all\'utente orizzonte e tolleranza al rischio.';
+            return 'Non ho abbastanza elementi per proporre una modifica al profilo. Chiedi all\'utente la tolleranza al rischio.';
         }
 
         // Deterministic consent gate: the advisor must not propose on its own
@@ -1076,7 +1072,6 @@ class AdvisorToolFactory
 
         $this->widgets->add('profile_proposal', $proposed);
 
-        $horizonLabels = ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo'];
         $riskLabels = ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta'];
 
         $lines = ['Proposta di profilo (da confermare):'];
@@ -1085,9 +1080,6 @@ class AdvisorToolFactory
         }
         if ($birthDate !== null) {
             $lines[] = '  - Data di nascita: '.$birthDate;
-        }
-        if ($horizon !== null) {
-            $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
         }
         if ($riskTolerance !== null) {
             $lines[] = '  - Tolleranza al rischio: '.$riskLabels[$riskTolerance];
@@ -1107,20 +1099,18 @@ class AdvisorToolFactory
      * — open on ordinary chat turns — instead of the interview-consent gate.
      * Enum/number values are validated the same way; invalid ones are dropped.
      */
-    private function describeProfileFact(?string $name, ?string $horizon, ?string $riskTolerance): string
+    private function describeProfileFact(?string $name, ?string $riskTolerance): string
     {
         $name = $name !== null && trim($name) !== '' ? mb_substr(trim($name), 0, 100) : null;
-        $horizon = in_array($horizon, ['short', 'medium', 'long'], true) ? $horizon : null;
         $riskTolerance = in_array($riskTolerance, ['low', 'medium', 'high'], true) ? $riskTolerance : null;
 
         $proposed = array_filter([
             'name' => $name,
-            'horizon' => $horizon,
             'risk_tolerance' => $riskTolerance,
         ], fn ($v): bool => $v !== null);
 
         if ($proposed === []) {
-            return 'Non ho capito quale dato del profilo aggiornare. Chiedi all\'utente di precisare (nome, orizzonte, tolleranza).';
+            return 'Non ho capito quale dato del profilo aggiornare. Chiedi all\'utente di precisare (nome, tolleranza al rischio).';
         }
 
         if (! $this->widgets->isProfileFactAllowed()) {
@@ -1129,15 +1119,11 @@ class AdvisorToolFactory
 
         $this->widgets->add('profile_proposal', $proposed);
 
-        $horizonLabels = ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo'];
         $riskLabels = ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta'];
 
         $lines = ['Aggiornamento del profilo (da confermare con un click):'];
         if ($name !== null) {
             $lines[] = '  - Nome: '.$name;
-        }
-        if ($horizon !== null) {
-            $lines[] = '  - Orizzonte: '.$horizonLabels[$horizon];
         }
         if ($riskTolerance !== null) {
             $lines[] = '  - Tolleranza al rischio: '.$riskLabels[$riskTolerance];

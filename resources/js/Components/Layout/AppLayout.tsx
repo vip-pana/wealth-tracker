@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, PlusSquare, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, PiggyBank, Sun, Moon, Menu, Eye, EyeOff, CandlestickChart, Sparkles, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { ToastContext, type ToastType } from '@/lib/toast';
@@ -8,12 +8,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
 
+// The pension section is hidden from the nav — the feature is unused. Its
+// route, page and components are intact and reachable at /pension.
 const navItems = [
     { href: '/',         label: 'Dashboard',    icon: LayoutDashboard },
     { href: '/goal',     label: 'Obiettivo',    icon: Target },
-    { href: '/input',    label: 'Input Dati',   icon: PlusSquare },
-    { href: '/pension',  label: 'Fondo Pensione', icon: PiggyBank },
-    { href: '/investments', label: 'Investimenti', icon: CandlestickChart },
+    { href: '/input',    label: 'Bilancio investimenti', icon: Scale },
     { href: '/cashflow', label: 'Entrate e Uscite', icon: ArrowLeftRight },
     { href: '/advisor', label: 'Consulente AI', icon: Sparkles },
     { href: '/settings', label: 'Impostazioni', icon: Settings },

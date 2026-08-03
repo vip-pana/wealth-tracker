@@ -483,14 +483,14 @@ class AdvisorToolFactoryTest extends TestCase
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         $this->tool($factory, 'propose_profile_update')->handle(
-            horizon: 'long',
+            name: 'Mario',
             risk_tolerance: 'medium',
         );
 
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
         $this->assertSame('profile_proposal', $widgets[0]['type']);
-        $this->assertSame('long', $widgets[0]['data']['horizon']);
+        $this->assertSame('Mario', $widgets[0]['data']['name']);
         $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
         // Fields not proposed are absent, not null.
         $this->assertArrayNotHasKey('notes', $widgets[0]['data']);
@@ -501,20 +501,30 @@ class AdvisorToolFactoryTest extends TestCase
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
         // The model must not be able to push an out-of-range enum into the DB.
         $this->tool($factory, 'propose_profile_update')->handle(
-            horizon: 'forever',
-            risk_tolerance: 'medium',
+            name: 'Mario',
+            risk_tolerance: 'enormous',
         );
 
         $widgets = $collector->widgets();
         $this->assertCount(1, $widgets);
-        $this->assertArrayNotHasKey('horizon', $widgets[0]['data']);
-        $this->assertSame('medium', $widgets[0]['data']['risk_tolerance']);
+        $this->assertArrayNotHasKey('risk_tolerance', $widgets[0]['data']);
+        $this->assertSame('Mario', $widgets[0]['data']['name']);
+    }
+
+    public function test_propose_profile_update_cannot_propose_a_horizon(): void
+    {
+        // The horizon is derived from the goal's target date, so it is not a
+        // parameter of this tool at all: the model has no way to push one.
+        [$factory] = $this->armedFactory($this->portfolioContext);
+        $tool = $this->tool($factory, 'propose_profile_update');
+
+        $this->assertArrayNotHasKey('horizon', $tool->parameters());
     }
 
     public function test_propose_profile_update_emits_nothing_when_all_fields_empty(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);
-        $out = $this->tool($factory, 'propose_profile_update')->handle(horizon: null, risk_tolerance: null);
+        $out = $this->tool($factory, 'propose_profile_update')->handle(name: null, risk_tolerance: null);
 
         $this->assertStringContainsString('Non ho abbastanza elementi', $out);
         $this->assertSame([], $collector->widgets());
@@ -532,7 +542,7 @@ class AdvisorToolFactoryTest extends TestCase
         $collector->for($message);
         // proposal NOT allowed (default)
 
-        $out = $this->tool($factory, 'propose_profile_update')->handle(horizon: 'long', risk_tolerance: 'high');
+        $out = $this->tool($factory, 'propose_profile_update')->handle(name: 'Mario', risk_tolerance: 'high');
 
         $this->assertSame([], $collector->widgets());
         $this->assertStringContainsString('CHIEDI', $out);

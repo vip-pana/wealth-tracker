@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 const devHost = process.env.VITE_DEV_HOST ?? 'localhost';
+// Host-side port published by docker-compose. Differs from the in-container
+// port (5173) when 5173 is already taken on the host by another project.
+const devClientPort = Number(process.env.VITE_DEV_CLIENT_PORT ?? 5173);
 
 export default defineConfig({
     plugins: [
@@ -23,8 +26,10 @@ export default defineConfig({
         port: 5173,
         strictPort: true,
         cors: true,
+        origin: `http://${devHost}:${devClientPort}`,
         hmr: {
             host: devHost,
+            clientPort: devClientPort,
         },
     },
 });

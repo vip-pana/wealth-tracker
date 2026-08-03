@@ -7,6 +7,7 @@ namespace App\Actions\Goals;
 use App\Actions\Action;
 use App\Models\Category;
 use App\Models\Goal;
+use App\Models\InvestorProfile;
 use App\Models\Snapshot;
 use Illuminate\Support\Carbon;
 
@@ -111,8 +112,22 @@ class FetchGoalData extends Action
             ];
         }
 
+        // The investor profile lives beside the goal: both describe "who I am and
+        // where I'm heading", so the Goal page owns the profile card and the
+        // advisor only links to it. The horizon is derived from the goal's target
+        // date rather than read from the profile row.
+        $profile = InvestorProfile::query()->first();
+
         return [
             'goal' => $goalData,
+            'profile' => $profile !== null ? [
+                'name' => $profile->name,
+                'birth_date' => $profile->birth_date?->format('Y-m-d'),
+                'horizon' => $goal?->horizon(),
+                'risk_tolerance' => $profile->risk_tolerance,
+                'notes' => $profile->notes,
+                'memory' => $profile->memory,
+            ] : null,
             'categories' => $categories->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,

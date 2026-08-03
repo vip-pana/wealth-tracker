@@ -25,40 +25,65 @@ class InvestorProfileTest extends TestCase
     public function test_stores_the_profile_as_a_single_row(): void
     {
         $this->post('/advisor/profile', [
-            'horizon' => 'long',
             'risk_tolerance' => 'high',
             'notes' => 'Tollera bene i cali.',
         ])->assertRedirect();
 
         $this->assertDatabaseCount('investor_profile', 1);
-        $this->assertDatabaseHas('investor_profile', ['horizon' => 'long', 'risk_tolerance' => 'high']);
+        $this->assertDatabaseHas('investor_profile', ['risk_tolerance' => 'high']);
     }
 
     public function test_updates_in_place_instead_of_inserting(): void
     {
-        InvestorProfile::create(['horizon' => 'short', 'risk_tolerance' => 'low']);
+        InvestorProfile::create(['risk_tolerance' => 'low']);
 
-        $this->post('/advisor/profile', ['horizon' => 'long', 'risk_tolerance' => 'high']);
+        $this->post('/advisor/profile', ['risk_tolerance' => 'high']);
 
         $this->assertDatabaseCount('investor_profile', 1);
-        $this->assertSame('long', InvestorProfile::first()?->horizon);
+        $this->assertSame('high', InvestorProfile::first()?->risk_tolerance);
     }
 
     public function test_rejects_invalid_enum_values(): void
     {
-        $this->post('/advisor/profile', ['horizon' => 'forever'])
-            ->assertSessionHasErrors('horizon');
+        $this->post('/advisor/profile', ['risk_tolerance' => 'enormous'])
+            ->assertSessionHasErrors('risk_tolerance');
     }
 
     public function test_context_includes_the_profile_when_set(): void
     {
-        InvestorProfile::create(['horizon' => 'long', 'risk_tolerance' => 'high', 'notes' => 'Tollera i cali.']);
+        InvestorProfile::create(['risk_tolerance' => 'high', 'notes' => 'Tollera i cali.']);
 
         $context = app(BuildAdvisorContext::class)->run();
 
         $this->assertNotNull($context['investorProfile']);
-        $this->assertSame('long', $context['investorProfile']['horizon']);
+        $this->assertSame('high', $context['investorProfile']['risk_tolerance']);
         $this->assertSame('Tollera i cali.', $context['investorProfile']['notes']);
+    }
+
+    public function test_horizon_is_derived_from_the_goal_not_stored_on_the_profile(): void
+    {
+        // The horizon is the goal's target date expressed in buckets. Posting one
+        // is ignored (it isn't a writable field), and the context reports the
+        // bucket the goal's date falls into.
+        InvestorProfile::create(['risk_tolerance' => 'high']);
+        Goal::create(['name' => 'G', 'target_value' => 500000, 'target_date' => now()->addYears(20)->format('Y-m-d')]);
+
+        $this->post('/advisor/profile', ['horizon' => 'short'])->assertRedirect();
+
+        $this->assertNull(InvestorProfile::first()?->getAttribute('horizon'));
+
+        $context = app(BuildAdvisorContext::class)->run();
+        $this->assertSame('long', $context['investorProfile']['horizon']);
+    }
+
+    public function test_horizon_is_null_without_a_goal_target_date(): void
+    {
+        InvestorProfile::create(['risk_tolerance' => 'high']);
+        Goal::create(['name' => 'G', 'target_value' => 500000]);
+
+        $context = app(BuildAdvisorContext::class)->run();
+
+        $this->assertNull($context['investorProfile']['horizon']);
     }
 
     public function test_income_is_not_a_profile_field(): void
@@ -69,10 +94,10 @@ class InvestorProfileTest extends TestCase
         // the old hand-entered income_monthly.
         $this->post('/advisor/profile', [
             'income_monthly' => 2000,
-            'horizon' => 'long',
+            'risk_tolerance' => 'high',
         ])->assertRedirect();
 
-        $this->assertDatabaseHas('investor_profile', ['horizon' => 'long']);
+        $this->assertDatabaseHas('investor_profile', ['risk_tolerance' => 'high']);
 
         $context = app(BuildAdvisorContext::class)->run();
         $this->assertArrayNotHasKey('income_monthly', $context['investorProfile']);

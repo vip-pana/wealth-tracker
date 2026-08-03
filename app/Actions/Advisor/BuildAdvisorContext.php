@@ -101,9 +101,10 @@ class BuildAdvisorContext extends Action
      * The psychological side of the user the data can't reveal: name, age,
      * horizon, risk tolerance, the free-text synthesis of the risk-profiling
      * interview (notes) and durable personal memory. Age is derived from the
-     * birth date so the model reasons on a number, not a date. The objective and
-     * target allocation are NOT here — they live in the Goal (their single
-     * source), assembled by goal() below.
+     * birth date so the model reasons on a number, not a date, and the horizon
+     * from the goal's target date. The objective and target allocation are NOT
+     * here — they live in the Goal (their single source), assembled by goal()
+     * below.
      *
      * @return array<string, mixed>|null null only when there's nothing at all
      */
@@ -113,7 +114,10 @@ class BuildAdvisorContext extends Action
 
         $name = $profile?->name;
         $age = $profile?->birth_date?->age;
-        $horizon = $profile?->horizon;
+        // Derived from the goal's target date, never stored on the profile, so
+        // the prompt can't state an horizon that contradicts the goal date it
+        // also carries. Null until a goal with a target date exists.
+        $horizon = Goal::query()->first()?->horizon();
         $risk = $profile?->risk_tolerance;
         $notes = $profile?->notes;
         $memory = $profile?->memory;

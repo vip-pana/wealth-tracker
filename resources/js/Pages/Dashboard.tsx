@@ -207,9 +207,15 @@ export default function Dashboard({
                         change={totalChange}
                         changeLabel={momMode ? 'vs mese prec.' : 'vs snapshot prec.'}
                     />
+                    {/* Portfolio reading (rule-based today; AI advisor builds on
+                        these metrics). It sits in this row rather than full width
+                        below: one insight at a time doesn't need the whole page. */}
+                    <PortfolioInsights metrics={portfolioMetrics} positionReturns={positionReturns} />
+
+                    {/* The goal closes the row, rightmost. */}
                     {goal && lastPoint ? (
                         <Link href="/goal" className="contents">
-                            <Card className="sm:col-span-1 lg:col-span-3 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+                            <Card className="sm:col-span-1 lg:col-span-2 h-full border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
                                 <CardContent className="p-3 h-full flex items-center gap-4">
                                     <Target className="w-5 h-5 text-amber-500 shrink-0" />
                                     <div className="flex-1 min-w-0">
@@ -241,7 +247,7 @@ export default function Dashboard({
                             </Card>
                         </Link>
                     ) : (
-                        (macroMode ? macroAllocationWithColor : allocationData).slice(0, 3).map((slice) => (
+                        (macroMode ? macroAllocationWithColor : allocationData).slice(0, 2).map((slice) => (
                             <SummaryCard
                                 key={slice.name}
                                 label={slice.name}
@@ -250,9 +256,6 @@ export default function Dashboard({
                         ))
                     )}
                 </div>
-
-                {/* Portfolio reading (rule-based today; AI advisor builds on these metrics) */}
-                <PortfolioInsights metrics={portfolioMetrics} positionReturns={positionReturns} />
 
                 {/* Charts grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

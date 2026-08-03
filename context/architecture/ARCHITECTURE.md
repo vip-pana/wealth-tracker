@@ -22,7 +22,7 @@ All routes are declared in one file, `routes/web.php`. Controllers return `Inert
 - `app/Actions/` — single-purpose action classes extending `app/Actions/Action.php`; controllers stay thin and delegate (e.g. `Snapshots/`, `Dashboard/`, `Analytics/`, `Prices/`, `Input/`)
 - `app/Http/Clients/` — external price feeds (Yahoo Finance, CoinGecko, Blockstream)
 - `app/Jobs/` — queued work (e.g. `BackupDatabase`)
-- `resources/js/Pages/` — Inertia pages (Dashboard, InputData, Analysis, Goal, Pension, Settings)
+- `resources/js/Pages/` — Inertia pages (Dashboard, InputData, Goal, Pension, Cashflow, Advisor, Settings). The file name is not the user-facing title: `InputData.tsx` is the **Bilancio investimenti** section at `/input` (both kept to avoid renaming the route, controller and tests), and `Goal.tsx` carries the investor profile alongside the goal. The former standalone Investments page was absorbed into it as the positions card. **`Pension.tsx` is intentionally not in the sidebar** — the feature is unused, so its `navItems` entry in `AppLayout.tsx` was removed while route, page and components were left working at `/pension`. Restore the entry to bring it back.
 - `resources/js/Components/` — shared React (`Charts/`, `Data/`, `Layout/`, `ui/`)
 
 ## State Management

@@ -4,6 +4,7 @@ import AppLayout from '@/Components/Layout/AppLayout';
 import { PageHeader } from '@/Components/Layout/PageHeader';
 import AssetForm from '@/Components/Data/AssetForm';
 import AssetTable from '@/Components/Data/AssetTable';
+import PositionsCard from '@/Components/Data/PositionsCard';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import {
@@ -21,11 +22,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Plus, ChevronLeft, ChevronRight, Copy, Camera, PlusSquare } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Copy, Camera, Scale } from 'lucide-react';
 import { formatMonthLong, formatDateLong, today, stepMonth } from '@/lib/formatters';
 import { Money } from '@/Components/ui/Money';
 import { NetWorthReconciliation, type Reconciliation } from '@/Components/Data/NetWorthReconciliation';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
+import type { PositionReturns } from '@/types/analytics';
 
 interface Props {
     assets: Asset[];
@@ -38,9 +40,10 @@ interface Props {
     reconciliation: Reconciliation;
     prices: Record<string, AssetPriceInfo>;
     previousValues: Record<string, number>;
+    positionReturns: PositionReturns | null;
 }
 
-export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, reconciliation, prices, previousValues }: Props) {
+export default function InputData({ assets, categories, month, availableMonths, snapshotState, lastSnapshotDate, currentNetWorth, reconciliation, prices, previousValues, positionReturns }: Props) {
     const [formOpen, setFormOpen] = useState(false);
     const [editAsset, setEditAsset] = useState<Asset | null>(null);
     const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -92,9 +95,13 @@ export default function InputData({ assets, categories, month, availableMonths, 
 
     return (
         <>
-            <Head title="Input Dati" />
+            <Head title="Bilancio investimenti" />
             <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
-                <PageHeader icon={PlusSquare} title="Input Dati" />
+                <PageHeader
+                    icon={Scale}
+                    title="Bilancio investimenti"
+                    subtitle="Aggiorna il valore dei tuoi asset mese per mese, fotografa il patrimonio per fissarlo nei grafici e controlla il rendimento reale delle posizioni a quote."
+                />
 
                 {/* Header: two cards — month values editor vs snapshot */}
                 <div className="grid gap-3 md:grid-cols-2">
@@ -240,9 +247,12 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 setFormOpen(true);
                             }}
                             prices={prices}
+                            previousValues={previousValues}
                         />
                     </CardContent>
                 </Card>
+
+                <PositionsCard returns={positionReturns} />
             </div>
 
             <AssetForm

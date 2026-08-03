@@ -18,19 +18,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { UserCog, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export interface InvestorProfile {
     name: string | null;
     birth_date: string | null;
+    // Derived from the goal's target date, never stored on the profile: read-only
+    // here, changed by moving the goal's date.
     horizon: string | null;
     risk_tolerance: string | null;
     notes: string | null;
     memory: string | null;
 }
 
-const HORIZON_LABELS: Record<string, string> = { short: 'Breve', medium: 'Medio', long: 'Lungo' };
-const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+const HORIZON_RANGES: Record<string, string> = { short: 'Breve (< 3 anni)', medium: 'Medio (3-10 anni)', long: 'Lungo (10+ anni)' };
 
 export function ProfileDialog({
     open,
@@ -46,7 +47,6 @@ export function ProfileDialog({
     const form = useForm({
         name: profile?.name ?? '',
         birth_date: profile?.birth_date ?? '',
-        horizon: profile?.horizon ?? '',
         risk_tolerance: profile?.risk_tolerance ?? '',
         memory: profile?.memory ?? '',
     });
@@ -61,12 +61,11 @@ export function ProfileDialog({
         setData({
             name: profile?.name ?? '',
             birth_date: profile?.birth_date ?? '',
-            horizon: profile?.horizon ?? '',
             risk_tolerance: profile?.risk_tolerance ?? '',
             memory: profile?.memory ?? '',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.name, profile?.birth_date, profile?.horizon, profile?.risk_tolerance, profile?.memory]);
+    }, [profile?.name, profile?.birth_date, profile?.risk_tolerance, profile?.memory]);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,14 +105,12 @@ export function ProfileDialog({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                             <Label className="text-xs">Orizzonte temporale</Label>
-                            <Select value={form.data.horizon} onValueChange={(v) => form.setData('horizon', v)}>
-                                <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="short">Breve (&lt; 3 anni)</SelectItem>
-                                    <SelectItem value="medium">Medio (3-10 anni)</SelectItem>
-                                    <SelectItem value="long">Lungo (10+ anni)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <p className="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                                {profile?.horizon ? HORIZON_RANGES[profile.horizon] ?? profile.horizon : '—'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Derivato dalla data target del tuo obiettivo. Per cambiarlo, sposta quella data.
+                            </p>
                         </div>
                         <div className="space-y-1">
                             <Label className="text-xs">Tolleranza al rischio</Label>
@@ -174,23 +171,3 @@ export function ProfileDialog({
     );
 }
 
-export function ProfileSummary({ profile, onEdit }: { profile: InvestorProfile | null; onEdit: () => void }) {
-    const parts: string[] = [];
-    if (profile?.name) parts.push(profile.name);
-    if (profile?.horizon) parts.push(`Orizzonte: ${HORIZON_LABELS[profile.horizon] ?? profile.horizon}`);
-    if (profile?.risk_tolerance) parts.push(`Rischio: ${RISK_LABELS[profile.risk_tolerance] ?? profile.risk_tolerance}`);
-
-    return (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
-                <UserCog className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">
-                    {parts.length > 0 ? parts.join(' · ') : 'Profilo non compilato — l’analisi sarà più mirata se lo imposti.'}
-                </span>
-            </div>
-            <Button variant="ghost" size="sm" className="shrink-0 h-7 text-xs" onClick={onEdit}>
-                {parts.length > 0 ? 'Modifica' : 'Compila'}
-            </Button>
-        </div>
-    );
-}

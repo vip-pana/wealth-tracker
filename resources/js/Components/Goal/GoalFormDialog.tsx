@@ -4,7 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import { OptionalHint } from '@/Components/ui/OptionalHint';
 import { MilestonesSection } from '@/Components/Goal/MilestonesSection';
@@ -17,11 +17,16 @@ export function GoalFormDialog({
     onClose,
     categories,
     goal,
+    onDelete,
 }: {
     open: boolean;
     onClose: () => void;
     categories: Pick<Category, 'id' | 'name' | 'color' | 'macro_category'>[];
     goal: Goal | null;
+    // Deleting the goal lives here rather than on the page: it's an edit of the
+    // goal, and it keeps a destructive action out of one-click reach. Only
+    // offered when editing an existing goal.
+    onDelete?: () => void;
 }) {
     const isEdit = goal !== null;
 
@@ -173,12 +178,26 @@ export function GoalFormDialog({
                     </div>
 
                     <DialogFooter className="sm:justify-between">
-                        <Button asChild type="button" variant="ghost" size="sm" className="gap-1.5">
-                            <Link href={`/advisor?ask=${encodeURIComponent(isEdit ? 'Aiutami a ridefinire il mio obiettivo e a rivedere le milestone.' : 'Aiutami a definire il mio obiettivo finanziario da zero.')}`}>
-                                <Sparkles className="h-4 w-4" />
-                                Ridefinisci con l’AI
-                            </Link>
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            <Button asChild type="button" variant="ghost" size="sm" className="gap-1.5">
+                                <Link href={`/advisor?ask=${encodeURIComponent(isEdit ? 'Aiutami a ridefinire il mio obiettivo e a rivedere le milestone.' : 'Aiutami a definire il mio obiettivo finanziario da zero.')}`}>
+                                    <Sparkles className="h-4 w-4" />
+                                    Ridefinisci con l’AI
+                                </Link>
+                            </Button>
+                            {isEdit && onDelete && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1.5 text-muted-foreground hover:text-destructive"
+                                    onClick={onDelete}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Elimina
+                                </Button>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
                             <Button type="submit" disabled={processing}>

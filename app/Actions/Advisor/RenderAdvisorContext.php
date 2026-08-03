@@ -319,7 +319,11 @@ class RenderAdvisorContext extends Action
             $out .= "\n- Età: ".(int) $profile['age'].' anni.';
         }
 
-        $out .= "\n- Orizzonte: ".$this->labelOr($profile['horizon'] ?? null, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
+        $horizon = $profile['horizon'] ?? null;
+        $out .= "\n- Orizzonte: ".$this->labelOr($horizon, ['short' => 'breve', 'medium' => 'medio', 'long' => 'lungo']);
+        if ($horizon !== null) {
+            $out .= ' (derivato dalla data target dell\'obiettivo, non dichiarato a mano: per cambiarlo si sposta la data dell\'obiettivo).';
+        }
         $out .= "\n- Tolleranza al rischio: ".$this->labelOr($profile['risk_tolerance'] ?? null, ['low' => 'bassa', 'medium' => 'media', 'high' => 'alta']);
 
         if (is_numeric($profile['net_monthly_income'] ?? null)) {

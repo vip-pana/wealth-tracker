@@ -210,6 +210,15 @@ swaps with index 0), so don't assume element 0 stays first. Assert that the
 shown item *changes* across a tick rather than pinning a specific order, or use
 a single-element list when order doesn't matter.
 
+**`userEvent` deadlocks against fake timers.** `userEvent.click` awaits internal
+delays on the real timer queue, so under `vi.useFakeTimers()` the promise never
+settles and the test dies with `Test timed out in 5000ms` (passing
+`setup({ advanceTimers })` doesn't reliably help). In a test that steps timers,
+click with `fireEvent.click` instead — synchronous and timer-independent. Both
+can coexist in one file: see `Dashboard/PortfolioInsights.test.tsx`, where the
+plain interaction tests use `userEvent` and the rotation/pause tests use
+`fireEvent`.
+
 ### Test-fixture footgun
 
 - **`??` swallows an intentional `null` prop.** A render helper that defaults a

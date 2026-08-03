@@ -19,7 +19,6 @@ use App\Http\Controllers\Analytics\CsvTemplateController;
 use App\Http\Controllers\Analytics\DashboardController;
 use App\Http\Controllers\Analytics\ExportCsvController;
 use App\Http\Controllers\Analytics\ImportCsvController;
-use App\Http\Controllers\Analytics\InvestmentsController;
 use App\Http\Controllers\Assets\CopyFromMonthController;
 use App\Http\Controllers\Assets\DestroyController as DestroyAssetController;
 use App\Http\Controllers\Assets\IndexController as IndexAssetController;
@@ -34,6 +33,7 @@ use App\Http\Controllers\Banking\ConnectController as BankingConnectController;
 use App\Http\Controllers\Banking\DisconnectController as BankingDisconnectController;
 use App\Http\Controllers\Banking\LinkAccountController as BankingLinkAccountController;
 use App\Http\Controllers\Cashflow\IndexController as CashflowIndexController;
+use App\Http\Controllers\Cashflow\SyncController as CashflowSyncController;
 use App\Http\Controllers\Cashflow\UpdateController as CashflowUpdateController;
 use App\Http\Controllers\Cashflow\UpdateEmergencyFundController;
 use App\Http\Controllers\Categories\DestroyController as DestroyCategoryController;
@@ -64,7 +64,6 @@ use Illuminate\Support\Facades\Route;
 // ─── Pages ────────────────────────────────────────────────────────────────────
 Route::get('/', DashboardController::class)->name('dashboard');
 Route::get('/input', IndexAssetController::class)->name('input.index');
-Route::get('/investments', InvestmentsController::class)->name('investments.index');
 Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
 Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
 Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
@@ -86,6 +85,7 @@ Route::get('/goal', IndexGoalController::class)->name('goal.index');
 Route::get('/pension', IndexPensionController::class)->name('pension.index');
 Route::get('/cashflow', CashflowIndexController::class)->name('cashflow.index');
 Route::patch('/cashflow', CashflowUpdateController::class)->name('cashflow.update');
+Route::post('/cashflow/sync', CashflowSyncController::class)->name('cashflow.sync');
 Route::patch('/cashflow/emergency-fund', UpdateEmergencyFundController::class)->name('cashflow.emergency-fund.update');
 
 // ─── Assets CRUD ──────────────────────────────────────────────────────────────

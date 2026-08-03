@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Controllers;
 
+use App\Actions\Transactions\ImportBankTransactions;
 use App\Models\BankConnection;
 use App\Models\BankTransaction;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -92,5 +93,27 @@ class CashflowUpdateTest extends TestCase
     {
         $this->patch('/cashflow/emergency-fund', ['target_months' => 0])
             ->assertSessionHasErrors('target_months');
+    }
+
+    public function test_sync_reports_the_imported_count(): void
+    {
+        $import = $this->createMock(ImportBankTransactions::class);
+        $import->method('run')->willReturn(['imported' => 12, 'accounts' => 2]);
+        $this->app->instance(ImportBankTransactions::class, $import);
+
+        $this->post('/cashflow/sync')
+            ->assertRedirect()
+            ->assertSessionHas('success', '12 transazioni sincronizzate su 2 conti.');
+    }
+
+    public function test_sync_reports_when_no_account_could_be_synced(): void
+    {
+        $import = $this->createMock(ImportBankTransactions::class);
+        $import->method('run')->willReturn(['imported' => 0, 'accounts' => 0]);
+        $this->app->instance(ImportBankTransactions::class, $import);
+
+        $this->post('/cashflow/sync')
+            ->assertRedirect()
+            ->assertSessionHas('error');
     }
 }

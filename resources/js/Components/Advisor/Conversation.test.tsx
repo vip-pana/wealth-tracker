@@ -194,7 +194,7 @@ describe('Conversation — proposal offer fallback', () => {
         const msgs = interview('definisci il mio profilo di rischio', 4);
         msgs[msgs.length - 1] = {
             ...msgs[msgs.length - 1],
-            widgets: [{ type: 'profile_proposal', data: { horizon: 'long' } }],
+            widgets: [{ type: 'profile_proposal', data: { risk_tolerance: 'high' } }],
         };
         renderConversation({ messages: msgs });
         expect(screen.queryByRole('button', { name: /Genera la proposta/ })).not.toBeInTheDocument();
