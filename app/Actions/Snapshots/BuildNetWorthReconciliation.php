@@ -21,6 +21,10 @@ class BuildNetWorthReconciliation extends Action
      * value, so this itemises those carried-forward categories to reconcile the
      * snapshot total against the sum of the reference month's rows.
      *
+     * Illiquid categories are left out entirely — `total` here is therefore the
+     * liquid net worth, not the full figure `ComputeValuesAsOf` returns (which
+     * still includes them, and is what StoreSnapshot persists).
+     *
      * @return array{
      *     total: float,
      *     currentMonthTotal: float,
@@ -32,13 +36,24 @@ class BuildNetWorthReconciliation extends Action
     {
         ['byCategory' => $byCategory, 'total' => $total, 'asOf' => $asOf] = $this->computeValuesAsOf->run($date);
 
-        /** @var Collection<int, string> $names */
-        $names = Category::query()->pluck('name', 'id');
+        /** @var Collection<int, Category> $categories */
+        $categories = Category::query()->get()->keyBy('id');
 
         $currentMonthTotal = 0.0;
         $carriedForward = [];
 
         foreach ($byCategory as $categoryId => $value) {
+            $category = $categories->get($categoryId);
+
+            // Illiquid categories are excluded from the Bilancio everywhere else
+            // (FetchInputData, FetchAssetsByMonth), so drop them here too — both
+            // from the itemised rows and from the total they reconcile against.
+            if ($category === null || ($category->macro_category?->isIlliquid() ?? false)) {
+                $total -= $value;
+
+                continue;
+            }
+
             if (str_starts_with($asOf[$categoryId], $referenceMonth)) {
                 $currentMonthTotal += $value;
 
@@ -46,7 +61,7 @@ class BuildNetWorthReconciliation extends Action
             }
 
             $carriedForward[] = [
-                'category' => $names->get($categoryId, ''),
+                'category' => $category->name,
                 'value' => $value,
                 'asOf' => $asOf[$categoryId],
             ];

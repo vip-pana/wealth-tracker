@@ -8,7 +8,7 @@ interface Props {
 /**
  * Full-height centered empty state: a circled icon, a heading, a muted line
  * of explanatory text and an optional action. Shared across pages (Dashboard,
- * Goal, Pension) so the "nothing here yet" screen looks identical everywhere.
+ * Goal) so the "nothing here yet" screen looks identical everywhere.
  */
 export function EmptyState({ icon: Icon, title, description, action }: Props) {
     return (

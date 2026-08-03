@@ -8,8 +8,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SharedProps } from '@/types/index.d';
 
-// The pension section is hidden from the nav — the feature is unused. Its
-// route, page and components are intact and reachable at /pension.
 const navItems = [
     { href: '/',         label: 'Dashboard',    icon: LayoutDashboard },
     { href: '/goal',     label: 'Obiettivo',    icon: Target },

@@ -1,9 +1,7 @@
 export interface NetWorthPoint {
     date: string;        // "YYYY-MM-DD"
     total_value: number;
-    /** Total wealth minus the illiquid pension. Optional for older payloads. */
-    ex_pension?: number;
-    /** Investable wealth: total minus pension and the emergency-fund buffer. */
+    /** Investable wealth: total minus the emergency-fund buffer. */
     investable?: number;
 }
 

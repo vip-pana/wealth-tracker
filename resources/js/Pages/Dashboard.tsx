@@ -47,7 +47,6 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     hasBuffer: boolean;
-    hasIlliquid: boolean;
     latestSnapshot: string | null;
     goal: { name: string; target_value: number; target_date: string | null; milestones: { target_value: number }[] } | null;
     portfolioMetrics: PortfolioMetrics;
@@ -104,7 +103,6 @@ export default function Dashboard({
     categories,
     hasData,
     hasBuffer,
-    hasIlliquid,
     latestSnapshot,
     goal,
     portfolioMetrics,
@@ -139,11 +137,10 @@ export default function Dashboard({
     const totalChange = netWorthChangePct(prevPoint?.total_value, lastPoint?.total_value);
 
     // The investment charts below (composition, variation, forecast) show the
-    // INVESTABLE portfolio — pension and the emergency-fund buffer are carved
-    // out. Spell that out under their titles, but only when there's actually
-    // something excluded (otherwise "investable" just means "everything").
-    const excluded = [hasBuffer ? 'fondo emergenza' : null, hasIlliquid ? 'fondo pensione' : null].filter(Boolean);
-    const investableNote = excluded.length > 0 ? `Solo parte investibile — esclude ${excluded.join(' e ')}` : undefined;
+    // INVESTABLE portfolio — the emergency-fund buffer is carved out. Spell
+    // that out under their titles, but only when there's actually something
+    // excluded (otherwise "investable" just means "everything").
+    const investableNote = hasBuffer ? 'Solo parte investibile — esclude fondo emergenza' : undefined;
 
     // Get the two most recent dates for the comparison chart
     const snapshotMonths: [string, string] | null =

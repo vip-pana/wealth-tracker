@@ -23,13 +23,10 @@ interface Props {
 export default function NetWorthLineChart({ data, goalTarget, goalName }: Props) {
     const hidden = useValuesHidden();
 
-    // Only show the extra layers when they actually diverge from the total
-    // somewhere in the series — otherwise (no pension, no buffer) all three
-    // lines overlap and the legend is just noise. `ex_pension` differs when
-    // there's a pension; `investable` differs further when there's a buffer.
-    const showExPension = data.some((p) => p.ex_pension !== undefined && p.ex_pension !== p.total_value);
-    const showInvestable = data.some((p) => p.investable !== undefined && p.investable !== (p.ex_pension ?? p.total_value));
-    const layered = showExPension || showInvestable;
+    // Only show the extra layer when it actually diverges from the total
+    // somewhere in the series — otherwise (no buffer) both lines overlap and
+    // the legend is just noise.
+    const layered = data.some((p) => p.investable !== undefined && p.investable !== p.total_value);
     return (
         <Card className="flex flex-col h-full">
             <CardHeader className="pb-1 pt-3 px-3">
@@ -89,19 +86,7 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
                             dot={{ r: 3 }}
                             activeDot={{ r: 5 }}
                         />
-                        {showExPension && (
-                            <Line
-                                type="monotone"
-                                dataKey="ex_pension"
-                                name="Senza fondo pensione"
-                                stroke="#f59e0b"
-                                strokeWidth={1.5}
-                                strokeDasharray="5 3"
-                                dot={false}
-                                activeDot={{ r: 4 }}
-                            />
-                        )}
-                        {showInvestable && (
+                        {layered && (
                             <Line
                                 type="monotone"
                                 dataKey="investable"

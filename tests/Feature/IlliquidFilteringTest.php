@@ -72,24 +72,4 @@ class IlliquidFilteringTest extends TestCase
                 ->where('assets.0.name', 'ETF Asset')
             );
     }
-
-    public function test_pension_page_shows_only_illiquid_entries(): void
-    {
-        $etf = Category::factory()->create(['name' => 'My ETF', 'macro_category' => MacroCategory::ETF]);
-        $pension = Category::factory()->create(['name' => 'My Pension', 'macro_category' => MacroCategory::FondoPensione]);
-
-        Asset::factory()->create(['category_id' => $etf->id, 'name' => 'ETF Asset', 'value' => 1000, 'date' => '2026-01-31']);
-        Asset::factory()->create(['category_id' => $pension->id, 'name' => 'Pension Asset', 'value' => 5000, 'date' => '2026-12-31']);
-
-        $this->get('/pension')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Pension')
-                ->has('categories', 1)
-                ->where('categories.0.name', 'My Pension')
-                ->has('entries', 1)
-                ->where('entries.0.name', 'Pension Asset')
-                ->where('totalCurrent', 5000)
-            );
-    }
 }
