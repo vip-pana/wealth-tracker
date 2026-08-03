@@ -6,8 +6,15 @@ import { UserCog, Check } from 'lucide-react';
 import type { ProfileProposalWidget } from '@/Components/Advisor/types';
 import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
-const HORIZON_LABELS: Record<string, string> = { short: 'Breve (< 3 anni)', medium: 'Medio (3-10 anni)', long: 'Lungo (10+ anni)' };
 const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', high: 'Alta' };
+
+/**
+ * Fields the profile endpoint still accepts. Sessions stored before the horizon
+ * became derived (from the goal's target date) may carry a `horizon` key in
+ * their saved widget payload; dropping it here keeps an old card from POSTing a
+ * value the server would silently discard.
+ */
+const WRITABLE_FIELDS = ['name', 'birth_date', 'risk_tolerance', 'notes', 'memory'] as const;
 
 /**
  * Is every proposed field already the current profile value? If so the proposal
@@ -17,7 +24,7 @@ const RISK_LABELS: Record<string, string> = { low: 'Bassa', medium: 'Media', hig
  */
 function alreadyApplied(data: ProfileProposalWidget['data'], profile: InvestorProfile | null | undefined): boolean {
     if (!profile) return false;
-    const keys = Object.keys(data) as (keyof ProfileProposalWidget['data'])[];
+    const keys = WRITABLE_FIELDS.filter((k) => data[k] !== undefined);
     if (keys.length === 0) return false;
 
     return keys.every((k) => (data[k] ?? null) === (profile[k] ?? null));
@@ -43,7 +50,6 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
     const rows: { label: string; value: string }[] = [];
     if (data.name) rows.push({ label: 'Nome', value: data.name });
     if (data.birth_date) rows.push({ label: 'Data di nascita', value: data.birth_date });
-    if (data.horizon) rows.push({ label: 'Orizzonte', value: HORIZON_LABELS[data.horizon] ?? data.horizon });
     if (data.risk_tolerance) rows.push({ label: 'Tolleranza al rischio', value: RISK_LABELS[data.risk_tolerance] ?? data.risk_tolerance });
     if (data.notes) rows.push({ label: 'Note', value: data.notes });
     if (data.memory) rows.push({ label: 'Da ricordare', value: data.memory });
@@ -55,7 +61,10 @@ export function ProfileProposal({ data, profile }: { data: ProfileProposalWidget
         // preserveState keeps the open chat (and this card's local state) from
         // remounting; only: ['profile'] still refreshes the profile prop so the
         // profile dialog reflects the change immediately after the write.
-        router.post('/advisor/profile', { ...data }, {
+        const payload = Object.fromEntries(
+            WRITABLE_FIELDS.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]),
+        );
+        router.post('/advisor/profile', payload, {
             preserveScroll: true,
             preserveState: true,
             only: ['profile'],

@@ -86,4 +86,38 @@ class GoalTest extends TestCase
 
         $this->assertNotNull($liq, 'The stored percentage must remain the raw 15, not the capped value.');
     }
+
+    /**
+     * The horizon buckets: < 3 years short, 3-10 medium, 10+ long. Dates are
+     * built relative to today so the expectations don't rot.
+     */
+    public function test_horizon_buckets_the_years_left_to_the_target_date(): void
+    {
+        $cases = [
+            ['months' => 6, 'expected' => 'short'],
+            ['months' => 35, 'expected' => 'short'],
+            ['months' => 37, 'expected' => 'medium'],
+            ['months' => 119, 'expected' => 'medium'],
+            ['months' => 121, 'expected' => 'long'],
+        ];
+
+        foreach ($cases as $case) {
+            $goal = new Goal(['target_date' => now()->addMonths($case['months'])->format('Y-m-d')]);
+
+            $this->assertSame($case['expected'], $goal->horizon(), $case['months'].' months away');
+        }
+    }
+
+    public function test_horizon_is_null_without_a_target_date(): void
+    {
+        $this->assertNull(new Goal(['target_date' => null])->horizon());
+    }
+
+    public function test_horizon_of_an_elapsed_target_date_is_short(): void
+    {
+        // An overdue goal has no long horizon left, whatever it once had.
+        $goal = new Goal(['target_date' => now()->subYears(2)->format('Y-m-d')]);
+
+        $this->assertSame('short', $goal->horizon());
+    }
 }

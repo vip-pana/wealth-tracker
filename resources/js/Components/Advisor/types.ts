@@ -110,6 +110,10 @@ export interface ProfileProposalWidget {
     data: {
         name?: string;
         birth_date?: string;
+        // Sessions stored before the horizon became derived from the goal's
+        // target date may still carry this key. It is rendered and POSTed no
+        // longer (see WRITABLE_FIELDS in ProfileProposal), only tolerated here
+        // so an old session still type-checks.
         horizon?: 'short' | 'medium' | 'long';
         risk_tolerance?: 'low' | 'medium' | 'high';
         notes?: string;

@@ -6,8 +6,10 @@ namespace Tests\Feature\Controllers;
 
 use App\Models\Category;
 use App\Models\Goal;
+use App\Models\InvestorProfile;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class GoalFormTest extends TestCase
@@ -69,5 +71,24 @@ class GoalFormTest extends TestCase
         // The old milestone's allocation is gone; the new one's is present.
         $this->assertDatabaseMissing('goal_category_allocations', ['percentage' => 50.0, 'deleted_at' => null]);
         $this->assertDatabaseHas('goal_category_allocations', ['category_id' => $azioni->id, 'percentage' => 80.0, 'deleted_at' => null]);
+    }
+
+    public function test_page_carries_the_investor_profile_with_the_derived_horizon(): void
+    {
+        // Profile and goal describe one thing, so the Goal page owns the profile
+        // card — and its horizon comes from the goal's target date.
+        InvestorProfile::create(['name' => 'Mario', 'risk_tolerance' => 'high']);
+        Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => now()->addYears(20)->format('Y-m-d')]);
+
+        $this->get('/goal')->assertInertia(fn (Assert $page) => $page
+            ->where('profile.name', 'Mario')
+            ->where('profile.risk_tolerance', 'high')
+            ->where('profile.horizon', 'long'),
+        );
+    }
+
+    public function test_page_profile_is_null_when_no_profile_exists(): void
+    {
+        $this->get('/goal')->assertInertia(fn (Assert $page) => $page->where('profile', null));
     }
 }

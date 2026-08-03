@@ -34,6 +34,31 @@ class Goal extends Model
         'target_date' => 'date:Y-m-d',
     ];
 
+    /**
+     * The investment horizon, DERIVED from the target date rather than stored:
+     * the goal's date is the single source of truth for "how far away am I
+     * aiming". A hand-set profile field beside it could contradict it (horizon
+     * "breve" next to a 2040 target), which put two conflicting statements in
+     * the same advisor prompt. Null when the goal carries no target date.
+     *
+     * Buckets match the labels the UI and the advisor use: < 3 years short,
+     * 3-10 medium, 10+ long.
+     */
+    public function horizon(): ?string
+    {
+        if ($this->target_date === null) {
+            return null;
+        }
+
+        $years = Carbon::today()->diffInYears($this->target_date, absolute: false);
+
+        return match (true) {
+            $years < 3 => 'short',
+            $years < 10 => 'medium',
+            default => 'long',
+        };
+    }
+
     /** @return HasMany<GoalCategoryAllocation, $this> */
     public function categoryAllocations(): HasMany
     {

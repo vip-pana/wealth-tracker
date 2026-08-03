@@ -5,7 +5,7 @@ services:
       target: dev
     ports:
       - "8080:8000"
-      - "5173:5173"
+      - "${DEV_VITE_PORT:-5273}:5173"
     volumes:
       - .:/app
       - /app/vendor
@@ -22,6 +22,7 @@ services:
       BACKUP_RETENTION_DAYS: "30"
       APP_URL: http://${DEV_HOST:-localhost}:8080
       VITE_DEV_HOST: ${DEV_HOST:-localhost}
+      VITE_DEV_CLIENT_PORT: ${DEV_VITE_PORT:-5273}
       LARAVEL_BYPASS_ENV_CHECK: "1"
       PNPM_HOME: /root/.local/share/pnpm
       CI: "true"

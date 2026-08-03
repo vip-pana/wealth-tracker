@@ -13,9 +13,8 @@ describe('ProfileProposal', () => {
     beforeEach(() => post.mockReset());
 
     it('shows only the proposed fields with readable labels', () => {
-        render(<ProfileProposal data={{ horizon: 'long', risk_tolerance: 'medium' }} />);
-        expect(screen.getByText('Orizzonte')).toBeInTheDocument();
-        expect(screen.getByText(/Lungo/)).toBeInTheDocument();
+        render(<ProfileProposal data={{ name: 'Mario', risk_tolerance: 'medium' }} />);
+        expect(screen.getByText('Tolleranza al rischio')).toBeInTheDocument();
         expect(screen.getByText('Media')).toBeInTheDocument();
         // A field not proposed is not rendered.
         expect(screen.queryByText('Allocazione target')).not.toBeInTheDocument();
@@ -32,16 +31,29 @@ describe('ProfileProposal', () => {
 
     it('POSTs the proposal to /advisor/profile on Applica', async () => {
         const user = userEvent.setup();
-        render(<ProfileProposal data={{ horizon: 'short', notes: 'Prudente' }} />);
+        render(<ProfileProposal data={{ risk_tolerance: 'low', notes: 'Prudente' }} />);
 
         await user.click(screen.getByRole('button', { name: 'Applica' }));
 
         expect(post).toHaveBeenCalledTimes(1);
         expect(post.mock.calls[0][0]).toBe('/advisor/profile');
-        expect(post.mock.calls[0][1]).toEqual({ horizon: 'short', notes: 'Prudente' });
+        expect(post.mock.calls[0][1]).toEqual({ risk_tolerance: 'low', notes: 'Prudente' });
         // Partial reload of the profile prop so the profile dialog updates, while
         // preserveState keeps the open chat from remounting.
         expect(post.mock.calls[0][2]).toMatchObject({ preserveState: true, only: ['profile'] });
+    });
+
+    it('drops a stale horizon from an old session instead of POSTing it', async () => {
+        const user = userEvent.setup();
+        // Sessions stored before the horizon became derived from the goal's target
+        // date still carry the key; it must be neither rendered nor sent.
+        render(<ProfileProposal data={{ horizon: 'long', risk_tolerance: 'high' }} />);
+
+        expect(screen.queryByText('Orizzonte')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Applica' }));
+
+        expect(post.mock.calls[0][1]).toEqual({ risk_tolerance: 'high' });
     });
 
     it('shows a confirmation and stops offering Applica once applied', async () => {
@@ -58,7 +70,7 @@ describe('ProfileProposal', () => {
 
     it('dismisses without posting on Annulla', async () => {
         const user = userEvent.setup();
-        render(<ProfileProposal data={{ horizon: 'medium' }} />);
+        render(<ProfileProposal data={{ risk_tolerance: 'medium' }} />);
 
         await user.click(screen.getByRole('button', { name: 'Annulla' }));
 
@@ -69,8 +81,8 @@ describe('ProfileProposal', () => {
     it('renders as already applied when the profile already matches the proposal (survives refresh)', () => {
         render(
             <ProfileProposal
-                data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'high', notes: null, memory: null }}
+                data={{ name: 'Mario', risk_tolerance: 'high' }}
+                profile={{ name: 'Mario', birth_date: null, horizon: 'long', risk_tolerance: 'high', notes: null, memory: null }}
             />,
         );
         // Local state is gone after a refresh; matching the current profile means
@@ -82,8 +94,8 @@ describe('ProfileProposal', () => {
     it('stays clickable when the profile only partially matches the proposal', () => {
         render(
             <ProfileProposal
-                data={{ horizon: 'long', risk_tolerance: 'high' }}
-                profile={{ name: null, birth_date: null, horizon: 'long', risk_tolerance: 'low', notes: null, memory: null }}
+                data={{ name: 'Mario', risk_tolerance: 'high' }}
+                profile={{ name: 'Mario', birth_date: null, horizon: 'long', risk_tolerance: 'low', notes: null, memory: null }}
             />,
         );
         // risk_tolerance differs, so the proposal was not fully applied.
