@@ -21,6 +21,7 @@
 ## Controllers & actions
 
 - Controllers are thin and invokable; business logic lives in `app/Actions/*` classes extending `app/Actions/Action.php`. Don't fatten controllers.
+- **Period navigation = `?month=YYYY-MM-01`.** A page that shows one month at a time takes the month as a query param pinned to the 1st, validated by a FormRequest with a `month(): string` accessor defaulting to the current month, and resolved by an Action that returns `month` + `availableMonths` among its props. The page navigates with `router.get(url, { month })` and a prev / `Select` / next control. Used by Bilancio (`Assets\IndexController`) and Entrate e Uscite (`Cashflow\IndexController`). No Laravel paginator is used anywhere. Two flavours of the visit: `preserveState: false` (Bilancio) for a clean remount, or a partial reload — `only: ['<list prop>', 'month']` with `preserveState` + `preserveScroll` (Cashflow) — when the page holds local state worth keeping and the other props are month-independent.
 
 ## Testing
 

@@ -6,16 +6,21 @@ import { Card, CardContent } from '@/Components/ui/card';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Money } from '@/Components/ui/Money';
-import { formatDateLong } from '@/lib/formatters';
+import { currentMonth, formatDateLong, formatMonthLong, stepMonth } from '@/lib/formatters';
+import { bankFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
-import { ArrowLeftRight, EyeOff, Wallet, Info, Shield } from 'lucide-react';
+import { ArrowLeftRight, ChevronLeft, ChevronRight, EyeOff, Wallet, Info, Shield, RefreshCw } from 'lucide-react';
 
 type FlowType = 'income' | 'expense' | 'transfer';
 
 interface Account {
     id: number;
     label: string;
+    last_sync_at: string | null;
+    last_sync_status: string | null;
+    last_sync_error: string | null;
 }
 
 interface Transaction {
@@ -33,7 +38,10 @@ interface Transaction {
 interface Props {
     accounts: Account[];
     transactions: Transaction[];
-    emergencyFund: { buffer: number; targetMonths: number | null };
+    month: string;
+    availableMonths: string[];
+    monthlySalary: number | null;
+    emergencyFund: { buffer: number; targetMonths: number | null; monthlyExpense: number | null };
 }
 
 const FLOW_OPTIONS: { value: FlowType; label: string }[] = [
@@ -68,21 +76,11 @@ function StatCard({ label, value, tone, hint, help }: { label: string; value: nu
     );
 }
 
-// Count of calendar months spanned by a date range, min 1 — so a partial month
-// still divides by 1, not 0.
-function monthsBetween(from: string, to: string): number {
-    const [fy, fm] = from.split('-').map(Number);
-    const [ty, tm] = to.split('-').map(Number);
-    return Math.max(1, (ty - fy) * 12 + (tm - fm) + 1);
-}
-
 type Edit = { flow_type: FlowType; excluded: boolean };
 
-export default function Cashflow({ accounts, transactions, emergencyFund }: Props) {
+export default function Cashflow({ accounts, transactions, month, availableMonths, monthlySalary, emergencyFund }: Props) {
     const [accountFilter, setAccountFilter] = useState<'all' | number>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | FlowType | 'excluded'>('all');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
     // Local, unsaved edits keyed by transaction id. The list re-renders from
     // these without a round-trip, so filters and scroll survive until "Salva".
@@ -90,6 +88,47 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
     const [saving, setSaving] = useState(false);
     const [targetMonths, setTargetMonths] = useState(emergencyFund.targetMonths ?? 6);
     const [savingTarget, setSavingTarget] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [loadingMonth, setLoadingMonth] = useState(false);
+
+    // Pull the same import the scheduler runs at 06:05. It is idempotent, so an
+    // on-demand run between scheduled ones can only add rows.
+    function syncTransactions() {
+        setSyncing(true);
+        router.post('/cashflow/sync', {}, { preserveScroll: true, onFinish: () => setSyncing(false) });
+    }
+
+    // Only the month's rows are refetched: preserveState keeps the filters, the
+    // expanded rows and any staged edit alive across a month change, and the
+    // whole-history figures don't depend on the month anyway.
+    function handleMonthChange(newMonth: string) {
+        if (newMonth === month || newMonth > currentMonth()) return;
+        setLoadingMonth(true);
+        router.get(
+            '/cashflow',
+            { month: newMonth },
+            {
+                only: ['transactions', 'month'],
+                preserveState: true,
+                preserveScroll: true,
+                onFinish: () => setLoadingMonth(false),
+            },
+        );
+    }
+
+    // There is nothing to show past the current month: transactions can only
+    // exist up to today. The current month is always offered even before its
+    // first transaction lands, so you can always get back to it.
+    const atCurrentMonth = month >= currentMonth();
+    const selectableMonths = useMemo(() => {
+        const now = currentMonth();
+        const past = availableMonths.filter((m) => m <= now);
+        return past.includes(now) ? past : [now, ...past];
+    }, [availableMonths]);
+
+    function navigateMonth(direction: 'prev' | 'next') {
+        handleMonthChange(stepMonth(month, direction));
+    }
 
     function toggleExpanded(id: number) {
         setExpanded((prev) => {
@@ -147,83 +186,33 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
         [accounts],
     );
 
-    // Rows in the active account + date range, regardless of the type filter.
-    // Both the summary cards and the monthly averages read from this set, so
-    // they reflect the date filter but not the type filter (which only narrows
-    // the list below).
+    // Rows of the shown month in the active account, regardless of the type
+    // filter — the summary cards read from this set, so they follow the account
+    // but not the type filter (which only narrows the list below).
     const inRange = useMemo(
         () =>
-            transactions.filter((t) => {
-                if (accountFilter !== 'all' && t.account_id !== accountFilter) return false;
-                if (dateFrom && t.date < dateFrom) return false;
-                if (dateTo && t.date > dateTo) return false;
-                return true;
-            }),
-        [transactions, accountFilter, dateFrom, dateTo],
+            transactions.filter((t) => accountFilter === 'all' || t.account_id === accountFilter),
+        [transactions, accountFilter],
     );
 
-    // Summary + monthly averages over the in-range rows. Transfers are internal
-    // by nature and excluded rows are the user's opt-outs, so neither counts.
+    // Month totals. Transfers are internal by nature and excluded rows are the
+    // user's opt-outs, so neither counts.
     const summary = useMemo(() => {
         let income = 0;
         let expense = 0;
-        let salary = 0;
-        let minDate = '';
-        let maxDate = '';
-        // Months (YYYY-MM) that actually received a salary — the salary average
-        // divides by these, not by the whole range, so a month with no salary
-        // (or a partial current month) doesn't drag the average down.
-        const salaryMonths = new Set<string>();
         for (const t of inRange) {
-            if (t.date < minDate || minDate === '') minDate = t.date;
-            if (t.date > maxDate) maxDate = t.date;
             const eff = effective(t);
             if (eff.excluded || eff.flow_type === 'transfer') continue;
-            if (eff.flow_type === 'income') {
-                income += t.amount;
-                if (t.is_salary) {
-                    salary += t.amount;
-                    salaryMonths.add(t.date.slice(0, 7));
-                }
-            } else {
-                expense += t.amount;
-            }
+            if (eff.flow_type === 'income') income += t.amount;
+            else expense += t.amount;
         }
-        const months = minDate ? monthsBetween(dateFrom || minDate, dateTo || maxDate) : 1;
-        return {
-            income,
-            expense,
-            net: income + expense,
-            monthlyExpense: expense / months,
-            monthlySalary: salaryMonths.size > 0 ? salary / salaryMonths.size : 0,
-            salaryMonths: salaryMonths.size,
-            months,
-        };
-    }, [inRange, effective, dateFrom, dateTo]);
-
-    // Average monthly expense over ALL history (every account, ignoring the
-    // date filter), so the emergency-fund coverage is a stable figure that
-    // doesn't shift as you filter the list. Uses effective values so unsaved
-    // edits still count.
-    const wholeHistoryMonthlyExpense = useMemo(() => {
-        let expense = 0;
-        let minDate = '';
-        let maxDate = '';
-        for (const t of transactions) {
-            if (t.date < minDate || minDate === '') minDate = t.date;
-            if (t.date > maxDate) maxDate = t.date;
-            const eff = effective(t);
-            if (eff.excluded || eff.flow_type !== 'expense') continue;
-            expense += t.amount;
-        }
-        const months = minDate ? monthsBetween(minDate, maxDate) : 1;
-        return expense / months;
-    }, [transactions, effective]);
+        return { income, expense, net: income + expense };
+    }, [inRange, effective]);
 
     // Emergency-fund coverage: how many months of expenses the buffer covers,
-    // and progress toward the configured target. monthlyExpense is negative
-    // (outflows), so take its magnitude.
-    const monthlyBurn = Math.abs(wholeHistoryMonthlyExpense);
+    // and progress toward the configured target. The burn rate is the
+    // whole-history average from the server, already a positive magnitude.
+    const monthlyBurn = emergencyFund.monthlyExpense ?? 0;
     const monthsCovered = monthlyBurn > 0 ? emergencyFund.buffer / monthlyBurn : 0;
     const targetAmount = monthlyBurn * targetMonths;
     const coveragePct = targetAmount > 0 ? Math.min(100, (emergencyFund.buffer / targetAmount) * 100) : 0;
@@ -261,30 +250,62 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
     return (
         <>
             <Head title="Entrate e Uscite" />
-            <div className="p-4 pb-24 space-y-4 max-w-[1100px] mx-auto w-full animate-page-enter">
+            <div className="p-4 pb-24 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={ArrowLeftRight}
                     title="Entrate e Uscite"
                     subtitle="Rivedi le transazioni bancarie: correggi il tipo o escludi le voci straordinarie. Le tue scelte non vengono sovrascritte agli aggiornamenti."
+                    actions={
+                        <Button size="sm" variant="outline" onClick={syncTransactions} disabled={syncing || accounts.length === 0}>
+                            <RefreshCw className={cn('w-4 h-4 mr-1', syncing && 'animate-spin')} />
+                            {syncing ? 'Sincronizzo…' : 'Sincronizza'}
+                        </Button>
+                    }
                 />
+
+                {accounts.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-3 px-4 text-sm text-muted-foreground">
+                            Nessun conto bancario collegato. Collegane uno dalle Impostazioni per importare le transazioni.
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground px-1">
+                        {accounts.map((a) => {
+                            const freshness = bankFreshness(a.last_sync_at);
+                            const failed = a.last_sync_status === 'failed';
+                            return (
+                                <span key={a.id} className="inline-flex items-center gap-1.5">
+                                    <span className="font-medium text-foreground/80">{a.label}</span>
+                                    <span
+                                        className={cn(failed ? 'text-destructive' : freshness.stale && 'text-amber-500')}
+                                        title={a.last_sync_error ?? undefined}
+                                    >
+                                        {failed ? (a.last_sync_error ?? 'sincronizzazione non riuscita') : freshness.label}
+                                    </span>
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <StatCard
                         label="Stipendio medio / mese"
-                        value={summary.monthlySalary}
+                        value={monthlySalary ?? 0}
                         tone="text-green-500"
-                        hint={summary.salaryMonths > 0 ? `Media su ${summary.salaryMonths} ${summary.salaryMonths === 1 ? 'mese' : 'mesi'} con stipendio` : 'Nessuno stipendio nel periodo'}
-                        help="Somma degli accrediti riconosciuti come stipendio, divisa per il numero di mesi in cui è arrivato uno stipendio (non per tutti i mesi del periodo). Così un mese senza stipendio, o il mese corrente non ancora accreditato, non abbassa la media."
+                        hint={monthlySalary === null ? 'Nessuno stipendio rilevato' : 'Su tutto lo storico'}
+                        help="Somma degli accrediti riconosciuti come stipendio su tutto lo storico, divisa per il numero di mesi in cui è arrivato uno stipendio (non per tutti i mesi). Così un mese senza stipendio, o il mese corrente non ancora accreditato, non abbassa la media. Non dipende dal mese mostrato."
                     />
                     <StatCard
                         label="Spese medie / mese"
-                        value={summary.monthlyExpense}
+                        value={-monthlyBurn}
                         tone="text-red-500"
-                        hint={`Su ${summary.months} ${summary.months === 1 ? 'mese' : 'mesi'}`}
-                        help="Totale delle uscite del periodo (esclusi i giroconti interni e le voci che hai marcato «escludi»), diviso per i mesi coperti dal periodo."
+                        hint={emergencyFund.monthlyExpense === null ? 'Nessuna uscita rilevata' : 'Su tutto lo storico'}
+                        help="Totale delle uscite su tutto lo storico (esclusi i giroconti interni e le voci che hai marcato «escludi»), diviso per i mesi coperti. Non dipende dal mese mostrato."
                     />
-                    <StatCard label="Uscite (periodo)" value={summary.expense} tone="text-red-500" />
-                    <StatCard label="Netto (periodo)" value={summary.net} tone={summary.net >= 0 ? 'text-green-500' : 'text-red-500'} />
+                    <StatCard label="Uscite del mese" value={summary.expense} tone="text-red-500" />
+                    <StatCard label="Netto del mese" value={summary.net} tone={summary.net >= 0 ? 'text-green-500' : 'text-red-500'} />
                 </div>
 
                 {/* Emergency fund */}
@@ -297,7 +318,7 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
                                 <span
                                     tabIndex={0}
                                     className="inline-flex cursor-help text-muted-foreground/70 hover:text-foreground"
-                                    title="Il fondo è il valore delle categorie non-investibili (liquidità parcheggiata). I mesi coperti = fondo ÷ spesa media mensile calcolata su TUTTO lo storico bancario (non sul filtro data), così la copertura è un numero stabile."
+                                    title="Il fondo è il valore delle categorie non-investibili (liquidità parcheggiata). I mesi coperti = fondo ÷ spesa media mensile calcolata su TUTTO lo storico bancario, così la copertura non cambia al cambio del mese mostrato."
                                     aria-label="Come funziona il fondo di emergenza"
                                 >
                                     <Info className="w-3 h-3" />
@@ -385,44 +406,43 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
                             { value: 'excluded', label: 'Escluse' },
                         ]}
                     />
-                    <label className="flex items-center gap-1.5 text-muted-foreground">
-                        <span className="text-xs">Da</span>
-                        <input
-                            type="date"
-                            value={dateFrom}
-                            max={dateTo || undefined}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground"
-                        />
-                    </label>
-                    <label className="flex items-center gap-1.5 text-muted-foreground">
-                        <span className="text-xs">A</span>
-                        <input
-                            type="date"
-                            value={dateTo}
-                            min={dateFrom || undefined}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground"
-                        />
-                    </label>
-                    {(dateFrom || dateTo) && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setDateFrom('');
-                                setDateTo('');
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground underline"
+                    <div className="flex items-center gap-1 ml-auto">
+                        {loadingMonth && <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin text-muted-foreground" />}
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('prev')} disabled={loadingMonth}>
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <Select value={month} onValueChange={handleMonthChange} disabled={loadingMonth}>
+                            <SelectTrigger className="h-7 w-36">
+                                <SelectValue>{formatMonthLong(month)}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {selectableMonths.map((m) => (
+                                    <SelectItem key={m} value={m}>
+                                        {formatMonthLong(m)}
+                                    </SelectItem>
+                                ))}
+                                {!selectableMonths.includes(month) && (
+                                    <SelectItem value={month}>{formatMonthLong(month)}</SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => navigateMonth('next')}
+                            disabled={loadingMonth || atCurrentMonth}
+                            title={atCurrentMonth ? 'Il mese corrente è il più recente disponibile' : undefined}
                         >
-                            Azzera date
-                        </button>
-                    )}
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {byDay.length === 0 ? (
                     <Card>
                         <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                            Nessuna transazione per questo filtro.
+                            Nessuna transazione in {formatMonthLong(month)} per questo filtro.
                         </CardContent>
                     </Card>
                 ) : (
@@ -523,7 +543,7 @@ export default function Cashflow({ accounts, transactions, emergencyFund }: Prop
 
             {edits.size > 0 && (
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
-                    <div className="max-w-[1100px] mx-auto w-full flex items-center justify-between gap-3 p-3">
+                    <div className="max-w-[1400px] mx-auto w-full flex items-center justify-between gap-3 p-3">
                         <span className="text-sm text-muted-foreground">
                             {edits.size} {edits.size === 1 ? 'modifica non salvata' : 'modifiche non salvate'}
                         </span>
