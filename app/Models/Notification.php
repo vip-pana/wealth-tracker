@@ -42,6 +42,10 @@ class Notification extends Model
 
     public const TYPE_SNAPSHOT_SKIPPED = 'snapshot_skipped';
 
+    public const TYPE_BACKUP_FAILED = 'backup_failed';
+
+    public const TYPE_BACKUP_STALE = 'backup_stale';
+
     protected $fillable = ['type', 'level', 'title', 'body', 'action_url', 'dedupe_key', 'read_at'];
 
     #[\Override]
