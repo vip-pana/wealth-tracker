@@ -1,10 +1,10 @@
 import { useForm, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { RefreshCw, Link2, Unlink, AlertTriangle, CandlestickChart, ExternalLink, Copy, Check, X } from 'lucide-react';
 import { brokerFreshness } from '@/lib/metrics';
-import { cn } from '@/lib/utils';
+import { ConnectionRow } from '@/Components/Settings/ConnectionRow';
+import type { RowTone } from '@/Components/Settings/ConnectionRow';
 import { TransactionAssetsBlock } from '@/Components/Settings/TransactionAssetsBlock';
 import type { ScalableLoginState, ScalableState, TransactionAsset } from '@/Components/Settings/types';
 
@@ -70,20 +70,36 @@ export function ScalableConnectionCard({ state, transactionAssets }: { state: Sc
         });
     };
 
+    const summary = ((): { tone: RowTone; label: string; title?: string } => {
+        if (!state.configured) {
+            return { tone: 'warn', label: 'Non configurato (SCALABLE_CLI_ENABLED)' };
+        }
+        if (needsLogin) {
+            return { tone: 'warn', label: 'Sessione scaduta, riconnetti' };
+        }
+        if (failed) {
+            return { tone: 'error', label: 'Ultimo sync fallito', title: state.last_sync_error ?? undefined };
+        }
+        if (state.last_sync_at === null) {
+            return { tone: 'idle', label: 'Mai sincronizzato' };
+        }
+        return {
+            tone: freshness.stale ? 'warn' : 'ok',
+            label: `${freshness.stale ? 'Sincronizzazione ferma' : 'Connesso'} · ${freshness.label}`,
+        };
+    })();
+
     return (
-        <Card>
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 pb-3">
-                <div>
-                    <CardTitle className="text-base flex items-center gap-1.5">
-                        <CandlestickChart className="w-4 h-4 text-indigo-400" aria-hidden />
-                        Scalable Capital
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                        Sincronizza saldi e posizioni dal broker (sola lettura) tramite la CLI ufficiale Scalable. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.
-                    </p>
-                </div>
-                {state.configured && (
-                    <div className="flex items-center gap-2">
+        <ConnectionRow
+            icon={CandlestickChart}
+            title="Scalable Capital"
+            tone={summary.tone}
+            status={summary.label}
+            statusTitle={summary.title}
+            defaultOpen={inProgress || undefined}
+            actions={
+                state.configured && (
+                    <>
                         {needsLogin && !inProgress && (
                             <Button
                                 size="sm"
@@ -115,44 +131,21 @@ export function ScalableConnectionCard({ state, transactionAssets }: { state: Sc
                                 disabled={logout.processing}
                                 title="Rimuove la sessione Scalable salvata dalla CLI"
                             >
-                                <Unlink className={`w-4 h-4 mr-1 ${logout.processing ? 'animate-pulse' : ''}`} />
+                                <Unlink className="w-4 h-4 mr-1" />
                                 Scollega
                             </Button>
                         )}
-                    </div>
-                )}
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {!state.configured ? (
-                    <p className="text-xs text-amber-500">
-                        Sincronizzazione Scalable non configurata (abilita SCALABLE_CLI_ENABLED).
-                    </p>
-                ) : (
-                    <>
-                        <div className="flex items-center gap-1.5 text-sm">
-                            {state.cli_logged_in === false ? (
-                                <span className="inline-flex items-center gap-1.5 text-amber-500">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                    Sessione scaduta, riconnetti
-                                </span>
-                            ) : failed ? (
-                                <span className="inline-flex items-center gap-1.5 text-destructive" title={state.last_sync_error ?? undefined}>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                                    Ultimo sync fallito
-                                </span>
-                            ) : state.last_sync_at === null ? (
-                                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                                    Mai sincronizzato
-                                </span>
-                            ) : (
-                                <span className={cn('inline-flex items-center gap-1.5', freshness.stale ? 'text-amber-500' : 'text-emerald-400')}>
-                                    <span className={cn('w-1.5 h-1.5 rounded-full', freshness.stale ? 'bg-amber-500' : 'bg-emerald-500')} />
-                                    {freshness.stale ? 'Sincronizzazione ferma' : 'Connesso'} · {freshness.label}
-                                </span>
-                            )}
-                        </div>
+                    </>
+                )
+            }
+        >
+            <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                    Sincronizza saldi e posizioni dal broker (sola lettura) tramite la CLI ufficiale Scalable. Si aggiorna ogni giorno alle 06:00 insieme ai prezzi.
+                </p>
 
+                {state.configured && (
+                    <>
                         {inProgress && (
                             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
                                 {loginFlow.status === 'url_issued' && loginFlow.url ? (
@@ -233,7 +226,7 @@ export function ScalableConnectionCard({ state, transactionAssets }: { state: Sc
                 )}
 
                 <TransactionAssetsBlock assets={transactionAssets} />
-            </CardContent>
-        </Card>
+            </div>
+        </ConnectionRow>
     );
 }
