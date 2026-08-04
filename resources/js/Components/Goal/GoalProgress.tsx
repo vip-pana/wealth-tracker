@@ -83,8 +83,13 @@ export function GoalProgress({
     // Milestones sorted
     const sortedMilestones = [...goal.milestones].sort((a, b) => a.target_date.localeCompare(b.target_date));
 
+    // From lg up the page is a full-height column: the header takes what it
+    // needs and the two-column grid absorbs the rest, so the page fits the
+    // viewport and the long content (allocation table, milestone steps) scrolls
+    // inside its own card. Below lg the columns stack and the page scrolls as
+    // before.
     return (
-        <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+        <div className="p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter flex flex-col shrink-0 lg:flex-1 lg:shrink lg:min-h-0">
             <Head title={`Obiettivo — ${goal.name}`} />
 
             {/* The page is "Obiettivo"; the goal's own identity (name,
@@ -98,13 +103,13 @@ export function GoalProgress({
                 milestones on the way, as one object. No items-start, so the goal
                 card runs down to the same height as the left column. Below lg it
                 all stacks. */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:flex-1 lg:min-h-0">
+                <div className="flex flex-col gap-4 lg:min-h-0">
                 {profileCard}
                 {/* Allocation comparison */}
                 {(goal.categoryAllocations.length > 0 || goal.macroAllocations.length > 0) && (
-                    <Card>
-                        <CardHeader className="pb-3">
+                    <Card className="flex flex-col overflow-hidden lg:flex-1 lg:min-h-0">
+                        <CardHeader className="pb-3 shrink-0">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-base">Composizione: attuale vs target</CardTitle>
                                 <SegmentedToggle
@@ -118,7 +123,7 @@ export function GoalProgress({
                                 />
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
                             {currentNetWorth === null ? (
                                 <p className="text-sm text-muted-foreground text-center py-4">
                                     Nessuno snapshot disponibile. Crea uno snapshot per vedere il confronto.
@@ -184,8 +189,8 @@ export function GoalProgress({
                 )}
                 </div>
 
-                <Card className="h-full">
-                    <CardHeader className="pb-3 space-y-1">
+                <Card className="flex flex-col h-full overflow-hidden lg:min-h-0">
+                    <CardHeader className="pb-3 space-y-1 shrink-0">
                         <div className="flex flex-row items-center justify-between gap-2">
                             <CardTitle className="text-base flex items-center gap-2 min-w-0">
                                 <TrendingUp className="w-4 h-4 shrink-0" />
@@ -209,7 +214,7 @@ export function GoalProgress({
                             </p>
                         )}
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
                         <div className="flex justify-between text-sm">
                             <Money value={current} variant="no-decimals" className="font-medium" />
                             <Money value={target} variant="no-decimals" className="text-muted-foreground" />

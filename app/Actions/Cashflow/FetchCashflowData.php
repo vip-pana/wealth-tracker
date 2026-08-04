@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Cashflow;
 
 use App\Actions\Action;
-use App\Actions\Advisor\ComputePositionReturns;
 use App\Actions\Dashboard\ComputeEmergencyBuffer;
 use App\Actions\Transactions\ComputeMonthlyExpense;
 use App\Actions\Transactions\ComputeMonthlySalary;
@@ -22,7 +21,7 @@ class FetchCashflowData extends Action
         private readonly ComputeMonthlyExpense $computeMonthlyExpense,
         private readonly ComputeMonthlySalary $computeMonthlySalary,
         private readonly FetchTransactionMonths $fetchTransactionMonths,
-        private readonly ComputePositionReturns $computePositionReturns,
+        private readonly BuildMonthlyFlowSeries $buildMonthlyFlowSeries,
     ) {}
 
     /**
@@ -62,6 +61,10 @@ class FetchCashflowData extends Action
             'flow_type' => $t->flow_type,
             'excluded' => $t->excluded,
             'is_manual' => $t->is_manual,
+            // Whether the user has been through this row. The rows are all sent
+            // either way — the month's totals are computed over the whole set —
+            // and the review dialog is what filters on it.
+            'reviewed' => $t->reviewed_at !== null,
             // Salary credits carry a "STIPENDIO" marker in the note.
             'is_salary' => stripos($this->note($t), 'STIPENDIO') !== false,
         ]);
@@ -69,6 +72,9 @@ class FetchCashflowData extends Action
         return [
             'accounts' => $accounts->values(),
             'transactions' => $transactions->values(),
+            // Counted off the rows already loaded rather than with a second
+            // query: it drives the button that says how much is left to review.
+            'pendingReview' => $rows->whereNull('reviewed_at')->count(),
             'month' => $month,
             'availableMonths' => $this->fetchTransactionMonths->run(),
             'monthlySalary' => $this->computeMonthlySalary->run(),
@@ -77,9 +83,8 @@ class FetchCashflowData extends Action
                 'targetMonths' => InvestorProfile::query()->first()?->emergency_fund_months,
                 'monthlyExpense' => $this->computeMonthlyExpense->run(),
             ],
-            // Whole-history and ISIN-deduplicated: unlike everything else here
-            // it is not scoped to $month, so the positions card says so.
-            'positionReturns' => $this->computePositionReturns->run(),
+            // Whole history, so the shown month can be read against the others.
+            'monthlyFlow' => $this->buildMonthlyFlowSeries->run(),
         ];
     }
 

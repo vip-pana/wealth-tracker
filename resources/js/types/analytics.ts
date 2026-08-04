@@ -29,6 +29,15 @@ export interface MonthComparisonPoint {
     previous: number;
 }
 
+// One month of bank cashflow. `expense` is a negative magnitude, matching the
+// signed amounts the rows carry, so `net` is simply income + expense.
+export interface MonthlyFlowPoint {
+    date: string;
+    income: number;
+    expense: number;
+    net: number;
+}
+
 export interface ForecastPoint {
     date: string;
     actual: number | null;

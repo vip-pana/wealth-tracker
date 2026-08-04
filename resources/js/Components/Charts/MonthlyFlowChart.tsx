@@ -11,16 +11,24 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
-import { formatDateLabel, formatPercent } from '@/lib/formatters';
-import type { GrowthRatePoint } from '@/types/analytics';
+import { formatCurrency, formatCurrencyCompact, formatMonthLong } from '@/lib/formatters';
+import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
+import type { MonthlyFlowPoint } from '@/types/analytics';
 
 interface Props {
-    data: GrowthRatePoint[];
+    data: MonthlyFlowPoint[];
     title?: string;
     note?: string;
 }
 
-export default function GrowthRateChart({ data, title = 'Variazione tra snapshot (%)', note }: Props) {
+/**
+ * One bar per month: green when you saved that month, red when you eroded.
+ * Unlike GrowthRateChart, which shows percentages, these are euros — so the
+ * axis and the tooltip honour the privacy toggle.
+ */
+export default function MonthlyFlowChart({ data, title = 'Risparmio per mese', note }: Props) {
+    const hidden = useValuesHidden();
+
     return (
         <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
@@ -29,24 +37,25 @@ export default function GrowthRateChart({ data, title = 'Variazione tra snapshot
             </CardHeader>
             <CardContent className="px-3 pb-3 flex-1 min-h-0">
                 {data.length === 0 ? (
-                    <ChartEmptyState message="Servono almeno due snapshot per confrontare la variazione." />
+                    <ChartEmptyState message="Nessuna transazione registrata: collega un conto per vedere l'andamento." />
                 ) : (
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
                             dataKey="date"
-                            tickFormatter={formatDateLabel}
+                            tickFormatter={(d) => formatMonthLong(d as string)}
                             tick={{ fontSize: 11 }}
                         />
                         <YAxis
-                            tickFormatter={(v) => `${v}%`}
+                            tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11 }}
-                            width={50}
+                            width={70}
                         />
+                        {!hidden && (
                         <Tooltip
-                            formatter={(v) => [formatPercent((v as number) ?? 0), 'Variazione']}
-                            labelFormatter={(d) => formatDateLabel(d as string)}
+                            formatter={(v) => [formatCurrency((v as number) ?? 0), 'Risparmio']}
+                            labelFormatter={(d) => formatMonthLong(d as string)}
                             contentStyle={{
                                 fontSize: 12,
                                 backgroundColor: 'hsl(var(--card))',
@@ -56,12 +65,13 @@ export default function GrowthRateChart({ data, title = 'Variazione tra snapshot
                             labelStyle={{ color: 'hsl(var(--card-foreground))' }}
                             itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                         />
+                        )}
                         <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                        <Bar dataKey="change_pct" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="net" radius={[4, 4, 0, 0]}>
                             {data.map((entry) => (
                                 <Cell
                                     key={entry.date}
-                                    fill={entry.change_pct >= 0 ? '#22c55e' : '#ef4444'}
+                                    fill={entry.net >= 0 ? '#22c55e' : '#ef4444'}
                                 />
                             ))}
                         </Bar>

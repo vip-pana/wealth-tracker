@@ -169,7 +169,12 @@ export default function Dashboard({
     return (
         <>
             <Head title="Dashboard" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            {/* From lg up the page is a full-height column: the header and the
+                summary row take what they need and the two chart rows split the
+                rest, so the dashboard fits the viewport instead of scrolling.
+                Below lg the grids stack into six rows that cannot fit a phone
+                screen, so there the page scrolls as before. */}
+            <div className="p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter flex flex-col shrink-0 lg:flex-1 lg:shrink lg:min-h-0">
                 <PageHeader
                     icon={LayoutDashboard}
                     title="Dashboard"
@@ -197,7 +202,7 @@ export default function Dashboard({
                 />
 
                 {/* Summary cards + goal */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 shrink-0">
                     <SummaryCard
                         label="Patrimonio attuale"
                         value={lastPoint ? <Money value={lastPoint.total_value} /> : '—'}
@@ -255,12 +260,12 @@ export default function Dashboard({
                 </div>
 
                 {/* Charts grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0">
                     <NetWorthLineChart data={series} goalTarget={goal?.target_value} goalName={goal?.name} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} note={investableNote} />
                     <GrowthRateChart data={momMode ? momGrowthRates : growthRates} title={momMode ? 'Variazione mensile (%)' : 'Variazione tra snapshot (%)'} note={investableNote} />
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0">
                     <StackedBarChart data={macroMode ? (momMode ? momMacroStackedBar : macroStackedBar) : (momMode ? momStackedBar : stackedBar)} categories={macroMode ? macroCategories : categories} note={investableNote} />
                     <MonthComparisonChart data={macroMode ? macroComparisonPoints : (momMode ? momMonthComparison : monthComparison)} months={snapshotMonths} title={momMode ? 'Confronto tra mesi' : 'Confronto tra snapshot'} note={investableNote} />
                     <ForecastChart data={momMode ? momForecast : forecast} note={investableNote} />

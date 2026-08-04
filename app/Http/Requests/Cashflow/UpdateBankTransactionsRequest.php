@@ -14,7 +14,10 @@ class UpdateBankTransactionsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'changes' => ['required', 'array', 'min:1'],
+            // Either axis alone is a valid submission: correcting rows, or just
+            // saying "I have been through this month". Agreeing with the
+            // classifier changes nothing, so review-only is the common case.
+            'changes' => ['array', 'required_without:month'],
             'changes.*.id' => ['required', 'integer', 'exists:bank_transactions,id'],
             'changes.*.flow_type' => ['required', Rule::in([
                 BankTransaction::FLOW_INCOME,
@@ -22,6 +25,10 @@ class UpdateBankTransactionsRequest extends FormRequest
                 BankTransaction::FLOW_TRANSFER,
             ])],
             'changes.*.excluded' => ['required', 'boolean'],
+            // The month to mark reviewed. The server derives the rows from it
+            // rather than trusting a list of ids built under an active filter,
+            // so nothing is left behind unnoticed.
+            'month' => ['sometimes', 'date_format:Y-m-d'],
         ];
     }
 }

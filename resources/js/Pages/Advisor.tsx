@@ -94,7 +94,7 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
     return (
         <>
             <Head title="Consulente AI" />
-            <div className={cn('flex flex-col h-full p-4 gap-4 max-w-[1400px] mx-auto w-full', animateEnter && 'animate-page-enter')}>
+            <div className={cn('flex flex-col flex-1 min-h-0 p-4 gap-4 max-w-[1400px] mx-auto w-full', animateEnter && 'animate-page-enter')}>
                 <PageHeader
                     icon={Sparkles}
                     title="Consulente AI"
@@ -111,7 +111,7 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                 />
 
                 {!configured ? (
-                    <Card>
+                    <Card className="shrink-0">
                         <CardContent className="py-8 text-center space-y-2">
                             <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
                             <p className="text-sm text-muted-foreground max-w-md mx-auto">
@@ -120,8 +120,12 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
-                        <div className={cn('min-w-0', mobileView === 'chat' && 'hidden lg:block')}>
+                    // Items stretch so the chat column fills the row and its
+                    // card's bottom edge lands on the same line as the cards on
+                    // the other pages; the session list keeps its own height by
+                    // aligning itself to the top.
+                    <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+                        <div className={cn('min-w-0 self-start', mobileView === 'chat' && 'hidden lg:block')}>
                             <SessionList
                                 sessions={sessions}
                                 activeId={activeSession?.id ?? null}

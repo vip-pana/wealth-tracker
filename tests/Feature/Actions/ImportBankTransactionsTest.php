@@ -163,6 +163,39 @@ class ImportBankTransactionsTest extends TestCase
         $this->assertSame(1, BankTransaction::where('external_id', 'tx-1')->count());
     }
 
+    public function test_reimport_preserves_the_user_s_classification_and_review_state(): void
+    {
+        // The daily import fill()s only the bank's own fields, so the user's
+        // work survives by omission. Pinned here because adding one of these to
+        // that fill() would silently resurface every reviewed row.
+        $this->account('acc-1');
+        $fake = fn () => Http::fake([
+            'api.enablebanking.com/accounts/acc-1/transactions*' => Http::response(
+                $this->page([$this->debit('tx-1')])
+            ),
+        ]);
+
+        $fake();
+        app(ImportBankTransactions::class)->run();
+
+        $reviewedAt = now()->subDay();
+        BankTransaction::where('external_id', 'tx-1')->update([
+            'flow_type' => BankTransaction::FLOW_TRANSFER,
+            'excluded' => true,
+            'is_manual' => true,
+            'reviewed_at' => $reviewedAt,
+        ]);
+
+        $fake();
+        app(ImportBankTransactions::class)->run();
+
+        $tx = BankTransaction::where('external_id', 'tx-1')->firstOrFail();
+        $this->assertSame(BankTransaction::FLOW_TRANSFER, $tx->flow_type);
+        $this->assertTrue($tx->excluded);
+        $this->assertTrue($tx->is_manual);
+        $this->assertSame($reviewedAt->format('Y-m-d H:i:s'), $tx->reviewed_at?->format('Y-m-d H:i:s'));
+    }
+
     public function test_expires_the_connection_when_the_bank_rejects_the_session(): void
     {
         $this->account('acc-1');

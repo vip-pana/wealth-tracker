@@ -21,12 +21,15 @@ export default function AllocationDonutChart({ data, note }: Props) {
     const visible = data.filter((d) => d.value > 0);
 
     return (
-        <Card>
+        <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">Composizione attuale</CardTitle>
                 {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
-            <CardContent className="px-3 pb-3">
+            {/* The donut is a fixed size and the legend grows with the number of
+                categories, so this is the one chart that can outgrow its row:
+                it scrolls internally rather than stretching the page. */}
+            <CardContent className="px-3 pb-3 flex-1 min-h-0 overflow-y-auto">
                 <div className="donut-container">
                     <div className="donut-layout flex flex-col items-center gap-4">
                     {/* Donut */}

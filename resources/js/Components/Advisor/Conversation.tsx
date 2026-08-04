@@ -261,8 +261,11 @@ export function Conversation({
 
     const pending = status === 'pending';
 
+    // overflow-hidden so the square-cornered composer at the bottom is clipped
+    // to the card's radius instead of painting over it — otherwise the bottom
+    // border reads as broken next to the other pages' cards.
     return (
-        <Card className="flex flex-col flex-1 min-h-0">
+        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="relative flex-1 min-h-0">
                 <CardContent ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto p-4 space-y-4">
                     {pending && messages.length === 0 && (
