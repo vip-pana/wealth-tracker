@@ -49,7 +49,6 @@ use App\Http\Controllers\Goals\UpdateController as UpdateGoalController;
 use App\Http\Controllers\Notifications\ReadAllController as NotificationReadAllController;
 use App\Http\Controllers\Notifications\ReadController as NotificationReadController;
 use App\Http\Controllers\Pension\DestroyController as DestroyPensionController;
-use App\Http\Controllers\Pension\IndexController as IndexPensionController;
 use App\Http\Controllers\Pension\StoreController as StorePensionController;
 use App\Http\Controllers\Pension\UpdateController as UpdatePensionController;
 use App\Http\Controllers\Prices\RefreshController as RefreshPriceController;
@@ -82,7 +81,6 @@ Route::patch('/advisor/{session}', AdvisorRenameController::class)->name('adviso
 Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advisor.destroy');
 Route::get('/settings', IndexCategoryController::class)->name('settings.index');
 Route::get('/goal', IndexGoalController::class)->name('goal.index');
-Route::get('/pension', IndexPensionController::class)->name('pension.index');
 Route::get('/cashflow', CashflowIndexController::class)->name('cashflow.index');
 Route::patch('/cashflow', CashflowUpdateController::class)->name('cashflow.update');
 Route::post('/cashflow/sync', CashflowSyncController::class)->name('cashflow.sync');

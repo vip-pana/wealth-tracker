@@ -18,7 +18,6 @@ person's own finances.
   portfolio. Runs against a local model (Ollama) by default, or a cloud model;
   it interviews you to build a risk profile and helps you shape your goal,
   without ever recommending specific buy/sell trades.
-- **Pension** — track a supplementary pension position.
 
 ## Stack
 

@@ -29,13 +29,6 @@ class PensionControllerTest extends TestCase
         ]);
     }
 
-    public function test_index_renders_pension_page(): void
-    {
-        $this->get('/pension')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Pension'));
-    }
-
     public function test_stores_pension_entry_with_year_converted_to_dec_31(): void
     {
         $category = $this->pensionCategory();
