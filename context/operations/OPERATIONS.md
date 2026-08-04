@@ -35,7 +35,7 @@ Releases are automated by release-please (`.github/workflows/release.yml`, confi
 ## Backup & restore
 
 <!-- exodia:section:variants -->
-Dev DB lives at `~/wealth-tracker-data/database.sqlite`, bind-mounted into the container. Backups are atomic `sqlite3 .backup` / `VACUUM INTO` snapshots synced to Proton Drive — nightly (launchd at 03:00), after every snapshot (queued `BackupDatabase` job), and on demand (Settings → "Backup ora", or `~/wealth-tracker-data/backup.sh`). Full restore procedure and the test-suite DB-safety override: [../../docs/database.md](../../docs/database.md). **Never overwrite the live DB without explicit confirmation.**
+Dev DB lives at `~/wealth-tracker-data/database.sqlite`, bind-mounted into the container. Backups run in-app (`App\Actions\Backup\CreateBackup`): an atomic `VACUUM INTO` snapshot, encrypted (AES-256-CBC + HMAC) and uploaded to the disk named by `BACKUP_DISK` — nightly via the scheduler at 03:00, after every snapshot (queued `BackupDatabase` job), and on demand (Settings → "Backup ora", or `php artisan backup:run`). Restore with `php artisan backup:restore --list` then `backup:restore <key>`. `backup:health` (09:00) raises a notification when the newest off-site archive goes stale, since a backup chain that stops is otherwise silent. The former host-side `launchd` + `scripts/backup.sh` path was removed: it only worked on the Mac that had Docker and the Proton Drive client. Full procedure, encryption details and the test-suite DB-safety override: [../../docs/database.md](../../docs/database.md). **Never overwrite the live DB without explicit confirmation.** **`BACKUP_ENCRYPTION_KEY` must be stored outside the backup destination — without it archives are unrecoverable.**
 
 ## Integrations
 
