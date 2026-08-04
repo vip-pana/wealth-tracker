@@ -329,7 +329,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 content width instead of pushing the page wider than the
                 viewport (the default flex min-width:auto causes h-scroll on
                 mobile); overflow-x-hidden is a belt-and-braces guard. */}
-            <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto pt-[56px] lg:pt-0">
+            {/* A flex column, not a plain block: a page that fills the height
+                (Consulente AI, Bilancio) is then a flex item bounded by the real
+                available height, so its own bottom padding stays inside the
+                viewport. As a plain block the page's h-full made it exactly as
+                tall as this scroll container and the bottom padding was dropped
+                at the scroll end, letting the chat card run flush to the edge. */}
+            <main className="flex flex-col flex-1 min-w-0 min-h-0 overflow-x-hidden overflow-y-auto pt-[56px] lg:pt-0">
                 {children}
             </main>
 

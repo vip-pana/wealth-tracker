@@ -30,16 +30,16 @@ export default function MonthComparisonChart({ data, months, title = 'Confronto 
     const visibleData = data.filter((d) => d.current > 0 || d.previous > 0);
 
     return (
-        <Card>
+        <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">{title}</CardTitle>
                 {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
-            <CardContent className="px-3 pb-3">
+            <CardContent className="px-3 pb-3 flex flex-col flex-1 min-h-0">
                 {!months || visibleData.length === 0 ? (
                     <ChartEmptyState message="Servono almeno due snapshot per confrontarli." />
                 ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={visibleData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis dataKey="category" tick={{ fontSize: 11 }} />
@@ -67,7 +67,7 @@ export default function MonthComparisonChart({ data, months, title = 'Confronto 
                 </ResponsiveContainer>
                 )}
                 {months && visibleData.length > 0 && (
-                    <div className="flex justify-center gap-4 mt-1 text-xs text-muted-foreground">
+                    <div className="flex shrink-0 justify-center gap-4 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                             <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(var(--muted-foreground))', opacity: 0.7 }} />
                             {prevLabel}

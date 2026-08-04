@@ -209,11 +209,13 @@ export default function AssetTable({ assets, onEdit, prices, previousValues, pre
     const ordered = [...groups.values()].flat();
 
     return (
-        <div>
+        <div className="flex flex-col min-h-0 flex-1">
             {/* The rows scroll, not the page: the header stays put and the
                 totals stay pinned to the bottom, so the figures you are editing
-                against never leave the screen. */}
-            <div className="max-h-[57vh] overflow-y-auto">
+                against never leave the screen. The height comes from the parent
+                flex chain rather than a vh guess, so the page itself never
+                overflows however tall the cards above happen to be. */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
                 <Table>
                     <TableHeader className="sticky top-0 z-10 bg-card">
                         <TableRow>

@@ -35,7 +35,7 @@ export default function GoalPage({ goal, profile, categories, currentNetWorth, c
     return (
         <>
             {!goal && <Head title="Obiettivo" />}
-            <div className="h-full">
+            <div className="flex flex-col flex-1 min-h-0">
                 {goal ? (
                     <GoalProgress
                         goal={goal}
@@ -51,7 +51,7 @@ export default function GoalPage({ goal, profile, categories, currentNetWorth, c
                     // No goal yet: the profile still belongs here, so it sits
                     // above the empty state rather than being unreachable until
                     // a goal exists.
-                    <div className="p-4 space-y-4 max-w-350 mx-auto w-full animate-page-enter">
+                    <div className="p-4 space-y-4 max-w-350 mx-auto w-full animate-page-enter shrink-0">
                         <ProfileCard profile={profile} onEdit={() => setProfileOpen(true)} />
                         <EmptyGoal onCreate={() => setFormOpen(true)} />
                     </div>

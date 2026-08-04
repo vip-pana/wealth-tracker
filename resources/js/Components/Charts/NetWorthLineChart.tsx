@@ -28,12 +28,12 @@ export default function NetWorthLineChart({ data, goalTarget, goalName }: Props)
     // the legend is just noise.
     const layered = data.some((p) => p.investable !== undefined && p.investable !== p.total_value);
     return (
-        <Card className="flex flex-col h-full">
+        <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">Patrimonio nel tempo</CardTitle>
             </CardHeader>
-            <CardContent className="px-3 pb-3 flex-1 min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+            <CardContent className="px-3 pb-3 flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis

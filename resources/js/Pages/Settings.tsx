@@ -60,7 +60,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
     return (
         <>
             <Head title="Impostazioni" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter shrink-0">
                 <PageHeader icon={SettingsIcon} title="Impostazioni" />
 
                 {/* ── Connessioni: integrazioni e dati live ── */}

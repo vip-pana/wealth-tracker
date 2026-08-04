@@ -57,7 +57,7 @@ export function NewConversation({
 
     if (pendingText !== null) {
         return (
-            <Card className="flex flex-col flex-1 min-h-0">
+            <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                     <MessageBubble message={{ id: -1, role: 'user', content: pendingText, created_at: null }} funFacts={funFacts} />
                     <MessageBubble message={{ id: -2, role: 'assistant', content: '', created_at: null }} funFacts={funFacts} />
@@ -67,7 +67,7 @@ export function NewConversation({
     }
 
     return (
-        <Card className="flex flex-col flex-1 min-h-0">
+        <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 overflow-y-auto p-4 text-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <MessageCircle className="h-5 w-5 text-primary" />

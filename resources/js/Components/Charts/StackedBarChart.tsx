@@ -27,13 +27,13 @@ export default function StackedBarChart({ data, categories, note }: Props) {
     );
 
     return (
-        <Card>
+        <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">Composizione per categoria</CardTitle>
                 {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
-            <CardContent className="px-3 pb-3">
-                <ResponsiveContainer width="100%" height={200}>
+            <CardContent className="px-3 pb-3 flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis

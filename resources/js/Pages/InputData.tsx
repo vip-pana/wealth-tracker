@@ -184,7 +184,9 @@ export default function InputData({ assets, categories, month, availableMonths, 
     return (
         <>
             <Head title="Bilancio investimenti" />
-            <div className="p-4 space-y-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            {/* Full-height column: the cards above take what they need and the
+                asset table absorbs the rest, so only the rows scroll. */}
+            <div className="flex flex-col flex-1 min-h-0 p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={Scale}
                     title="Bilancio investimenti"
@@ -192,7 +194,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 />
 
                 {/* Header: the month's asset total, broken down by category */}
-                <div>
+                <div className="shrink-0">
                     <Card>
                         <CardContent className="p-3 space-y-2">
                             <div className="flex items-center justify-between gap-2">
@@ -292,8 +294,8 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 </div>
 
                 {/* Main asset card */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <Card className="flex flex-col min-h-0 flex-1">
+                    <CardHeader className="flex flex-row items-center justify-between pb-3 shrink-0">
                         <CardTitle className="text-base">
                             Asset — {formatMonthLong(month)}
                         </CardTitle>
@@ -338,7 +340,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                             </Button>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 flex flex-col min-h-0 flex-1">
                         <AssetTable
                             assets={assets}
                             onEdit={(a) => {

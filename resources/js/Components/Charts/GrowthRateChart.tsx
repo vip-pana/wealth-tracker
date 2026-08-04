@@ -22,16 +22,16 @@ interface Props {
 
 export default function GrowthRateChart({ data, title = 'Variazione tra snapshot (%)', note }: Props) {
     return (
-        <Card className="flex flex-col h-full">
+        <Card className="flex flex-col h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">{title}</CardTitle>
                 {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
             </CardHeader>
-            <CardContent className="px-3 pb-3 flex-1 min-h-[200px]">
+            <CardContent className="px-3 pb-3 flex-1 min-h-0">
                 {data.length === 0 ? (
                     <ChartEmptyState message="Servono almeno due snapshot per confrontare la variazione." />
                 ) : (
-                <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
