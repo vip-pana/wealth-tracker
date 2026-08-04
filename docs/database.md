@@ -73,13 +73,28 @@ php artisan backup:restore wealth-tracker/database-20260804-030000.sqlite.enc
 
 The command downloads the archive, verifies its MAC, decrypts it, and writes a
 plain `.sqlite` file into `storage/app/`. It accepts a local path too, so an
-archive fetched by hand restores without remote credentials. To put it live:
+archive fetched by hand restores without remote credentials.
 
-1. `docker compose stop app`
-2. Copy the decrypted file over `~/wealth-tracker-data/database.sqlite`
-3. `docker compose up -d app`
+To put it live:
 
-Never swap the file underneath a running container.
+```bash
+docker compose stop app
+rm -f ~/wealth-tracker-data/database.sqlite-wal \
+      ~/wealth-tracker-data/database.sqlite-shm   # <- not optional
+cp <restored file> ~/wealth-tracker-data/database.sqlite
+docker compose up -d app
+```
+
+> **Deleting the `-wal` and `-shm` files is required.** The database runs in WAL
+> mode, so `database.sqlite-wal` holds committed pages that are not yet in the
+> main file. Copying only the `.sqlite` leaves that stale WAL in place and SQLite
+> replays it over the restored database, mixing two unrelated states. The result
+> is corrupted B-trees while the row data stays readable — so nothing looks wrong
+> until a query walks a broken index and the app dies with
+> `database disk image is malformed`. See the playbook in
+> `context/debugging/playbooks.jsonl` for the repair.
+
+Never copy the database while the container is running.
 
 ### Why not sync the live DB to a cloud folder directly
 

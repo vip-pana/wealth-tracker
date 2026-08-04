@@ -97,9 +97,21 @@ class RestoreBackup extends Command
         $this->newLine();
         $this->info('Restored to: '.$target);
         $this->newLine();
-        $this->line('  To put it live, stop the app and copy this file over the');
-        $this->line('  database, then start the app again. Never swap the file');
-        $this->line('  underneath a running container.');
+        $this->line('  To put it live:');
+        $this->line('    1. docker compose stop app');
+        $this->line('    2. rm -f <data-dir>/database.sqlite-wal <data-dir>/database.sqlite-shm');
+        $this->line('    3. cp '.$target.' <data-dir>/database.sqlite');
+        $this->line('    4. docker compose up -d app');
+        $this->newLine();
+        // Step 2 is the one that bites. The database runs in WAL mode, so the
+        // -wal file holds committed pages that are not yet in the main file.
+        // Copying only the .sqlite leaves that stale WAL in place, and SQLite
+        // replays it over the restored file — mixing two unrelated database
+        // states and corrupting B-trees, with the row data still readable so
+        // the damage stays hidden until a query walks the broken index.
+        $this->warn('  Step 2 is not optional: a leftover -wal belongs to the OLD');
+        $this->warn('  database and SQLite will replay it over the restored file,');
+        $this->warn('  corrupting it. Never copy the database while the app runs.');
         $this->newLine();
 
         return Command::SUCCESS;
