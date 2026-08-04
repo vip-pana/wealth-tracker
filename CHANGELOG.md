@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.0](https://github.com/vip-pana/wealth-tracker/compare/v1.2.11...v1.3.0) (2026-08-04)
+
+
+### Features
+
+* **cashflow:** lead with the metrics, review only the new transactions ([#64](https://github.com/vip-pana/wealth-tracker/issues/64)) ([9a22322](https://github.com/vip-pana/wealth-tracker/commit/9a22322683870123e4e8de7f568ede154a14cda4))
+* month-paginated cashflow, Investments merged into Bilancio, carousel insights, profile on the Goal page ([#58](https://github.com/vip-pana/wealth-tracker/issues/58)) ([59747a7](https://github.com/vip-pana/wealth-tracker/commit/59747a76b2b580350e0598cffb960e033edeec80))
+
+
+### Bug Fixes
+
+* trust the tunnel proxy so the bank-consent flow stays on https ([#61](https://github.com/vip-pana/wealth-tracker/issues/61)) ([47689b7](https://github.com/vip-pana/wealth-tracker/commit/47689b70e68ef87e6b03f01f55a2739c7962356d))
+
+
+### Chores
+
+* **deps:** bump the composer-minor group with 2 updates ([#56](https://github.com/vip-pana/wealth-tracker/issues/56)) ([2db9a1f](https://github.com/vip-pana/wealth-tracker/commit/2db9a1fdd6efa5b61d9291f9b50159e137731b11))
+* **deps:** bump the npm-minor group with 2 updates ([#57](https://github.com/vip-pana/wealth-tracker/issues/57)) ([17f17b6](https://github.com/vip-pana/wealth-tracker/commit/17f17b6ff7e7706babbd50111684defc03dd26b9))
+* **pension:** remove the pension fund from the UI ([#60](https://github.com/vip-pana/wealth-tracker/issues/60)) ([38dc3b0](https://github.com/vip-pana/wealth-tracker/commit/38dc3b04192955b9e62935a52dfd835c1b49243c))
+
 ## [1.2.11](https://github.com/vip-pana/wealth-tracker/compare/v1.2.10...v1.2.11) (2026-07-26)
 
 
