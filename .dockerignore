@@ -8,8 +8,12 @@ storage/framework/sessions/
 storage/framework/views/
 bootstrap/cache/
 .env
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
+# Databases must come from the mounted data volume, never from the build
+# context. These patterns are deliberately `**/` — a bare `*.sqlite` only
+# matches the context root, so storage/app/database.sqlite was being baked into
+# the image, shipping real data and masking a failed volume mount.
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
 .git/
 .phpunit.cache/
