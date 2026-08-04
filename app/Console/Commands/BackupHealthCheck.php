@@ -34,7 +34,7 @@ class BackupHealthCheck extends Command
         // A failed run notifies on its own. This catches the quieter case: runs
         // that never happen at all (scheduler down, container not restarted),
         // where nothing throws and nothing is logged.
-        if ($latest === null) {
+        if (! $latest instanceof Carbon) {
             $this->warnStale($notify, 'Nessun backup trovato nello storage remoto.');
             $this->warn('No off-site backup found.');
 

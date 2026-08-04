@@ -49,7 +49,7 @@ class CreateBackup extends Action
 
         $disk = $this->remoteDisk();
 
-        if ($disk === null) {
+        if (! $disk instanceof Filesystem) {
             $this->cleanupOldBackups($backupDir, $retentionDays);
 
             return basename($localPath);
@@ -83,7 +83,7 @@ class CreateBackup extends Action
     {
         $disk = $this->remoteDisk();
 
-        if ($disk === null) {
+        if (! $disk instanceof Filesystem) {
             return null;
         }
 
@@ -92,7 +92,7 @@ class CreateBackup extends Action
         foreach ($disk->files($this->remotePrefix()) as $file) {
             $at = $this->timestampFromKey($file);
 
-            if ($at !== null && ($latest === null || $at->greaterThan($latest))) {
+            if ($at instanceof Carbon && (! $latest instanceof Carbon || $at->greaterThan($latest))) {
                 $latest = $at;
             }
         }
@@ -102,7 +102,7 @@ class CreateBackup extends Action
 
     public function hasRemote(): bool
     {
-        return $this->remoteDisk() !== null;
+        return $this->remoteDisk() instanceof Filesystem;
     }
 
     private function upload(Filesystem $disk, string $encryptedPath, string $timestamp): string
@@ -121,7 +121,7 @@ class CreateBackup extends Action
             // failed PUT returns false instead of raising.
             $written = $disk->writeStream($key, $stream);
         } catch (Throwable $e) {
-            throw new RuntimeException('Backup upload failed: '.$e->getMessage(), previous: $e);
+            throw new RuntimeException('Backup upload failed: '.$e->getMessage(), $e->getCode(), previous: $e);
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
@@ -142,7 +142,7 @@ class CreateBackup extends Action
         foreach ($disk->files($this->remotePrefix()) as $file) {
             $at = $this->timestampFromKey($file);
 
-            if ($at !== null && $at->lessThan($cutoff)) {
+            if ($at instanceof Carbon && $at->lessThan($cutoff)) {
                 $disk->delete($file);
             }
         }

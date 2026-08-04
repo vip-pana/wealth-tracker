@@ -21,15 +21,15 @@ use SensitiveParameter;
  */
 class EncryptBackup extends Action
 {
-    private const MAGIC = "WTBK1\0";
+    private const string MAGIC = "WTBK1\0";
 
-    private const CIPHER = 'aes-256-cbc';
+    private const string CIPHER = 'aes-256-cbc';
 
-    private const IV_BYTES = 16;
+    private const int IV_BYTES = 16;
 
-    private const MAC_BYTES = 32;
+    private const int MAC_BYTES = 32;
 
-    private const CHUNK_BYTES = 1_048_576;
+    private const int CHUNK_BYTES = 1_048_576;
 
     public function encrypt(string $sourcePath, string $targetPath): void
     {
@@ -152,7 +152,7 @@ class EncryptBackup extends Action
         $remaining = $cipherBytes;
 
         while ($remaining > 0) {
-            $want = (int) min(self::CHUNK_BYTES, $remaining);
+            $want = min(self::CHUNK_BYTES, $remaining);
             $chunk = (string) fread($in, $want);
             $remaining -= $want;
 
@@ -197,7 +197,7 @@ class EncryptBackup extends Action
 
         $remaining = $cipherBytes;
         while ($remaining > 0) {
-            $want = (int) min(self::CHUNK_BYTES, $remaining);
+            $want = min(self::CHUNK_BYTES, $remaining);
             hash_update($hmac, (string) fread($handle, $want));
             $remaining -= $want;
         }
