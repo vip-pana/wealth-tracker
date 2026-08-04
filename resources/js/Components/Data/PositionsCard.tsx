@@ -50,7 +50,7 @@ export default function PositionsCard({ returns }: { returns: PositionReturns | 
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base">Posizioni a quote</CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Rendimento reale su tutto lo storico: non segue il mese selezionato. Apri una posizione per lo storico transazioni.
+                        Su tutto lo storico — non segue il mese selezionato.
                     </p>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">

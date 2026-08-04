@@ -20,6 +20,18 @@ const CAT = (id: number, name: string, color = '#123456'): Asset['category'] => 
     macro_category: null,
 });
 
+// Net worth matching the month's total, i.e. nothing carried forward — the
+// default for tests that aren't about the reconciliation row.
+const RECON = {
+    currentNetWorth: 4000,
+    reconciliation: {
+        total: 4000,
+        currentMonthTotal: 4000,
+        carriedForwardTotal: 0,
+        carriedForward: [],
+    },
+};
+
 function asset(over: Partial<Asset> = {}): Asset {
     return {
         id: 1,
@@ -44,39 +56,36 @@ function asset(over: Partial<Asset> = {}): Asset {
 
 describe('AssetTable — empty state', () => {
     it('shows the empty message when there are no assets', () => {
-        render(<AssetTable assets={[]} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         expect(screen.getByText(/Nessun asset per questo mese/)).toBeInTheDocument();
     });
 });
 
-describe('AssetTable — grouping and totals', () => {
+describe('AssetTable — flat rows and totals', () => {
     const assets: Asset[] = [
         asset({ id: 1, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Conto', value: 1000 }),
         asset({ id: 2, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Libretto', value: 500 }),
         asset({ id: 3, category_id: 2, category: CAT(2, 'ETF'), name: 'VWCE', value: 2500 }),
     ];
 
-    it('renders one group header per category, in first-seen order', () => {
-        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
-        // Group header cells carry the category name + a member count.
-        expect(screen.getByText('Liquidità')).toBeInTheDocument();
-        expect(screen.getByText('ETF')).toBeInTheDocument();
-        // Two assets under Liquidità, one under ETF.
-        expect(screen.getByText('(2)')).toBeInTheDocument();
-        expect(screen.getByText('(1)')).toBeInTheDocument();
+    it('names the category on every row, with no group header', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+        // One "Liquidità" per asset in that category, not one shared header.
+        expect(screen.getAllByText('Liquidità')).toHaveLength(2);
+        expect(screen.getAllByText('ETF')).toHaveLength(1);
+        // The member count belonged to the collapsed group header.
+        expect(screen.queryByText('(2)')).not.toBeInTheDocument();
     });
 
-    it('shows a per-category subtotal and a month grand total', () => {
-        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
-        const has = (t: string) =>
-            Array.from(document.querySelectorAll('*')).some((e) => e.textContent?.replace(/[  ]/g, ' ').includes(t));
-        // Liquidità subtotal 1500, ETF 2500, month total 4000.
-        expect(has('1.500') || has('1500')).toBe(true);
-        expect(has('4.000') || has('4000')).toBe(true);
+    it('keeps assets of the same category consecutive', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+        const names = Array.from(document.querySelectorAll('tbody tr'))
+            .map((tr) => tr.querySelector('td')!.textContent);
+        expect(names).toEqual(['Conto', 'Libretto', 'VWCE']);
     });
 
-    it('lists each asset row under its group', () => {
-        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+    it('lists every asset', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         expect(screen.getByText('Conto')).toBeInTheDocument();
         expect(screen.getByText('Libretto')).toBeInTheDocument();
         expect(screen.getByText('VWCE')).toBeInTheDocument();
@@ -85,11 +94,12 @@ describe('AssetTable — grouping and totals', () => {
     it('fires onEdit with the asset when its pencil is clicked', async () => {
         const { default: userEvent } = await import('@testing-library/user-event');
         const onEdit = vi.fn();
-        render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={onEdit} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={onEdit} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         const row = screen.getByText('Conto').closest('tr')!;
-        // The row has an edit (pencil) and a delete (trash) button; the pencil is
-        // the first of the two.
+        // Deleting moved into the edit dialog, so the pencil is the row's only
+        // action for a plain asset.
         const buttons = within(row).getAllByRole('button');
+        expect(buttons).toHaveLength(1);
         await userEvent.click(buttons[0]);
         expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Conto' }));
     });
@@ -107,10 +117,26 @@ describe('AssetTable — month-over-month change', () => {
             .replace(/,\d+/g, '')
             .replace(/\p{Zs}/gu, '');
     const rowText = (name: string) => normalise(screen.getByText(name).closest('tr')!.textContent!);
+    const footerText = () => normalise(document.querySelector('tfoot')!.textContent!);
+
+    it('names the compared month in the column header', () => {
+        // previousValues come from the latest TRACKED month, which may be older
+        // than the previous calendar month — the header must say which.
+        const a = asset({ category_id: 1, name: 'Conto', value: 1100 });
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth="2025-04-01" {...RECON} />);
+
+        expect(screen.getByText(/vs aprile 2025/i)).toBeInTheDocument();
+    });
+
+    it('falls back to a neutral header when there is nothing to compare', () => {
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(screen.getByText('Variazione')).toBeInTheDocument();
+    });
 
     it('shows a gain against the previous month, with the percentage', () => {
         const a = asset({ category_id: 1, name: 'Conto', value: 1100 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth={null} {...RECON} />);
 
         // +100 € on 1000 € => +10.0%
         expect(rowText('Conto')).toContain('+100€');
@@ -119,7 +145,7 @@ describe('AssetTable — month-over-month change', () => {
 
     it('shows a loss in the negative direction', () => {
         const a = asset({ category_id: 1, name: 'Conto', value: 800 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth={null} {...RECON} />);
 
         // -200 € on 1000 € => -20.0%
         expect(rowText('Conto')).toContain('-200€');
@@ -128,32 +154,35 @@ describe('AssetTable — month-over-month change', () => {
 
     it('reads "invariato" when the value did not move', () => {
         const a = asset({ category_id: 1, name: 'Conto', value: 1000 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth={null} {...RECON} />);
 
-        expect(screen.getByText('invariato')).toBeInTheDocument();
+        // The footer sums to the same non-move, so both the row and the total
+        // read "invariato".
+        expect(rowText('Conto')).toContain('invariato');
     });
 
     it('reads "invariato" for a sub-cent float difference', () => {
         // A quantity-held asset re-priced identically lands a hair off zero; that
         // must not render as "+0,00 €".
         const a = asset({ category_id: 1, name: 'Conto', value: 1000.000000001 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth={null} {...RECON} />);
 
-        expect(screen.getByText('invariato')).toBeInTheDocument();
+        expect(rowText('Conto')).toContain('invariato');
     });
 
     it('shows a dash for an asset with no previous month', () => {
         // An asset added this month has nothing to compare against — a dash, not
         // a misleading +100%.
         const a = asset({ category_id: 1, name: 'Nuovo', value: 500 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
 
-        expect(screen.getByTitle('Nessun valore nel mese precedente')).toBeInTheDocument();
+        const row = screen.getByText('Nuovo').closest('tr')!;
+        expect(within(row).getByTitle('Nessun valore nel mese precedente')).toBeInTheDocument();
     });
 
     it('omits the percentage when the previous value was zero', () => {
         const a = asset({ category_id: 1, name: 'Conto', value: 500 });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 0 }} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 0 }} previousMonth={null} {...RECON} />);
 
         expect(rowText('Conto')).toContain('+500€');
         expect(rowText('Conto')).not.toContain('%');
@@ -170,7 +199,7 @@ describe('AssetTable — month-over-month change', () => {
                 assets={assets}
                 onEdit={vi.fn()}
                 prices={{}}
-                previousValues={{ '1|Conto': 1000, '2|Conto': 1000 }}
+                previousValues={{ '1|Conto': 1000, '2|Conto': 1000 }} previousMonth={null} {...RECON}
             />,
         );
 
@@ -186,11 +215,147 @@ describe('AssetTable — month-over-month change', () => {
             asset({ id: 1, category_id: 1, name: 'Conto', value: 1100 }),
             asset({ id: 2, category_id: 1, name: 'Nuovo', value: 500 }),
         ];
-        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} />);
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth={null} {...RECON} />);
 
-        const footer = normalise(screen.getByText('Totale mese').closest('div')!.textContent!);
-        expect(footer).toContain('+100€');
-        expect(footer).not.toContain('+600€');
+        expect(footerText()).toContain('+100€');
+        expect(footerText()).not.toContain('+600€');
+    });
+});
+
+describe('AssetTable — footer totals', () => {
+    const normalise = (text: string) =>
+        text
+            .replace(/(\d)\.(?=\d{3}\b)/g, '$1')
+            .replace(/,\d+/g, '')
+            .replace(/\p{Zs}/gu, '');
+    // The totals row is always the first of the footer; net worth may add a second.
+    const footer = () => document.querySelectorAll('tfoot tr')[0];
+    const cells = () => Array.from(footer().querySelectorAll('td')).map((c) => normalise(c.textContent!));
+
+    const assets: Asset[] = [
+        asset({ id: 1, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Conto', value: 1000 }),
+        asset({ id: 2, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Libretto', value: 500 }),
+        asset({ id: 3, category_id: 2, category: CAT(2, 'ETF'), name: 'VWCE', value: 2500 }),
+    ];
+
+    it('counts the assets and the categories they span', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(cells()[0]).toContain('3asset');
+        expect(cells()[1]).toContain('2categorie');
+    });
+
+    it('puts the value total under the value column', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(cells()[2]).toContain('4000');
+    });
+
+    it('shows the total change with its percentage under the change column', () => {
+        render(
+            <AssetTable
+                assets={assets}
+                onEdit={vi.fn()}
+                prices={{}}
+                previousValues={{ '1|Conto': 900, '1|Libretto': 500, '2|VWCE': 2100 }}
+                previousMonth="2025-05-01" {...RECON}
+            />,
+        );
+
+        // +100 on Conto, +400 on VWCE over a comparable base of 3500 => +14.3%.
+        expect(cells()[3]).toContain('+500');
+        expect(cells()[3]).toContain('+14.3%');
+    });
+
+    it('bases the percentage on the comparable assets, not on the month total', () => {
+        // 'Nuovo' inflates the value total but has no previous value: counting it
+        // in the base would report +9.1% instead of +10.0%.
+        const withNew = [
+            asset({ id: 1, category_id: 1, name: 'Conto', value: 1100 }),
+            asset({ id: 2, category_id: 1, name: 'Nuovo', value: 100 }),
+        ];
+        render(<AssetTable assets={withNew} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth="2025-05-01" {...RECON} />);
+
+        expect(cells()[3]).toContain('+10.0%');
+    });
+
+    it('shows a dash when nothing is comparable', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(within(footer() as HTMLElement).getByTitle('Nessun valore nel mese precedente')).toBeInTheDocument();
+    });
+});
+
+describe('AssetTable — read-only month', () => {
+    it('drops the edit action from every row', () => {
+        render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
+
+        const row = screen.getByText('Conto').closest('tr')!;
+        expect(within(row).queryAllByRole('button')).toHaveLength(0);
+    });
+
+    it('keeps the transactions action, which only reads', () => {
+        const a = asset({ name: 'VWCE', transaction_managed: true } as Partial<Asset>);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
+
+        const row = screen.getByText('VWCE').closest('tr')!;
+        expect(within(row).getByTitle('Vedi transazioni')).toBeInTheDocument();
+    });
+
+    it('does not tell an empty past month to use the add button', () => {
+        render(<AssetTable assets={[]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly pastMonth />);
+
+        expect(screen.getByText('Nessun asset registrato in questo mese.')).toBeInTheDocument();
+    });
+
+    it('still points at the add button when the lock is only temporary', () => {
+        // readOnly without pastMonth is a price refresh in flight: the month is
+        // still editable once it finishes, so the guidance stands.
+        render(<AssetTable assets={[]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
+
+        expect(screen.getByText(/Aggiungine uno con il pulsante sopra/)).toBeInTheDocument();
+    });
+});
+
+describe('AssetTable — net worth row', () => {
+    const normalise = (text: string) =>
+        text.replace(/(\d)\.(?=\d{3}\b)/g, '$1').replace(/,\d+/g, '').replace(/\p{Zs}/gu, '');
+    const rows = () => document.querySelectorAll('tfoot tr');
+
+    const carried = {
+        currentNetWorth: 3500,
+        reconciliation: {
+            total: 3500,
+            currentMonthTotal: 1000,
+            carriedForwardTotal: 2500,
+            carriedForward: [
+                { categoryId: 4, category: 'Bitcoin', color: '#f7931a', value: 2500, asOf: '2025-05-01' },
+            ],
+        },
+    };
+
+    it('adds a net worth row when a category is carried forward', () => {
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...carried} />);
+
+        expect(rows()).toHaveLength(2);
+        const netWorth = normalise(rows()[1].textContent!);
+        expect(netWorth).toContain('Patrimonio');
+        expect(netWorth).toContain('3500');
+    });
+
+    it('explains why net worth exceeds the month total', () => {
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...carried} />);
+
+        expect(rows()[1].textContent).toContain('Bitcoin');
+        expect(rows()[1].textContent).toContain('maggio 2025');
+    });
+
+    it('omits the row when net worth matches the month total', () => {
+        // Otherwise the same figure would appear twice with nothing to explain
+        // the repetition.
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(rows()).toHaveLength(1);
     });
 });
 
@@ -205,7 +370,7 @@ describe('AssetTable — freshness badges', () => {
                 assets={[a]}
                 onEdit={vi.fn()}
                 prices={{ BTC: { price: 100, fetched_at: iso(60_000) } as AssetPriceInfo }}
-                previousValues={{}}
+                previousValues={{}} previousMonth={null} {...RECON}
             />,
         );
         // The ticker symbol renders as its own pill.
@@ -214,20 +379,20 @@ describe('AssetTable — freshness badges', () => {
 
     it('shows a bank badge for a bank-linked asset', () => {
         const a = asset({ bank_linked: true, synced_at: iso(60_000) });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         expect(screen.getByText('Banca')).toBeInTheDocument();
     });
 
     it('flags a stalled broker sync as not updated', () => {
         // A broker sync older than two days is stale per brokerFreshness.
         const a = asset({ sync_source: 'broker', synced_at: iso(3 * 24 * 60 * 60_000) });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         expect(screen.getByText(/Scalable · non aggiornato/)).toBeInTheDocument();
     });
 
     it('shows a plain broker badge when the sync is fresh', () => {
         const a = asset({ sync_source: 'broker', synced_at: iso(60_000) });
-        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} />);
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         expect(screen.getByText('Scalable')).toBeInTheDocument();
         expect(screen.queryByText(/non aggiornato/)).not.toBeInTheDocument();
     });

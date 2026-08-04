@@ -3,6 +3,69 @@
  * so they can be unit-tested without rendering.
  */
 
+import type { Asset } from '@/types/models';
+
+/** Below half a cent a change is float noise, not a movement. */
+export const DELTA_EPSILON = 0.005;
+
+/**
+ * Change against the same asset a month earlier. Returns null when there is no
+ * comparable row (first tracked month, or an asset added this month), so the
+ * caller renders "—" instead of a misleading +100%.
+ *
+ * The percentage is dropped when the previous value was zero — a rise from zero
+ * has no meaningful percentage — but the absolute delta is still shown.
+ */
+export function monthDelta(
+    asset: Pick<Asset, 'category_id' | 'name' | 'value'>,
+    previousValues: Record<string, number>,
+): { delta: number; pct: number | null } | null {
+    const previous = previousValues[`${asset.category_id}|${asset.name}`];
+    if (previous === undefined) return null;
+
+    const delta = asset.value - previous;
+
+    return { delta, pct: previous !== 0 ? (delta / Math.abs(previous)) * 100 : null };
+}
+
+/**
+ * Whole months between a "YYYY-MM-…" date and now, used to grade how stale a
+ * carried-forward category is. Never negative: a future date reads as 0.
+ */
+export function monthsSince(date: string, now: Date = new Date()): number {
+    const [year, month] = date.split('-').map(Number);
+    const months = (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month);
+
+    return Math.max(0, months);
+}
+
+/**
+ * Month-over-month change of a whole category. Only assets that HAVE a previous
+ * value contribute, so an asset added this month inflates the category total
+ * without inflating its delta. Null when nothing in the category is comparable.
+ */
+export function categoryDelta(
+    assets: Pick<Asset, 'category_id' | 'name' | 'value'>[],
+    previousValues: Record<string, number>,
+): { delta: number; pct: number | null } | null {
+    let delta = 0;
+    let base = 0;
+    let comparable = 0;
+
+    for (const asset of assets) {
+        const change = monthDelta(asset, previousValues);
+        if (change === null) continue;
+
+        comparable++;
+        delta += change.delta;
+        base += previousValues[`${asset.category_id}|${asset.name}`];
+    }
+
+    if (comparable === 0) return null;
+
+    return { delta, pct: base !== 0 ? (delta / Math.abs(base)) * 100 : null };
+}
+
 /**
  * Percentage change between two net-worth points. Returns null when there is no
  * usable baseline (missing points, or a previous value of zero).

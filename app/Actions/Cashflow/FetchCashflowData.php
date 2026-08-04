@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Cashflow;
 
 use App\Actions\Action;
+use App\Actions\Advisor\ComputePositionReturns;
 use App\Actions\Dashboard\ComputeEmergencyBuffer;
 use App\Actions\Transactions\ComputeMonthlyExpense;
 use App\Actions\Transactions\ComputeMonthlySalary;
@@ -21,6 +22,7 @@ class FetchCashflowData extends Action
         private readonly ComputeMonthlyExpense $computeMonthlyExpense,
         private readonly ComputeMonthlySalary $computeMonthlySalary,
         private readonly FetchTransactionMonths $fetchTransactionMonths,
+        private readonly ComputePositionReturns $computePositionReturns,
     ) {}
 
     /**
@@ -75,6 +77,9 @@ class FetchCashflowData extends Action
                 'targetMonths' => InvestorProfile::query()->first()?->emergency_fund_months,
                 'monthlyExpense' => $this->computeMonthlyExpense->run(),
             ],
+            // Whole-history and ISIN-deduplicated: unlike everything else here
+            // it is not scoped to $month, so the positions card says so.
+            'positionReturns' => $this->computePositionReturns->run(),
         ];
     }
 

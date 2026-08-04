@@ -8,10 +8,12 @@ import { Button } from '@/Components/ui/button';
 import { SegmentedToggle } from '@/Components/ui/SegmentedToggle';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Money } from '@/Components/ui/Money';
+import PositionsCard from '@/Components/Data/PositionsCard';
 import { currentMonth, formatDateLong, formatMonthLong, stepMonth } from '@/lib/formatters';
 import { bankFreshness } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import { ArrowLeftRight, ChevronLeft, ChevronRight, EyeOff, Wallet, Info, Shield, RefreshCw } from 'lucide-react';
+import type { PositionReturns } from '@/types/analytics';
 
 type FlowType = 'income' | 'expense' | 'transfer';
 
@@ -42,6 +44,8 @@ interface Props {
     availableMonths: string[];
     monthlySalary: number | null;
     emergencyFund: { buffer: number; targetMonths: number | null; monthlyExpense: number | null };
+    // Whole-history, not scoped to the selected month.
+    positionReturns: PositionReturns | null;
 }
 
 const FLOW_OPTIONS: { value: FlowType; label: string }[] = [
@@ -78,7 +82,7 @@ function StatCard({ label, value, tone, hint, help }: { label: string; value: nu
 
 type Edit = { flow_type: FlowType; excluded: boolean };
 
-export default function Cashflow({ accounts, transactions, month, availableMonths, monthlySalary, emergencyFund }: Props) {
+export default function Cashflow({ accounts, transactions, month, availableMonths, monthlySalary, emergencyFund, positionReturns }: Props) {
     const [accountFilter, setAccountFilter] = useState<'all' | number>('all');
     const [typeFilter, setTypeFilter] = useState<'all' | FlowType | 'excluded'>('all');
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -539,6 +543,8 @@ export default function Cashflow({ accounts, transactions, month, availableMonth
                         ))}
                     </div>
                 )}
+
+                <PositionsCard returns={positionReturns} />
             </div>
 
             {edits.size > 0 && (

@@ -22,9 +22,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // https, non-localhost host) do we trust the proxy's X-Forwarded-* headers,
         // so Laravel generates https URLs instead of mixed-content http ones. In
         // normal local use the redirect is empty/localhost and no proxy is trusted.
-        // Uses env() because the config service isn't bootstrapped at this point;
-        // the tunnel is a dev-time flow where config is never cached anyway.
-        $redirect = (string) env('ENABLE_BANKING_REDIRECT_URL', '');
+        // Read the value straight out of .env: this closure runs before Laravel
+        // bootstraps Dotenv, so env(), $_SERVER and getenv() are all still empty
+        // here — the earlier env() version silently never trusted the proxy, which
+        // let http URLs leak into the consent flow and trip mixed-content blocks.
+        $redirect = '';
+        $envPath = dirname(__DIR__).'/.env';
+        if (is_readable($envPath)) {
+            $contents = (string) file_get_contents($envPath);
+            if (preg_match('/^ENABLE_BANKING_REDIRECT_URL=(.*)$/m', $contents, $m) === 1) {
+                $redirect = trim($m[1], " \t\"'");
+            }
+        }
         $host = parse_url($redirect, PHP_URL_HOST);
         $behindTunnel = str_starts_with($redirect, 'https://')
             && is_string($host)
