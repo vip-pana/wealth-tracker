@@ -21,6 +21,7 @@ import {
     DialogFooter,
 } from '@/Components/ui/dialog';
 import { Money } from '@/Components/ui/Money';
+import DeleteAssetButton from '@/Components/Data/DeleteAssetButton';
 import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 
 type Mode = 'manual' | 'ticker';
@@ -31,11 +32,14 @@ interface Props {
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     month: string;
     editAsset?: Asset | null;
+    // Category to select when creating a new asset (e.g. opened from a category
+    // that has no row this month). Ignored when editing.
+    prefillCategoryId?: number | null;
     prices: Record<string, AssetPriceInfo>;
     previousValues: Record<string, number>;
 }
 
-export default function AssetForm({ open, onClose, categories, month, editAsset, prices, previousValues }: Props) {
+export default function AssetForm({ open, onClose, categories, month, editAsset, prefillCategoryId, prices, previousValues }: Props) {
     const isEdit = !!editAsset;
 
     const initialMode = (): Mode =>
@@ -45,7 +49,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
     const [showWallet, setShowWallet] = useState(!!editAsset?.wallet_address);
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
-        category_id:    editAsset?.category_id?.toString() ?? '',
+        category_id:    editAsset?.category_id?.toString() ?? prefillCategoryId?.toString() ?? '',
         name:           editAsset?.name ?? '',
         ticker:         editAsset?.ticker ?? '',
         isin:           editAsset?.isin ?? '',
@@ -60,7 +64,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
     useEffect(() => {
         if (!open) return;
         setData({
-            category_id:    editAsset?.category_id?.toString() ?? '',
+            category_id:    editAsset?.category_id?.toString() ?? prefillCategoryId?.toString() ?? '',
             name:           editAsset?.name ?? '',
             ticker:         editAsset?.ticker ?? '',
             isin:           editAsset?.isin ?? '',
@@ -77,7 +81,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
         setMode(editAsset?.bank_linked ? 'manual' : editAsset?.ticker ? 'ticker' : 'manual');
         setShowWallet(!!editAsset?.wallet_address);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, editAsset?.id, month]);
+    }, [open, editAsset?.id, prefillCategoryId, month]);
 
     const switchMode = (m: Mode) => {
         setMode(m);
@@ -437,13 +441,23 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                         />
                     </div>
 
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={handleClose}>
-                            Annulla
-                        </Button>
-                        <Button type="submit" disabled={processing}>
-                            {processing ? 'Salvando...' : isEdit ? 'Salva modifiche' : 'Aggiungi'}
-                        </Button>
+                    <DialogFooter className="sm:justify-between">
+                        {/* Deleting is only meaningful on an existing asset, and
+                            sits apart from the save actions so it isn't a
+                            neighbour of the confirm button. */}
+                        {editAsset ? (
+                            <DeleteAssetButton asset={editAsset} variant="button" onDeleted={onClose} />
+                        ) : (
+                            <span />
+                        )}
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" onClick={handleClose}>
+                                Annulla
+                            </Button>
+                            <Button type="submit" disabled={processing}>
+                                {processing ? 'Salvando...' : isEdit ? 'Salva modifiche' : 'Aggiungi'}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>

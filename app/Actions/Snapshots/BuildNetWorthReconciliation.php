@@ -29,7 +29,7 @@ class BuildNetWorthReconciliation extends Action
      *     total: float,
      *     currentMonthTotal: float,
      *     carriedForwardTotal: float,
-     *     carriedForward: list<array{category: string, value: float, asOf: string}>
+     *     carriedForward: list<array{categoryId: int, category: string, color: string, value: float, asOf: string}>
      * }
      */
     public function run(string $date, string $referenceMonth): array
@@ -60,8 +60,12 @@ class BuildNetWorthReconciliation extends Action
                 continue;
             }
 
+            // The id and colour let the page render these as ghost cards among
+            // the live per-category cards, and open the asset form pre-filled.
             $carriedForward[] = [
+                'categoryId' => $category->id,
                 'category' => $category->name,
+                'color' => $category->color,
                 'value' => $value,
                 'asOf' => $asOf[$categoryId],
             ];

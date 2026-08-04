@@ -8,7 +8,6 @@ use App\Actions\Input\FetchInputData;
 use App\Models\Asset;
 use App\Models\AssetPrice;
 use App\Models\Category;
-use App\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,30 +81,77 @@ class FetchInputDataTest extends TestCase
         $this->assertSame(250.0, $data['previousValues'][$category->id.'|Sconosciuto']);
     }
 
-    public function test_position_returns_is_null_without_transaction_managed_assets(): void
+    public function test_copyable_assets_lists_only_what_the_month_is_missing(): void
     {
+        // The real case: last month held Bitcoin and a bank account, this month
+        // only the bank account was carried over.
+        $bank = Category::factory()->create(['name' => 'Liquidità']);
+        $crypto = Category::factory()->create(['name' => 'Bitcoin']);
+        Asset::factory()->create(['category_id' => $bank->id, 'name' => 'Conto', 'value' => 500, 'date' => '2026-07-01']);
+        Asset::factory()->create(['category_id' => $crypto->id, 'name' => 'Wallet', 'value' => 900, 'date' => '2026-07-01']);
+        Asset::factory()->create(['category_id' => $bank->id, 'name' => 'Conto', 'value' => 600, 'date' => '2026-08-01']);
+
+        $data = app(FetchInputData::class)->run('2026-08-01');
+
+        $this->assertSame('2026-07-01', $data['previousMonth']);
+        $this->assertCount(1, $data['copyableAssets']);
+        $this->assertSame('Wallet', $data['copyableAssets'][0]['name']);
+        $this->assertSame($crypto->id, $data['copyableAssets'][0]['category_id']);
+    }
+
+    public function test_copyable_assets_is_empty_on_the_earliest_month(): void
+    {
+        $category = Category::factory()->create();
+        Asset::factory()->create(['category_id' => $category->id, 'name' => 'Conto', 'date' => '2026-06-01']);
+
+        $data = app(FetchInputData::class)->run('2026-06-01');
+
+        $this->assertNull($data['previousMonth']);
+        $this->assertSame([], $data['copyableAssets']);
+    }
+
+    public function test_copyable_asset_of_a_quantity_held_asset_carries_its_priced_value(): void
+    {
+        // Same trap as previousValues: the `value` column is 0 for these, so the
+        // picker would offer "Bitcoin — 0 €" if it read the column.
+        $category = Category::factory()->create();
+        AssetPrice::create(['ticker' => 'BTC', 'price' => 50000.0, 'fetched_at' => now()]);
+        Asset::factory()->create([
+            'category_id' => $category->id,
+            'name' => 'Bitcoin Wallet',
+            'ticker' => 'BTC',
+            'quantity' => 0.5,
+            'value' => 0,
+            'date' => '2026-07-01',
+        ]);
+        Asset::factory()->create(['category_id' => $category->id, 'name' => 'Altro', 'date' => '2026-08-01']);
+
+        $data = app(FetchInputData::class)->run('2026-08-01');
+
+        $this->assertSame(25000.0, $data['copyableAssets'][0]['value']);
+    }
+
+    public function test_copyable_assets_excludes_illiquid_categories(): void
+    {
+        $liquid = Category::factory()->create();
+        $illiquid = Category::factory()->create(['macro_category' => 'Fondo Pensione']);
+        Asset::factory()->create(['category_id' => $liquid->id, 'name' => 'Conto', 'date' => '2026-07-01']);
+        Asset::factory()->create(['category_id' => $illiquid->id, 'name' => 'Pensione', 'date' => '2026-07-01']);
+        Asset::factory()->create(['category_id' => $liquid->id, 'name' => 'Altro', 'date' => '2026-08-01']);
+
+        $data = app(FetchInputData::class)->run('2026-08-01');
+
+        $this->assertSame(['Conto'], array_column($data['copyableAssets'], 'name'));
+    }
+
+    public function test_does_not_carry_position_returns(): void
+    {
+        // Positions moved to the Cashflow page: the Bilancio is per-month asset
+        // bookkeeping and must not pay for a whole-history computation.
         Asset::factory()->create(['date' => '2026-06-01']);
 
         $data = app(FetchInputData::class)->run('2026-06-01');
 
-        $this->assertArrayHasKey('positionReturns', $data);
-        $this->assertNull($data['positionReturns']);
-    }
-
-    public function test_position_returns_spans_the_whole_history_not_the_requested_month(): void
-    {
-        // The position is built from transactions, which carry no month scoping:
-        // asking for a month that holds no asset row still returns the position.
-        $asset = Asset::factory()->create(['name' => 'ACWI', 'ticker' => 'ACWI', 'isin' => 'IE00B6R52259', 'date' => '2026-05-01']);
-        Transaction::factory()->for($asset)->create([
-            'type' => Transaction::TYPE_BUY, 'shares' => 10, 'price_per_share' => 100, 'date' => '2026-05-10',
-        ]);
-        AssetPrice::create(['ticker' => 'ACWI', 'price' => 120, 'currency' => 'EUR', 'fetched_at' => now()]);
-
-        $data = app(FetchInputData::class)->run('2026-08-01');
-
-        $this->assertNotNull($data['positionReturns']);
-        $this->assertSame(1000.0, $data['positionReturns']['aggregate']['cost_basis']);
-        $this->assertSame(1200.0, $data['positionReturns']['aggregate']['current_value']);
+        $this->assertArrayNotHasKey('positionReturns', $data);
     }
 }

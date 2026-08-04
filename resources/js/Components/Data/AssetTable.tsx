@@ -1,24 +1,19 @@
 import { useState } from 'react';
-import { useForm } from '@inertiajs/react';
-import { Pencil, Trash2, ChevronDown, ChevronRight, Landmark, CandlestickChart, AlertTriangle, ReceiptText } from 'lucide-react';
+import { Pencil, Landmark, CandlestickChart, AlertTriangle, ReceiptText } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from '@/Components/ui/dialog';
 import {
     Table,
     TableBody,
     TableCell,
+    TableFooter,
     TableHead,
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { priceFreshness, bankFreshness, brokerFreshness } from '@/lib/metrics';
+import { DeltaAmount } from '@/Components/Data/DeltaAmount';
+import { NetWorthReconciliation, type Reconciliation } from '@/Components/Data/NetWorthReconciliation';
+import { priceFreshness, bankFreshness, brokerFreshness, monthDelta, categoryDelta } from '@/lib/metrics';
+import { formatMonthLong } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import TransactionsDialog from '@/Components/Data/TransactionsDialog';
 import { Money } from '@/Components/ui/Money';
@@ -31,324 +26,247 @@ interface Props {
     // Value of each asset in the most recent month before this one, keyed
     // "category_id|name" (see FetchInputData::previousValues).
     previousValues: Record<string, number>;
+    // The month those values come from — the latest tracked month before the
+    // current one, not necessarily the previous calendar month. Null on the
+    // first tracked month, where the column has nothing to compare against.
+    previousMonth: string | null;
+    // Net worth as of today, which exceeds the month's asset total whenever a
+    // category has no row this month and still counts at its last known value.
+    currentNetWorth: number;
+    reconciliation: Reconciliation;
+    // Hides the per-row edit action. Set for a past month — a record, not a
+    // worksheet — and while a price refresh is in flight, so nothing is edited
+    // against values that are about to change under it.
+    readOnly?: boolean;
+    // Whether the month itself is closed, as opposed to temporarily locked.
+    // Only the wording of the empty state depends on the difference.
+    pastMonth?: boolean;
 }
 
-/**
- * Change against the same asset a month earlier. Returns null when there is no
- * comparable row (first tracked month, or an asset added this month), so the
- * cell reads "—" instead of a misleading +100%.
- *
- * The percentage is dropped when the previous value was zero — a rise from zero
- * has no meaningful percentage — but the absolute delta is still shown.
- */
-function monthDelta(asset: Asset, previousValues: Record<string, number>): { delta: number; pct: number | null } | null {
-    const previous = previousValues[`${asset.category_id}|${asset.name}`];
-    if (previous === undefined) return null;
 
-    const delta = asset.value - previous;
-
-    return { delta, pct: previous !== 0 ? (delta / Math.abs(previous)) * 100 : null };
-}
-
-// One asset's month-over-month change, or a muted dash when incomparable.
-function DeltaCell({ asset, previousValues }: { asset: Asset; previousValues: Record<string, number> }) {
-    const change = monthDelta(asset, previousValues);
-
-    if (change === null) {
-        return <span className="text-muted-foreground" title="Nessun valore nel mese precedente">—</span>;
-    }
-
-    // An unchanged value is information ("invariato"), not absence, so it is
-    // shown plainly rather than coloured as a gain. Compared against half a cent
-    // rather than exact zero: a quantity-held asset re-priced identically lands
-    // on a float a hair off zero, which would otherwise render "+0,00 €".
-    if (Math.abs(change.delta) < 0.005) {
-        return <span className="text-muted-foreground">invariato</span>;
-    }
+function AssetRow({ asset, onEdit, onViewTransactions, prices, previousValues, readOnly }: { asset: Asset; onEdit: (a: Asset) => void; onViewTransactions: (a: Asset) => void; prices: Record<string, AssetPriceInfo>; previousValues: Record<string, number>; readOnly: boolean }) {
+    const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
+    // Drive the bank badge off the live link state (same signal as the
+    // edit-modal lock), and the freshness line off the last sync time.
+    const bankSync = asset.bank_linked ? bankFreshness(asset.synced_at) : null;
+    // A broker-synced holding (e.g. Scalable) surfaces its own freshness
+    // so a stalled sync (expired session) shows as stale.
+    const brokerSync = asset.sync_source === 'broker'
+        ? brokerFreshness(asset.synced_at)
+        : null;
 
     return (
-        <span className={change.delta > 0 ? 'text-green-500' : 'text-red-500'}>
-            {change.delta > 0 && '+'}
-            <Money value={change.delta} />
-            {change.pct !== null && (
-                <span className="text-xs">
-                    {' '}({change.pct > 0 && '+'}{change.pct.toFixed(1)}%)
-                </span>
-            )}
-        </span>
-    );
-}
-
-function DeleteButton({ asset }: { asset: Asset }) {
-    const [open, setOpen] = useState(false);
-    const { delete: destroy, processing } = useForm({});
-
-    return (
-        <>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-accent"
-                onClick={() => setOpen(true)}
-            >
-                <Trash2 className="w-4 h-4" />
-            </Button>
-
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Elimina asset</DialogTitle>
-                        <DialogDescription className="sr-only">Conferma la rimozione di questo asset dal mese corrente.</DialogDescription>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Stai per rimuovere <span className="font-medium text-foreground">{asset.name}</span> dal mese corrente. Gli altri mesi non vengono modificati.
-                    </p>
-                    {asset.bank_linked && (
-                        <p className="flex items-start gap-1.5 text-sm text-amber-500">
-                            <Landmark className="w-4 h-4 shrink-0 mt-0.5" />
-                            <span>Questo asset è collegato a un conto bancario: verrà ricreato al prossimo aggiornamento dei saldi. Per rimuoverlo davvero, scollega prima il conto in Impostazioni → Conti bancari.</span>
+        <TableRow>
+            <TableCell>
+                <div>
+                    <div className="flex items-center gap-2">
+                        <p className="font-medium">{asset.name}</p>
+                        {asset.ticker && (
+                            <span
+                                className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-mono',
+                                    freshness?.stale
+                                        ? 'bg-muted text-muted-foreground'
+                                        : 'bg-blue-500/10 text-blue-400',
+                                )}
+                                title={freshness?.label}
+                            >
+                                <span
+                                    className={cn(
+                                        'w-1.5 h-1.5 rounded-full',
+                                        freshness?.stale ? 'bg-muted-foreground' : 'bg-blue-400 animate-pulse',
+                                    )}
+                                />
+                                {asset.ticker}
+                            </span>
+                        )}
+                        {bankSync && (
+                            <span
+                                className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
+                                title="Saldo sincronizzato dal conto bancario collegato"
+                            >
+                                <Landmark className="w-3 h-3" aria-hidden />
+                                Banca
+                            </span>
+                        )}
+                        {brokerSync && (
+                            <span
+                                className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs',
+                                    brokerSync.stale ? 'bg-amber-500/10 text-amber-500' : 'bg-indigo-500/10 text-indigo-400',
+                                )}
+                                title={brokerSync.stale
+                                    ? 'Sincronizzazione Scalable ferma: il proxy potrebbe essere spento o la sessione scaduta'
+                                    : 'Valore sincronizzato dal broker Scalable'}
+                            >
+                                {brokerSync.stale
+                                    ? <AlertTriangle className="w-3 h-3" aria-hidden />
+                                    : <CandlestickChart className="w-3 h-3" aria-hidden />}
+                                {brokerSync.stale ? 'Scalable · non aggiornato' : 'Scalable'}
+                            </span>
+                        )}
+                    </div>
+                    {asset.ticker && asset.quantity !== null && (
+                        <p className="text-xs text-muted-foreground">
+                            {asset.quantity} unità
+                            {asset.price !== null && (
+                                <> · <Money value={asset.price} />/unità</>
+                            )}
+                            {freshness && (
+                                <> · <span className={cn(freshness.stale && 'text-amber-500')}>{freshness.label}</span></>
+                            )}
+                            {asset.wallet_address && (
+                                <> · <span className="font-mono" title={asset.wallet_address}>{asset.wallet_address.slice(0, 8)}…{asset.wallet_address.slice(-6)}</span></>
+                            )}
                         </p>
                     )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setOpen(false)} disabled={processing}>
-                            Annulla
-                        </Button>
+                    {bankSync && (
+                        <p className="text-xs text-muted-foreground">
+                            Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
+                        </p>
+                    )}
+                    {brokerSync && (
+                        <p className="text-xs text-muted-foreground">
+                            Valore da Scalable · <span className={cn(brokerSync.stale && 'text-amber-500')}>{brokerSync.label}</span>
+                            {brokerSync.stale && <span className="text-amber-500"> · sincronizzazione ferma</span>}
+                        </p>
+                    )}
+                    {asset.notes && !asset.ticker && (
+                        <p className="text-xs text-muted-foreground">{asset.notes}</p>
+                    )}
+                </div>
+            </TableCell>
+            <TableCell>
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: asset.category.color }}
+                    />
+                    {asset.category.name}
+                </span>
+            </TableCell>
+            <TableCell className="text-right font-mono">
+                <Money value={asset.value} />
+            </TableCell>
+            <TableCell className="text-right font-mono whitespace-nowrap">
+                <DeltaAmount change={monthDelta(asset, previousValues)} />
+            </TableCell>
+            <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                    {asset.transaction_managed && (
                         <Button
-                            variant="destructive"
-                            disabled={processing}
-                            onClick={() => destroy(`/assets/${asset.id}`, { onSuccess: () => setOpen(false) })}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            title="Vedi transazioni"
+                            onClick={() => onViewTransactions(asset)}
                         >
-                            Elimina
+                            <ReceiptText className="w-4 h-4" />
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+                    )}
+                    {!readOnly && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                            onClick={() => onEdit(asset)}
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+            </TableCell>
+        </TableRow>
     );
 }
 
-function CategoryGroup({ assets, onEdit, onViewTransactions, prices, previousValues }: { assets: Asset[]; onEdit: (a: Asset) => void; onViewTransactions: (a: Asset) => void; prices: Record<string, AssetPriceInfo>; previousValues: Record<string, number> }) {
-    const [open, setOpen] = useState(true);
-    const cat = assets[0].category;
-    const total = assets.reduce((sum, a) => sum + a.value, 0);
-
-    // The group's change sums only the assets that HAVE a previous value, so a
-    // newly added asset inflates the total without inflating the delta.
-    const comparable = assets.filter((a) => monthDelta(a, previousValues) !== null);
-    const groupDelta = comparable.reduce((sum, a) => sum + (monthDelta(a, previousValues)?.delta ?? 0), 0);
-
-    return (
-        <>
-            <TableRow
-                className="cursor-pointer hover:bg-muted/50 bg-muted/20"
-                onClick={() => setOpen((o) => !o)}
-            >
-                <TableCell colSpan={4} className="py-2 px-4">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                            {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-                            <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{ backgroundColor: cat.color }}
-                            />
-                            <span className="text-sm font-medium">
-                                {cat.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">({assets.length})</span>
-                        </div>
-                        <div className="flex items-center gap-4 font-mono">
-                            <Money value={total} className="text-sm font-semibold" />
-                            {comparable.length > 0 && Math.abs(groupDelta) >= 0.005 && (
-                                <span className={cn('text-xs', groupDelta > 0 ? 'text-green-500' : 'text-red-500')}>
-                                    {groupDelta > 0 && '+'}
-                                    <Money value={groupDelta} />
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </TableCell>
-            </TableRow>
-            {open && assets.map((asset) => {
-                const freshness = asset.ticker ? priceFreshness(prices[asset.ticker]?.fetched_at) : null;
-                // Drive the bank badge off the live link state (same signal as the
-                // edit-modal lock), and the freshness line off the last sync time.
-                const bankSync = asset.bank_linked ? bankFreshness(asset.synced_at) : null;
-                // A broker-synced holding (e.g. Scalable) surfaces its own freshness
-                // so a stalled sync (expired session) shows as stale.
-                const brokerSync = asset.sync_source === 'broker'
-                    ? brokerFreshness(asset.synced_at)
-                    : null;
-                return (
-                <TableRow key={asset.id}>
-                    <TableCell className="pl-10">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <p className="font-medium">{asset.name}</p>
-                                {asset.ticker && (
-                                    <span
-                                        className={cn(
-                                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-mono',
-                                            freshness?.stale
-                                                ? 'bg-muted text-muted-foreground'
-                                                : 'bg-blue-500/10 text-blue-400',
-                                        )}
-                                        title={freshness?.label}
-                                    >
-                                        <span
-                                            className={cn(
-                                                'w-1.5 h-1.5 rounded-full',
-                                                freshness?.stale ? 'bg-muted-foreground' : 'bg-blue-400 animate-pulse',
-                                            )}
-                                        />
-                                        {asset.ticker}
-                                    </span>
-                                )}
-                                {bankSync && (
-                                    <span
-                                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400"
-                                        title="Saldo sincronizzato dal conto bancario collegato"
-                                    >
-                                        <Landmark className="w-3 h-3" aria-hidden />
-                                        Banca
-                                    </span>
-                                )}
-                                {brokerSync && (
-                                    <span
-                                        className={cn(
-                                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs',
-                                            brokerSync.stale ? 'bg-amber-500/10 text-amber-500' : 'bg-indigo-500/10 text-indigo-400',
-                                        )}
-                                        title={brokerSync.stale
-                                            ? 'Sincronizzazione Scalable ferma: il proxy potrebbe essere spento o la sessione scaduta'
-                                            : 'Valore sincronizzato dal broker Scalable'}
-                                    >
-                                        {brokerSync.stale
-                                            ? <AlertTriangle className="w-3 h-3" aria-hidden />
-                                            : <CandlestickChart className="w-3 h-3" aria-hidden />}
-                                        {brokerSync.stale ? 'Scalable · non aggiornato' : 'Scalable'}
-                                    </span>
-                                )}
-                            </div>
-                            {asset.ticker && asset.quantity !== null && (
-                                <p className="text-xs text-muted-foreground">
-                                    {asset.quantity} unità
-                                    {asset.price !== null && (
-                                        <> · <Money value={asset.price} />/unità</>
-                                    )}
-                                    {freshness && (
-                                        <> · <span className={cn(freshness.stale && 'text-amber-500')}>{freshness.label}</span></>
-                                    )}
-                                    {asset.wallet_address && (
-                                        <> · <span className="font-mono" title={asset.wallet_address}>{asset.wallet_address.slice(0, 8)}…{asset.wallet_address.slice(-6)}</span></>
-                                    )}
-                                </p>
-                            )}
-                            {bankSync && (
-                                <p className="text-xs text-muted-foreground">
-                                    Saldo da banca · <span className={cn(bankSync.stale && 'text-amber-500')}>{bankSync.label}</span>
-                                </p>
-                            )}
-                            {brokerSync && (
-                                <p className="text-xs text-muted-foreground">
-                                    Valore da Scalable · <span className={cn(brokerSync.stale && 'text-amber-500')}>{brokerSync.label}</span>
-                                    {brokerSync.stale && <span className="text-amber-500"> · sincronizzazione ferma</span>}
-                                </p>
-                            )}
-                            {asset.notes && !asset.ticker && (
-                                <p className="text-xs text-muted-foreground">{asset.notes}</p>
-                            )}
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                        <Money value={asset.value} />
-                    </TableCell>
-                    <TableCell className="text-right font-mono whitespace-nowrap">
-                        <DeltaCell asset={asset} previousValues={previousValues} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                            {asset.transaction_managed && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                                    title="Vedi transazioni"
-                                    onClick={() => onViewTransactions(asset)}
-                                >
-                                    <ReceiptText className="w-4 h-4" />
-                                </Button>
-                            )}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                                onClick={() => onEdit(asset)}
-                            >
-                                <Pencil className="w-4 h-4" />
-                            </Button>
-                            <DeleteButton asset={asset} />
-                        </div>
-                    </TableCell>
-                </TableRow>
-                );
-            })}
-        </>
-    );
-}
-
-export default function AssetTable({ assets, onEdit, prices, previousValues }: Props) {
+export default function AssetTable({ assets, onEdit, prices, previousValues, previousMonth, currentNetWorth, reconciliation, readOnly = false, pastMonth = false }: Props) {
     const [txAsset, setTxAsset] = useState<Asset | null>(null);
 
     if (assets.length === 0) {
         return (
             <div className="py-12 text-center text-muted-foreground text-sm">
-                Nessun asset per questo mese. Aggiungine uno con il pulsante sopra.
+                {pastMonth
+                    ? 'Nessun asset registrato in questo mese.'
+                    : 'Nessun asset per questo mese. Aggiungine uno con il pulsante sopra.'}
             </div>
         );
     }
 
     const total = assets.reduce((sum, a) => sum + a.value, 0);
-    // Same rule as the per-category delta: only assets with a previous value
-    // count, so adding an asset this month doesn't read as growth.
-    const comparable = assets.filter((a) => monthDelta(a, previousValues) !== null);
-    const totalDelta = comparable.reduce((sum, a) => sum + (monthDelta(a, previousValues)?.delta ?? 0), 0);
+    // Only assets with a previous value count, so adding an asset this month
+    // doesn't read as growth — and the percentage is over that same comparable
+    // base, not over `total`, which would understate the move.
+    const totalDelta = categoryDelta(assets, previousValues);
 
-    // Group by category_id preserving sort order
+    // The table is flat, but assets of the same category still sit together:
+    // group by category_id in first-seen order, then flatten.
     const groups = new Map<number, Asset[]>();
     for (const asset of assets) {
         if (!groups.has(asset.category_id)) groups.set(asset.category_id, []);
         groups.get(asset.category_id)!.push(asset);
     }
+    const ordered = [...groups.values()].flat();
 
     return (
         <div>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Asset</TableHead>
-                        <TableHead className="text-right">Valore</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">vs mese prec.</TableHead>
-                        <TableHead className="text-right w-20">Azioni</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {[...groups.entries()].map(([categoryId, groupAssets]) => (
-                        <CategoryGroup key={categoryId} assets={groupAssets} onEdit={onEdit} onViewTransactions={setTxAsset} prices={prices} previousValues={previousValues} />
-                    ))}
-                </TableBody>
-            </Table>
-
-            <div className="flex justify-between items-center gap-3 px-4 py-3 border-t border-border bg-muted/40 rounded-b-md">
-                <span className="text-sm font-medium text-muted-foreground">Totale mese</span>
-                <div className="flex items-center gap-4 font-mono">
-                    <Money value={total} className="font-bold text-base" />
-                    {comparable.length > 0 && Math.abs(totalDelta) >= 0.005 && (
-                        <span className={cn('text-sm', totalDelta > 0 ? 'text-green-500' : 'text-red-500')}>
-                            {totalDelta > 0 && '+'}
-                            <Money value={totalDelta} />
-                        </span>
-                    )}
-                </div>
+            {/* The rows scroll, not the page: the header stays put and the
+                totals stay pinned to the bottom, so the figures you are editing
+                against never leave the screen. */}
+            <div className="max-h-[57vh] overflow-y-auto">
+                <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-card">
+                        <TableRow>
+                            <TableHead>Asset</TableHead>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead className="text-right">Valore</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">
+                                {previousMonth ? `vs ${formatMonthLong(previousMonth)}` : 'Variazione'}
+                            </TableHead>
+                            <TableHead className="text-right w-20">Azioni</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {ordered.map((asset) => (
+                            <AssetRow key={asset.id} asset={asset} onEdit={onEdit} onViewTransactions={setTxAsset} prices={prices} previousValues={previousValues} readOnly={readOnly} />
+                        ))}
+                    </TableBody>
+                    <TableFooter className="sticky bottom-0 z-10 bg-card">
+                        <TableRow className="hover:bg-transparent">
+                            <TableCell>
+                                <span className="block text-sm font-semibold">Totale</span>
+                                <span className="block text-xs font-normal text-muted-foreground">
+                                    {assets.length} asset
+                                </span>
+                            </TableCell>
+                            <TableCell className="text-sm font-normal text-muted-foreground">
+                                {groups.size} {groups.size === 1 ? 'categoria' : 'categorie'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-base font-bold">
+                                <Money value={total} />
+                            </TableCell>
+                            <TableCell className="text-right font-mono whitespace-nowrap">
+                                <DeltaAmount change={totalDelta} className="text-sm" />
+                            </TableCell>
+                            <TableCell />
+                        </TableRow>
+                        {/* Net worth only earns its own line when it differs from the
+                            month's total — otherwise it would repeat the same figure
+                            with no explanation for the repetition. */}
+                        {reconciliation.carriedForward.length > 0 && (
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={2}>
+                                    <span className="block text-sm font-normal">Patrimonio</span>
+                                    <NetWorthReconciliation reconciliation={reconciliation} />
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-sm">
+                                    <Money value={currentNetWorth} />
+                                </TableCell>
+                                <TableCell colSpan={2} />
+                            </TableRow>
+                        )}
+                    </TableFooter>
+                </Table>
             </div>
 
             <TransactionsDialog asset={txAsset} onClose={() => setTxAsset(null)} />

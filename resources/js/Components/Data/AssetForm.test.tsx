@@ -12,6 +12,7 @@ import type { Asset, AssetPriceInfo, Category } from '@/types/models';
 const post = vi.fn();
 const put = vi.fn();
 const routerPost = vi.fn();
+const destroy = vi.fn();
 
 vi.mock('@inertiajs/react', () => {
     return {
@@ -30,6 +31,8 @@ vi.mock('@inertiajs/react', () => {
                 setData,
                 post,
                 put,
+                // The nested DeleteAssetButton drives its own useForm().delete.
+                delete: destroy,
                 processing: false,
                 errors: {},
                 reset: () => setState(initial),
@@ -64,6 +67,37 @@ beforeEach(() => {
     post.mockClear();
     put.mockClear();
     routerPost.mockClear();
+    destroy.mockClear();
+});
+
+describe('AssetForm — deleting', () => {
+    const existing = {
+        id: 7, category_id: 1, name: 'Conto', value: 1000, date: '2025-06-01',
+        ticker: null, isin: null, expense_ratio: null, wallet_address: null,
+        quantity: null, price: null, synced_at: null, sync_source: null,
+        bank_linked: false, notes: null,
+    } as unknown as Asset;
+
+    it('offers deleting only when editing an existing asset', () => {
+        renderForm();
+        expect(screen.queryByRole('button', { name: /Elimina/ })).not.toBeInTheDocument();
+    });
+
+    it('shows a delete action in the edit dialog', () => {
+        renderForm({ editAsset: existing });
+        expect(screen.getByRole('button', { name: /Elimina/ })).toBeInTheDocument();
+    });
+
+    it('deletes the edited asset after confirming', async () => {
+        renderForm({ editAsset: existing });
+
+        await userEvent.click(screen.getByRole('button', { name: /Elimina/ }));
+        // The confirmation dialog repeats the action as its primary button.
+        const buttons = screen.getAllByRole('button', { name: 'Elimina' });
+        await userEvent.click(buttons[buttons.length - 1]);
+
+        expect(destroy).toHaveBeenCalledWith('/assets/7', expect.anything());
+    });
 });
 
 describe('AssetForm — mode switching', () => {

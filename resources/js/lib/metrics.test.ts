@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { netWorthChangePct, findForecastSplitDate, priceFreshness, bankFreshness, brokerFreshness } from './metrics';
+import { netWorthChangePct, findForecastSplitDate, priceFreshness, bankFreshness, brokerFreshness, monthDelta, categoryDelta, monthsSince } from './metrics';
 
 describe('netWorthChangePct', () => {
     it('computes a positive change', () => {
@@ -44,6 +44,84 @@ describe('findForecastSplitDate', () => {
 
     it('returns null for an empty series', () => {
         expect(findForecastSplitDate([])).toBeNull();
+    });
+});
+
+describe('monthDelta', () => {
+    const asset = (name: string, value: number, category_id = 1) => ({ category_id, name, value });
+
+    it('returns null when the asset has no previous value', () => {
+        expect(monthDelta(asset('Conto', 1200), {})).toBeNull();
+    });
+
+    it('computes delta and percentage against the previous month', () => {
+        const r = monthDelta(asset('Conto', 1200), { '1|Conto': 1000 });
+        expect(r?.delta).toBeCloseTo(200);
+        expect(r?.pct).toBeCloseTo(20);
+    });
+
+    it('drops the percentage when the previous value was zero', () => {
+        const r = monthDelta(asset('Conto', 500), { '1|Conto': 0 });
+        expect(r?.delta).toBeCloseTo(500);
+        expect(r?.pct).toBeNull();
+    });
+
+    it('keys on category and name together', () => {
+        expect(monthDelta(asset('Conto', 1200, 2), { '1|Conto': 1000 })).toBeNull();
+    });
+});
+
+describe('categoryDelta', () => {
+    const asset = (name: string, value: number, category_id = 1) => ({ category_id, name, value });
+
+    it('returns null when nothing in the category is comparable', () => {
+        expect(categoryDelta([asset('Conto', 1200), asset('Libretto', 300)], {})).toBeNull();
+    });
+
+    it('sums the comparable assets', () => {
+        const r = categoryDelta([asset('Conto', 1200), asset('Libretto', 400)], {
+            '1|Conto': 1000,
+            '1|Libretto': 500,
+        });
+        expect(r?.delta).toBeCloseTo(100);
+        expect(r?.pct).toBeCloseTo(100 / 1500 * 100);
+    });
+
+    it('excludes an asset added this month from the delta', () => {
+        // "Nuovo" has no previous value: it must not read as a +5000 gain.
+        const r = categoryDelta([asset('Conto', 1200), asset('Nuovo', 5000)], { '1|Conto': 1000 });
+        expect(r?.delta).toBeCloseTo(200);
+        expect(r?.pct).toBeCloseTo(20);
+    });
+
+    it('drops the percentage when the comparable base is zero', () => {
+        const r = categoryDelta([asset('Conto', 500)], { '1|Conto': 0 });
+        expect(r?.delta).toBeCloseTo(500);
+        expect(r?.pct).toBeNull();
+    });
+
+    it('nets opposite movements out to roughly zero', () => {
+        const r = categoryDelta([asset('Conto', 1200), asset('Libretto', 300)], {
+            '1|Conto': 1000,
+            '1|Libretto': 500,
+        });
+        expect(r?.delta).toBeCloseTo(0);
+    });
+});
+
+describe('monthsSince', () => {
+    const now = new Date('2026-08-04T12:00:00Z');
+
+    it('counts whole months across a year boundary', () => {
+        expect(monthsSince('2025-12-31', now)).toBe(8);
+    });
+
+    it('is zero within the same month', () => {
+        expect(monthsSince('2026-08-01', now)).toBe(0);
+    });
+
+    it('never goes negative for a future date', () => {
+        expect(monthsSince('2027-01-01', now)).toBe(0);
     });
 });
 

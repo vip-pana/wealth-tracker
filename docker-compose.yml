@@ -20,7 +20,10 @@ services:
       DB_DATABASE: /app/storage/app/database.sqlite
       BACKUP_DIR: /app/backups
       BACKUP_RETENTION_DAYS: "30"
-      APP_URL: http://${DEV_HOST:-localhost}:8080
+      # scripts/tunnel.sh sets APP_URL_OVERRIDE to the https tunnel origin so
+      # Laravel/Inertia emit https URLs (an http APP_URL trips the browser's
+      # mixed-content block during the bank-consent flow).
+      APP_URL: ${APP_URL_OVERRIDE:-http://${DEV_HOST:-localhost}:8080}
       VITE_DEV_HOST: ${DEV_HOST:-localhost}
       VITE_DEV_CLIENT_PORT: ${DEV_VITE_PORT:-5273}
       LARAVEL_BYPASS_ENV_CHECK: "1"

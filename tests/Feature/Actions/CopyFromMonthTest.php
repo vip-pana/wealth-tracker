@@ -81,4 +81,48 @@ class CopyFromMonthTest extends TestCase
             'month' => '2026-02-01',
         ])->assertSessionHasErrors('source_date');
     }
+
+    public function test_copies_only_the_selected_assets(): void
+    {
+        $cat = Category::factory()->create();
+        $wanted = Asset::factory()->create(['category_id' => $cat->id, 'name' => 'A', 'date' => '2026-01-01']);
+        Asset::factory()->create(['category_id' => $cat->id, 'name' => 'B', 'date' => '2026-01-01']);
+
+        $this->post('/assets/copy-from-month', [
+            'source_date' => '2026-01-01',
+            'month' => '2026-02-01',
+            'asset_ids' => [$wanted->id],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('assets', ['name' => 'A', 'date' => '2026-02-01']);
+        $this->assertDatabaseMissing('assets', ['name' => 'B', 'date' => '2026-02-01']);
+    }
+
+    public function test_does_not_duplicate_an_asset_already_in_the_target_month(): void
+    {
+        // The ids come from the client, so a stale picker can ask to copy an
+        // asset that has since been added to the target month.
+        $cat = Category::factory()->create();
+        $source = Asset::factory()->create(['category_id' => $cat->id, 'name' => 'A', 'value' => 100, 'date' => '2026-01-01']);
+        Asset::factory()->create(['category_id' => $cat->id, 'name' => 'A', 'value' => 250, 'date' => '2026-02-01']);
+
+        $this->post('/assets/copy-from-month', [
+            'source_date' => '2026-01-01',
+            'month' => '2026-02-01',
+            'asset_ids' => [$source->id],
+        ])->assertRedirect();
+
+        $this->assertSame(1, Asset::whereDate('date', '2026-02-01')->where('name', 'A')->count());
+        // The existing row keeps its own value rather than being overwritten.
+        $this->assertDatabaseHas('assets', ['name' => 'A', 'date' => '2026-02-01', 'value' => 250]);
+    }
+
+    public function test_asset_ids_must_reference_existing_assets(): void
+    {
+        $this->post('/assets/copy-from-month', [
+            'source_date' => '2026-01-01',
+            'month' => '2026-02-01',
+            'asset_ids' => [9999],
+        ])->assertSessionHasErrors('asset_ids.0');
+    }
 }

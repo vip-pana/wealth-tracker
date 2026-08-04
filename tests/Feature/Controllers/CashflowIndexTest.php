@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Controllers;
 
+use App\Models\Asset;
+use App\Models\AssetPrice;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
 use App\Models\BankTransaction;
+use App\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -102,6 +105,32 @@ class CashflowIndexTest extends TestCase
 
         $this->get('/cashflow?month='.$future)->assertInertia(fn (Assert $page) => $page
             ->where('month', now()->format('Y-m-01'))
+        );
+    }
+
+    public function test_position_returns_is_null_without_transaction_managed_assets(): void
+    {
+        Asset::factory()->create(['date' => '2026-06-01']);
+
+        $this->get('/cashflow?month=2026-06-01')->assertInertia(fn (Assert $page) => $page
+            ->where('positionReturns', null)
+        );
+    }
+
+    public function test_position_returns_spans_the_whole_history_not_the_shown_month(): void
+    {
+        // Positions are built from transactions, which carry no month scoping:
+        // asking for a month with no transactions still returns the position.
+        $asset = Asset::factory()->create(['name' => 'ACWI', 'ticker' => 'ACWI', 'isin' => 'IE00B6R52259', 'date' => '2026-05-01']);
+        Transaction::factory()->for($asset)->create([
+            'type' => Transaction::TYPE_BUY, 'shares' => 10, 'price_per_share' => 100, 'date' => '2026-05-10',
+        ]);
+        AssetPrice::create(['ticker' => 'ACWI', 'price' => 120, 'currency' => 'EUR', 'fetched_at' => now()]);
+
+        // The JSON round-trip drops the ".0", so compare loosely on value.
+        $this->get('/cashflow?month=2026-08-01')->assertInertia(fn (Assert $page) => $page
+            ->where('positionReturns.aggregate.cost_basis', 1000)
+            ->where('positionReturns.aggregate.current_value', 1200)
         );
     }
 }

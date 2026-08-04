@@ -46,12 +46,18 @@ else
     printf '\nENABLE_BANKING_REDIRECT_URL=%s\n' "$REDIRECT" >>"$ENV_FILE"
 fi
 
+# The container reads env at start, so the new redirect only lands after a
+# recreate. APP_URL_OVERRIDE points APP_URL at the https origin as well —
+# otherwise Inertia emits http URLs and the browser blocks them as mixed
+# content mid-consent.
+echo "Recreating the app container so it picks up the tunnel URL …"
+APP_URL_OVERRIDE="$URL" docker compose up -d --force-recreate app >/dev/null 2>&1 || true
 docker compose exec -T app php artisan config:clear >/dev/null 2>&1 || true
 
 cat <<EOF
 
 ────────────────────────────────────────────────────────────────────
-  Tunnel ready.  ✅  .env updated, app config cleared.
+  Tunnel ready.  ✅  .env updated, app container recreated on https.
 
   ONE manual step — paste this redirect into the Enable Banking portal
   (your app → Allowed redirect URLs), then save:

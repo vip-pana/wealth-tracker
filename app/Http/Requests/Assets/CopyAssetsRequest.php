@@ -18,7 +18,30 @@ class CopyAssetsRequest extends FormRequest
     {
         return [
             'source_date' => ['required', 'date_format:Y-m-d'],
+            'asset_ids' => ['sometimes', 'array'],
+            'asset_ids.*' => ['integer', 'exists:assets,id'],
         ];
+    }
+
+    /**
+     * Restrict the copy to these assets. Null means "every asset in the source
+     * month", the behaviour before selective copying existed.
+     *
+     * @return list<int>|null
+     */
+    public function assetIds(): ?array
+    {
+        if (! $this->has('asset_ids')) {
+            return null;
+        }
+
+        $ids = [];
+        foreach ($this->collect('asset_ids') as $id) {
+            // Validated as integer, so a scalar cast is safe here.
+            $ids[] = (int) (is_scalar($id) ? $id : 0);
+        }
+
+        return $ids;
     }
 
     public function sourceDate(): string
