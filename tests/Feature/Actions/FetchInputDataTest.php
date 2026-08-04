@@ -146,8 +146,10 @@ class FetchInputDataTest extends TestCase
 
     public function test_does_not_carry_position_returns(): void
     {
-        // Positions moved to the Cashflow page: the Bilancio is per-month asset
-        // bookkeeping and must not pay for a whole-history computation.
+        // The Bilancio is per-month asset bookkeeping and must not pay for a
+        // whole-history computation. Per-position figures are reached from here
+        // one asset at a time, through AssetTable's TransactionsDialog, which
+        // already shows average cost, cost basis and P&L for that asset.
         Asset::factory()->create(['date' => '2026-06-01']);
 
         $data = app(FetchInputData::class)->run('2026-06-01');

@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $flow_type
  * @property bool $excluded
  * @property bool $is_manual
+ * @property Carbon|null $reviewed_at
  * @property string|null $merchant_category_code
  * @property array<string, mixed>|null $raw
  * @property Carbon|null $deleted_at
@@ -37,7 +38,7 @@ class BankTransaction extends Model
 
     public const FLOW_TRANSFER = 'transfer';
 
-    protected $fillable = ['bank_account_id', 'external_id', 'amount', 'currency', 'booking_date', 'value_date', 'description', 'counterparty', 'flow_type', 'excluded', 'is_manual', 'merchant_category_code', 'raw'];
+    protected $fillable = ['bank_account_id', 'external_id', 'amount', 'currency', 'booking_date', 'value_date', 'description', 'counterparty', 'flow_type', 'excluded', 'is_manual', 'reviewed_at', 'merchant_category_code', 'raw'];
 
     protected $casts = [
         'amount' => 'float',
@@ -45,6 +46,7 @@ class BankTransaction extends Model
         'value_date' => 'date:Y-m-d',
         'excluded' => 'boolean',
         'is_manual' => 'boolean',
+        'reviewed_at' => 'datetime',
         'raw' => 'array',
     ];
 
