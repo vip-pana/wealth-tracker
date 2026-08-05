@@ -3,9 +3,18 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireSetup;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,9 +23,31 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // RequireSetup runs on every web request: it pushes a fresh install to
+        // /setup so the app is never reachable without a password, and closes
+        // /setup once an account exists.
         $middleware->web(append: [
+            RequireSetup::class,
             HandleInertiaRequests::class,
         ]);
+
+        // RequireSetup has to decide before `auth` does. Otherwise a fresh
+        // install sends the visitor to /login, a page they cannot get past
+        // because no account exists yet.
+        $middleware->priority([
+            EncryptCookies::class,
+            StartSession::class,
+            ShareErrorsFromSession::class,
+            RequireSetup::class,
+            Authenticate::class,
+            ThrottleRequests::class,
+            AuthenticateSession::class,
+            SubstituteBindings::class,
+            Authorize::class,
+        ]);
+
+        // Unauthenticated Inertia visits must land on the login page.
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         // Only when a TLS tunnel is in use (the bank-consent redirect points at an
         // https, non-localhost host) do we trust the proxy's X-Forwarded-* headers,

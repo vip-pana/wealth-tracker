@@ -22,3 +22,10 @@ Schedule::command('snapshots:daily')->dailyAt('06:15');
 // ping every 6h (well inside the refresh window) prevents the session lapsing
 // between the once-a-day sync/snapshot.
 Schedule::command('scalable:keep-alive')->everySixHours();
+// Nightly off-site backup. Replaces the host-side launchd job + scripts/backup.sh,
+// which only worked on the machine that had Docker and the cloud-sync client
+// installed; running it in-app keeps backups working wherever the app is hosted.
+Schedule::command('backup:run')->dailyAt('03:00');
+// A failed backup notifies itself; this catches the quieter failure where the
+// backup simply never runs, which no error would ever report.
+Schedule::command('backup:health')->dailyAt('09:00');

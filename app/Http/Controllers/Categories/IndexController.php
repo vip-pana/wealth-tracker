@@ -15,6 +15,7 @@ use App\Models\Category;
 use App\Models\Goal;
 use App\Models\ScalableConnection;
 use App\Services\Scalable\ScalableLoginState;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Inertia\Inertia;
@@ -81,6 +82,7 @@ class IndexController extends Controller
                 ->all(),
             'banks' => $this->banks(),
             'transactionAssets' => $this->transactionAssets(),
+            'accountEmail' => Auth::user()?->email,
         ]);
     }
 

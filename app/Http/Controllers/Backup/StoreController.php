@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Backup;
 use App\Actions\Backup\CreateBackup;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
-use RuntimeException;
+use Throwable;
 
 class StoreController extends Controller
 {
@@ -18,11 +18,11 @@ class StoreController extends Controller
     public function __invoke(): RedirectResponse
     {
         try {
-            $path = $this->createBackup->run();
-        } catch (RuntimeException $e) {
+            $artifact = $this->createBackup->run();
+        } catch (Throwable $e) {
             return redirect()->back()->with('error', 'Backup fallito: '.$e->getMessage());
         }
 
-        return redirect()->back()->with('success', 'Backup creato: '.basename($path));
+        return redirect()->back()->with('success', 'Backup creato: '.basename($artifact));
     }
 }

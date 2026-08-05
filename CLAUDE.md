@@ -6,6 +6,7 @@ Load these docs when working in the relevant area:
 
 - **Testing** → @docs/testing.md
 - **Database & Backup** → @docs/database.md
+- **Self-hosting / deploy** → @docs/self-hosting.md
 
 ## Claude-specific instructions
 

@@ -70,12 +70,17 @@ FROM base AS prod
 
 COPY --from=node-build /app/public/build ./public/build
 
-RUN mkdir -p storage/app \
-    && touch storage/app/database.sqlite \
-    && php artisan config:cache 2>/dev/null || true \
-    && php artisan route:cache 2>/dev/null || true \
-    && php artisan view:cache 2>/dev/null || true
+# No `touch database.sqlite` here: the database must come from the mounted data
+# volume. Creating it at build time bakes an empty database into the image, which
+# a failed mount then serves as if the app were simply new. The entrypoint fails
+# loudly instead.
+RUN mkdir -p storage/app
+
+COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
+RUN chmod +x /usr/local/bin/prod-entrypoint
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"]
+# Runs the web server, the queue worker and the scheduler together — see the
+# entrypoint for why all three are required.
+CMD ["prod-entrypoint"]
