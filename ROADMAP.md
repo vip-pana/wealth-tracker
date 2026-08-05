@@ -129,6 +129,35 @@ the relevant area.
   in phpunit.xml) but it runs in dev; no action needed, listed so the behaviour
   isn't mistaken for a regression.
 
+## One-click update from Settings — parked on a security decision
+
+A "Check for updates" button in Settings that runs the check on demand, shows
+what changed, and offers to apply it. Half of this is trivial: `updates:check`
+already exists and runs daily, so an on-demand button plus the list of missing
+commits (GitHub's compare endpoint returns them) is a small piece of work.
+
+**What parks it is the "apply" half.** Updating means `git pull`, rebuilding the
+image and recreating the container — all on the *host*. The container has
+neither the git repo (`.dockerignore` excludes `.git`) nor access to Docker, and
+that is not an accident to route around: it is why a bug in the app cannot
+become a compromised machine.
+
+Three ways out, in order of how much they give away:
+
+1. **Show, don't apply.** The button reports what changed and hands over the
+   command to paste. No new attack surface, works today, and you see what you
+   are about to install. The last step stays manual.
+2. **Mount the Docker socket.** The app updates itself for real. Access to the
+   socket is equivalent to root on the host, so any future exposure of the app
+   turns an application bug into full machine compromise. Hard to justify for
+   saving one paste.
+3. **A host-side agent** polling a signal file the app writes. The container
+   never touches Docker, so the blast radius stays small — but it is a moving
+   part living outside the repo, to be reinstalled on every new machine.
+
+Option 1 is the recommendation; option 3 if one click is genuinely wanted.
+Decide before building, because the choice is the whole design.
+
 ## Explicitly out of scope (decided, not forgotten)
 
 Considered and set aside as a poor fit for a single-user personal tracker:
