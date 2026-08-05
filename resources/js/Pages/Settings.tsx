@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
-import { Pencil, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, LineChart, Trash2, FileSpreadsheet, Link2 } from 'lucide-react';
+import { Pencil, Plus, Download, Upload, RefreshCw, Layers, Database, Settings as SettingsIcon, LineChart, Trash2, FileSpreadsheet, Link2, UserCog } from 'lucide-react';
 import { Money } from '@/Components/ui/Money';
 import type { Category } from '@/types/models';
 import { ImportCsvDialog } from '@/Components/Settings/ImportCsvDialog';
@@ -23,6 +23,7 @@ import { BankConnectionsCard } from '@/Components/Settings/BankConnectionsCard';
 import { ScalableConnectionCard } from '@/Components/Settings/ScalableConnectionCard';
 import { ConnectionRow } from '@/Components/Settings/ConnectionRow';
 import { SectionHeading } from '@/Components/Settings/SectionHeading';
+import { AccountCard } from '@/Components/Settings/AccountCard';
 import type {
     PriceEntry,
     TrashedItem,
@@ -43,9 +44,10 @@ interface Props {
     bankRedirectReady: boolean;
     scalable: ScalableState;
     transactionAssets: TransactionAsset[];
+    accountEmail: string | null;
 }
 
-export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady, scalable, transactionAssets }: Props) {
+export default function Settings({ categories, prices, trashed, bankConnections, banks, linkableAssets, bankRedirectReady, scalable, transactionAssets, accountEmail }: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [editCategory, setEditCategory] = useState<Category | null>(null);
@@ -313,6 +315,24 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                         </ConnectionRow>
                     </CardContent>
                 </Card>
+
+                {/* ── Account: credenziali di accesso ── */}
+                {accountEmail && (
+                    <>
+                        <SectionHeading
+                            icon={UserCog}
+                            title="Account"
+                            subtitle="Le credenziali con cui accedi all'app."
+                            className="pt-4"
+                        />
+
+                        <Card>
+                            <CardContent className="p-0 divide-y divide-border">
+                                <AccountCard email={accountEmail} />
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
             </div>
 
             <CategoryDialog

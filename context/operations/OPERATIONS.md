@@ -56,6 +56,15 @@ the app is opened from a phone, where re-entering the password each visit is
 friction with no matching gain. Login is rate-limited to 5 attempts per
 IP + email.
 
+Email and password are changed from Settings → Account. Both re-check the
+current password — the email is the login identifier, so changing it is as much
+a credential change as the password. Changing the password deletes every *other*
+session (keeping the current one) and clears `remember_token`: that is the
+in-app answer to a lost phone, `user:password` being the terminal one. Note
+`Auth::logoutOtherDevices()` is deliberately not used — without the
+`AuthenticateSession` middleware, which this app does not run, it is a silent
+no-op; the sessions are deleted directly instead.
+
 ## Backup & restore
 
 <!-- exodia:section:variants -->

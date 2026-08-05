@@ -29,6 +29,8 @@ use App\Http\Controllers\Assets\UnlinkTransactionsController as UnlinkTransactio
 use App\Http\Controllers\Assets\UpdateController as UpdateAssetController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\SetupController;
+use App\Http\Controllers\Auth\UpdateEmailController;
+use App\Http\Controllers\Auth\UpdatePasswordController;
 use App\Http\Controllers\Backup\StoreController as StoreBackupController;
 use App\Http\Controllers\Banking\CallbackController as BankingCallbackController;
 use App\Http\Controllers\Banking\ConnectController as BankingConnectController;
@@ -151,6 +153,13 @@ Route::middleware('auth')->group(function () {
         Route::put('/{asset}', UpdatePensionController::class)->name('update');
         Route::delete('/{asset}', DestroyPensionController::class)->name('destroy');
     });
+
+    // ─── Account ──────────────────────────────────────────────────────────────────
+    // Both are credential changes and both re-check the current password: the
+    // email is the login identifier, so changing it matters as much as the
+    // password itself.
+    Route::patch('/account/email', UpdateEmailController::class)->name('account.email.update');
+    Route::patch('/account/password', UpdatePasswordController::class)->name('account.password.update');
 
     // ─── Notifications ────────────────────────────────────────────────────────────
     Route::post('/notifications/read-all', NotificationReadAllController::class)->name('notifications.read-all');
