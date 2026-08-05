@@ -1,0 +1,57 @@
+# Production compose: a machine that runs the app 24/7 (a box at home behind
+# Tailscale, or a VPS). Deliberately separate from docker-compose.yml — that one
+# mounts the source tree, runs Vite and a log tailer, and assumes a developer is
+# watching. Nothing here mounts source: the image carries built assets.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# The Scalable CLI binary is selected by architecture at build time, so building
+# on the target machine covers both x86 and ARM without extra flags.
+services:
+  app:
+    build:
+      context: .
+      target: prod
+    # The queue worker and scheduler live inside the container (see
+    # docker/prod-entrypoint.sh); restarting keeps them alive across reboots and
+    # crashes, which is the whole point of a machine that is always on.
+    restart: unless-stopped
+    ports:
+      # Bound to localhost: reachable over Tailscale (which addresses the host
+      # itself), never published to the LAN or the internet by Docker. On a VPS
+      # put a TLS-terminating reverse proxy in front and keep this binding.
+      - "127.0.0.1:8080:8000"
+    volumes:
+      # The database and the backup staging directory. Both must exist on the
+      # host first — the entrypoint refuses to start on a missing database
+      # rather than inventing an empty one.
+      - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
+      - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
+      # Scalable CLI login session + signing key — survives container recreation,
+      # so `sc login` is not needed after every deploy.
+      - scalable-cli:/root/.config/scalable-cli
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/storage/app/database.sqlite
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: "30"
+      # Must match the address you actually open. On Tailscale that is the
+      # machine's tailnet name; a wrong value breaks absolute URLs and the
+      # bank-consent redirect.
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      LARAVEL_BYPASS_ENV_CHECK: "1"
+    healthcheck:
+      # Laravel's /up endpoint (configured in bootstrap/app.php). Marks the
+      # container unhealthy if the web server dies while the container lives.
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 60s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+
+volumes:
+  scalable-cli:

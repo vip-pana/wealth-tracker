@@ -32,6 +32,19 @@ Dependency updates are automated by Dependabot (`.github/dependabot.yml`): weekl
 
 Releases are automated by release-please (`.github/workflows/release.yml`, config in `.release-please-config.json`, version tracked in `.release-please-manifest.json` + `version.txt`). It reads conventional commits on `main`, keeps a rolling release PR that bumps the version and updates `CHANGELOG.md`; merging that PR creates the git tag. Do not hand-edit `CHANGELOG.md` release sections or tag manually (current: `v1.0.0`).
 
+## Deploy / self-hosting
+
+Dev runs `docker-compose.yml` (source mounted, Vite, log tailer — assumes a
+developer is watching). A machine that stays on uses `docker-compose.prod.yml`
+and the `prod` image target: no source mount, assets baked in, and
+`docker/prod-entrypoint.sh` supervising web server + queue worker + scheduler
+together — serving HTTP alone would leave the AI advisor silent and every source
+going stale. Port is bound to `127.0.0.1` so Docker never publishes it; Tailscale
+reaches the host itself. Architecture is not a concern — the Dockerfile selects
+the Scalable CLI binary for x86 or ARM at build time, so building on the target
+machine is enough. Full procedure, including the secrets to carry over and the
+WAL trap when moving the database: [../../docs/self-hosting.md](../../docs/self-hosting.md).
+
 ## Authentication
 
 Single user, one password. No registration, no password reset, no OAuth — for one
