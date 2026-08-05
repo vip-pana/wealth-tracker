@@ -55,6 +55,20 @@ Copy `.env` from the old machine, then check these:
 `SESSION_LIFETIME=43200` and `SESSION_ENCRYPT=true` should already be set; keep
 them.
 
+**Serving over plain HTTP (the Tailscale case) needs one more line:**
+
+```
+SESSION_SECURE_COOKIE=false
+```
+
+With `APP_ENV=production` and no explicit value, Laravel marks the session
+cookie `secure`, so the browser only sends it over HTTPS. Over `http://` the
+cookie never comes back and every login fails with **419 Page Expired** — an
+error that points at CSRF and says nothing about cookies. This is not a security
+downgrade behind Tailscale: WireGuard already encrypts the transport, so the
+cookie never crosses an untrusted network. Set it back to `true` if you move to
+a VPS with real HTTPS.
+
 ## 4. Move the database
 
 It is around 1.3 MB, so this is a copy. Stop the app on the old machine first —
@@ -200,6 +214,33 @@ docker compose -f docker-compose.prod.yml exec app bash
 # Forgotten password (also signs out every session)
 docker compose -f docker-compose.prod.yml exec -it app php artisan user:password
 ```
+
+## When something does not work
+
+The prod entrypoint runs `config:cache` at startup, so **`.env` edits need
+`--force-recreate`, not `restart`** — otherwise the file is right and the app is
+still using the old values. Start by asking the app what it actually believes:
+
+```bash
+docker compose -f docker-compose.prod.yml exec app php -r '
+require "/app/vendor/autoload.php"; $a = require_once "/app/bootstrap/app.php";
+$a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+echo "app.url:        ".config("app.url")."\n";
+echo "session.domain: ".var_export(config("session.domain"), true)."\n";
+echo "session.secure: ".var_export(config("session.secure"), true)."\n";'
+```
+
+| Symptom | Cause |
+| --- | --- |
+| `FATAL: no database at …` in a restart loop | `WEALTH_TRACKER_DATA_DIR` points somewhere that does not exist, so Docker created an empty directory. Check with `docker compose -f docker-compose.prod.yml config \| grep source:` — a `.env` copied from another machine keeps that machine's absolute paths. |
+| Works on the host, times out from the phone | Port bound to loopback. Set `BIND_ADDRESS` to `tailscale ip -4`. |
+| **419 Page Expired** on login | `session.secure` is `true` while serving over `http://`. Set `SESSION_SECURE_COOKIE=false`. |
+| Login page loops without an error | `app.url` does not match the address you opened. |
+| Advisor never replies | Queue worker not running — check all three processes (§6). |
+| Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
+
+After fixing a cookie-related problem, retry in a **private window**: a stale
+cookie from the broken origin reproduces the same error on a fixed server.
 
 ## If you later move to a VPS
 
