@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -11,6 +12,12 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Set to false in tests that exercise authentication itself, so they can
+     * assert on the guest experience.
+     */
+    protected bool $authenticate = true;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -23,6 +30,25 @@ abstract class TestCase extends BaseTestCase
         // test-environment exemption, so POST/PUT/DELETE requests in tests get
         // a 419. Disable CSRF for the whole suite here — no test asserts on it.
         $this->withoutMiddleware(PreventRequestForgery::class);
+
+        // Every app route sits behind `auth`, and an account must exist or
+        // RequireSetup diverts to /setup. Signing in here keeps the suite about
+        // the behaviour under test instead of repeating actingAs() everywhere;
+        // the auth tests opt out via $authenticate.
+        if ($this->authenticate && $this->usesDatabase()) {
+            $this->actingAs(User::factory()->create());
+        }
+    }
+
+    /**
+     * Whether the test class refreshes the database — a Unit test with no
+     * migrations cannot create a user.
+     */
+    private function usesDatabase(): bool
+    {
+        return array_any(class_uses_recursive(static::class), fn ($trait) => str_contains((string) $trait, 'DatabaseMigrations')
+            || str_contains((string) $trait, 'DatabaseTransactions')
+            || str_contains((string) $trait, 'RefreshDatabase'));
     }
 
     #[\Override]

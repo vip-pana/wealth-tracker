@@ -1,5 +1,5 @@
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { ToastContext, type ToastType } from '@/lib/toast';
@@ -305,6 +305,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             <Eye className="w-4 h-4 shrink-0" />
                         )}
                         {!showCollapsed && <span>{valuesHidden ? 'Mostra valori' : 'Nascondi valori'}</span>}
+                    </button>
+                    <button
+                        onClick={() => router.post('/logout')}
+                        className={cn(
+                            'flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors',
+                            showCollapsed ? 'justify-center' : '',
+                        )}
+                        title="Esci"
+                    >
+                        <LogOut className="w-4 h-4 shrink-0" />
+                        {!showCollapsed && <span>Esci</span>}
                     </button>
                     <button
                         onClick={() => setCollapsed((c) => { localStorage.setItem('sidebar-collapsed', String(!c)); return !c; })}

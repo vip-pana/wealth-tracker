@@ -32,6 +32,30 @@ Dependency updates are automated by Dependabot (`.github/dependabot.yml`): weekl
 
 Releases are automated by release-please (`.github/workflows/release.yml`, config in `.release-please-config.json`, version tracked in `.release-please-manifest.json` + `version.txt`). It reads conventional commits on `main`, keeps a rolling release PR that bumps the version and updates `CHANGELOG.md`; merging that PR creates the git tag. Do not hand-edit `CHANGELOG.md` release sections or tag manually (current: `v1.0.0`).
 
+## Authentication
+
+Single user, one password. No registration, no password reset, no OAuth — for one
+account those add attack surface without removing risk. Every route sits inside a
+`Route::middleware('auth')` group in `routes/web.php`, so a new route is protected
+unless it is deliberately declared outside; `tests/Feature/Auth/AuthenticationTest.php`
+pins that with a per-surface sweep.
+
+**`/banking/callback` is deliberately outside the auth group.** The bank redirects
+the browser there after consent and cannot present our session. Protecting it
+breaks the consent flow only against the real bank, so a test guards it.
+
+First run: `RequireSetup` (global on the web group, ordered before `auth` via
+`$middleware->priority()`) diverts to `/setup`, which creates the account and
+signs in. Once an account exists the route is closed server-side — it is what
+creates the owner of every financial record, so hiding the link would not be
+enough. Forgotten password: `php artisan user:password`, which also signs out
+every existing session (the answer to a lost phone).
+
+Sessions last 30 days and are encrypted (`SESSION_LIFETIME`, `SESSION_ENCRYPT`):
+the app is opened from a phone, where re-entering the password each visit is
+friction with no matching gain. Login is rate-limited to 5 attempts per
+IP + email.
+
 ## Backup & restore
 
 <!-- exodia:section:variants -->
