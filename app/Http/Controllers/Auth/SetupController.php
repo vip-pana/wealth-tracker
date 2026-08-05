@@ -21,10 +21,12 @@ class SetupController extends Controller
 
     public function store(SetupRequest $request): RedirectResponse
     {
-        /** @var array{name: string, email: string, password: string} $data */
+        /** @var array{email: string, password: string} $data */
         $data = $request->validated();
 
-        $user = User::create($data);
+        // `name` is NOT NULL in the default users migration but nothing reads
+        // it, so it is filled rather than asked for.
+        $user = User::create([...$data, 'name' => 'Owner']);
 
         // Log the new account straight in: asking for the password one line
         // after choosing it is friction with no security value.

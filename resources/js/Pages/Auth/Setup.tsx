@@ -17,7 +17,6 @@ const rules = [
 export default function Setup() {
     const [visible, setVisible] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
-        name: '',
         email: '',
         password: '',
         password_confirmation: '',
@@ -26,7 +25,7 @@ export default function Setup() {
     const met = rules.map((r) => r.test(data.password));
     const mismatch =
         data.password_confirmation !== '' && data.password !== data.password_confirmation;
-    const ready = met.every(Boolean) && !mismatch && data.name !== '' && data.email !== '';
+    const ready = met.every(Boolean) && !mismatch && data.email !== '';
 
     return (
         <AuthShell
@@ -47,19 +46,6 @@ export default function Setup() {
                 className="flex flex-col gap-4"
             >
                 <div className="flex flex-col gap-2">
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                        id="name"
-                        value={data.name}
-                        onChange={(e) => setData('name', e.target.value)}
-                        autoComplete="name"
-                        autoFocus
-                        required
-                    />
-                    {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-                </div>
-
-                <div className="flex flex-col gap-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                         id="email"
@@ -67,6 +53,7 @@ export default function Setup() {
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         autoComplete="username"
+                        autoFocus
                         required
                     />
                     {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}

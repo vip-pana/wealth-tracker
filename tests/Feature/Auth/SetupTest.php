@@ -18,7 +18,6 @@ class SetupTest extends TestCase
     protected bool $authenticate = false;
 
     private const array VALID = [
-        'name' => 'Me',
         'email' => 'me@example.com',
         'password' => 'correct-horse-1',
         'password_confirmation' => 'correct-horse-1',
@@ -59,7 +58,6 @@ class SetupTest extends TestCase
         $this->get('/setup')->assertRedirect('/');
 
         $this->post('/setup', [
-            'name' => 'Intruder',
             'email' => 'intruder@example.com',
             'password' => 'another-password-9',
             'password_confirmation' => 'another-password-9',
@@ -67,6 +65,17 @@ class SetupTest extends TestCase
 
         $this->assertSame(1, User::query()->count());
         $this->assertDatabaseMissing('users', ['email' => 'intruder@example.com']);
+    }
+
+    /**
+     * Nothing in the app displays a user's name, so setup does not ask for one.
+     * The column is NOT NULL in the default migration, hence the filled value.
+     */
+    public function test_does_not_ask_for_a_name(): void
+    {
+        $this->post('/setup', self::VALID)->assertRedirect('/');
+
+        $this->assertSame('Owner', User::query()->sole()->name);
     }
 
     public function test_rejects_a_short_password(): void
