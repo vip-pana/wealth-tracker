@@ -9,6 +9,17 @@
 #
 set -eu
 
+# The Scalable CLI defaults to the OS keyring, which reaches for D-Bus — absent
+# in a container, so `sc login` dies with "Platform secure storage failure:
+# DBus error". Point it at file-backed storage before anything can call it. The
+# file lives in the scalable-cli volume, so it is written once and survives
+# container recreation; an existing one is left alone.
+mkdir -p /root/.config/scalable-cli
+if [ ! -f /root/.config/scalable-cli/config.toml ]; then
+    printf '%s\n' '[auth]' 'session_backend = "file"' 'signing_key_backend = "file"' \
+        > /root/.config/scalable-cli/config.toml
+fi
+
 DB_PATH="${DB_DATABASE:-/app/storage/app/database.sqlite}"
 
 # The data volume must be mounted before we touch the database. Creating the

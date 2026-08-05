@@ -235,6 +235,7 @@ echo "session.secure: ".var_export(config("session.secure"), true)."\n";'
 | `FATAL: no database at …` in a restart loop | `WEALTH_TRACKER_DATA_DIR` points somewhere that does not exist, so Docker created an empty directory. Check with `docker compose -f docker-compose.prod.yml config \| grep source:` — a `.env` copied from another machine keeps that machine's absolute paths. |
 | Works on the host, times out from the phone | Port bound to loopback. Set `BIND_ADDRESS` to `tailscale ip -4`. |
 | **419 Page Expired** on login | `session.secure` is `true` while serving over `http://`. Set `SESSION_SECURE_COOKIE=false`. |
+| `sc login` fails with `Platform secure storage failure: DBus error` | The CLI is reaching for the OS keyring, which no container has. The entrypoint writes a file-backed `config.toml` at startup — if you hit this, the image predates that fix: `git pull` and rebuild. |
 | Login page loops without an error | `app.url` does not match the address you opened. |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
 | Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
