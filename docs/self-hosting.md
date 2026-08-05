@@ -199,11 +199,36 @@ On a VPS with a stable domain this gets simpler — register the redirect URL on
 with Enable Banking, set `ENABLE_BANKING_REDIRECT_URL`, and the tunnel is no
 longer needed.
 
+## Staying up to date
+
+A daily check (09:05) compares the running build against the repository and
+raises an in-app notification when it is behind. It **notifies and does nothing
+else** — pulling and rebuilding unattended would eventually deploy a change that
+needs a new `.env` key and leave the app down overnight, which is exactly what
+happened by hand during this migration more than once.
+
+It works by stamping the image with its commit at build time (`GIT_COMMIT`,
+wired up in `docker-compose.prod.yml`), because `.git` is excluded from the
+build context and the container otherwise has no way to know its own version.
+So always update with:
+
+```bash
+git pull
+GIT_COMMIT=$(git rev-parse HEAD) docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Without `GIT_COMMIT` the image is stamped `unknown` and the check quietly does
+nothing rather than reporting a wrong answer. To keep it out of the command
+line, put it in `.env` and refresh it when you deploy.
+
+Set `UPDATE_CHECK_REPOSITORY=` (empty) to switch the check off.
+
 ## Everyday operation
 
 ```bash
 # Update to the latest code
-git pull && docker compose -f docker-compose.prod.yml up -d --build
+git pull && GIT_COMMIT=$(git rev-parse HEAD) \
+  docker compose -f docker-compose.prod.yml up -d --build
 
 # Logs
 docker compose -f docker-compose.prod.yml logs -f app

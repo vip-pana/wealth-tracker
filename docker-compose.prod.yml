@@ -12,6 +12,11 @@ services:
     build:
       context: .
       target: prod
+      args:
+        # Stamps the running image with its commit so `updates:check` can tell
+        # whether the deployed code is behind the remote. Defaults to "unknown"
+        # when unset, which disables the check rather than reporting nonsense.
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     # The queue worker and scheduler live inside the container (see
     # docker/prod-entrypoint.sh); restarting keeps them alive across reboots and
     # crashes, which is the whole point of a machine that is always on.

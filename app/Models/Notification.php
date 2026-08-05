@@ -46,6 +46,8 @@ class Notification extends Model
 
     public const TYPE_BACKUP_STALE = 'backup_stale';
 
+    public const TYPE_UPDATE_AVAILABLE = 'update_available';
+
     protected $fillable = ['type', 'level', 'title', 'body', 'action_url', 'dedupe_key', 'read_at'];
 
     #[\Override]

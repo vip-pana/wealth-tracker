@@ -45,6 +45,17 @@ the Scalable CLI binary for x86 or ARM at build time, so building on the target
 machine is enough. Full procedure, including the secrets to carry over and the
 WAL trap when moving the database: [../../docs/self-hosting.md](../../docs/self-hosting.md).
 
+## Update checking
+
+`updates:check` (scheduled 09:05) compares the running build against the GitHub
+repository and raises an `update_available` notification when behind. It
+deliberately does not self-update: an unattended pull would eventually deploy a
+change requiring a new env key and leave the app down until someone noticed. The
+image is stamped with its commit at build time (`GIT_COMMIT` build arg →
+`APP_COMMIT`) because `.dockerignore` excludes `.git`; an unstamped build reports
+nothing rather than guessing. Deploy with
+`GIT_COMMIT=$(git rev-parse HEAD) docker compose -f docker-compose.prod.yml up -d --build`.
+
 ## Authentication
 
 Single user, one password. No registration, no password reset, no OAuth — for one

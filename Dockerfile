@@ -79,6 +79,13 @@ RUN mkdir -p storage/app
 COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
 RUN chmod +x /usr/local/bin/prod-entrypoint
 
+# The commit this image was built from. .git is excluded from the build context
+# (see .dockerignore), so the running app cannot work out its own version any
+# other way — and without it the update check has nothing to compare against.
+# docker-compose.prod.yml fills this in from `git rev-parse HEAD`.
+ARG GIT_COMMIT=unknown
+ENV APP_COMMIT=$GIT_COMMIT
+
 EXPOSE 8000
 
 # Runs the web server, the queue worker and the scheduler together — see the

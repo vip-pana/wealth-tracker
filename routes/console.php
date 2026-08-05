@@ -29,3 +29,7 @@ Schedule::command('backup:run')->dailyAt('03:00');
 // A failed backup notifies itself; this catches the quieter failure where the
 // backup simply never runs, which no error would ever report.
 Schedule::command('backup:health')->dailyAt('09:00');
+// Notify when the deployed build is behind the repository. Deliberately a
+// notification and not an auto-update: pulling unattended would eventually
+// deploy a change needing a new .env key and leave the app down overnight.
+Schedule::command('updates:check')->dailyAt('09:05');
