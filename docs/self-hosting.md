@@ -93,16 +93,44 @@ sudo tailscale up
 ```
 
 Install Tailscale on your phone, sign in with the same account, and the machine
-appears by name. Then set `APP_URL` to match what you actually open:
+appears by name.
+
+Two settings are needed, and the second one is the step that trips people up:
+
+```bash
+tailscale ip -4          # the machine's tailnet address, 100.x.y.z
+```
+
+In `.env`:
 
 ```
+BIND_ADDRESS=100.x.y.z
 APP_URL=http://<machine-name>.<your-tailnet>.ts.net:8080
 ```
 
-The compose file binds the port to `127.0.0.1`, so Docker never publishes it to
-your LAN or the internet — Tailscale reaches the host itself, which is what you
-want. Do not change that binding to `0.0.0.0` unless you deliberately intend to
-expose the app.
+Then recreate — `.env` changes need `--force-recreate`, not a restart:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --force-recreate
+```
+
+> **Why `BIND_ADDRESS` matters.** The compose file defaults the port to
+> `127.0.0.1`, which is right for a VPS behind a reverse proxy but refuses
+> connections arriving over Tailscale — that traffic lands on the tailnet
+> interface, not on loopback. The symptom is an app that answers fine on the
+> machine itself and times out from the phone. Binding to the tailnet IP fixes
+> it while keeping the app unreachable from the LAN and the internet.
+>
+> **Never use `0.0.0.0`.** That publishes the app to the whole local network,
+> discarding the reason for hosting it privately.
+
+Check it from the machine before reaching for the phone:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://$(tailscale ip -4):8080/up
+```
+
+`200` means the phone will reach it too.
 
 ## 6. Start it
 

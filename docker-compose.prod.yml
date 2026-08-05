@@ -17,10 +17,16 @@ services:
     # crashes, which is the whole point of a machine that is always on.
     restart: unless-stopped
     ports:
-      # Bound to localhost: reachable over Tailscale (which addresses the host
-      # itself), never published to the LAN or the internet by Docker. On a VPS
-      # put a TLS-terminating reverse proxy in front and keep this binding.
-      - "127.0.0.1:8080:8000"
+      # Never 0.0.0.0 — that would publish the app to the whole LAN, throwing
+      # away the reason for self-hosting behind a private network.
+      #
+      # Default 127.0.0.1 suits a VPS, where a TLS-terminating reverse proxy on
+      # the host forwards to it. For Tailscale set BIND_ADDRESS to the machine's
+      # tailnet IP (`tailscale ip -4`, a 100.x.y.z address): traffic arriving
+      # over Tailscale lands on that interface, not on loopback, so a
+      # localhost-only binding refuses it. Binding to the tailnet IP keeps the
+      # app reachable from your own devices and from nowhere else.
+      - "${BIND_ADDRESS:-127.0.0.1}:8080:8000"
     volumes:
       # The database and the backup staging directory. Both must exist on the
       # host first — the entrypoint refuses to start on a missing database
