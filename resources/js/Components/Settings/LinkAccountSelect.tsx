@@ -33,7 +33,7 @@ export function LinkAccountSelect({ account, assets }: { account: BankAccountEnt
 
     return (
         <Select value={currentValue} onValueChange={link} disabled={processing}>
-            <SelectTrigger className="h-8 w-48 text-xs">
+            <SelectTrigger className="h-8 w-full text-xs sm:w-48">
                 <SelectValue placeholder="Collega a un asset" />
             </SelectTrigger>
             <SelectContent>

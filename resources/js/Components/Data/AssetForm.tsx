@@ -262,7 +262,7 @@ export default function AssetForm({ open, onClose, categories, month, editAsset,
                     ) : (
                         /* Ticker mode */
                         <>
-                            <div className={`grid gap-3 ${showWallet ? '' : 'grid-cols-2'}`}>
+                            <div className={`grid gap-3 ${showWallet ? '' : 'grid-cols-1 sm:grid-cols-2'}`}>
                                 <div className="space-y-1">
                                     <Label>Ticker</Label>
                                     <Input

@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrency, formatCurrencyCompact } from '@/lib/formatters';
 import { projectPac } from '@/lib/pacMath';
 import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
+import { useIsMobile } from '@/lib/media';
 import type { PacSimulatorWidget } from '@/Components/Advisor/types';
 
 /** The calendar year reached `months` from today, for the arrival label. */
@@ -31,6 +32,7 @@ function arrivalYear(months: number): number {
  */
 export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
     const hidden = useValuesHidden();
+    const isMobile = useIsMobile();
     const [monthly, setMonthly] = useState(Math.round(data.monthly_amount));
     const [annualPct, setAnnualPct] = useState(Math.round(data.annual_return * 100));
     // Older persisted widgets predate this field; default to no growth.
@@ -122,7 +124,7 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
 
                 <div className="h-[160px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chart} margin={{ top: 5, right: 16, left: 10, bottom: 5 }}>
+                        <AreaChart data={chart} margin={{ top: 5, right: 16, left: isMobile ? 0 : 10, bottom: 5 }}>
                             <defs>
                                 <linearGradient id="pacFill" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -140,7 +142,7 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                                 tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                                 tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                                 stroke="hsl(var(--border))"
-                                width={60}
+                                width={isMobile ? 36 : 60}
                             />
                             {!hidden && (
                                 <Tooltip
@@ -156,12 +158,15 @@ export function PacSimulator({ data }: { data: PacSimulatorWidget['data'] }) {
                                     itemStyle={{ color: 'hsl(var(--card-foreground))' }}
                                 />
                             )}
+                            {/* Both labels sit on the top edge, so on a phone they
+                                overlap. The arrival year is the simulator's answer,
+                                so that is the one that survives. */}
                             <ReferenceLine
                                 y={data.target_value}
                                 stroke="#f59e0b"
                                 strokeDasharray="5 3"
                                 strokeWidth={1.5}
-                                label={{ value: 'Obiettivo', position: 'insideTopRight', fontSize: 10, fill: '#f59e0b' }}
+                                label={isMobile ? undefined : { value: 'Obiettivo', position: 'insideTopRight', fontSize: 10, fill: '#f59e0b' }}
                             />
                             {months !== null && (
                                 <ReferenceLine

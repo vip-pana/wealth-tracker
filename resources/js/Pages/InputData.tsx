@@ -186,7 +186,10 @@ export default function InputData({ assets, categories, month, availableMonths, 
             <Head title="Bilancio investimenti" />
             {/* Full-height column: the cards above take what they need and the
                 asset table absorbs the rest, so only the rows scroll. */}
-            <div className="flex flex-col flex-1 min-h-0 p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter">
+            {/* From sm up the page is pinned to the viewport and the table
+                scrolls inside it. On a phone that leaves the list a sliver, so
+                there the page scrolls normally and the list runs full length. */}
+            <div className="flex flex-col sm:flex-1 sm:min-h-0 p-4 gap-4 max-w-[1400px] mx-auto w-full animate-page-enter">
                 <PageHeader
                     icon={Scale}
                     title="Bilancio investimenti"
@@ -197,17 +200,17 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 <div className="shrink-0">
                     <Card>
                         <CardContent className="p-3 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                                     Totale asset
                                     <HelpHint text="Aggiorna qui il valore corrente di ogni asset. Questi numeri non finiscono nei grafici finché non salvi uno snapshot." />
                                 </p>
                                 <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('prev')}>
+                                    <Button variant="outline" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => navigateMonth('prev')}>
                                         <ChevronLeft className="w-4 h-4" />
                                     </Button>
                                     <Select value={month} onValueChange={handleMonthChange}>
-                                        <SelectTrigger className="h-7 w-44 px-2 whitespace-nowrap">
+                                        <SelectTrigger className="h-9 w-32 px-2 sm:h-7 sm:w-44">
                                             <SelectValue>{formatMonthLong(month)}</SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
@@ -221,7 +224,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                             )}
                                         </SelectContent>
                                     </Select>
-                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('next')}>
+                                    <Button variant="outline" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => navigateMonth('next')}>
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
                                     {/* Only useful once you have wandered off it. */}
@@ -229,7 +232,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-7"
+                                            className="h-9 sm:h-7"
                                             onClick={() => handleMonthChange(currentMonth())}
                                             title={`Torna a ${formatMonthLong(currentMonth())}`}
                                         >
@@ -252,8 +255,10 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                         Per categoria{previousMonth && <> · variazione vs {formatMonthLong(previousMonth)}</>}
                                     </p>
                                     {/* Five per row, but a short row stretches to fill
-                                        rather than leaving a hole on the right. */}
-                                    <div className="flex flex-wrap gap-2 *:min-w-[calc((100%-2rem)/5)] *:flex-1">
+                                        rather than leaving a hole on the right. On a
+                                        phone five would be ~55px each — a category
+                                        name and two figures need a two-column grid. */}
+                                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:*:min-w-[calc((100%-2rem)/5)] sm:*:flex-1">
                                         {Object.values(byCat).map((cat) => (
                                             <div key={cat.name} className="rounded-lg border bg-muted/40 p-2">
                                                 <p className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
@@ -294,10 +299,12 @@ export default function InputData({ assets, categories, month, availableMonths, 
                 </div>
 
                 {/* Main asset card */}
-                <Card className="flex flex-col min-h-0 flex-1">
-                    <CardHeader className="flex flex-row items-center justify-between pb-3 shrink-0">
+                <Card className="flex flex-col sm:min-h-0 sm:flex-1">
+                    <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3 shrink-0">
                         <CardTitle className="text-base">
-                            Asset — {formatMonthLong(month)}
+                            {/* The month is already on the picker above; repeating
+                                it here only forces the title to wrap on a phone. */}
+                            Asset<span className="hidden sm:inline"> — {formatMonthLong(month)}</span>
                         </CardTitle>
                         <div className="flex items-center gap-2">
                             <Button
@@ -317,8 +324,12 @@ export default function InputData({ assets, categories, month, availableMonths, 
                                 disabled={savingSnapshot || assets.length === 0 || isPast || refreshingPrices}
                                 title={isPast ? PAST_MONTH_HINT : SNAPSHOT_HINTS[assets.length === 0 ? 'empty' : snapshotState]}
                             >
-                                <Camera className="w-4 h-4 mr-1" />
-                                {snapshotState === 'current' ? 'Snapshot salvato' : 'Salva snapshot'}
+                                <Camera className="w-4 h-4 sm:mr-1" />
+                                {/* On a phone the icon carries it: the full label
+                                    would push the toolbar onto a second line. */}
+                                <span className="hidden sm:inline">
+                                    {snapshotState === 'current' ? 'Snapshot salvato' : 'Salva snapshot'}
+                                </span>
                                 {/* A dot rather than a coloured button: this is a
                                     state to notice, not the page's main action. */}
                                 {snapshotState !== 'current' && assets.length > 0 && !isPast && (
@@ -340,7 +351,7 @@ export default function InputData({ assets, categories, month, availableMonths, 
                             </Button>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 flex flex-col min-h-0 flex-1">
+                    <CardContent className="p-0 flex flex-col sm:min-h-0 sm:flex-1">
                         <AssetTable
                             assets={assets}
                             onEdit={(a) => {

@@ -3,6 +3,7 @@ import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, C
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { ToastContext, type ToastType } from '@/lib/toast';
+import { useMediaQuery } from '@/lib/media';
 import { NotificationBell } from '@/Components/Layout/NotificationBell';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -74,7 +75,9 @@ function ToastProvider({ children }: { children: React.ReactNode }) {
     return (
         <ToastContext.Provider value={pushMessage}>
             {children}
-            <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+            {/* Below lg the mobile bar owns the top 56px, so toasts start under it
+                and span the width; from lg they sit in the corner as before. */}
+            <div className="fixed top-17 left-4 right-4 z-50 flex flex-col gap-2 lg:left-auto lg:top-4 lg:max-w-sm">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
@@ -191,15 +194,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         localStorage.setItem('values-hidden', String(valuesHidden));
     }, [valuesHidden]);
 
-    // Only honor the collapsed width on desktop; the mobile drawer always shows labels.
-    const [isDesktop, setIsDesktop] = useState(true);
+    // While the drawer covers the page, Escape closes it and the page behind it
+    // stops scrolling — otherwise a swipe on the overlay moves the content
+    // underneath and the drawer looks stuck to a page that is drifting.
     useEffect(() => {
-        const mq = window.matchMedia('(min-width: 1024px)');
-        const update = () => setIsDesktop(mq.matches);
-        update();
-        mq.addEventListener('change', update);
-        return () => mq.removeEventListener('change', update);
-    }, []);
+        if (!mobileOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setMobileOpen(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [mobileOpen]);
+
+    // Only honor the collapsed width on desktop; the mobile drawer always shows labels.
+    const isDesktop = useMediaQuery('(min-width: 1024px)');
     const showCollapsed = isDesktop && collapsed;
 
     const isActive = (href: string) => {

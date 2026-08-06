@@ -135,5 +135,8 @@ export function Markdown({ content }: { content: string }) {
     }
     flushList();
 
-    return <div className="text-sm">{blocks}</div>;
+    // This is model output, so a long unbroken token (a URL, an ISIN list) can
+    // arrive at any width and nothing else constrains it — break-words keeps it
+    // inside the bubble instead of widening the page.
+    return <div className="text-sm wrap-break-word">{blocks}</div>;
 }

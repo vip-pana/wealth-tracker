@@ -117,7 +117,10 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                             )}
                         </div>
 
-                        {/* Transaction list */}
+                        {/* Transaction list. Four columns inside a max-w-lg dialog:
+                            the default cell padding alone would take 128px of the
+                            ~330px a phone has, so this instance goes compact — same
+                            treatment as the goal deviation table. */}
                         {data.transactions.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-4 text-center">
                                 Nessuna transazione importata per questo asset.
@@ -127,20 +130,20 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Data</TableHead>
-                                            <TableHead>Tipo</TableHead>
-                                            <TableHead className="text-right">Quote</TableHead>
-                                            <TableHead className="text-right">Prezzo</TableHead>
+                                            <TableHead className="h-auto px-2 pb-2">Data</TableHead>
+                                            <TableHead className="h-auto px-2 pb-2">Tipo</TableHead>
+                                            <TableHead className="h-auto px-2 pb-2 text-right">Quote</TableHead>
+                                            <TableHead className="h-auto px-2 pb-2 text-right">Prezzo</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {data.transactions.map((t) => (
                                             <TableRow key={t.id}>
-                                                <TableCell className="text-sm">{formatDateLabel(t.date)}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-2 py-2 text-sm whitespace-nowrap">{formatDateLabel(t.date)}</TableCell>
+                                                <TableCell className="px-2 py-2">
                                                     <span className="inline-flex items-center gap-1.5">
                                                         <span className={cn(
-                                                            'inline-flex rounded-full px-1.5 py-0.5 text-xs font-medium',
+                                                            'inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-xs font-medium',
                                                             t.type === 'buy' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500',
                                                         )}>
                                                             {t.type === 'buy' ? 'Acquisto' : 'Vendita'}
@@ -152,8 +155,8 @@ export default function TransactionsDialog({ asset, onClose }: Props) {
                                                         )}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono text-sm">{t.shares}</TableCell>
-                                                <TableCell className="text-right font-mono text-sm"><Money value={t.price_per_share} /></TableCell>
+                                                <TableCell className="px-2 py-2 text-right font-mono text-sm">{t.shares}</TableCell>
+                                                <TableCell className="px-2 py-2 text-right font-mono text-sm whitespace-nowrap"><Money value={t.price_per_share} /></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

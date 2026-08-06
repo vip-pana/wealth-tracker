@@ -143,7 +143,7 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-7 w-7 shrink-0 text-muted-foreground lg:hidden"
+                                            className="h-9 w-9 shrink-0 text-muted-foreground lg:hidden"
                                             onClick={() => setMobileView('list')}
                                             title="Torna alle sessioni"
                                         >
@@ -160,7 +160,7 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                                         </h2>
                                         <Button
                                             variant="ghost" size="icon"
-                                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive lg:h-7 lg:w-7"
                                             onClick={() => deleteSession(activeSession.id)}
                                             title="Elimina sessione"
                                         >

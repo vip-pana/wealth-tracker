@@ -111,7 +111,7 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                     Aggiungi asset con un ticker e clicca &quot;Aggiorna ora&quot;.
                                 </p>
                             ) : (
-                                <div className="mt-3 rounded-md border border-border overflow-hidden">
+                                <div className="mt-3 rounded-md border border-border overflow-x-auto">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -131,8 +131,12 @@ export default function Settings({ categories, prices, trashed, bankConnections,
                                                                 className="inline-flex items-center gap-1.5 text-xs text-amber-500"
                                                                 title={p.last_error ?? undefined}
                                                             >
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                                                Ultimo aggiornamento fallito
+                                                                <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-amber-500" />
+                                                                {/* The full wording is the widest cell in this
+                                                                    table; on a phone the dot and the tooltip
+                                                                    carry it. */}
+                                                                <span className="hidden sm:inline">Ultimo aggiornamento fallito</span>
+                                                                <span className="sm:hidden">Fallito</span>
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">

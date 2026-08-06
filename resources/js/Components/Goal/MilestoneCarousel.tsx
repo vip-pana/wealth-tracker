@@ -66,7 +66,7 @@ export function MilestoneCarousel({
                             onClick={() => step(-1)}
                             title="Milestone precedente"
                             aria-label="Milestone precedente"
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -78,7 +78,7 @@ export function MilestoneCarousel({
                             onClick={() => step(1)}
                             title="Milestone successiva"
                             aria-label="Milestone successiva"
-                            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
@@ -134,7 +134,7 @@ export function MilestoneCarousel({
                     </div>
 
                     {hasDetail ? (
-                        <div className="space-y-1.5 pl-6">
+                        <div className="space-y-1.5 sm:pl-6">
                             {milestone.notes && (
                                 <p className="text-xs whitespace-pre-wrap"><span className="font-medium">Etichetta: </span><span className="text-muted-foreground">{milestone.notes}</span></p>
                             )}

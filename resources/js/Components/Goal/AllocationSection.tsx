@@ -33,9 +33,13 @@ export function AllocationSection({
                 const pct = parseFloat(item.percentage) || 0;
                 return (
                     <div key={idx} className="space-y-1.5">
-                        <div className="flex gap-2 items-center">
-                            <div className="flex-1">{renderSelect(item, idx)}</div>
-                            <div className="relative w-20">
+                        {/* The select, the percentage, the cap and the delete button
+                            need ~264px, more than this row gets inside a dialog on a
+                            phone — so the select takes the first line and the rest
+                            wraps under it. */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <div className="flex-1 min-w-40">{renderSelect(item, idx)}</div>
+                            <div className="relative w-20 shrink-0">
                                 <Input
                                     type="text"
                                     inputMode="decimal"
@@ -46,7 +50,7 @@ export function AllocationSection({
                                 />
                                 <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                             </div>
-                            <div className="relative w-32">
+                            <div className="relative w-28 shrink-0 sm:w-32">
                                 {/* Optional absolute cap: this category stops tracking its
                                     percentage once it would exceed this amount, and the
                                     excess is redistributed to the uncapped categories.

@@ -36,7 +36,10 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 max-h-[90vh] overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        // On a phone p-6 spends 48px of ~375px on padding, so the panel goes to
+        // p-4 there. DialogHeader's negative margins mirror this and must change
+        // with it.
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-4 shadow-lg duration-200 max-h-[90vh] overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:w-full sm:rounded-lg sm:p-6",
         className
       )}
       {...props}
@@ -58,7 +61,10 @@ const DialogHeader = ({
   <div
     className={cn(
       "flex flex-col space-y-1.5 text-center sm:text-left",
-      "sticky -top-6 z-10 -mx-6 -mt-6 px-6 pt-6 pb-3 bg-background border-b border-border",
+      // These offsets cancel DialogContent's padding so the sticky header spans
+      // the panel edge to edge — they track it at both breakpoints.
+      "sticky -top-4 z-10 -mx-4 -mt-4 px-4 pt-4 pb-3 bg-background border-b border-border",
+      "sm:-top-6 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6",
       className
     )}
     {...props}

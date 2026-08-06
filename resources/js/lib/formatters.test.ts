@@ -9,6 +9,7 @@ import {
     formatMonthLong,
     toMonthString,
     stepMonth,
+    truncateLabel,
 } from '@/lib/formatters';
 
 // Intl currency output uses locale-specific separators and a non-breaking
@@ -126,5 +127,27 @@ describe('stepMonth', () => {
 
     it('normalizes to the first of the month regardless of the input day', () => {
         expect(stepMonth('2025-03-31', 'next')).toBe('2025-04-01');
+    });
+});
+
+describe('truncateLabel', () => {
+    it('leaves a label shorter than the limit untouched', () => {
+        expect(truncateLabel('ETF', 6)).toBe('ETF');
+    });
+
+    it('does not add an ellipsis at exactly the limit', () => {
+        expect(truncateLabel('Liquid', 6)).toBe('Liquid');
+    });
+
+    it('cuts and marks a longer label', () => {
+        expect(truncateLabel('Liquidità', 6)).toBe('Liquid…');
+    });
+
+    it('handles a limit of one', () => {
+        expect(truncateLabel('Obbligazioni', 1)).toBe('O…');
+    });
+
+    it('leaves an empty string alone', () => {
+        expect(truncateLabel('', 6)).toBe('');
     });
 });

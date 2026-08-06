@@ -110,13 +110,15 @@ export function TransactionsReviewDialog({
         <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
             {/* flex, not the default grid, and overflow-hidden: the rows own the
                 scrolling so the filters and the save bar stay put. */}
-            <DialogContent className="sm:max-w-4xl flex flex-col max-h-[85vh] overflow-hidden p-0 gap-0">
-                {/* DialogHeader carries sticky -top-6/-mx-6/-mt-6 offsets tuned
-                    for DialogContent's default p-6. This dialog uses p-0 so the
-                    rows can scroll edge to edge, which left those negatives
-                    pulling the header outside the panel — hence mx-0/mt-0/top-0.
+            <DialogContent className="sm:max-w-4xl flex flex-col max-h-[85vh] overflow-hidden p-0 sm:p-0 gap-0">
+                {/* DialogHeader carries sticky negative offsets tuned to cancel
+                    DialogContent's own padding (p-4, sm:p-6). This dialog zeroes
+                    that padding so the rows can scroll edge to edge — which left
+                    those negatives pulling the header outside the panel, hence
+                    mx-0/mt-0/static. Both breakpoints are overridden, or sm:p-6
+                    would put the padding back on a desktop.
                     pr-12 keeps the title clear of the close button. */}
-                <DialogHeader className="static mx-0 mt-0 px-4 pt-4 pb-3 pr-12 shrink-0 text-left">
+                <DialogHeader className="static mx-0 mt-0 px-4 pt-4 pb-3 pr-12 shrink-0 text-left sm:mx-0 sm:mt-0 sm:px-4 sm:pt-4">
                     <DialogTitle>Transazioni — {formatMonthLong(month)}</DialogTitle>
                     <DialogDescription>
                         Correggi il tipo o escludi le voci straordinarie. Le tue scelte non vengono
@@ -240,7 +242,7 @@ export function TransactionsReviewDialog({
                                                 <Money value={t.amount} />
                                             </span>
 
-                                            <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 sm:flex-nowrap">
                                                 <SegmentedToggle
                                                     size="xs"
                                                     value={eff.flow_type}

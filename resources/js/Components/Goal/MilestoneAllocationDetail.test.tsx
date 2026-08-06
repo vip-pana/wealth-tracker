@@ -47,6 +47,29 @@ describe('MilestoneAllocationDetail — delta vs the previous step', () => {
         expect(document.body.textContent).not.toContain('▼');
     });
 
+    it('drops the delta column entirely on the first step', () => {
+        // Reserving a column that every row leaves blank stops the bars halfway
+        // across a phone. Row = label + bar + share, nothing more.
+        render(<MilestoneAllocationDetail segments={glide} targetValue={100000} previous={null} />);
+
+        const row = screen.getByText('Azioni').closest('div')!;
+        expect(row.querySelectorAll('span')).toHaveLength(2);
+    });
+
+    it('keeps the delta column once there is a previous step', () => {
+        render(
+            <MilestoneAllocationDetail
+                segments={[{ category: 'Azioni', percentage: 45 }]}
+                targetValue={100000}
+                previous={[{ category: 'Azioni', percentage: 55 }]}
+                previousTargetValue={100000}
+            />,
+        );
+
+        const row = screen.getByText('Azioni').closest('div')!;
+        expect(row.querySelectorAll('span')).toHaveLength(3);
+    });
+
     it('marks a rising share up and a falling share down', () => {
         render(
             <MilestoneAllocationDetail
