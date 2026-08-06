@@ -46,7 +46,7 @@ export function ProfileCard({ profile, onEdit }: { profile: InvestorProfile | nu
                         Profilo non compilato. Compilalo per rendere l&apos;analisi del consulente AI più mirata.
                     </p>
                 ) : (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         {fields.map((f) => (
                             <div key={f.label}>
                                 <p className="text-xs text-muted-foreground mb-0.5">{f.label}</p>

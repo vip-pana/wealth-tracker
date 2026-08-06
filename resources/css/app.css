@@ -61,6 +61,16 @@
  * dashboard grid each card is narrow on mid-size desktops (~1024–1280px),
  * where a viewport breakpoint would still force a row and squash the legend.
  * A container query keys the switch to the card's own width instead.
+ *
+ * The threshold stays at 20rem, and raising it to fit a phone does not work.
+ * Measured (this container is the viewport minus the page's p-4 and
+ * CardContent's px-3, so vw-56): a 375px phone gives 19.94rem and stacks, a
+ * 390px phone gives 20.88rem and goes to a row — while a 1280px dashboard card
+ * with the sidebar open gives only 19.33rem. A phone can therefore be the
+ * *wider* container, so no threshold separates "phone" from "narrow desktop
+ * card". Where a phone does go to a row, what makes it fit is the smaller donut
+ * (AllocationDonutChart sizes it from useIsMobile) plus a legend whose header
+ * can shrink — not a different threshold.
  */
 
 @utility money-hidden {
@@ -93,6 +103,33 @@
   @container (min-width: 20rem) {
     flex: 1 1 0%;
   }
+}
+
+/*
+ * Advisor widgets live inside a chat bubble, so their available width has
+ * little to do with the viewport: a 375px phone leaves ~300px, and a bubble on
+ * a wide screen is capped well below it. Same reasoning as the donut above —
+ * key the layout to the card, not to `sm:`.
+ */
+@utility card-cq {
+  container-type: inline-size;
+}
+
+@utility bubble-grid {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+
+  @container (min-width: 20rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * A full-width row inside a bubble-grid. Plain `col-span-2` would make an
+ * implicit second column appear while the grid is single-column, so the row
+ * would come out twice as wide as the others.
+ */
+@utility bubble-grid-full {
+  grid-column: 1 / -1;
 }
 
 @utility animate-page-enter {

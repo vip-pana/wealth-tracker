@@ -66,37 +66,50 @@ export function MilestoneAllocationDetail({
         })
         .sort((a, b) => b.share - a.share);
 
+    // The first milestone has nothing to compare against, so every delta is
+    // null. Reserving the column anyway leaves a permanently empty gutter that
+    // stops the bars halfway across a phone.
+    const hasDeltas = rows.some(({ delta }) => delta !== null);
+
     return (
         <div className="space-y-3">
             {rows.map(({ segment, share, delta }) => (
-                <div key={segment.category} className="flex items-center gap-3">
-                    <span className="w-28 shrink-0 truncate text-sm">{segment.category}</span>
+                // The label and the two figures are fixed-width, which on a phone
+                // leaves the bar almost nothing. Below sm the name takes its own
+                // line; sm:contents then flattens the wrapper back so the row is
+                // the original four-child flex, unchanged.
+                <div key={segment.category} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <span className="w-full shrink-0 truncate text-sm sm:w-28">{segment.category}</span>
 
-                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                            className="h-full rounded-r-full"
-                            style={{
-                                width: `${Math.max(0, Math.min(100, share))}%`,
-                                backgroundColor: segment.color ?? FALLBACK_COLOR,
-                            }}
-                        />
-                    </div>
+                    <div className="flex w-full items-center gap-2 sm:contents">
+                        <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                                className="h-full rounded-r-full"
+                                style={{
+                                    width: `${Math.max(0, Math.min(100, share))}%`,
+                                    backgroundColor: segment.color ?? FALLBACK_COLOR,
+                                }}
+                            />
+                        </div>
 
-                    <span className="w-12 shrink-0 text-right font-mono text-sm tabular-nums">{formatPct(share)}</span>
+                        <span className="w-12 shrink-0 text-right font-mono text-sm tabular-nums">{formatPct(share)}</span>
 
-                    {/* Which way the mix is moving vs the previous step. */}
-                    <span
-                        className={cn(
-                            'w-16 shrink-0 text-right font-mono text-xs tabular-nums',
-                            delta === null || Math.abs(delta) < 0.05
-                                ? 'text-muted-foreground'
-                                : delta > 0
-                                  ? 'text-blue-400'
-                                  : 'text-orange-400',
+                        {/* Which way the mix is moving vs the previous step. */}
+                        {hasDeltas && (
+                            <span
+                                className={cn(
+                                    'w-14 shrink-0 text-right font-mono text-xs tabular-nums sm:w-16',
+                                    delta === null || Math.abs(delta) < 0.05
+                                        ? 'text-muted-foreground'
+                                        : delta > 0
+                                          ? 'text-blue-400'
+                                          : 'text-orange-400',
+                                )}
+                            >
+                                {delta === null ? '' : Math.abs(delta) < 0.05 ? '—' : `${delta > 0 ? '▲+' : '▼−'}${formatPct(Math.abs(delta))}`}
+                            </span>
                         )}
-                    >
-                        {delta === null ? '' : Math.abs(delta) < 0.05 ? '—' : `${delta > 0 ? '▲+' : '▼−'}${formatPct(Math.abs(delta))}`}
-                    </span>
+                    </div>
                 </div>
             ))}
 

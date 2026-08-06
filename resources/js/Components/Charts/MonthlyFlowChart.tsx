@@ -11,8 +11,9 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { ChartEmptyState } from '@/Components/Charts/ChartEmptyState';
-import { formatCurrency, formatCurrencyCompact, formatMonthLong } from '@/lib/formatters';
+import { formatCurrency, formatCurrencyCompact, formatMonthLabel, formatMonthLong } from '@/lib/formatters';
 import { useValuesHidden, MASKED_TICK } from '@/lib/privacy';
+import { useIsMobile } from '@/lib/media';
 import type { MonthlyFlowPoint } from '@/types/analytics';
 
 interface Props {
@@ -28,9 +29,10 @@ interface Props {
  */
 export default function MonthlyFlowChart({ data, title = 'Risparmio per mese', note }: Props) {
     const hidden = useValuesHidden();
+    const isMobile = useIsMobile();
 
     return (
-        <Card className="flex flex-col h-full overflow-hidden">
+        <Card className="flex flex-col h-64 lg:h-full overflow-hidden">
             <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="text-sm">{title}</CardTitle>
                 {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
@@ -40,17 +42,20 @@ export default function MonthlyFlowChart({ data, title = 'Risparmio per mese', n
                     <ChartEmptyState message="Nessuna transazione registrata: collega un conto per vedere l'andamento." />
                 ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                    <BarChart data={data} margin={{ top: 5, right: 10, left: isMobile ? 0 : 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                         <XAxis
                             dataKey="date"
-                            tickFormatter={(d) => formatMonthLong(d as string)}
+                            // "settembre 2025" is the longest tick in the app; on a
+                            // phone it collides with itself, so drop to "set '25".
+                            tickFormatter={(d) => isMobile ? formatMonthLabel(d as string) : formatMonthLong(d as string)}
                             tick={{ fontSize: 11 }}
+                            minTickGap={isMobile ? 16 : 5}
                         />
                         <YAxis
                             tickFormatter={hidden ? () => MASKED_TICK : formatCurrencyCompact}
                             tick={{ fontSize: 11 }}
-                            width={70}
+                            width={isMobile ? 40 : 70}
                         />
                         {!hidden && (
                         <Tooltip

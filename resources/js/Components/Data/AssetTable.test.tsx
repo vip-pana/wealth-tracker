@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import AssetTable from '@/Components/Data/AssetTable';
 import type { Asset, AssetPriceInfo } from '@/types/models';
 
@@ -12,6 +12,13 @@ vi.mock('@inertiajs/react', () => ({
 vi.mock('@/Components/Data/TransactionsDialog', () => ({
     default: () => null,
 }));
+
+// AssetTable renders both layouts and lets CSS pick one (`hidden sm:block` /
+// `sm:hidden`). happy-dom applies no CSS, so both are in the DOM and an
+// unscoped getByText matches twice. Scope to the branch under test.
+const table = () => document.querySelector('table') as HTMLElement;
+const cardList = () => document.querySelector('[data-testid="asset-cards"]') as HTMLElement;
+const cardSummary = () => document.querySelector('[data-testid="asset-cards-summary"]') as HTMLElement;
 
 const CAT = (id: number, name: string, color = '#123456'): Asset['category'] => ({
     id,
@@ -71,8 +78,8 @@ describe('AssetTable — flat rows and totals', () => {
     it('names the category on every row, with no group header', () => {
         render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
         // One "Liquidità" per asset in that category, not one shared header.
-        expect(screen.getAllByText('Liquidità')).toHaveLength(2);
-        expect(screen.getAllByText('ETF')).toHaveLength(1);
+        expect(within(table()).getAllByText('Liquidità')).toHaveLength(2);
+        expect(within(table()).getAllByText('ETF')).toHaveLength(1);
         // The member count belonged to the collapsed group header.
         expect(screen.queryByText('(2)')).not.toBeInTheDocument();
     });
@@ -86,16 +93,16 @@ describe('AssetTable — flat rows and totals', () => {
 
     it('lists every asset', () => {
         render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
-        expect(screen.getByText('Conto')).toBeInTheDocument();
-        expect(screen.getByText('Libretto')).toBeInTheDocument();
-        expect(screen.getByText('VWCE')).toBeInTheDocument();
+        expect(within(table()).getByText('Conto')).toBeInTheDocument();
+        expect(within(table()).getByText('Libretto')).toBeInTheDocument();
+        expect(within(table()).getByText('VWCE')).toBeInTheDocument();
     });
 
     it('fires onEdit with the asset when its pencil is clicked', async () => {
         const { default: userEvent } = await import('@testing-library/user-event');
         const onEdit = vi.fn();
         render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={onEdit} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
-        const row = screen.getByText('Conto').closest('tr')!;
+        const row = within(table()).getByText('Conto').closest('tr')!;
         // Deleting moved into the edit dialog, so the pencil is the row's only
         // action for a plain asset.
         const buttons = within(row).getAllByRole('button');
@@ -116,7 +123,7 @@ describe('AssetTable — month-over-month change', () => {
             .replace(/(\d)\.(?=\d{3}\b)/g, '$1')
             .replace(/,\d+/g, '')
             .replace(/\p{Zs}/gu, '');
-    const rowText = (name: string) => normalise(screen.getByText(name).closest('tr')!.textContent!);
+    const rowText = (name: string) => normalise(within(table()).getByText(name).closest('tr')!.textContent!);
     const footerText = () => normalise(document.querySelector('tfoot')!.textContent!);
 
     it('names the compared month in the column header', () => {
@@ -125,13 +132,13 @@ describe('AssetTable — month-over-month change', () => {
         const a = asset({ category_id: 1, name: 'Conto', value: 1100 });
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{ '1|Conto': 1000 }} previousMonth="2025-04-01" {...RECON} />);
 
-        expect(screen.getByText(/vs aprile 2025/i)).toBeInTheDocument();
+        expect(within(table()).getByText(/vs aprile 2025/i)).toBeInTheDocument();
     });
 
     it('falls back to a neutral header when there is nothing to compare', () => {
         render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
 
-        expect(screen.getByText('Variazione')).toBeInTheDocument();
+        expect(within(table()).getByText('Variazione')).toBeInTheDocument();
     });
 
     it('shows a gain against the previous month, with the percentage', () => {
@@ -176,7 +183,7 @@ describe('AssetTable — month-over-month change', () => {
         const a = asset({ category_id: 1, name: 'Nuovo', value: 500 });
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
 
-        const row = screen.getByText('Nuovo').closest('tr')!;
+        const row = within(table()).getByText('Nuovo').closest('tr')!;
         expect(within(row).getByTitle('Nessun valore nel mese precedente')).toBeInTheDocument();
     });
 
@@ -203,7 +210,7 @@ describe('AssetTable — month-over-month change', () => {
             />,
         );
 
-        const rows = screen.getAllByText('Conto').map((e) => normalise(e.closest('tr')!.textContent!));
+        const rows = within(table()).getAllByText('Conto').map((e) => normalise(e.closest('tr')!.textContent!));
         expect(rows.some((t) => t.includes('+100€'))).toBe(true);
         expect(rows.some((t) => t.includes('-100€'))).toBe(true);
     });
@@ -290,7 +297,7 @@ describe('AssetTable — read-only month', () => {
     it('drops the edit action from every row', () => {
         render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
 
-        const row = screen.getByText('Conto').closest('tr')!;
+        const row = within(table()).getByText('Conto').closest('tr')!;
         expect(within(row).queryAllByRole('button')).toHaveLength(0);
     });
 
@@ -298,7 +305,7 @@ describe('AssetTable — read-only month', () => {
         const a = asset({ name: 'VWCE', transaction_managed: true } as Partial<Asset>);
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
 
-        const row = screen.getByText('VWCE').closest('tr')!;
+        const row = within(table()).getByText('VWCE').closest('tr')!;
         expect(within(row).getByTitle('Vedi transazioni')).toBeInTheDocument();
     });
 
@@ -374,26 +381,106 @@ describe('AssetTable — freshness badges', () => {
             />,
         );
         // The ticker symbol renders as its own pill.
-        expect(screen.getAllByText('BTC').length).toBeGreaterThan(0);
+        expect(within(table()).getAllByText('BTC').length).toBeGreaterThan(0);
     });
 
     it('shows a bank badge for a bank-linked asset', () => {
         const a = asset({ bank_linked: true, synced_at: iso(60_000) });
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
-        expect(screen.getByText('Banca')).toBeInTheDocument();
+        expect(within(table()).getByText('Banca')).toBeInTheDocument();
     });
 
     it('flags a stalled broker sync as not updated', () => {
         // A broker sync older than two days is stale per brokerFreshness.
         const a = asset({ sync_source: 'broker', synced_at: iso(3 * 24 * 60 * 60_000) });
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
-        expect(screen.getByText(/Scalable · non aggiornato/)).toBeInTheDocument();
+        expect(within(table()).getByText(/Scalable · non aggiornato/)).toBeInTheDocument();
     });
 
     it('shows a plain broker badge when the sync is fresh', () => {
         const a = asset({ sync_source: 'broker', synced_at: iso(60_000) });
         render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
-        expect(screen.getByText('Scalable')).toBeInTheDocument();
+        expect(within(table()).getByText('Scalable')).toBeInTheDocument();
         expect(screen.queryByText(/non aggiornato/)).not.toBeInTheDocument();
+    });
+});
+
+describe('AssetTable — mobile card list', () => {
+    const normalise = (text: string) =>
+        text.replace(/(\d)\.(?=\d{3}\b)/g, '$1').replace(/,\d+/g, '').replace(/\p{Zs}/gu, '');
+
+    const assets: Asset[] = [
+        asset({ id: 1, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Conto', value: 1000 }),
+        asset({ id: 2, category_id: 1, category: CAT(1, 'Liquidità'), name: 'Libretto', value: 500 }),
+        asset({ id: 3, category_id: 2, category: CAT(2, 'ETF'), name: 'VWCE', value: 2500 }),
+    ];
+
+    it('renders every asset exactly once as a card', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        for (const name of ['Conto', 'Libretto', 'VWCE']) {
+            expect(within(cardList()).getByText(name)).toBeInTheDocument();
+        }
+    });
+
+    it('carries the sync badges over to the card branch', () => {
+        // AssetIdentity is shared with the table; this guards the sharing.
+        const a = asset({ bank_linked: true, synced_at: new Date().toISOString() });
+        render(<AssetTable assets={[a]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        expect(within(cardList()).getByText('Banca')).toBeInTheDocument();
+    });
+
+    it('states the compared month once, not per card', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth="2025-04-01" {...RECON} />);
+
+        expect(within(cardList()).getAllByText(/vs aprile 2025/i)).toHaveLength(1);
+    });
+
+    it('sums the assets and the categories they span in the pinned summary', () => {
+        render(<AssetTable assets={assets} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        const summary = normalise(cardSummary().textContent!);
+        expect(summary).toContain('3asset');
+        expect(summary).toContain('2categorie');
+        expect(summary).toContain('4000');
+    });
+
+    it('adds the net worth line to the summary only when a category is carried forward', () => {
+        const carried = {
+            currentNetWorth: 3500,
+            reconciliation: {
+                total: 3500,
+                currentMonthTotal: 1000,
+                carriedForwardTotal: 2500,
+                carriedForward: [
+                    { categoryId: 4, category: 'Bitcoin', color: '#f7931a', value: 2500, asOf: '2025-05-01' },
+                ],
+            },
+        };
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...carried} />);
+        expect(within(cardSummary()).getByText('Patrimonio')).toBeInTheDocument();
+        expect(cardSummary().textContent).toContain('Bitcoin');
+
+        cleanup();
+        render(<AssetTable assets={[asset()]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+        expect(within(cardSummary()).queryByText('Patrimonio')).not.toBeInTheDocument();
+    });
+
+    it('drops the edit action from the cards on a read-only month', () => {
+        render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={vi.fn()} prices={{}} previousValues={{}} previousMonth={null} {...RECON} readOnly />);
+
+        expect(within(cardList()).queryAllByRole('button')).toHaveLength(0);
+    });
+
+    it('fires onEdit from a card pencil', async () => {
+        const { default: userEvent } = await import('@testing-library/user-event');
+        const onEdit = vi.fn();
+        render(<AssetTable assets={[asset({ name: 'Conto' })]} onEdit={onEdit} prices={{}} previousValues={{}} previousMonth={null} {...RECON} />);
+
+        const buttons = within(cardList()).getAllByRole('button');
+        expect(buttons).toHaveLength(1);
+        await userEvent.click(buttons[0]);
+        expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ name: 'Conto' }));
     });
 });

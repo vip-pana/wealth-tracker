@@ -116,7 +116,7 @@ export function BankConnectionsCard({ connections, banks, assets, redirectReady 
                                 </div>
                             </div>
                             {c.accounts.map((acc) => (
-                                <div key={acc.id} className="flex items-center justify-between gap-3 pl-2">
+                                <div key={acc.id} className="flex flex-wrap items-center justify-between gap-2 pl-2 sm:gap-3">
                                     <div className="min-w-0">
                                         <span className="block text-xs font-mono text-foreground truncate">
                                             {maskIban(acc.iban) ?? acc.name ?? `Conto ${acc.id}`}

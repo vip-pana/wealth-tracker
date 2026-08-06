@@ -11,18 +11,18 @@ import type { PositionCardWidget } from '@/Components/Advisor/types';
  */
 export function PositionCard({ data }: { data: PositionCardWidget['data'] }) {
     return (
-        <Card className="mt-3">
+        <Card className="card-cq mt-3">
             <CardContent className="px-4 py-3">
                 <div className="text-sm font-medium">{data.name}</div>
 
                 {data.managed ? (
-                    <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <dl className="bubble-grid mt-2 grid gap-x-4 gap-y-1.5 text-xs">
                         <Row label="Quote" value={data.shares.toLocaleString('it-IT', { maximumFractionDigits: 6 })} />
                         <Row label="Prezzo medio" money={data.average_cost} />
                         <Row label="Investito" money={data.cost_basis} />
                         {data.current_value !== null && <Row label="Valore attuale" money={data.current_value} />}
                         {data.unrealised_pnl !== null && (
-                            <div className="col-span-2 mt-1 border-t border-border pt-2">
+                            <div className="bubble-grid-full mt-1 border-t border-border pt-2">
                                 <dt className="text-muted-foreground">Guadagno/perdita</dt>
                                 <dd
                                     className={`font-mono font-medium ${

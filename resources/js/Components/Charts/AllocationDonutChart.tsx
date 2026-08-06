@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { formatCurrencyNoDecimals } from '@/lib/formatters';
 import { Money } from '@/Components/ui/Money';
 import { useValuesHidden } from '@/lib/privacy';
+import { useIsMobile } from '@/lib/media';
 import type { AllocationSlice } from '@/types/analytics';
 
 interface Props {
@@ -17,8 +18,11 @@ interface Props {
 
 export default function AllocationDonutChart({ data, note }: Props) {
     const hidden = useValuesHidden();
+    const isMobile = useIsMobile();
     const total = data.reduce((s, d) => s + d.value, 0);
     const visible = data.filter((d) => d.value > 0);
+    // A 170px ring leaves too little of a phone card for the legend below it.
+    const size = isMobile ? 140 : 170;
 
     return (
         <Card className="flex flex-col h-full overflow-hidden">
@@ -34,13 +38,13 @@ export default function AllocationDonutChart({ data, note }: Props) {
                     <div className="donut-layout flex flex-col items-center gap-4">
                     {/* Donut */}
                     <div className="shrink-0">
-                        <PieChart width={170} height={170}>
+                        <PieChart width={size} height={size}>
                             <Pie
                                 data={visible}
-                                cx={85}
-                                cy={85}
-                                innerRadius={52}
-                                outerRadius={76}
+                                cx={size / 2}
+                                cy={size / 2}
+                                innerRadius={size * 0.31}
+                                outerRadius={size * 0.45}
                                 paddingAngle={3}
                                 dataKey="value"
                                 nameKey="name"
@@ -74,7 +78,12 @@ export default function AllocationDonutChart({ data, note }: Props) {
                     <table className="donut-legend w-full text-xs">
                         <thead>
                             <tr className="text-muted-foreground">
-                                <th className="text-left pb-1.5 font-medium">Categoria</th>
+                                {/* A column is as wide as its widest cell, and "Categoria"
+                                    is one unbreakable word — without break-all it sets a
+                                    ~56px floor that the body cell's truncate cannot go
+                                    below, and the % column gets clipped when the donut
+                                    and the legend share a narrow card. */}
+                                <th className="text-left pb-1.5 font-medium break-all">Categoria</th>
                                 <th className="text-right pb-1.5 font-medium">Valore</th>
                                 <th className="text-right pb-1.5 font-medium pl-2">%</th>
                             </tr>
@@ -83,9 +92,11 @@ export default function AllocationDonutChart({ data, note }: Props) {
                             {visible.map((entry) => (
                                 <tr key={entry.name}>
                                     <td className="py-1 pr-2">
-                                        <div className="flex items-center gap-1.5">
+                                        {/* The two value columns cannot wrap, so the
+                                            name is the one that has to give way. */}
+                                        <div className="flex items-center gap-1.5 min-w-0">
                                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                                            <span className="text-muted-foreground">{entry.name}</span>
+                                            <span className="truncate text-muted-foreground">{entry.name}</span>
                                         </div>
                                     </td>
                                     <td className="py-1 text-right font-mono font-medium whitespace-nowrap">

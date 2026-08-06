@@ -180,7 +180,7 @@ export default function Dashboard({
                     title="Dashboard"
                     subtitle={latestSnapshot ? `Ultimo aggiornamento: ${formatDateLong(latestSnapshot)}` : undefined}
                     actions={
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <SegmentedToggle
                                 options={[
                                     { value: 'snapshot', label: 'Snapshot' },
@@ -218,12 +218,14 @@ export default function Dashboard({
                     {goal && lastPoint ? (
                         <Link href="/goal" className="contents">
                             <Card className="sm:col-span-1 lg:col-span-2 h-full border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
-                                <CardContent className="p-3 h-full flex items-center gap-4">
+                                <CardContent className="p-3 h-full flex items-center gap-2 sm:gap-4">
                                     <Target className="w-5 h-5 text-amber-500 shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-1.5">
+                                        {/* Two currency figures plus the year cannot share a
+                                            line with the name on a phone, so they wrap. */}
+                                        <div className="flex flex-wrap items-center justify-between gap-x-2 mb-1.5">
                                             <span className="text-sm font-medium truncate">{goal.name}</span>
-                                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                                            <span className="text-xs text-muted-foreground shrink-0">
                                                 <Money value={lastPoint.total_value} /> / <Money value={goal.target_value} />
                                                 {goal.target_date && ` · ${goal.target_date.slice(0, 4)}`}
                                             </span>

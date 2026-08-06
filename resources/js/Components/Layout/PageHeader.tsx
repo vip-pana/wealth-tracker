@@ -17,7 +17,9 @@ export function PageHeader({ icon: Icon, title, subtitle, actions }: Props) {
                     <div className="text-sm text-muted-foreground mt-1">{subtitle}</div>
                 )}
             </div>
-            {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+            {/* Actions wrap among themselves rather than pushing the page wider:
+                a header can carry two toggles, which do not fit a phone in a row. */}
+            {actions && <div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </div>
     );
 }

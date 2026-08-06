@@ -99,6 +99,17 @@ export function formatMonthLong(dateStr: string): string {
 }
 
 /**
+ * Shorten a label to `max` characters, appending an ellipsis when it had to cut.
+ * For chart axis ticks on a phone, where a category name is user-defined and
+ * arbitrarily long: overlapping unreadable text is worse than a truncated name,
+ * and the full one stays in the tooltip.
+ */
+export function truncateLabel(value: string, max: number): string {
+    if (value.length <= max) return value;
+    return `${value.slice(0, max)}…`;
+}
+
+/**
  * Returns the first day of the given month as "YYYY-MM-01".
  * e.g. new Date(2025, 0) → "2025-01-01"
  */

@@ -37,7 +37,9 @@ export function SessionList({
                     Nessuna sessione. Genera un&apos;analisi o avvia una chat.
                 </p>
             ) : (
-                <div className="flex flex-col gap-1 overflow-y-auto max-h-[calc(100dvh-8rem)]">
+                // Below lg the 56px mobile bar, the page header and the button row
+                // sit above this list, so 8rem overshoots the viewport.
+                <div className="flex flex-col gap-1 overflow-y-auto max-h-[calc(100dvh-16rem)] lg:max-h-[calc(100dvh-8rem)]">
                     {sessions.map((s) => (
                         <SessionRow key={s.id} s={s} activeId={activeId} onRename={onRename} onOpen={onOpen} />
                     ))}

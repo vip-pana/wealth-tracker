@@ -182,7 +182,7 @@ export default function PortfolioInsights({ metrics, positionReturns }: { metric
                             onClick={() => setPaused((p) => !p)}
                             title={paused ? 'Riprendi la rotazione' : 'Metti in pausa la rotazione'}
                             aria-label={paused ? 'Riprendi la rotazione' : 'Metti in pausa la rotazione'}
-                            className="inline-flex items-center justify-center rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         >
                             {paused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
                         </button>
@@ -191,7 +191,7 @@ export default function PortfolioInsights({ metrics, positionReturns }: { metric
                             onClick={() => step(-1)}
                             title="Insight precedente"
                             aria-label="Insight precedente"
-                            className="inline-flex items-center justify-center rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         >
                             <ChevronLeft className="w-3.5 h-3.5" />
                         </button>
@@ -203,7 +203,7 @@ export default function PortfolioInsights({ metrics, positionReturns }: { metric
                             onClick={() => step(1)}
                             title="Insight successivo"
                             aria-label="Insight successivo"
-                            className="inline-flex items-center justify-center rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         >
                             <ChevronRight className="w-3.5 h-3.5" />
                         </button>

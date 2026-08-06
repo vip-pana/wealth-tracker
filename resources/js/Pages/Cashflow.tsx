@@ -374,11 +374,11 @@ export default function Cashflow({ accounts, transactions, pendingReview, month,
                             <p className="text-xs font-medium text-muted-foreground">Il mese</p>
                             <div className="flex items-center gap-1">
                                 {loadingMonth && <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin text-muted-foreground" />}
-                                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => navigateMonth('prev')} disabled={loadingMonth}>
+                                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-7 sm:w-7" onClick={() => navigateMonth('prev')} disabled={loadingMonth}>
                                     <ChevronLeft className="w-4 h-4" />
                                 </Button>
                                 <Select value={month} onValueChange={handleMonthChange} disabled={loadingMonth}>
-                                    <SelectTrigger className="h-7 w-44 px-2 whitespace-nowrap">
+                                    <SelectTrigger className="h-9 w-32 px-2 sm:h-7 sm:w-44">
                                         <SelectValue>{formatMonthLong(month)}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -395,7 +395,7 @@ export default function Cashflow({ accounts, transactions, pendingReview, month,
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-7 w-7"
+                                    className="h-9 w-9 sm:h-7 sm:w-7"
                                     onClick={() => navigateMonth('next')}
                                     disabled={loadingMonth || atCurrentMonth}
                                     title={atCurrentMonth ? 'Il mese corrente è il più recente disponibile' : undefined}
