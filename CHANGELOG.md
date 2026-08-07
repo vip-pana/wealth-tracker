@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.4.0](https://github.com/vip-pana/wealth-tracker/compare/v1.3.0...v1.4.0) (2026-08-07)
+
+
+### Features
+
+* a password, portable encrypted backups, and a runnable prod image ([#65](https://github.com/vip-pana/wealth-tracker/issues/65)) ([70123ea](https://github.com/vip-pana/wealth-tracker/commit/70123ea705311a1b15b2cb7305b1862e93afe2b5))
+* **banking:** Linux consent tunnel, host-state key docs, and https behind a TLS proxy ([#68](https://github.com/vip-pana/wealth-tracker/issues/68)) ([1b6dfbb](https://github.com/vip-pana/wealth-tracker/commit/1b6dfbb131998d3341d33ca69aab9b709bbc3be4))
+* **mobile:** make the app usable on a phone, and tidy the Bilancio page ([#67](https://github.com/vip-pana/wealth-tracker/issues/67)) ([ba6eb97](https://github.com/vip-pana/wealth-tracker/commit/ba6eb977ab455b54bc4af4efda6c7fe82ddbf4a0))
+* **updates:** notify when the deployed build is behind, never self-update ([dbb46a9](https://github.com/vip-pana/wealth-tracker/commit/dbb46a91a508970ddc977c2765a59e7a2864b8a6))
+
+
+### Bug Fixes
+
+* **deploy:** let the port bind to the Tailscale interface ([47aeef1](https://github.com/vip-pana/wealth-tracker/commit/47aeef117dc13c6dd962facc35c0b3b710b370e0))
+* **deploy:** let the Scalable CLI log in inside the prod container ([33e5924](https://github.com/vip-pana/wealth-tracker/commit/33e592436b4cc7d9bf7d4f36880b360b336e59bd))
+
+
+### Documentation
+
+* **deploy:** the 419 that hides behind a secure cookie ([20a719c](https://github.com/vip-pana/wealth-tracker/commit/20a719c2f3204d30185fba3be15158adadb03099))
+* **roadmap:** park one-click update on its security decision ([c8cf3b9](https://github.com/vip-pana/wealth-tracker/commit/c8cf3b97c4223f305398771e76438d00851736bb))
+
+
+### Chores
+
+* **deps:** bump the npm-minor group with 7 updates ([#63](https://github.com/vip-pana/wealth-tracker/issues/63)) ([b22cccb](https://github.com/vip-pana/wealth-tracker/commit/b22cccbaa01a572c1c21852b2d146da2aaaa4fff))
+
 ## [1.3.0](https://github.com/vip-pana/wealth-tracker/compare/v1.2.11...v1.3.0) (2026-08-04)
 
 
