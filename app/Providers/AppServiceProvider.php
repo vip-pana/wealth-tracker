@@ -12,6 +12,7 @@ use App\Http\Clients\EnableBankingClient;
 use App\Http\Clients\PrismAdvisorProvider;
 use App\Http\Clients\ScalableCliClient;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Prism\Prism\Enums\Provider;
 
@@ -102,6 +103,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Generate https URLs whenever APP_URL says the app is served over
+        // https. Trusting X-Forwarded-* (see bootstrap/app.php) covers this
+        // only if the proxy in front actually sends those headers, and
+        // `tailscale serve` does not: without this, redirects came out as
+        // http:// and a `secure` session cookie was never sent back, so the
+        // login silently looped.
         //
+        // APP_URL is the right source: it already has to match the address the
+        // app is opened at, or absolute URLs and the bank-consent redirect
+        // break anyway.
+        if (str_starts_with(Config::string('app.url', ''), 'https://')) {
+            URL::forceScheme('https');
+        }
     }
 }
