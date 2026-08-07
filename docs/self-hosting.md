@@ -191,9 +191,40 @@ scheduler is not running, the session dies and this becomes a recurring chore.
 
 ## 8. Enable Banking
 
-On a home machine with no public domain, nothing changes: the consent redirect
-still needs the throwaway tunnel (`scripts/tunnel.sh`), run when you connect or
-renew a bank.
+The client credentials live in `.env`, but the signing key is a **file**, and
+`ENABLE_BANKING_PRIVATE_KEY_PATH` points inside the container
+(`/app/storage/app/enable-banking.pem`) — which is the mounted data directory.
+So the `.pem` has to be copied into `~/wealth-tracker-data/` alongside the
+database; carrying `.env` over is not enough:
+
+```bash
+scp ~/wealth-tracker-data/enable-banking.pem user@newmachine:~/wealth-tracker-data/
+chmod 600 ~/wealth-tracker-data/enable-banking.pem
+```
+
+Without it every call fails at JWT signing, so the bank list comes back empty
+and Settings reports **"Enable Banking non configurato (chiave/credenziali
+mancanti)"** — which points at the credentials in `.env`, the one thing that is
+actually fine. The empty list is then cached for 24 hours, so the warning
+outlives the fix unless the cache is dropped:
+
+```bash
+docker compose -f docker-compose.prod.yml exec app \
+  php artisan tinker --execute 'Cache::forget("enable_banking.aspsps.IT");'
+```
+
+On a home machine with no public domain, the consent redirect still needs the
+throwaway tunnel, run when you connect or renew a bank. Use
+**`scripts/tunnel-prod.sh`** here — `scripts/tunnel.sh` is the development-Mac
+one and on Linux it fails on BSD `sed` and drives the dev compose file.
+
+```bash
+./scripts/tunnel-prod.sh      # prints the redirect URL, Ctrl-C when done
+```
+
+Paste the printed URL into the Enable Banking portal, then open the app
+**through the tunnel** to connect or renew. On Ctrl-C the script puts `APP_URL`
+back to the tailnet address.
 
 On a VPS with a stable domain this gets simpler — register the redirect URL once
 with Enable Banking, set `ENABLE_BANKING_REDIRECT_URL`, and the tunnel is no
@@ -264,6 +295,8 @@ echo "session.secure: ".var_export(config("session.secure"), true)."\n";'
 | Login page loops without an error | `app.url` does not match the address you opened. |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
 | Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
+| **"Enable Banking non configurato"** with the credentials set, bank syncs failing | The `.pem` was never copied into the data directory (§8). Confirm with `grep "private key file not accessible" storage/logs/laravel.log`, then drop the cached empty bank list. |
+| Bank sync fails only on one bank, `{"status":429}` in the log | That bank's rate limit, not a fault. 429s are deliberately not retried; the next scheduler run picks it up. |
 
 After fixing a cookie-related problem, retry in a **private window**: a stale
 cookie from the broken origin reproduces the same error on a fixed server.

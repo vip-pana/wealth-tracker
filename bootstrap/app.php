@@ -49,28 +49,52 @@ return Application::configure(basePath: dirname(__DIR__))
         // Unauthenticated Inertia visits must land on the login page.
         $middleware->redirectGuestsTo(fn () => route('login'));
 
-        // Only when a TLS tunnel is in use (the bank-consent redirect points at an
-        // https, non-localhost host) do we trust the proxy's X-Forwarded-* headers,
-        // so Laravel generates https URLs instead of mixed-content http ones. In
-        // normal local use the redirect is empty/localhost and no proxy is trusted.
-        // Read the value straight out of .env: this closure runs before Laravel
-        // bootstraps Dotenv, so env(), $_SERVER and getenv() are all still empty
-        // here — the earlier env() version silently never trusted the proxy, which
-        // let http URLs leak into the consent flow and trip mixed-content blocks.
-        $redirect = '';
-        $envPath = dirname(__DIR__).'/.env';
-        if (is_readable($envPath)) {
-            $contents = (string) file_get_contents($envPath);
-            if (preg_match('/^ENABLE_BANKING_REDIRECT_URL=(.*)$/m', $contents, $m) === 1) {
-                $redirect = trim($m[1], " \t\"'");
+        // Only when something terminates TLS in front of us do we trust the
+        // proxy's X-Forwarded-* headers, so Laravel generates https URLs instead
+        // of mixed-content http ones. In normal local use nothing does, and no
+        // proxy is trusted.
+        //
+        // Two things can put us behind TLS: the bank-consent tunnel, or serving
+        // the whole app over https (a reverse proxy, or `tailscale serve`).
+        // Either is enough, so both are checked.
+        //
+        // This closure runs before Laravel bootstraps Dotenv, so env() is still
+        // empty — the original version used it and silently never trusted the
+        // proxy. Reading .env directly fixed that locally but not in Docker,
+        // where there is no .env file at all and the values arrive as real
+        // environment variables (`env_file` in compose). Hence both sources:
+        // getenv() first, the file as the fallback.
+        $fromEnvFile = static function (string $key): string {
+            $envPath = dirname(__DIR__).'/.env';
+            if (! is_readable($envPath)) {
+                return '';
             }
-        }
-        $host = parse_url($redirect, PHP_URL_HOST);
-        $behindTunnel = str_starts_with($redirect, 'https://')
-            && is_string($host)
-            && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+            $contents = (string) file_get_contents($envPath);
+            if (preg_match('/^'.preg_quote($key, '/').'=(.*)$/m', $contents, $m) !== 1) {
+                return '';
+            }
 
-        if ($behindTunnel) {
+            return trim($m[1], " \t\"'");
+        };
+
+        $setting = static function (string $key) use ($fromEnvFile): string {
+            $value = getenv($key);
+
+            return is_string($value) && $value !== '' ? $value : $fromEnvFile($key);
+        };
+
+        $isRemoteHttps = static function (string $url): bool {
+            if (! str_starts_with($url, 'https://')) {
+                return false;
+            }
+            $host = parse_url($url, PHP_URL_HOST);
+
+            return is_string($host)
+                && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+        };
+
+        if ($isRemoteHttps($setting('ENABLE_BANKING_REDIRECT_URL'))
+            || $isRemoteHttps($setting('APP_URL'))) {
             $middleware->trustProxies(at: '*');
         }
     })
