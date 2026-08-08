@@ -5,6 +5,11 @@ Open banking consent needs an **HTTPS** callback, but the app runs on
 only need this when **connecting a new account** or **renewing consent** (~every
 90 days), so the tunnel URL changing each run is fine.
 
+> This page is about the **development Mac**. The self-hosted deployment serves
+> real HTTPS through a Tailscale sidecar, so there the redirect is registered
+> once and no tunnel runs — see
+> [self-hosting.md §8](self-hosting.md#8-enable-banking).
+
 Prereqs (one-time): `brew install cloudflared`. Credentials already set in
 `.env` (`ENABLE_BANKING_APPLICATION_ID`, `ENABLE_BANKING_PRIVATE_KEY_PATH`) and
 the account is linked in the Enable Banking portal (restricted mode).
