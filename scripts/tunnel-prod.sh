@@ -5,11 +5,20 @@
 # runs on the development Mac: that one uses BSD `sed -i ''` and drives the dev
 # compose file, so on Linux it fails and would recreate the wrong container.
 #
-# Consent needs an https redirect on a public host, but the self-hosted app is
-# served over plain http on the tailnet. This starts a throwaway cloudflared
-# tunnel, points ENABLE_BANKING_REDIRECT_URL and APP_URL at it, recreates the
-# prod container, and — unlike the dev script — restores the tailnet APP_URL on
-# exit, so the app is never left pointing at a dead tunnel.
+# Consent needs an https redirect on a public host. This starts a throwaway
+# cloudflared tunnel, points ENABLE_BANKING_REDIRECT_URL and APP_URL at it,
+# recreates the prod container, and — unlike the dev script — restores the
+# tailnet APP_URL on exit, so the app is never left pointing at a dead tunnel.
+#
+# NOT NEEDED with the Tailscale sidecar in docker-compose.prod.yml, which is the
+# default: it already serves https://<host>.<tailnet>.ts.net, so the redirect is
+# registered once with Enable Banking and no tunnel ever runs. See
+# docs/self-hosting.md §8.
+#
+# This script only applies to a deployment that skips the sidecar and publishes
+# a plain-http port instead. It targets BIND_ADDRESS:8080, which under the
+# sidecar does not exist — the app has no ports of its own — so cloudflared
+# would get connection refused.
 #
 # Run from the repo root on the prod machine:  ./scripts/tunnel-prod.sh
 # Leave it running for the whole connect/renew flow; Ctrl-C stops the tunnel.
@@ -19,10 +28,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 COMPOSE=(docker compose -f "$ROOT/docker-compose.prod.yml")
-# The prod container publishes 8080 on BIND_ADDRESS, not on loopback, so the
-# tunnel has to target that address — cloudflared reaching for localhost gets
-# connection refused.
+# Without the sidecar the prod container publishes 8080 on BIND_ADDRESS, not on
+# loopback, so the tunnel has to target that address — cloudflared reaching for
+# localhost gets connection refused.
 APP_PORT="${APP_PORT:-8080}"
+
+# Fail with the real reason rather than an opaque cloudflared error: under the
+# Tailscale sidecar the app shares that container's network stack and publishes
+# nothing, so there is no port here to tunnel to — and no need for one.
+if grep -q '^[[:space:]]*network_mode:[[:space:]]*service:tailscale' "$ROOT/docker-compose.prod.yml"; then
+    echo "This deployment fronts the app with the Tailscale sidecar, which already serves HTTPS." >&2
+    echo "No tunnel is needed: register https://<host>.<tailnet>.ts.net/banking/callback with" >&2
+    echo "Enable Banking once and set ENABLE_BANKING_REDIRECT_URL to it. See docs/self-hosting.md §8." >&2
+    exit 1
+fi
 
 command -v cloudflared >/dev/null || {
     echo "cloudflared not found. Install it (no root needed):" >&2

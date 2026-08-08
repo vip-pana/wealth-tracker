@@ -8,6 +8,43 @@
 # The Scalable CLI binary is selected by architecture at build time, so building
 # on the target machine covers both x86 and ARM without extra flags.
 services:
+  # A Tailscale node dedicated to this app: it joins the tailnet under its own
+  # hostname and gets its own certificate, so the address becomes
+  # https://wealth-tracker.<tailnet>.ts.net rather than a port on the host.
+  #
+  # That HTTPS is what removed the need for a throwaway cloudflared tunnel
+  # during the Enable Banking consent flow — see docs/self-hosting.md.
+  #
+  # `app` runs inside this network stack (network_mode: service:tailscale): to
+  # the rest of the tailnet the two containers are one node, and serve reaches
+  # the app on 127.0.0.1:8000 without it being exposed anywhere else.
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: wealth-tracker
+    restart: unless-stopped
+    environment:
+      # A tailnet auth key (Settings → Keys on the admin console). Reusable and
+      # preferably ephemeral-free, since the node is long-lived.
+      TS_AUTHKEY: ${TS_AUTHKEY:?TS_AUTHKEY missing from .env}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      # The node identity. Without it every recreation would register a fresh
+      # node and the name would drift to wealth-tracker-1, wealth-tracker-2, …
+      # — which silently breaks APP_URL and the registered bank redirect.
+      - tailscale-state:/var/lib/tailscale
+      - ./docker/tailscale:/config:ro
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+    healthcheck:
+      test: ["CMD", "tailscale", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   app:
     build:
       context: .
@@ -21,17 +58,13 @@ services:
     # docker/prod-entrypoint.sh); restarting keeps them alive across reboots and
     # crashes, which is the whole point of a machine that is always on.
     restart: unless-stopped
-    ports:
-      # Never 0.0.0.0 — that would publish the app to the whole LAN, throwing
-      # away the reason for self-hosting behind a private network.
-      #
-      # Default 127.0.0.1 suits a VPS, where a TLS-terminating reverse proxy on
-      # the host forwards to it. For Tailscale set BIND_ADDRESS to the machine's
-      # tailnet IP (`tailscale ip -4`, a 100.x.y.z address): traffic arriving
-      # over Tailscale lands on that interface, not on loopback, so a
-      # localhost-only binding refuses it. Binding to the tailnet IP keeps the
-      # app reachable from your own devices and from nowhere else.
-      - "${BIND_ADDRESS:-127.0.0.1}:8080:8000"
+    # No `ports`: the app has no network stack of its own, it shares the
+    # sidecar's. That one publishes :443 over the tailnet through serve, so the
+    # app is not reachable on the host at all.
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_started
     volumes:
       # The database and the backup staging directory. Both must exist on the
       # host first — the entrypoint refuses to start on a missing database
@@ -66,3 +99,5 @@ services:
 
 volumes:
   scalable-cli:
+  # The Tailscale node identity — must survive container recreation.
+  tailscale-state:
