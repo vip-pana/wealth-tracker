@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/vip-pana/wealth-tracker/compare/v1.4.0...v1.5.0) (2026-08-08)
+
+
+### Features
+
+* **self-hosting:** serve the app over HTTPS via a Tailscale sidecar ([#69](https://github.com/vip-pana/wealth-tracker/issues/69)) ([b5cd1d0](https://github.com/vip-pana/wealth-tracker/commit/b5cd1d0417045e1dd5f453fe5ad8ca17edb0630e))
+
 ## [1.4.0](https://github.com/vip-pana/wealth-tracker/compare/v1.3.0...v1.4.0) (2026-08-07)
 
 
