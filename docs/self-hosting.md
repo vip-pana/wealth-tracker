@@ -318,16 +318,30 @@ context and the container otherwise has no way to know its own version. An
 image built without it is stamped `unknown`, and the check then does nothing
 rather than reporting a wrong answer.
 
-To update, point `APP_VERSION` at the release you want and pull:
+To update, use the deploy script rather than the individual commands — it does
+the same thing with the checks that make an unattended deploy survivable:
+
+```bash
+./scripts/deploy-release.sh 1.6.0
+```
+
+It refuses to start when the release adds an `.env` key this machine does not
+have, backs up the database first, and — if `/up` does not answer within two
+minutes — puts `APP_VERSION` back and recreates the container on the previous
+image. That rollback costs no build: the old image is still in the local store.
+
+It also checks that the queue worker and the scheduler came back, not just the
+web server. The app answers `/up` perfectly well with a dead worker, and the
+symptom of that is the advisor never replying and no backup ever running —
+nothing that fails loudly.
+
+By hand, if you need the steps separately:
 
 ```bash
 sed -i 's/^APP_VERSION=.*/APP_VERSION=1.6.0/' .env
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
-
-Rolling back is the same edit with the previous version, and costs no build: the
-old image is still in the local store.
 
 Set `UPDATE_CHECK_REPOSITORY=` (empty) to switch the check off.
 
