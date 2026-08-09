@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/vip-pana/wealth-tracker/compare/v1.5.0...v1.6.0) (2026-08-09)
+
+
+### Features
+
+* **deploy:** build the prod image in CI and pull it on the server ([#71](https://github.com/vip-pana/wealth-tracker/issues/71)) ([b5f162b](https://github.com/vip-pana/wealth-tracker/commit/b5f162bbd9d3df329792f0e89b56548983947cb4))
+
 ## [1.5.0](https://github.com/vip-pana/wealth-tracker/compare/v1.4.0...v1.5.0) (2026-08-08)
 
 
