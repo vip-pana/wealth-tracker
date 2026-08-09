@@ -1,0 +1,22 @@
+# Build the production image locally instead of pulling it from ghcr.io.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.build.yml up -d --build
+#
+# Two cases need this: working on the Dockerfile or the entrypoint, and running
+# code that was never released (a hotfix on a branch). Everyday deploys pull the
+# CI-built image and never come near this file.
+#
+# `image:` from docker-compose.prod.yml still applies, so the local build is
+# tagged with the same name — which means a subsequent `pull` will overwrite it
+# with the registry's version. That is intended: it stops a hand-built image
+# from outliving the release it was standing in for.
+services:
+  app:
+    build:
+      context: .
+      target: prod
+      args:
+        # Stamps the image with its commit so `updates:check` can tell whether
+        # the deployed code is behind the remote. Defaults to "unknown" when
+        # unset, which disables the check rather than reporting nonsense.
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}

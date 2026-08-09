@@ -178,12 +178,26 @@ tailnet.
 
 ## 6. Start it
 
+Pin the version to run in `.env` — the ghcr.io image tag without the leading
+`v` — then pull and start:
+
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+echo 'APP_VERSION=1.5.0' >> .env     # the release you want
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-The first build takes a few minutes (PHP extensions, Composer, the frontend
-bundle). Two containers come up — the Tailscale sidecar and the app — and the
+Nothing is compiled here: the image is built by CI when a release is published
+(`.github/workflows/deploy.yml`) and pulled from `ghcr.io`. To build on this
+machine instead — you are changing the Dockerfile, or running code that was
+never released — add the override:
+
+```bash
+GIT_COMMIT=$(git rev-parse HEAD) docker compose \
+  -f docker-compose.prod.yml -f docker-compose.build.yml up -d --build
+```
+
+Two containers come up — the Tailscale sidecar and the app — and the
 app itself runs three processes: the web server, the queue worker (the AI
 advisor replies from a queued job) and the scheduler (prices, transaction
 import, the daily snapshot, the Scalable keep-alive, and the nightly backup).
@@ -299,27 +313,30 @@ needs a new `.env` key and leave the app down overnight, which is exactly what
 happened by hand during this migration more than once.
 
 It works by stamping the image with its commit at build time (`GIT_COMMIT`,
-wired up in `docker-compose.prod.yml`), because `.git` is excluded from the
-build context and the container otherwise has no way to know its own version.
-So always update with:
+passed by the deploy workflow), because `.git` is excluded from the build
+context and the container otherwise has no way to know its own version. An
+image built without it is stamped `unknown`, and the check then does nothing
+rather than reporting a wrong answer.
+
+To update, point `APP_VERSION` at the release you want and pull:
 
 ```bash
-git pull
-GIT_COMMIT=$(git rev-parse HEAD) docker compose -f docker-compose.prod.yml up -d --build
+sed -i 's/^APP_VERSION=.*/APP_VERSION=1.6.0/' .env
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-Without `GIT_COMMIT` the image is stamped `unknown` and the check quietly does
-nothing rather than reporting a wrong answer. To keep it out of the command
-line, put it in `.env` and refresh it when you deploy.
+Rolling back is the same edit with the previous version, and costs no build: the
+old image is still in the local store.
 
 Set `UPDATE_CHECK_REPOSITORY=` (empty) to switch the check off.
 
 ## Everyday operation
 
 ```bash
-# Update to the latest code
-git pull && GIT_COMMIT=$(git rev-parse HEAD) \
-  docker compose -f docker-compose.prod.yml up -d --build
+# Update to a released version (edit APP_VERSION in .env first)
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 
 # Logs
 docker compose -f docker-compose.prod.yml logs -f app
@@ -358,7 +375,9 @@ the file and the running config genuinely disagree by design.
 | The tailnet name became `wealth-tracker-1` | The `tailscale-state` volume was lost, so the sidecar registered as a new node. Delete the stale node in the admin console, restore or recreate the volume, and check `APP_URL` and the registered bank redirect still match. |
 | Name resolves but nothing answers, from the phone | The phone is not connected to the tailnet. `.ts.net` names resolve publicly and answer only over Tailscale. |
 | **419 Page Expired** on login | `session.secure` is `true` while serving over `http://`. With the sidecar you are on HTTPS, so suspect a stale cookie first (see below); without it, set `SESSION_SECURE_COOKIE=false`. |
-| `sc login` fails with `Platform secure storage failure: DBus error` | The CLI is reaching for the OS keyring, which no container has. The entrypoint writes a file-backed `config.toml` at startup — if you hit this, the image predates that fix: `git pull` and rebuild. |
+| `sc login` fails with `Platform secure storage failure: DBus error` | The CLI is reaching for the OS keyring, which no container has. The entrypoint writes a file-backed `config.toml` at startup — if you hit this, the image predates that fix: pull a newer `APP_VERSION`. |
+| `pull` fails with `manifest unknown` | No image was published for that `APP_VERSION`. Check the tag exists under the repository's Packages, and that the Deploy workflow for that release actually succeeded. |
+| `pull` fails with `denied` / `unauthorized` | The ghcr package is private. Make it public once under Packages → Package settings → Change visibility, or `docker login ghcr.io` on the host. |
 | Login page loops without an error | `app.url` does not match the address you opened. |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
 | Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
