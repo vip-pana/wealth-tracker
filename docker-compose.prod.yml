@@ -3,10 +3,18 @@
 # mounts the source tree, runs Vite and a log tailer, and assumes a developer is
 # watching. Nothing here mounts source: the image carries built assets.
 #
-#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 #
-# The Scalable CLI binary is selected by architecture at build time, so building
-# on the target machine covers both x86 and ARM without extra flags.
+# The image comes from ghcr.io, built by .github/workflows/deploy.yml when a
+# release is published. Nothing is compiled on the target machine: the running
+# image is byte-for-byte the one CI produced and tested, and a deploy is a pull
+# rather than a ten-minute rebuild that competes with the app for CPU.
+#
+# To build locally instead — working on the Dockerfile, or deploying code that
+# was never released — add the override:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.build.yml up -d --build
 services:
   # A Tailscale node dedicated to this app: it joins the tailnet under its own
   # hostname and gets its own certificate, so the address becomes
@@ -46,14 +54,12 @@ services:
       start_period: 20s
 
   app:
-    build:
-      context: .
-      target: prod
-      args:
-        # Stamps the running image with its commit so `updates:check` can tell
-        # whether the deployed code is behind the remote. Defaults to "unknown"
-        # when unset, which disables the check rather than reporting nonsense.
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    # The released version to run, pinned in .env. Pinning rather than tracking
+    # `latest` is what makes a rollback a one-line edit plus `up -d`: the old
+    # image is still in the local store, so going back costs no build and no
+    # network. `latest` would also silently change what a plain restart brings
+    # up, which is the opposite of what a deployment should do.
+    image: ghcr.io/vip-pana/wealth-tracker:${APP_VERSION:-latest}
     # The queue worker and scheduler live inside the container (see
     # docker/prod-entrypoint.sh); restarting keeps them alive across reboots and
     # crashes, which is the whole point of a machine that is always on.
