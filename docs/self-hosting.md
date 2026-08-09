@@ -306,11 +306,60 @@ sidecar case: register once, no tunnel.
 
 ## Staying up to date
 
+Merging release-please's release PR is the whole deploy. Publishing the release
+triggers `.github/workflows/deploy.yml`, which builds the image, pushes it to
+ghcr.io, and then calls `deploy-to-host.yml` to tell this machine to run it.
+
+Unattended deploys were avoided for a long time, for a good reason: a release
+that needs a new `.env` key would take the app down overnight with nobody
+watching. What makes them safe now is that the machine, not the workflow,
+decides — `scripts/deploy-release.sh` refuses a release whose `.env` keys it
+does not have, takes a backup first, and rolls back if the app does not answer.
+The workflow only names a version.
+
+### How the runner reaches a machine with no open ports
+
+GitHub joins the tailnet as a throwaway node tagged `tag:ci`, which the tailnet
+policy allows to reach exactly one host on exactly one port:
+
+```json
+{ "src": ["tag:ci"], "dst": ["tag:prod"], "ip": ["tcp:22"] }
+```
+
+It connects as the Unix user `deploy`, whose **login shell is
+`/usr/local/sbin/deploy-shell`** — a wrapper that accepts one command,
+`deploy <version>`, validates the version as a version, and executes the deploy
+script through a single-command sudoers rule. There is no interactive shell
+behind that account, and no ssh key anywhere: Tailscale SSH authenticates
+against the tailnet identity.
+
+So a leaked workflow secret buys the ability to deploy an existing release. It
+does not buy a shell on the machine that holds the financial history.
+
+The `ssh` rule for `tag:ci` uses `"action": "accept"` rather than `"check"`. A
+`check` rule demands an interactive browser confirmation, which a CI runner
+cannot answer — the job would hang until it timed out.
+
+> **Tagging the host removes it from `autogroup:self`.** The default policy
+> grants you SSH to *your own* devices; a tagged device has no owner, so that
+> rule stops covering it and `tagOwners` grants nothing on its own. The policy
+> therefore names the account explicitly — `"users": ["pana"]`, not
+> `autogroup:nonroot`, which does not expand to arbitrary Unix accounts. Get
+> this wrong and you lock yourself out of the machine, so land the rule in the
+> same policy save as the tag.
+
+### The manual path
+
+Still available and unchanged, for a hotfix or when the workflow is the thing
+that is broken:
+
+```bash
+./scripts/deploy-release.sh 1.7.0
+```
+
 A daily check (09:05) compares the running build against the repository and
-raises an in-app notification when it is behind. It **notifies and does nothing
-else** — pulling and rebuilding unattended would eventually deploy a change that
-needs a new `.env` key and leave the app down overnight, which is exactly what
-happened by hand during this migration more than once.
+raises an in-app notification when it is behind — now a safety net for a deploy
+that silently never ran, rather than the prompt to go and deploy by hand.
 
 It works by stamping the image with its commit at build time (`GIT_COMMIT`,
 passed by the deploy workflow), because `.git` is excluded from the build
@@ -318,17 +367,11 @@ context and the container otherwise has no way to know its own version. An
 image built without it is stamped `unknown`, and the check then does nothing
 rather than reporting a wrong answer.
 
-To update, use the deploy script rather than the individual commands — it does
-the same thing with the checks that make an unattended deploy survivable:
-
-```bash
-./scripts/deploy-release.sh 1.6.0
-```
-
-It refuses to start when the release adds an `.env` key this machine does not
-have, backs up the database first, and — if `/up` does not answer within two
-minutes — puts `APP_VERSION` back and recreates the container on the previous
-image. That rollback costs no build: the old image is still in the local store.
+What the deploy script does, wherever it is invoked from: refuses to start when
+the release adds an `.env` key this machine does not have, backs up the database
+first, and — if `/up` does not answer within two minutes — puts `APP_VERSION`
+back and recreates the container on the previous image. That rollback costs no
+build: the old image is still in the local store.
 
 It also checks that the queue worker and the scheduler came back, not just the
 web server. The app answers `/up` perfectly well with a dead worker, and the
@@ -392,6 +435,10 @@ the file and the running config genuinely disagree by design.
 | `sc login` fails with `Platform secure storage failure: DBus error` | The CLI is reaching for the OS keyring, which no container has. The entrypoint writes a file-backed `config.toml` at startup — if you hit this, the image predates that fix: pull a newer `APP_VERSION`. |
 | `pull` fails with `manifest unknown` | No image was published for that `APP_VERSION`. Check the tag exists under the repository's Packages, and that the Deploy workflow for that release actually succeeded. |
 | `pull` fails with `denied` / `unauthorized` | The ghcr package is private. Make it public once under Packages → Package settings → Change visibility, or `docker login ghcr.io` on the host. |
+| Deploy job fails at the ssh step with `permission denied` | The tailnet policy no longer matches: check `tag:prod` is still on the host (a re-auth can drop it) and that the `ssh` rule for `tag:ci` names the `deploy` user. |
+| Deploy job hangs at the ssh step until it times out | The `ssh` rule for `tag:ci` is `"action": "check"`, which waits for a browser confirmation nobody will give. It must be `"accept"`. |
+| Deploy job fails with `Refused. The only accepted command is…` | Something asked the `deploy` account for a command other than `deploy <version>`. Expected, and worth looking at — the workflow only ever sends that one. |
+| The workflow is green but the app is on the old version | The host script rolled back: it found a missing `.env` key, or `/up` never answered. The job log has the reason; the app is still up on the previous release. |
 | Login page loops without an error | `app.url` does not match the address you opened. |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
 | Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
