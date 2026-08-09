@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/vip-pana/wealth-tracker/compare/v1.6.0...v1.7.0) (2026-08-09)
+
+
+### Features
+
+* **deploy:** add a deploy script with an env guard and automatic rollback ([#73](https://github.com/vip-pana/wealth-tracker/issues/73)) ([6db2f48](https://github.com/vip-pana/wealth-tracker/commit/6db2f48e5ff4717bc6ef225f45e8591b24f86a15))
+
 ## [1.6.0](https://github.com/vip-pana/wealth-tracker/compare/v1.5.0...v1.6.0) (2026-08-09)
 
 
