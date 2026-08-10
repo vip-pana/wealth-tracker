@@ -328,13 +328,21 @@ policy allows to reach exactly one host on exactly one port:
 
 It connects as the Unix user `deploy`, whose **login shell is
 `/usr/local/sbin/deploy-shell`** — a wrapper that accepts one command,
-`deploy <version>`, validates the version as a version, and executes the deploy
-script through a single-command sudoers rule. There is no interactive shell
-behind that account, and no ssh key anywhere: Tailscale SSH authenticates
-against the tailnet identity.
+`deploy <app> <version>`, resolves the app against a whitelist, validates the
+version as a version, and executes that app's deploy script through a
+single-command sudoers rule. There is no interactive shell behind that account,
+and no ssh key anywhere: Tailscale SSH authenticates against the tailnet
+identity.
 
 So a leaked workflow secret buys the ability to deploy an existing release. It
 does not buy a shell on the machine that holds the financial history.
+
+That account serves every app on the box — funeral-docs deploys through the same
+wrapper. The app is an argument checked against a list of known names, never a
+path the caller supplies, so a third app is a line in the whitelist plus a line
+in sudoers, not a second Unix account with its own copy of the wrapper to drift.
+The wrapper is committed in both repos and must be kept identical: only the copy
+installed at `/usr/local/sbin/deploy-shell` actually runs.
 
 The `ssh` rule for `tag:ci` uses `"action": "accept"` rather than `"check"`. A
 `check` rule demands an interactive browser confirmation, which a CI runner
@@ -437,7 +445,8 @@ the file and the running config genuinely disagree by design.
 | `pull` fails with `denied` / `unauthorized` | The ghcr package is private. Make it public once under Packages → Package settings → Change visibility, or `docker login ghcr.io` on the host. |
 | Deploy job fails at the ssh step with `permission denied` | The tailnet policy no longer matches: check `tag:prod` is still on the host (a re-auth can drop it) and that the `ssh` rule for `tag:ci` names the `deploy` user. |
 | Deploy job hangs at the ssh step until it times out | The `ssh` rule for `tag:ci` is `"action": "check"`, which waits for a browser confirmation nobody will give. It must be `"accept"`. |
-| Deploy job fails with `Refused. The only accepted command is…` | Something asked the `deploy` account for a command other than `deploy <version>`. Expected, and worth looking at — the workflow only ever sends that one. |
+| Deploy job fails with `Refused. The only accepted command is…` | Something asked the `deploy` account for a command other than `deploy <app> <version>`. If it arrived as two words, the installed `/usr/local/sbin/deploy-shell` is newer than the workflow that called it (or the reverse): reinstall the wrapper from `scripts/deploy-shell.sh` and check the caller passes `app:`. |
+| Deploy job fails with `Refused: '<name>' is not a deployable app` | The app is not in the wrapper's whitelist. Add it there and to `/etc/sudoers.d/deploy`, then reinstall the wrapper — the copy under `/usr/local/sbin` is what runs. |
 | Deploy job fails at `tailscale up` with `403 calling actor does not have enough permissions` | The OAuth client is missing the **Auth Keys → Write** scope. `Devices → Write` alone is not enough: the action mints an auth key to register the ephemeral node. |
 | Deploy job fails with `validating docker-compose.prod.yml: stat .: permission denied` | Something invoked the deploy script from a directory the running user cannot enter — the `deploy` account's home is mode 750. Both scripts now `cd` away from it; an older copy of `/usr/local/sbin/deploy-shell` predates that fix. |
 | The workflow is green but the app is on the old version | The host script rolled back: it found a missing `.env` key, or `/up` never answered. The job log has the reason; the app is still up on the previous release. |
