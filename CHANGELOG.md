@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/vip-pana/wealth-tracker/compare/v1.7.0...v1.8.0) (2026-08-10)
+
+
+### Features
+
+* **deploy:** deploy to the host automatically when a release is published ([#75](https://github.com/vip-pana/wealth-tracker/issues/75)) ([70b2019](https://github.com/vip-pana/wealth-tracker/commit/70b2019c85fe97f5cab71d477ab9278c9355868a))
+
 ## [1.7.0](https://github.com/vip-pana/wealth-tracker/compare/v1.6.0...v1.7.0) (2026-08-09)
 
 
