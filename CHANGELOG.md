@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.1](https://github.com/vip-pana/wealth-tracker/compare/v1.8.0...v1.8.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **deploy:** do not depend on the working directory the deploy arrives in ([#80](https://github.com/vip-pana/wealth-tracker/issues/80)) ([94b1172](https://github.com/vip-pana/wealth-tracker/commit/94b1172a93e94e935f343a3e4252fb6464849a40))
+* **deploy:** drop the ssh option tailscale ssh does not accept ([#78](https://github.com/vip-pana/wealth-tracker/issues/78)) ([394fa08](https://github.com/vip-pana/wealth-tracker/commit/394fa08b395f5e56fff3d41b0d554e961af523a3))
+
 ## [1.8.0](https://github.com/vip-pana/wealth-tracker/compare/v1.7.0...v1.8.0) (2026-08-10)
 
 
