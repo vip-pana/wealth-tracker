@@ -438,6 +438,8 @@ the file and the running config genuinely disagree by design.
 | Deploy job fails at the ssh step with `permission denied` | The tailnet policy no longer matches: check `tag:prod` is still on the host (a re-auth can drop it) and that the `ssh` rule for `tag:ci` names the `deploy` user. |
 | Deploy job hangs at the ssh step until it times out | The `ssh` rule for `tag:ci` is `"action": "check"`, which waits for a browser confirmation nobody will give. It must be `"accept"`. |
 | Deploy job fails with `Refused. The only accepted command is…` | Something asked the `deploy` account for a command other than `deploy <version>`. Expected, and worth looking at — the workflow only ever sends that one. |
+| Deploy job fails at `tailscale up` with `403 calling actor does not have enough permissions` | The OAuth client is missing the **Auth Keys → Write** scope. `Devices → Write` alone is not enough: the action mints an auth key to register the ephemeral node. |
+| Deploy job fails with `validating docker-compose.prod.yml: stat .: permission denied` | Something invoked the deploy script from a directory the running user cannot enter — the `deploy` account's home is mode 750. Both scripts now `cd` away from it; an older copy of `/usr/local/sbin/deploy-shell` predates that fix. |
 | The workflow is green but the app is on the old version | The host script rolled back: it found a missing `.env` key, or `/up` never answered. The job log has the reason; the app is still up on the previous release. |
 | Login page loops without an error | `app.url` does not match the address you opened. |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
