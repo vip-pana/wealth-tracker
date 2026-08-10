@@ -24,6 +24,8 @@ jobs:
   build:
     name: Build and push image
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -67,3 +69,18 @@ jobs:
           # out its own commit — updates:check compares against this stamp.
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Only reached once the image exists, so the host never pulls a tag that was
+  # never published. The host script does the rest: it backs up, refuses the
+  # deploy if the release needs an .env key the machine lacks, and rolls back if
+  # the app does not answer.
+  deploy:
+    name: Deploy to production
+    needs: build
+    uses: ./.github/workflows/deploy-to-host.yml
+    with:
+      version: ${{ needs.build.outputs.version }}
+      host: victus
+    secrets:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}

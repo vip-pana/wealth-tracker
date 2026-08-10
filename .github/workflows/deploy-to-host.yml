@@ -1,0 +1,65 @@
+name: Deploy to host
+
+# Reusable: joins the tailnet as a throwaway node and asks the target machine to
+# deploy a version. Kept separate from the image build so the same job can serve
+# any app on the same box — the host script and the ssh user are inputs.
+#
+# The runner cannot do anything on the target beyond this: the tailnet ACL lets
+# tag:ci reach the host on port 22 only, and the ssh account's login shell is a
+# wrapper that accepts one command with one validated argument. A stolen secret
+# buys the ability to deploy an existing release, not a shell.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release version to deploy, without the leading v'
+        required: true
+        type: string
+      host:
+        description: 'Tailnet hostname of the target machine'
+        required: true
+        type: string
+      ssh_user:
+        description: 'Unix account to connect as (its login shell is the deploy wrapper)'
+        required: false
+        default: deploy
+        type: string
+    secrets:
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_OAUTH_SECRET:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    # One deploy at a time per host: two overlapping runs would fight over .env
+    # and the container. Not cancel-in-progress — interrupting a deploy halfway
+    # is worse than queueing behind it.
+    concurrency:
+      group: deploy-${{ inputs.host }}
+      cancel-in-progress: false
+    steps:
+      - name: Join the tailnet
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          # Must match a tag in the tailnet policy: the ACL grants tag:ci
+          # port 22 on tag:prod and nothing else.
+          tags: tag:ci
+          # The node is created for this job and expires with it, so a run
+          # never leaves a lingering device with tailnet access.
+          use-cache: 'false'
+
+      - name: Deploy
+        # Tailscale SSH authenticates against the tailnet identity, so there is
+        # no ssh key to store anywhere. StrictHostKeyChecking is off because the
+        # ephemeral runner has no known_hosts and the connection is already
+        # authenticated and encrypted by WireGuard underneath.
+        run: |
+          tailscale ssh \
+            -o StrictHostKeyChecking=no \
+            "${{ inputs.ssh_user }}@${{ inputs.host }}" \
+            "deploy ${{ inputs.version }}"
