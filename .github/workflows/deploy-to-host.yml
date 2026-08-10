@@ -55,11 +55,11 @@ jobs:
 
       - name: Deploy
         # Tailscale SSH authenticates against the tailnet identity, so there is
-        # no ssh key to store anywhere. StrictHostKeyChecking is off because the
-        # ephemeral runner has no known_hosts and the connection is already
-        # authenticated and encrypted by WireGuard underneath.
+        # no ssh key to store or host key to pin: the wrapper checks the host key
+        # against the one the coordination server advertises. It takes no ssh
+        # options of its own — passing -o fails with "flag provided but not
+        # defined".
         run: |
           tailscale ssh \
-            -o StrictHostKeyChecking=no \
             "${{ inputs.ssh_user }}@${{ inputs.host }}" \
             "deploy ${{ inputs.version }}"
