@@ -79,6 +79,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/deploy-to-host.yml
     with:
+      app: wealth-tracker
       version: ${{ needs.build.outputs.version }}
       host: victus
     secrets:

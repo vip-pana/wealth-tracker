@@ -1,16 +1,21 @@
 name: Deploy to host
 
 # Reusable: joins the tailnet as a throwaway node and asks the target machine to
-# deploy a version. Kept separate from the image build so the same job can serve
-# any app on the same box — the host script and the ssh user are inputs.
+# deploy a version of an app. Kept separate from the image build so the same job
+# serves every app on the box — which one is an input, and the wrapper on the
+# host resolves it to a checkout.
 #
 # The runner cannot do anything on the target beyond this: the tailnet ACL lets
 # tag:ci reach the host on port 22 only, and the ssh account's login shell is a
-# wrapper that accepts one command with one validated argument. A stolen secret
+# wrapper that accepts one command with two validated arguments. A stolen secret
 # buys the ability to deploy an existing release, not a shell.
 on:
   workflow_call:
     inputs:
+      app:
+        description: 'Application to deploy, as named in the host wrapper whitelist'
+        required: true
+        type: string
       version:
         description: 'Release version to deploy, without the leading v'
         required: true
@@ -32,13 +37,14 @@ on:
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.version }}
+    name: Deploy ${{ inputs.app }} ${{ inputs.version }}
     runs-on: ubuntu-latest
-    # One deploy at a time per host: two overlapping runs would fight over .env
-    # and the container. Not cancel-in-progress — interrupting a deploy halfway
-    # is worse than queueing behind it.
+    # One deploy at a time per app: two overlapping runs would fight over .env
+    # and the container. Keyed by app as well as host, so deploying this app
+    # never queues behind another one on the same box. Not cancel-in-progress —
+    # interrupting a deploy halfway is worse than queueing behind it.
     concurrency:
-      group: deploy-${{ inputs.host }}
+      group: deploy-${{ inputs.host }}-${{ inputs.app }}
       cancel-in-progress: false
     steps:
       - name: Join the tailnet
@@ -53,6 +59,14 @@ jobs:
           # never leaves a lingering device with tailnet access.
           use-cache: 'false'
 
+      # The action above reports success even after several failed attempts to
+      # come up, so a green step is not proof the node joined. Without this the
+      # failure would surface as an opaque ssh timeout below.
+      - name: Verify the node joined
+        run: |
+          tailscale status --json > /dev/null \
+            || { echo "::error::not on the tailnet — check the OAuth client scopes (Auth Keys → Write) and tag:ci ownership"; exit 1; }
+
       - name: Deploy
         # Tailscale SSH authenticates against the tailnet identity, so there is
         # no ssh key to store or host key to pin: the wrapper checks the host key
@@ -62,4 +76,4 @@ jobs:
         run: |
           tailscale ssh \
             "${{ inputs.ssh_user }}@${{ inputs.host }}" \
-            "deploy ${{ inputs.version }}"
+            "deploy ${{ inputs.app }} ${{ inputs.version }}"
