@@ -22,6 +22,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 COMPOSE=(docker compose -f "$ROOT/docker-compose.prod.yml")
+
+# Work from the repo, whatever directory the caller was in. Every path below is
+# already absolute, but `docker compose` stats the working directory while
+# validating the compose file — and when the deploy arrives over ssh the cwd is
+# the deploy account's home, which this user cannot enter:
+#   validating docker-compose.prod.yml: stat .: permission denied
+cd "$ROOT"
 IMAGE="ghcr.io/vip-pana/wealth-tracker"
 
 # How long to wait for /up after recreating. The container's own start_period is

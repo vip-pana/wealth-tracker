@@ -56,6 +56,13 @@ if ! [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
+# Leave this account's home before handing over: it is mode 750 and owned by
+# "deploy", so the target user cannot even stat it, and anything inheriting it as
+# a working directory fails obscurely (docker compose reports
+# "stat .: permission denied" while validating the compose file). / is readable
+# by everyone; the deploy script cds into the repo itself.
+cd /
+
 # Run as pana: the checkout, .env and the docker group all belong to that user.
 # The sudoers rule permits this one command and nothing else, so "deploy" cannot
 # become pana for any other purpose.
