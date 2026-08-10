@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/vip-pana/wealth-tracker/compare/v1.8.1...v1.8.2) (2026-08-10)
+
+
+### Chores
+
+* **deploy:** take the app as an argument in the deploy wrapper ([#81](https://github.com/vip-pana/wealth-tracker/issues/81)) ([34c2ecf](https://github.com/vip-pana/wealth-tracker/commit/34c2ecfdd76141c3e144dc35608f9d062484dc2c))
+
 ## [1.8.1](https://github.com/vip-pana/wealth-tracker/compare/v1.8.0...v1.8.1) (2026-08-10)
 
 
