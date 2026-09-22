@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/vip-pana/wealth-tracker/compare/v1.9.1...v1.9.2) (2026-09-22)
+
+
+### Chores
+
+* **ci:** bump docker/build-push-action from 6 to 7 ([#84](https://github.com/vip-pana/wealth-tracker/issues/84)) ([fb71d09](https://github.com/vip-pana/wealth-tracker/commit/fb71d09389d4399b97d54ddd7f02ddb955a88ad1))
+
 ## [1.9.1](https://github.com/vip-pana/wealth-tracker/compare/v1.9.0...v1.9.1) (2026-09-22)
 
 
