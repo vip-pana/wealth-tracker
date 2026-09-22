@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.4](https://github.com/vip-pana/wealth-tracker/compare/v1.9.3...v1.9.4) (2026-09-22)
+
+
+### Chores
+
+* **ci:** bump tailscale/github-action from 3 to 4 ([#85](https://github.com/vip-pana/wealth-tracker/issues/85)) ([24c18a2](https://github.com/vip-pana/wealth-tracker/commit/24c18a241f89495e4071c00694ffed6c01dc190d))
+
 ## [1.9.3](https://github.com/vip-pana/wealth-tracker/compare/v1.9.2...v1.9.3) (2026-09-22)
 
 
