@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.1](https://github.com/vip-pana/wealth-tracker/compare/v1.9.0...v1.9.1) (2026-09-22)
+
+
+### Chores
+
+* **ci:** bump docker/login-action from 3 to 4 ([#83](https://github.com/vip-pana/wealth-tracker/issues/83)) ([23c32a5](https://github.com/vip-pana/wealth-tracker/commit/23c32a58379fbc71bd98da05b36006b6712c1022))
+* **deps:** bump the composer-minor group, with the cast Rector 2.6 now flags ([#99](https://github.com/vip-pana/wealth-tracker/issues/99)) ([8bbe51d](https://github.com/vip-pana/wealth-tracker/commit/8bbe51d58fae1661e3b13943c5ccdadbdd0b3ef5))
+* **deps:** bump the npm-minor group across 1 directory with 21 updates ([#95](https://github.com/vip-pana/wealth-tracker/issues/95)) ([9cc5271](https://github.com/vip-pana/wealth-tracker/commit/9cc5271a4cc5905e7fb659fac567f0d682f7337b))
+
 ## [1.9.0](https://github.com/vip-pana/wealth-tracker/compare/v1.8.2...v1.9.0) (2026-09-22)
 
 
