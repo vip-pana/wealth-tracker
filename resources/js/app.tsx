@@ -25,3 +25,11 @@ createInertiaApp({
         color: '#6366f1',
     },
 });
+
+// Registered only for the built app: under `vite dev` the service worker would
+// sit in front of the HMR client and serve a stale shell.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        void navigator.serviceWorker.register('/sw.js');
+    });
+}
