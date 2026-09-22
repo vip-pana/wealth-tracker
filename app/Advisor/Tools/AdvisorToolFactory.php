@@ -1500,7 +1500,7 @@ class AdvisorToolFactory
         }
 
         $bulleted = '• '.$newFact;
-        $alreadyThere = array_any($lines, fn ($line) => mb_strtolower(ltrim((string) $line, "• \t")) === mb_strtolower($newFact));
+        $alreadyThere = array_any($lines, fn ($line) => mb_strtolower(ltrim($line, "• \t")) === mb_strtolower($newFact));
         if (! $alreadyThere) {
             $lines[] = $bulleted;
         }
