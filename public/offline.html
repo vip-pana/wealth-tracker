@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offline — Wealth Tracker</title>
+    <style>
+        :root { color-scheme: dark; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+            background: #121212;
+            color: #fafafa;
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+        main { max-width: 22rem; text-align: center; }
+        h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
+        p { margin: 0 0 0.75rem; font-size: 0.9375rem; line-height: 1.5; color: #a3a3a3; }
+        button {
+            margin-top: 1rem;
+            padding: 0.625rem 1.25rem;
+            font: inherit;
+            font-size: 0.9375rem;
+            color: #121212;
+            background: #fafafa;
+            border: 0;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Wealth Tracker non raggiungibile</h1>
+        <p>I dati vivono sul server: senza connessione l'app non può mostrarli.</p>
+        <p>Se sei fuori casa, controlla che <strong>Tailscale</strong> sia attivo — l'app risponde solo dalla tua rete privata.</p>
+        <button type="button" onclick="location.reload()">Riprova</button>
+    </main>
+</body>
+</html>
