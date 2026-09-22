@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/vip-pana/wealth-tracker/compare/v1.9.2...v1.9.3) (2026-09-22)
+
+
+### Chores
+
+* **ci:** bump docker/setup-buildx-action from 3 to 4 ([#86](https://github.com/vip-pana/wealth-tracker/issues/86)) ([5b4d7d6](https://github.com/vip-pana/wealth-tracker/commit/5b4d7d64adf9a8cab6ff10d2f415f6dbc9ceab62))
+
 ## [1.9.2](https://github.com/vip-pana/wealth-tracker/compare/v1.9.1...v1.9.2) (2026-09-22)
 
 
