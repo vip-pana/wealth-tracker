@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/vip-pana/wealth-tracker/compare/v1.8.2...v1.9.0) (2026-09-22)
+
+
+### Features
+
+* **pwa:** make the app installable on the phone home screen ([#96](https://github.com/vip-pana/wealth-tracker/issues/96)) ([e148736](https://github.com/vip-pana/wealth-tracker/commit/e1487360bb1c010a0024006ba3fcd9c3af5d1c6a))
+
 ## [1.8.2](https://github.com/vip-pana/wealth-tracker/compare/v1.8.1...v1.8.2) (2026-08-10)
 
 
