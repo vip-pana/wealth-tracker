@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.5](https://github.com/vip-pana/wealth-tracker/compare/v1.9.4...v1.9.5) (2026-09-29)
+
+
+### Chores
+
+* **deps:** bump the composer-minor group with 6 updates ([#103](https://github.com/vip-pana/wealth-tracker/issues/103)) ([14f69a1](https://github.com/vip-pana/wealth-tracker/commit/14f69a17ac51d361557e04c8d6c833a411613558))
+* **deps:** bump the npm-minor group with 4 updates ([#104](https://github.com/vip-pana/wealth-tracker/issues/104)) ([c3e4b9c](https://github.com/vip-pana/wealth-tracker/commit/c3e4b9c8ac8286b2fe9a61a9c7add86d21affae7))
+* **deps:** bump vitest from 4.1.10 to 5.0.2 ([#105](https://github.com/vip-pana/wealth-tracker/issues/105)) ([135eced](https://github.com/vip-pana/wealth-tracker/commit/135eced6511355d3c051518b7aeb218fa244a3bc))
+
 ## [1.9.4](https://github.com/vip-pana/wealth-tracker/compare/v1.9.3...v1.9.4) (2026-09-22)
 
 
