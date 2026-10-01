@@ -125,3 +125,16 @@ export type PortfolioMetrics =
           };
           goalEta: GoalEta | null;
       };
+
+// The dashboard charts re-sampled per period (Giorno / Settimana / Mese).
+export type DashboardPeriod = 'day' | 'week' | 'month';
+
+export interface PeriodView {
+    netWorthSeries: NetWorthPoint[];
+    stackedBar: StackedBarPoint[];
+    growthRates: GrowthRatePoint[];
+    monthComparison: MonthComparisonPoint[];
+    forecast: ForecastPoint[];
+    macroStackedBar: MacroStackedBarPoint[];
+    macroMonthComparison: MacroComparisonPoint[];
+}

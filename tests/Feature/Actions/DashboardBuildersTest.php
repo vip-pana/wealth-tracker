@@ -141,10 +141,72 @@ class DashboardBuildersTest extends TestCase
 
         // Per-snapshot keeps all three points; MoM collapses January to its last (130).
         $this->assertCount(3, $data['netWorthSeries']);
-        $this->assertCount(2, $data['momNetWorthSeries']);
-        $this->assertSame('2026-01-20', $data['momNetWorthSeries'][0]['date']);
-        $this->assertEqualsWithDelta(130.0, $data['momNetWorthSeries'][0]['total_value'], 0.01);
-        $this->assertSame('2026-02-10', $data['momNetWorthSeries'][1]['date']);
+        $month = $data['periods']['month']['netWorthSeries'];
+        $this->assertCount(2, $month);
+        $this->assertSame('2026-01-20', $month[0]['date']);
+        $this->assertEqualsWithDelta(130.0, $month[0]['total_value'], 0.01);
+        $this->assertSame('2026-02-10', $month[1]['date']);
+    }
+
+    public function test_week_series_collapses_same_iso_week_snapshots_to_last(): void
+    {
+        $cat = Category::factory()->create();
+        // Mon 5 and Sun 11 Jan 2026 share ISO week 2; Mon 12 opens week 3.
+        $this->snapshot('2026-01-05', [$cat->id => 100]);
+        $this->snapshot('2026-01-11', [$cat->id => 110]);
+        $this->snapshot('2026-01-12', [$cat->id => 120]);
+
+        $week = app(FetchDashboardData::class)->run()['periods']['week'];
+
+        $this->assertSame(['2026-01-11', '2026-01-12'], array_column($week['netWorthSeries'], 'date'));
+        $this->assertEqualsWithDelta(110.0, $week['netWorthSeries'][0]['total_value'], 0.01);
+        $this->assertCount(1, $week['growthRates']);
+    }
+
+    public function test_week_series_keys_on_iso_year_across_new_year(): void
+    {
+        $cat = Category::factory()->create();
+        // Mon 29 Dec 2025 and Thu 1 Jan 2026 are both ISO week 2026-W01.
+        $this->snapshot('2025-12-29', [$cat->id => 100]);
+        $this->snapshot('2026-01-01', [$cat->id => 105]);
+
+        $week = app(FetchDashboardData::class)->run()['periods']['week']['netWorthSeries'];
+
+        $this->assertCount(1, $week);
+        $this->assertSame('2026-01-01', $week[0]['date']);
+    }
+
+    public function test_day_series_carries_last_snapshot_over_missing_days(): void
+    {
+        $cat = Category::factory()->create(['name' => 'ETF']);
+        $this->snapshot('2026-03-01', [$cat->id => 100]);
+        $this->snapshot('2026-03-04', [$cat->id => 130]);
+
+        $day = app(FetchDashboardData::class)->run()['periods']['day'];
+
+        $this->assertSame(
+            ['2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04'],
+            array_column($day['netWorthSeries'], 'date'),
+        );
+        $this->assertSame([100.0, 100.0, 100.0, 130.0], array_column($day['netWorthSeries'], 'total_value'));
+        $this->assertEqualsWithDelta(100.0, $day['stackedBar'][2]['ETF'], 0.01);
+        $this->assertSame([0.0, 0.0, 30.0], array_column($day['growthRates'], 'change_pct'));
+        // Carried days are unsaved copies, never new rows.
+        $this->assertSame(2, Snapshot::count());
+    }
+
+    public function test_day_series_is_limited_to_the_last_90_days_and_seeded_from_before(): void
+    {
+        $cat = Category::factory()->create();
+        $this->snapshot('2025-06-01', [$cat->id => 50]);
+        $this->snapshot('2026-03-31', [$cat->id => 80]);
+
+        $series = app(FetchDashboardData::class)->run()['periods']['day']['netWorthSeries'];
+
+        $this->assertCount(90, $series);
+        $this->assertSame('2026-01-01', $series[0]['date']);
+        $this->assertEqualsWithDelta(50.0, $series[0]['total_value'], 0.01);
+        $this->assertSame('2026-03-31', $series[89]['date']);
     }
 
     public function test_net_worth_series_layers_total_ex_pension_and_investable(): void
