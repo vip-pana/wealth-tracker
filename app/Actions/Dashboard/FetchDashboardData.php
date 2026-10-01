@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 
 class FetchDashboardData extends Action
 {
-    private const DAILY_WINDOW_DAYS = 90;
+    private const int DAILY_WINDOW_DAYS = 90;
 
     public function __construct(
         private readonly BuildNetWorthSeries $buildNetWorthSeries,
