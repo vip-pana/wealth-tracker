@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/vip-pana/wealth-tracker/compare/v1.9.5...v1.10.0) (2026-10-01)
+
+
+### Features
+
+* **dashboard:** add day-by-day and week-by-week views ([#107](https://github.com/vip-pana/wealth-tracker/issues/107)) ([6ea6816](https://github.com/vip-pana/wealth-tracker/commit/6ea6816aa88d28ee1ebf209dec0b5683b2c1c2ed))
+
 ## [1.9.5](https://github.com/vip-pana/wealth-tracker/compare/v1.9.4...v1.9.5) (2026-09-29)
 
 
