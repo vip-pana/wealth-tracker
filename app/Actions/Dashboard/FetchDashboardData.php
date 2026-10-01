@@ -16,6 +16,8 @@ use Illuminate\Support\Collection;
 
 class FetchDashboardData extends Action
 {
+    private const DAILY_WINDOW_DAYS = 90;
+
     public function __construct(
         private readonly BuildNetWorthSeries $buildNetWorthSeries,
         private readonly BuildAllocationData $buildAllocationData,
@@ -75,12 +77,29 @@ class FetchDashboardData extends Action
         // stripIlliquid(), which mutates the Snapshot objects in place — after
         // that the "full" collection would already be stripped.
         $netWorthSeries = $this->buildNetWorthSeries->runLayered($allSnapshots, $illiquidCategoryIds, $nonInvestableCategoryIds);
-        $momNetWorthSeries = $this->buildNetWorthSeries->runLayered($this->collapseToMonthly($allSnapshots), $illiquidCategoryIds, $nonInvestableCategoryIds);
+        $periodNetWorthSeries = array_map(
+            fn (Collection $s): array => $this->buildNetWorthSeries->runLayered($s, $illiquidCategoryIds, $nonInvestableCategoryIds),
+            $this->periodSnapshots($allSnapshots),
+        );
 
         $liquidSnapshots = $this->stripIlliquid($allSnapshots, $excludedFromInvesting);
         $liquidCategories = $allCategories->reject(fn (Category $c): bool => in_array($c->id, $excludedFromInvesting, true))->values();
 
-        $monthlySnapshots = $this->collapseToMonthly($liquidSnapshots);
+        $liquidPeriods = $this->periodSnapshots($liquidSnapshots);
+        $monthlySnapshots = $liquidPeriods['month'];
+
+        $periods = [];
+        foreach ($liquidPeriods as $period => $snapshots) {
+            $periods[$period] = [
+                'netWorthSeries' => $periodNetWorthSeries[$period],
+                'stackedBar' => $this->buildStackedBar->run($snapshots, $liquidCategories),
+                'growthRates' => $this->computeGrowthRates->run($snapshots),
+                'monthComparison' => $this->computeMonthComparison->run($snapshots, $liquidCategories),
+                'forecast' => $this->computeForecast->run($snapshots),
+                'macroStackedBar' => $this->buildMacroStackedBar->run($snapshots),
+                'macroMonthComparison' => $this->buildMacroMonthComparison->run($snapshots),
+            ];
+        }
 
         $goal = Goal::with('milestones')->first();
 
@@ -94,13 +113,7 @@ class FetchDashboardData extends Action
             'macroAllocationData' => $this->buildMacroAllocationData->run($liquidSnapshots),
             'macroStackedBar' => $this->buildMacroStackedBar->run($liquidSnapshots),
             'macroMonthComparison' => $this->buildMacroMonthComparison->run($liquidSnapshots),
-            'momNetWorthSeries' => $momNetWorthSeries,
-            'momStackedBar' => $this->buildStackedBar->run($monthlySnapshots, $liquidCategories),
-            'momGrowthRates' => $this->computeGrowthRates->run($monthlySnapshots),
-            'momMonthComparison' => $this->computeMonthComparison->run($monthlySnapshots, $liquidCategories),
-            'momForecast' => $this->computeForecast->run($monthlySnapshots),
-            'momMacroStackedBar' => $this->buildMacroStackedBar->run($monthlySnapshots),
-            'momMacroMonthComparison' => $this->buildMacroMonthComparison->run($monthlySnapshots),
+            'periods' => $periods,
             'categories' => $liquidCategories->map(fn (Category $c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -131,18 +144,84 @@ class FetchDashboardData extends Action
     }
 
     /**
-     * Collapse a date-ordered collection to one snapshot per calendar month,
-     * keeping the last snapshot of each month as that month's value.
+     * The snapshots re-sampled per period for the dashboard's Giorno /
+     * Settimana / Mese views.
+     *
+     * @param  Collection<int, Snapshot>  $snapshots
+     * @return array{day: Collection<int, Snapshot>, week: Collection<int, Snapshot>, month: Collection<int, Snapshot>}
+     */
+    private function periodSnapshots(Collection $snapshots): array
+    {
+        return [
+            'day' => $this->fillDaily($snapshots),
+            'week' => $this->collapseBy($snapshots, 'o-W'),
+            'month' => $this->collapseBy($snapshots, 'Y-m'),
+        ];
+    }
+
+    /**
+     * Collapse a date-ordered collection to one snapshot per period (a date
+     * format: 'Y-m' for calendar months, 'o-W' for ISO weeks), keeping the last
+     * snapshot of each period as that period's value.
      *
      * @param  Collection<int, Snapshot>  $snapshots
      * @return Collection<int, Snapshot>
      */
-    private function collapseToMonthly(Collection $snapshots): Collection
+    private function collapseBy(Collection $snapshots, string $format): Collection
     {
         return $snapshots
-            ->keyBy(fn (Snapshot $s): string => $s->date->format('Y-m'))
+            ->keyBy(fn (Snapshot $s): string => $s->date->format($format))
             ->sortKeys()
             ->values();
+    }
+
+    /**
+     * One point per calendar day over the last DAILY_WINDOW_DAYS up to the
+     * latest snapshot. Snapshots are unique per date but days get skipped (a
+     * stale source cancels the daily run, older history is monthly), so a day
+     * without a snapshot carries the previous one forward: wealth did not drop
+     * to zero, it just wasn't measured. Carried points are unsaved copies, so
+     * the stored snapshots are never touched.
+     *
+     * @param  Collection<int, Snapshot>  $snapshots
+     * @return Collection<int, Snapshot>
+     */
+    private function fillDaily(Collection $snapshots): Collection
+    {
+        $last = $snapshots->last();
+        if (! $last instanceof Snapshot) {
+            return new Collection;
+        }
+
+        $byDate = $snapshots->keyBy(fn (Snapshot $s): string => $s->date->format('Y-m-d'));
+        $end = $last->date->copy()->startOfDay();
+        $day = $end->copy()->subDays(self::DAILY_WINDOW_DAYS - 1);
+
+        // Seed with the latest snapshot on or before the window start, so the
+        // first day has a value even when nothing was taken on it.
+        $current = $snapshots->last(fn (Snapshot $s): bool => $s->date->lte($day));
+        if (! $current instanceof Snapshot) {
+            /** @var Snapshot $current */
+            $current = $snapshots->first();
+            $day = $current->date->copy()->startOfDay();
+        }
+
+        /** @var Collection<int, Snapshot> $filled */
+        $filled = new Collection;
+        for (; $day->lte($end); $day->addDay()) {
+            $current = $byDate->get($day->format('Y-m-d'), $current);
+            if ($current->date->isSameDay($day)) {
+                $filled->push($current);
+
+                continue;
+            }
+
+            $carried = $current->replicate();
+            $carried->date = $day->copy();
+            $filled->push($carried);
+        }
+
+        return $filled;
     }
 
     /**

@@ -18,13 +18,20 @@ import { netWorthChangePct } from '@/lib/metrics';
 import { Link } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { PlusSquare, TrendingUp, TrendingDown, Minus, Target, LayoutDashboard } from 'lucide-react';
-import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint, PortfolioMetrics, PositionReturns } from '@/types/analytics';
+import type { NetWorthPoint, AllocationSlice, StackedBarPoint, GrowthRatePoint, MonthComparisonPoint, ForecastPoint, MacroAllocationSlice, MacroStackedBarPoint, MacroComparisonPoint, PortfolioMetrics, PositionReturns, DashboardPeriod, PeriodView } from '@/types/analytics';
 import type { Category } from '@/types/models';
 
 const MACRO_COLORS: Record<string, string> = {
     'Liquidità': '#60a5fa',
     'ETF':       '#34d399',
     'Cripto':    '#f59e0b',
+};
+
+const GRANULARITY_LABELS: Record<'snapshot' | DashboardPeriod, { change: string; growth: string; comparison: string }> = {
+    snapshot: { change: 'vs snapshot prec.', growth: 'Variazione tra snapshot (%)', comparison: 'Confronto tra snapshot' },
+    day:      { change: 'vs giorno prec.',   growth: 'Variazione giornaliera (%)',  comparison: 'Confronto tra giorni' },
+    week:     { change: 'vs settimana prec.', growth: 'Variazione settimanale (%)', comparison: 'Confronto tra settimane' },
+    month:    { change: 'vs mese prec.',     growth: 'Variazione mensile (%)',      comparison: 'Confronto tra mesi' },
 };
 
 interface Props {
@@ -37,13 +44,7 @@ interface Props {
     macroAllocationData: MacroAllocationSlice[];
     macroStackedBar: MacroStackedBarPoint[];
     macroMonthComparison: MacroComparisonPoint[];
-    momNetWorthSeries: NetWorthPoint[];
-    momStackedBar: StackedBarPoint[];
-    momGrowthRates: GrowthRatePoint[];
-    momMonthComparison: MonthComparisonPoint[];
-    momForecast: ForecastPoint[];
-    momMacroStackedBar: MacroStackedBarPoint[];
-    momMacroMonthComparison: MacroComparisonPoint[];
+    periods: Record<DashboardPeriod, PeriodView>;
     categories: Pick<Category, 'id' | 'name' | 'color'>[];
     hasData: boolean;
     hasBuffer: boolean;
@@ -93,13 +94,7 @@ export default function Dashboard({
     macroAllocationData,
     macroStackedBar,
     macroMonthComparison,
-    momNetWorthSeries,
-    momStackedBar,
-    momGrowthRates,
-    momMonthComparison,
-    momForecast,
-    momMacroStackedBar,
-    momMacroMonthComparison,
+    periods,
     categories,
     hasData,
     hasBuffer,
@@ -109,7 +104,7 @@ export default function Dashboard({
     positionReturns,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
-    const [momMode, setMomMode] = useState(false);
+    const [granularity, setGranularity] = useState<'snapshot' | DashboardPeriod>('snapshot');
     if (!hasData) {
         return (
             <>
@@ -131,7 +126,11 @@ export default function Dashboard({
         );
     }
 
-    const series = momMode ? momNetWorthSeries : netWorthSeries;
+    const view: PeriodView = granularity === 'snapshot'
+        ? { netWorthSeries, stackedBar, growthRates, monthComparison, forecast, macroStackedBar, macroMonthComparison }
+        : periods[granularity];
+    const labels = GRANULARITY_LABELS[granularity];
+    const series = view.netWorthSeries;
     const lastPoint = series[series.length - 1];
     const prevPoint = series[series.length - 2];
     const totalChange = netWorthChangePct(prevPoint?.total_value, lastPoint?.total_value);
@@ -159,7 +158,7 @@ export default function Dashboard({
         color,
     }));
 
-    const macroComparisonPoints: MonthComparisonPoint[] = (momMode ? momMacroMonthComparison : macroMonthComparison).map((p) => ({
+    const macroComparisonPoints: MonthComparisonPoint[] = view.macroMonthComparison.map((p) => ({
         category: p.macro,
         color: MACRO_COLORS[p.macro] ?? '#94a3b8',
         current: p.current,
@@ -184,10 +183,12 @@ export default function Dashboard({
                             <SegmentedToggle
                                 options={[
                                     { value: 'snapshot', label: 'Snapshot' },
-                                    { value: 'mom', label: 'Mese' },
+                                    { value: 'day', label: 'Giorno' },
+                                    { value: 'week', label: 'Settimana' },
+                                    { value: 'month', label: 'Mese' },
                                 ]}
-                                value={momMode ? 'mom' : 'snapshot'}
-                                onChange={(v) => setMomMode(v === 'mom')}
+                                value={granularity}
+                                onChange={setGranularity}
                             />
                             <SegmentedToggle
                                 options={[
@@ -207,7 +208,7 @@ export default function Dashboard({
                         label="Patrimonio attuale"
                         value={lastPoint ? <Money value={lastPoint.total_value} /> : '—'}
                         change={totalChange}
-                        changeLabel={momMode ? 'vs mese prec.' : 'vs snapshot prec.'}
+                        changeLabel={labels.change}
                     />
                     {/* Portfolio reading (rule-based today; AI advisor builds on
                         these metrics). It sits in this row rather than full width
@@ -265,12 +266,12 @@ export default function Dashboard({
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0">
                     <NetWorthLineChart data={series} goalTarget={goal?.target_value} goalName={goal?.name} />
                     <AllocationDonutChart data={macroMode ? macroAllocationWithColor : allocationData} note={investableNote} />
-                    <GrowthRateChart data={momMode ? momGrowthRates : growthRates} title={momMode ? 'Variazione mensile (%)' : 'Variazione tra snapshot (%)'} note={investableNote} />
+                    <GrowthRateChart data={view.growthRates} title={labels.growth} note={investableNote} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0">
-                    <StackedBarChart data={macroMode ? (momMode ? momMacroStackedBar : macroStackedBar) : (momMode ? momStackedBar : stackedBar)} categories={macroMode ? macroCategories : categories} note={investableNote} />
-                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : (momMode ? momMonthComparison : monthComparison)} months={snapshotMonths} title={momMode ? 'Confronto tra mesi' : 'Confronto tra snapshot'} note={investableNote} />
-                    <ForecastChart data={momMode ? momForecast : forecast} note={investableNote} />
+                    <StackedBarChart data={macroMode ? view.macroStackedBar : view.stackedBar} categories={macroMode ? macroCategories : categories} note={investableNote} />
+                    <MonthComparisonChart data={macroMode ? macroComparisonPoints : view.monthComparison} months={snapshotMonths} title={labels.comparison} note={investableNote} />
+                    <ForecastChart data={view.forecast} note={investableNote} />
                 </div>
             </div>
         </>
