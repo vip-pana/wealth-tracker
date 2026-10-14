@@ -87,7 +87,7 @@ class BankingFlowTest extends TestCase
             'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
         ]);
         $cat = Category::factory()->create();
-        $old->accounts()->create([
+        $account = $old->accounts()->create([
             'uid' => 'old-uid',
             'iban' => 'IT00REVOLUT0001',
             'linked_name' => 'Conto Revolut',
@@ -111,12 +111,97 @@ class BankingFlowTest extends TestCase
 
         $this->get('/banking/callback?code=c&state=fresh')->assertRedirect();
 
-        // The new account inherited the link; the old connection is gone.
+        // The same account row moved over with its link; the old connection is gone.
         $this->assertDatabaseHas('bank_accounts', [
-            'uid' => 'new-uid', 'linked_name' => 'Conto Revolut', 'linked_category_id' => $cat->id,
+            'id' => $account->id, 'uid' => 'new-uid', 'linked_name' => 'Conto Revolut', 'linked_category_id' => $cat->id,
         ]);
+        $this->assertDatabaseCount('bank_accounts', 1);
         $this->assertDatabaseMissing('bank_connections', ['state' => 'old']);
         $this->assertSame(1, BankConnection::where('aspsp_name', 'Revolut')->count());
+    }
+
+    public function test_reconnect_keeps_the_accounts_transaction_history(): void
+    {
+        $old = BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
+        ]);
+        $account = $old->accounts()->create(['uid' => 'old-uid', 'iban' => 'IT00REVOLUT0001']);
+        $account->transactions()->create([
+            'external_id' => 'tx-older-than-the-90-day-window',
+            'amount' => -12.5,
+            'currency' => 'EUR',
+            'booking_date' => '2026-01-10',
+        ]);
+        BankConnection::create([
+            'aspsp_name' => 'Revolut', 'aspsp_country' => 'IT', 'state' => 'fresh', 'status' => 'pending',
+        ]);
+
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-new',
+                'accounts' => [['uid' => 'new-uid', 'account_id' => ['iban' => 'IT00REVOLUT0001']]],
+            ]),
+        ]);
+
+        $this->get('/banking/callback?code=c&state=fresh')->assertRedirect();
+
+        // The bank only re-serves 90 days, so history older than that exists
+        // nowhere else: deleting the old account row would lose it for good.
+        $this->assertDatabaseHas('bank_transactions', [
+            'external_id' => 'tx-older-than-the-90-day-window', 'bank_account_id' => $account->id,
+        ]);
+    }
+
+    public function test_reconnect_matches_an_account_without_iban_by_name_and_currency(): void
+    {
+        $old = BankConnection::create([
+            'aspsp_name' => 'Isybank', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
+        ]);
+        $cat = Category::factory()->create();
+        $account = $old->accounts()->create([
+            'uid' => 'old-uid', 'name' => 'Conto', 'currency' => 'EUR',
+            'linked_name' => 'Conto Isybank', 'linked_category_id' => $cat->id,
+        ]);
+        BankConnection::create([
+            'aspsp_name' => 'Isybank', 'aspsp_country' => 'IT', 'state' => 'fresh', 'status' => 'pending',
+        ]);
+
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-new',
+                'accounts' => [['uid' => 'new-uid', 'name' => 'Conto', 'currency' => 'EUR']],
+            ]),
+        ]);
+
+        $this->get('/banking/callback?code=c&state=fresh')->assertRedirect();
+
+        $this->assertDatabaseHas('bank_accounts', [
+            'id' => $account->id, 'uid' => 'new-uid', 'linked_name' => 'Conto Isybank',
+        ]);
+    }
+
+    public function test_reconnect_does_not_guess_between_ambiguous_accounts_without_iban(): void
+    {
+        $old = BankConnection::create([
+            'aspsp_name' => 'Isybank', 'aspsp_country' => 'IT', 'state' => 'old', 'status' => 'expired',
+        ]);
+        $cat = Category::factory()->create();
+        $old->accounts()->create(['uid' => 'a', 'name' => 'Conto', 'currency' => 'EUR', 'linked_name' => 'Uno', 'linked_category_id' => $cat->id]);
+        $old->accounts()->create(['uid' => 'b', 'name' => 'Conto', 'currency' => 'EUR', 'linked_name' => 'Due', 'linked_category_id' => $cat->id]);
+        BankConnection::create([
+            'aspsp_name' => 'Isybank', 'aspsp_country' => 'IT', 'state' => 'fresh', 'status' => 'pending',
+        ]);
+
+        Http::fake([
+            'api.enablebanking.com/sessions' => Http::response([
+                'session_id' => 'sess-new',
+                'accounts' => [['uid' => 'new-uid', 'name' => 'Conto', 'currency' => 'EUR']],
+            ]),
+        ]);
+
+        $this->get('/banking/callback?code=c&state=fresh')->assertRedirect();
+
+        $this->assertDatabaseHas('bank_accounts', ['uid' => 'new-uid', 'linked_name' => null]);
     }
 
     public function test_callback_exchanges_code_and_persists_session_and_accounts(): void

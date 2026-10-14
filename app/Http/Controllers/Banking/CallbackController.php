@@ -10,6 +10,7 @@ use App\Http\Clients\EnableBankingClient;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\BankConnection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -49,8 +50,10 @@ class CallbackController extends Controller
         ]);
 
         // Reconnecting the same bank: the account uid changes each session but the
-        // IBAN is stable, so carry the prior account→asset links over by IBAN.
-        $priorLinks = $this->priorLinksByIban($connection);
+        // account itself does not. Move the prior bank_accounts rows onto this
+        // connection instead of creating new ones, so the asset link, the sync
+        // state and the accumulated transaction history all survive the renewal.
+        $prior = $this->priorAccounts($connection);
 
         foreach ($session['accounts'] as $account) {
             $uid = $account['uid'] ?? null;
@@ -60,23 +63,32 @@ class CallbackController extends Controller
 
             $accountId = $account['account_id'] ?? null;
             $iban = is_array($accountId) ? ($accountId['iban'] ?? null) : null;
-            $iban = is_string($iban) ? $iban : null;
             $name = $account['name'] ?? null;
             $currency = $account['currency'] ?? null;
-            $inherited = $iban !== null ? ($priorLinks[$iban] ?? null) : null;
 
-            $connection->accounts()->create([
+            $attributes = [
+                'bank_connection_id' => $connection->id,
                 'uid' => $uid,
-                'iban' => $iban,
+                'iban' => is_string($iban) ? $iban : null,
                 'name' => is_string($name) ? $name : null,
                 'currency' => is_string($currency) ? $currency : null,
-                'linked_name' => $inherited['linked_name'] ?? null,
-                'linked_category_id' => $inherited['linked_category_id'] ?? null,
-            ]);
+            ];
+
+            $match = $this->matchPrior($prior, $attributes['iban'], $attributes['name'], $attributes['currency']);
+
+            if (! $match instanceof BankAccount) {
+                $connection->accounts()->create($attributes);
+
+                continue;
+            }
+
+            $match->update($attributes);
+            $prior = $prior->reject(fn (BankAccount $a) => $a->is($match));
         }
 
-        // Now that links are inherited, drop the superseded connections for this
-        // bank (everything except the one we just activated). Reconnecting
+        // Now that the accounts have moved over, drop the superseded connections
+        // for this bank (everything except the one we just activated); only
+        // accounts the new consent no longer covers go with them. Reconnecting
         // resolves any standing "consent expired" warning for those — the keys
         // are per superseded connection id, so clear them before deleting.
         $superseded = BankConnection::where('aspsp_name', $connection->aspsp_name)
@@ -94,33 +106,41 @@ class CallbackController extends Controller
     }
 
     /**
-     * Map of IBAN → prior asset link, for other connections of the same bank.
+     * Accounts on the other connections of the same bank, which this consent
+     * supersedes.
      *
-     * @return array<string, array{linked_name: string|null, linked_category_id: int|null}>
+     * @return Collection<int, BankAccount>
      */
-    private function priorLinksByIban(BankConnection $current): array
+    private function priorAccounts(BankConnection $current): Collection
     {
-        $map = [];
-
-        $accounts = BankAccount::query()
-            ->whereNotNull('iban')
-            ->whereNotNull('linked_name')
+        return BankAccount::query()
             ->whereHas('connection', fn ($q) => $q
                 ->where('aspsp_name', $current->aspsp_name)
                 ->where('aspsp_country', $current->aspsp_country)
                 ->whereKeyNot($current->id)
             )
             ->get();
+    }
 
-        foreach ($accounts as $account) {
-            if ($account->iban !== null) {
-                $map[$account->iban] = [
-                    'linked_name' => $account->linked_name,
-                    'linked_category_id' => $account->linked_category_id,
-                ];
-            }
+    /**
+     * The prior account a freshly consented one continues. The IBAN is the
+     * stable identity; a bank that omits it is matched by name and currency,
+     * but only when that pair is unambiguous.
+     *
+     * @param  Collection<int, BankAccount>  $prior
+     */
+    private function matchPrior(Collection $prior, ?string $iban, ?string $name, ?string $currency): ?BankAccount
+    {
+        if ($iban !== null) {
+            return $prior->first(fn (BankAccount $a) => $a->iban === $iban);
         }
 
-        return $map;
+        if ($name === null) {
+            return null;
+        }
+
+        $candidates = $prior->filter(fn (BankAccount $a) => $a->iban === null && $a->name === $name && $a->currency === $currency);
+
+        return $candidates->count() === 1 ? $candidates->first() : null;
     }
 }

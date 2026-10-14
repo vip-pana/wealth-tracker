@@ -102,7 +102,7 @@ export function BankConnectionsCard({ connections, banks, assets, redirectReady 
                                     {statusBadge(c)}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {c.status === 'expired' && <ReconnectButton connection={c} />}
+                                    {(c.status === 'expired' || c.accounts.some((a) => a.last_sync_status === 'failed')) && <ReconnectButton connection={c} />}
                                     <Button
                                         variant="ghost"
                                         size="icon"
