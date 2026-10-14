@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/vip-pana/wealth-tracker/compare/v1.10.0...v1.10.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **banking:** keep accounts, links and history on reconnect ([#113](https://github.com/vip-pana/wealth-tracker/issues/113)) ([49475fb](https://github.com/vip-pana/wealth-tracker/commit/49475fb29a42aa0ccf5139841b0b25534d468a32))
+
 ## [1.10.0](https://github.com/vip-pana/wealth-tracker/compare/v1.9.5...v1.10.0) (2026-10-01)
 
 
