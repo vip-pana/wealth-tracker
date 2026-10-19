@@ -70,7 +70,9 @@ use Illuminate\Support\Facades\Route;
 // closes /setup for good once an account exists.
 Route::middleware('guest')->group(function () {
     Route::get('/setup', [SetupController::class, 'create'])->name('setup.create');
-    Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
+    // Throttled because it is reachable by a stranger and now guards a secret
+    // (the setup token) rather than only a password policy.
+    Route::post('/setup', [SetupController::class, 'store'])->middleware('throttle:setup')->name('setup.store');
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
 });

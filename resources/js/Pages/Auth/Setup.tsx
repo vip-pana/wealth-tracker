@@ -14,9 +14,10 @@ const rules = [
     { label: 'Almeno un numero', test: (p: string) => /\d/.test(p) },
 ];
 
-export default function Setup() {
+export default function Setup({ tokenPath }: { tokenPath: string }) {
     const [visible, setVisible] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
+        token: '',
         email: '',
         password: '',
         password_confirmation: '',
@@ -25,13 +26,13 @@ export default function Setup() {
     const met = rules.map((r) => r.test(data.password));
     const mismatch =
         data.password_confirmation !== '' && data.password !== data.password_confirmation;
-    const ready = met.every(Boolean) && !mismatch && data.email !== '';
+    const ready = met.every(Boolean) && !mismatch && data.email !== '' && data.token !== '';
 
     return (
         <AuthShell
             title="Primo accesso"
             heading="Crea il tuo accesso"
-            subheading="Nessun account esiste ancora. Questa password protegge tutti i tuoi dati."
+            subheading="Nessun account esiste ancora. Serve il codice di installazione di questa istanza, poi la password che protegge tutti i tuoi dati."
         >
             <form
                 onSubmit={(e) => {
@@ -45,6 +46,30 @@ export default function Setup() {
                 }}
                 className="flex flex-col gap-4"
             >
+                {/* First field on purpose: without it nothing else matters, and
+                    seeing it first is what tells the visitor this install is
+                    already claimed by whoever runs the machine. */}
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="token">Codice di installazione</Label>
+                    <Input
+                        id="token"
+                        type="text"
+                        value={data.token}
+                        onChange={(e) => setData('token', e.target.value.trim())}
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="font-mono"
+                        autoFocus
+                        required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Lo trovi nei log di avvio dell&apos;app, in{' '}
+                        <code className="font-mono">{tokenPath}</code>, oppure con{' '}
+                        <code className="font-mono">php artisan setup:token</code>.
+                    </p>
+                    {errors.token && <p className="text-sm text-destructive">{errors.token}</p>}
+                </div>
+
                 <div className="flex flex-col gap-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -53,7 +78,6 @@ export default function Setup() {
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         autoComplete="username"
-                        autoFocus
                         required
                     />
                     {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}

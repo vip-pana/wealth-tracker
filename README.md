@@ -2,8 +2,8 @@
 
 A single-user personal wealth tracker: log your assets by category each month,
 take point-in-time snapshots, and follow your net worth through charts,
-forecasts and a savings goal. No authentication — it's a local app for one
-person's own finances.
+forecasts and a savings goal. One account, created on first run and protected
+by a password — see [First run](#first-run).
 
 ## Features
 
@@ -66,6 +66,36 @@ composer dev        # starts all services (PHP server + Vite)
 ```
 
 The app will be available at [http://localhost:8000](http://localhost:8000).
+
+## First run
+
+The first time the app starts there is no account, and every page redirects to
+`/setup`, which creates the one account that owns all of your financial data.
+
+That page asks for a **setup code** before it will create anything. Without it,
+a fresh instance is a land grab: whoever loads `/setup` first becomes the owner,
+and on an instance reachable from the internet that window is open from the
+moment the container starts until you get to a browser. The code proves you are
+the person who installed the app, which is the only thing the app can check
+before an account exists.
+
+Three ways to read it — they all show the same code:
+
+```bash
+docker compose logs app | grep "Setup code"   # printed at startup
+cat ~/wealth-tracker-data/setup-token.txt     # the data directory on the host
+php artisan setup:token                       # or from a shell in the container
+```
+
+Paste it into `/setup`, choose an email and a password, and you are in. The code
+is **deleted** as soon as the account exists — `/setup` is closed server-side
+from then on, so there is nothing left for it to guard.
+
+If you think the code leaked before you used it, `php artisan setup:token --new`
+replaces it and invalidates the old one.
+
+> There is no password reset. If you forget the password, the way back in is
+> `php artisan user:password` from a shell on the machine.
 
 ## Development commands
 

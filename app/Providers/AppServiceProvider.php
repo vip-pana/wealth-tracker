@@ -153,6 +153,12 @@ class AppServiceProvider extends ServiceProvider
             return $user instanceof User ? 'user:'.$user->id : 'ip:'.$request->ip();
         };
 
+        // Creating the owner account. Always unauthenticated, so this is keyed
+        // by IP, and it is the only limiter guarding a secret rather than a
+        // cost: 128 bits of token is not guessable, but a public endpoint that
+        // answers an unlimited number of guesses should not exist anyway.
+        RateLimiter::for('setup', fn (Request $request) => Limit::perMinute(10)->by('ip:'.$request->ip()));
+
         // A backup is a synchronous VACUUM INTO of the whole database, plus an
         // encrypt and an upload. Hammering it is the sharpest self-DoS the app
         // has; nobody needs more than a handful a day by hand.

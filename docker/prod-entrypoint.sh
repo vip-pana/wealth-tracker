@@ -51,6 +51,12 @@ QUEUE_DB_PATH="${DB_QUEUE_DATABASE:-/app/storage/app/queue.sqlite}"
 
 php artisan migrate --force
 
+# On an install with no owner account yet, print the code /setup will ask for.
+# This is what makes "read it from the logs" true: the alternative is poking
+# around the data directory on a machine the owner reaches over ssh. Quiet and
+# successful on every later start, when an account already exists.
+php artisan setup:token
+
 # Config is cached at build time, before any runtime env var exists. Rebuild the
 # caches now so the running container reflects the env it was actually given.
 php artisan config:cache
