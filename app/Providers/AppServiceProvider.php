@@ -11,7 +11,11 @@ use App\Contracts\AdvisorProvider;
 use App\Http\Clients\EnableBankingClient;
 use App\Http\Clients\PrismAdvisorProvider;
 use App\Http\Clients\ScalableCliClient;
+use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Prism\Prism\Enums\Provider;
@@ -116,5 +120,60 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with(Config::string('app.url', ''), 'https://')) {
             URL::forceScheme('https');
         }
+
+        $this->configureRateLimiters();
+    }
+
+    /**
+     * Named rate limiters for the routes that cost something real: money (the
+     * advisor's cloud inference), a third party's quota (the bank, the broker,
+     * the price feed), or the single SQLite writer (a synchronous VACUUM INTO).
+     *
+     * Everything is keyed by user id — the app is single-user, so that is one
+     * bucket — falling back to the client IP for the handful of requests that
+     * can arrive unauthenticated. Limits are deliberately far above normal human
+     * use and far below what a loop can do in a minute: they exist to stop a
+     * runaway script or a stolen session, not to pace the owner.
+     */
+    private function configureRateLimiters(): void
+    {
+        $by = static function (Request $request): string {
+            $user = $request->user();
+
+            return $user instanceof User ? 'user:'.$user->id : 'ip:'.$request->ip();
+        };
+
+        // A backup is a synchronous VACUUM INTO of the whole database, plus an
+        // encrypt and an upload. Hammering it is the sharpest self-DoS the app
+        // has; nobody needs more than a handful a day by hand.
+        RateLimiter::for('backup', fn (Request $request) => Limit::perHour(3)->by($by($request)));
+
+        // Each import parses an uploaded file and writes a batch of rows. The
+        // 2 MB upload cap blunts a single call; this blunts a thousand of them.
+        RateLimiter::for('import', fn (Request $request) => Limit::perHour(10)->by($by($request)));
+
+        // Starting a bank consent and refreshing prices both spend a third
+        // party's quota, and a bank that rate-limits us answers 429 for
+        // everything else too — including the scheduled sync.
+        RateLimiter::for('banking', fn (Request $request) => Limit::perHour(10)->by($by($request)));
+        RateLimiter::for('prices', fn (Request $request) => Limit::perHour(12)->by($by($request)));
+
+        // A broker login spawns a CLI process and opens a device-code session.
+        // Two concurrent ones confuse the CLI's single session directory.
+        RateLimiter::for('scalable-login', fn (Request $request) => Limit::perHour(5)->by($by($request)));
+
+        // The advisor endpoints that reach the model. These are the ones that
+        // can cost money on a cloud driver, so they are the tightest. The token
+        // budget (see AdvisorBudget) caps the spend; this caps the rate.
+        RateLimiter::for('advisor-generate', fn (Request $request) => Limit::perHour(30)->by($by($request)));
+
+        // The polling endpoint. Conversation.tsx polls it every 2.5s while a
+        // reply generates — ~24/min per open tab — so this has to sit well above
+        // that or a second tab starts failing the user's own conversation.
+        RateLimiter::for('advisor-poll', fn (Request $request) => Limit::perMinute(180)->by($by($request)));
+
+        // The remaining advisor routes: pages, renames, deletions, and accepting
+        // a proposal card. No model call, so these are plain write limits.
+        RateLimiter::for('advisor', fn (Request $request) => Limit::perMinute(60)->by($by($request)));
     }
 }

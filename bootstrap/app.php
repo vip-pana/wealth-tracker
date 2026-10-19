@@ -10,6 +10,8 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
@@ -99,5 +101,24 @@ return Application::configure(basePath: dirname(__DIR__))
         }
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // A throttled request otherwise renders Laravel's bare 429 page, which
+        // tells the user nothing and looks like the app broke. Inertia visits
+        // bounce back with a flash error (shown as a toast); the advisor's plain
+        // axios calls get JSON they already know how to display. Anything else
+        // — curl, a direct GET — falls through to the default page.
+        $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
+            $message = 'Troppe richieste in poco tempo. Riprova tra qualche minuto.';
+
+            if ($request->hasHeader('X-Inertia')) {
+                // 303 rather than 302: Inertia requires it after a PATCH or
+                // DELETE, and it is equally correct after a POST.
+                return back(303)->with('error', $message);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['error' => $message], 429);
+            }
+
+            return null;
+        });
     })->create();
