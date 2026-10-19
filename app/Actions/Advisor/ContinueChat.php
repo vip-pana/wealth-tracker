@@ -8,6 +8,7 @@ use App\Actions\Action;
 use App\Actions\Transactions\ComputeMonthlySalary;
 use App\Advisor\AdvisorBudget;
 use App\Advisor\AdvisorBudgetExceeded;
+use App\Advisor\AdvisorOutputFilter;
 use App\Advisor\AdvisorPrompt;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorWidgetCollector;
@@ -42,6 +43,7 @@ class ContinueChat extends Action
         private readonly AdvisorWidgetCollector $widgets,
         private readonly ComputeMonthlySalary $computeMonthlySalary,
         private readonly AdvisorBudget $budget,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     /**
@@ -69,7 +71,7 @@ class ContinueChat extends Action
         return AdvisorMessage::create([
             'session_id' => $session->id,
             'role' => AdvisorMessage::ROLE_ASSISTANT,
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
         ]);
     }
 
@@ -135,7 +137,7 @@ class ContinueChat extends Action
         $this->widgets->clear();
         $this->budget->clear();
         $assistant->update([
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
             'status' => AdvisorMessage::STATUS_DONE,
             'tool_activity' => null,
             'widgets' => $widgets === [] ? null : $widgets,
@@ -208,7 +210,7 @@ class ContinueChat extends Action
         $this->widgets->clear();
         $this->budget->clear();
         $assistant->update([
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
             'status' => AdvisorMessage::STATUS_DONE,
             'tool_activity' => null,
             'widgets' => $widgets === [] ? null : $widgets,
@@ -220,6 +222,11 @@ class ContinueChat extends Action
      * as it arrives. Persists the user turn and the full assistant reply only
      * after a successful stream (same no-orphan guarantee as run()). Returns the
      * saved assistant message, or null when the advisor isn't configured.
+     *
+     * No route reaches this today, and it must not be wired to one as it
+     * stands: AdvisorOutputFilter screens whole sentences, so it can clear what
+     * is stored but not the deltas already handed to $onChunk. Routing a stream
+     * means buffering until a sentence completes and filtering before emitting.
      *
      * @param  callable(string): void  $onChunk
      */
@@ -240,7 +247,7 @@ class ContinueChat extends Action
         return AdvisorMessage::create([
             'session_id' => $session->id,
             'role' => AdvisorMessage::ROLE_ASSISTANT,
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
         ]);
     }
 

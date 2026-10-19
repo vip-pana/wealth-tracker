@@ -48,7 +48,7 @@ class ProposeController extends Controller
         return [
             'id' => $message->id,
             'role' => $message->role,
-            'content' => $message->content,
+            'content' => $message->displayContent(),
             'status' => $message->status,
             'error' => $message->error,
             'tool_activity' => $message->tool_activity,

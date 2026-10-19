@@ -123,7 +123,7 @@ class IndexController extends Controller
             ->map(fn (AdvisorMessage $m): array => [
                 'id' => $m->id,
                 'role' => $m->role,
-                'content' => $m->content,
+                'content' => $m->displayContent(),
                 'status' => $m->status,
                 'error' => $m->error,
                 'widgets' => $m->widgets,

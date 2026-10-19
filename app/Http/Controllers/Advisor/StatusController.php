@@ -26,7 +26,7 @@ class StatusController extends Controller
                 ->map(fn (AdvisorMessage $m): array => [
                     'id' => $m->id,
                     'role' => $m->role,
-                    'content' => $m->content,
+                    'content' => $m->displayContent(),
                     'status' => $m->status,
                     'error' => $m->error,
                     'tool_activity' => $m->tool_activity,

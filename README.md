@@ -14,10 +14,13 @@ by a password — see [First run](#first-run).
 - **Goal** — a savings goal with milestones and progress tracking.
 - **Cashflow** — optional bank-transaction ingestion (income vs. expense vs.
   internal transfer), derived from open-banking data.
-- **AI advisor** — an in-app financial advisor that reasons over your own
-  portfolio. Runs against a local model (Ollama) by default, or a cloud model;
-  it interviews you to build a risk profile and helps you shape your goal,
-  without ever recommending specific buy/sell trades.
+- **AI advisor** — an in-app assistant that reasons over your own portfolio.
+  Runs against a local model (Ollama) by default, or a cloud model; it
+  interviews you to build a risk profile and helps you shape your goal. It is
+  an informational tool, not a financial adviser: it never tells you to buy,
+  sell or hold a specific instrument, and that limit is enforced in code as
+  well as in the prompt — see
+  [docs/ai-advisor-firewall.md](docs/ai-advisor-firewall.md).
 
 ## Stack
 
@@ -154,6 +157,13 @@ The advisor's system prompts live in `resources/advisor-prompts/*.txt`. Those
 files are gitignored; the committed `*.txt.example` files are used as a fallback,
 so the advisor works out of the box. Copy an `.example` to its `.txt` to
 customize a prompt without committing it.
+
+What a prompt file **cannot** change is the boundary. `App\Advisor\AdvisorBoundaries`
+is prepended in source to whatever prompt is loaded, and every reply is screened
+against your own holdings before it is stored and again before it is shown.
+Customising tone is a config edit; removing the boundary is a source edit.
+[docs/ai-advisor-firewall.md](docs/ai-advisor-firewall.md) describes the three
+layers and, explicitly, where they stop.
 
 ### Scalable Capital sync
 
