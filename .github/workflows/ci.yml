@@ -122,21 +122,32 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/up
 
-      # The point of the whole change: nothing long-lived is root. Read from
-      # /proc rather than `ps`, which the php base image does not ship.
+      # The point of the whole change: nothing long-lived is root.
+      #
+      # Listed with `docker top`, which runs ps on the host and so reports only
+      # the container's own processes. Walking /proc through `docker exec`
+      # cannot answer this question: `docker exec` lands as root, and the
+      # inspecting shell's command line carries the very word being grepped
+      # for — so the scan matches itself and reports a root `artisan` process
+      # that does not exist. The same self-match makes a presence check pass
+      # against an empty container, which is the worse failure of the two.
+      #
+      # One listing serves both assertions, so they cannot disagree because a
+      # process started or died between them.
+      - name: List the container's processes
+        run: |
+          docker top wt-ci -eo uid,args | tee processes.txt
+
       - name: No application process runs as root
         run: |
-          uids=$(docker exec wt-ci sh -c \
-            'for p in /proc/[0-9]*; do tr "\0" " " < "$p/cmdline" 2>/dev/null | grep -q artisan && stat -c "%u" "$p"; done' \
-            | sort -u)
+          uids=$(awk 'NR > 1 && /artisan/ { print $1 }' processes.txt | sort -u)
           echo "artisan processes run as uid: $uids"
           test "$uids" = "1234"
 
       - name: All three processes came up
         run: |
           for process in "artisan serve" "queue:work" "schedule:work"; do
-            docker exec wt-ci sh -c \
-              "for p in /proc/[0-9]*; do tr '\\0' ' ' < \$p/cmdline 2>/dev/null | grep -q '$process' && exit 0; done; exit 1" \
+            grep -q -- "$process" processes.txt \
               || { echo "missing: $process"; exit 1; }
           done
 
