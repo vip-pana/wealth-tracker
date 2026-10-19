@@ -132,7 +132,12 @@ fi
 # Before anything is replaced. A deploy should not be the reason a database is
 # unrecoverable, and the app is still healthy at this point.
 log "Backing up the database"
-"${COMPOSE[@]}" exec -T app php artisan backup:run \
+# As the unprivileged account the app itself runs as, so the archive it writes
+# is one the nightly prune can later delete. The fallback covers the single
+# deploy that crosses over from a root-only image, where `appuser` does not
+# exist yet — after that the first form always wins.
+"${COMPOSE[@]}" exec -T -u appuser app php artisan backup:run \
+    || "${COMPOSE[@]}" exec -T app php artisan backup:run \
     || fail "backup failed — refusing to deploy without one"
 
 # --- pull -------------------------------------------------------------------

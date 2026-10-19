@@ -9,18 +9,83 @@
 #
 set -eu
 
+APP_USER=appuser
+APP_HOME=/home/appuser
+
+DB_PATH="${DB_DATABASE:-/app/storage/app/database.sqlite}"
+DATA_DIR="$(dirname "$DB_PATH")"
+BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
+
+# ─── Privileged preparation, then drop ────────────────────────────────────────
+#
+# This script runs twice. The first pass is root and does only what root is
+# needed for: making the mounted directories writable by an unprivileged
+# account. It then re-execs itself as that account, so PID 1 — and with it the
+# web server, the queue worker and the scheduler — spends the container's whole
+# life without privileges. A flaw reached over HTTP is then not a flaw reached
+# as root.
+#
+# Skipped entirely when the container is already started as a non-root user
+# (compose `user:`), which is then simply honoured as-is.
+if [ "$(id -u)" = "0" ]; then
+    # The data directory is a bind mount, so it is owned by a host uid that has
+    # nothing to do with the one baked into the image. Adopting that uid is what
+    # lets the app write the database on any host without asking the operator to
+    # chown their own data. PUID/PGID override it when the guess is wrong.
+    #
+    # The fallback keeps a missing mount from dying here on a cryptic `stat`
+    # error: a few lines down there is a message that actually explains it.
+    TARGET_UID="${PUID:-$(stat -c '%u' "$DATA_DIR" 2>/dev/null || echo 1000)}"
+    TARGET_GID="${PGID:-$(stat -c '%g' "$DATA_DIR" 2>/dev/null || echo 1000)}"
+
+    # A root-owned mount is the one owner never to adopt: matching it would put
+    # the app back exactly where it started. (Written as `if` rather than
+    # `[ … ] && …`: under `set -e` a false test there is a failed command and
+    # would kill the container at boot.)
+    if [ "$TARGET_UID" = "0" ]; then TARGET_UID=1000; fi
+    if [ "$TARGET_GID" = "0" ]; then TARGET_GID=1000; fi
+
+    # --non-unique because the host's uid or gid may already belong to one of
+    # the image's own accounts (gid 100 is `users` on Debian). Without it
+    # groupmod refuses with "GID already exists" and the container never starts
+    # — on the hosts least able to afford a surprise.
+    [ "$TARGET_GID" = "$(id -g "$APP_USER")" ] || groupmod --non-unique --gid "$TARGET_GID" "$APP_USER"
+    [ "$TARGET_UID" = "$(id -u "$APP_USER")" ] || usermod --non-unique --uid "$TARGET_UID" "$APP_USER"
+
+    # Only what is written at runtime. The application code stays root-owned and
+    # read-only to the app, so a write primitive cannot rewrite the code that
+    # serves the next request.
+    #
+    # This does recurse into the mounted data directory (/app/storage/app), and
+    # that is deliberate: it is what repairs a database, a queue file or an
+    # enable-banking.pem left behind by the days when the app ran as root. In
+    # the ordinary case the uid was adopted from that very directory, so it
+    # changes nothing.
+    chown -R "$TARGET_UID:$TARGET_GID" /app/storage /app/bootstrap/cache "$APP_HOME"
+
+    # The staging directory is its own mount and may have been created by a
+    # different account. Not recursive: existing archives keep the ownership —
+    # and the 0600 mode — they were written with.
+    if [ -d "$BACKUP_DIR" ]; then
+        chown "$TARGET_UID:$TARGET_GID" "$BACKUP_DIR"
+    fi
+
+    echo "Dropping privileges: running as $APP_USER ($TARGET_UID:$TARGET_GID)"
+    exec gosu "$APP_USER" "$0" "$@"
+fi
+
+# ─── Everything below here runs unprivileged ──────────────────────────────────
+
 # The Scalable CLI defaults to the OS keyring, which reaches for D-Bus — absent
 # in a container, so `sc login` dies with "Platform secure storage failure:
 # DBus error". Point it at file-backed storage before anything can call it. The
 # file lives in the scalable-cli volume, so it is written once and survives
 # container recreation; an existing one is left alone.
-mkdir -p /root/.config/scalable-cli
-if [ ! -f /root/.config/scalable-cli/config.toml ]; then
+mkdir -p "$APP_HOME/.config/scalable-cli"
+if [ ! -f "$APP_HOME/.config/scalable-cli/config.toml" ]; then
     printf '%s\n' '[auth]' 'session_backend = "file"' 'signing_key_backend = "file"' \
-        > /root/.config/scalable-cli/config.toml
+        > "$APP_HOME/.config/scalable-cli/config.toml"
 fi
-
-DB_PATH="${DB_DATABASE:-/app/storage/app/database.sqlite}"
 
 # The data volume must be mounted before we touch the database. Creating the
 # file when it is missing would silently start the app on an empty database —

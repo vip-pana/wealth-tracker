@@ -79,6 +79,32 @@ RUN mkdir -p storage/app
 COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
 RUN chmod +x /usr/local/bin/prod-entrypoint
 
+# The account the app actually runs as. The entrypoint starts as root, makes the
+# mounted directories writable by this account and re-execs itself through gosu,
+# so every long-lived process — web server, queue worker, scheduler — is
+# unprivileged. See docker/prod-entrypoint.sh.
+#
+# 1000 is only a starting point: the entrypoint moves this account onto whatever
+# uid owns the bind-mounted data directory, because the image is pulled from
+# ghcr rather than built on the host and so cannot be told the host's uid at
+# build time.
+#
+# Only the runtime-writable paths are handed over. /app itself stays root-owned,
+# which leaves the application code read-only to the process serving requests.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends gosu; \
+    apt-get clean; rm -rf /var/lib/apt/lists/*; \
+    groupadd --gid 1000 appuser; \
+    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash appuser; \
+    mkdir -p /app/backups /home/appuser/.config/scalable-cli; \
+    chown -R appuser:appuser /app/storage /app/bootstrap/cache /home/appuser; \
+    gosu appuser true
+
+# The Scalable CLI and Laravel both resolve paths through HOME; left at root's,
+# `sc login` would write its session where the unprivileged app cannot read it.
+ENV HOME=/home/appuser
+
 # The commit this image was built from. .git is excluded from the build context
 # (see .dockerignore), so the running app cannot work out its own version any
 # other way — and without it the update check has nothing to compare against.

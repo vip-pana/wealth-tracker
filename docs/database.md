@@ -64,6 +64,25 @@ upload.
 > Losing it makes every archive unrecoverable, and rotating it orphans the
 > existing ones.
 
+### File permissions
+
+Everything the backup path writes lands `0600` — owner only. That matters most
+in the **default** configuration: with `BACKUP_DISK` empty there is no upload,
+so the *plaintext* `VACUUM INTO` snapshot stays in `BACKUP_DIR` for the whole
+retention window. At the usual `0644` that is the entire financial history,
+readable by every other account on the host and by every container that mounts
+the same directory. The restore output gets the same treatment — it is a
+plaintext database too.
+
+It is enforced with a umask (`CreateBackup::privately()`), not a `chmod`
+afterwards: the snapshot is written by SQLite rather than by the app, and a
+`chmod` would leave the file world-readable for the window between creation and
+the mode change — which is precisely the window where it is worth stealing.
+
+Existing archives keep the mode they were written with, so a directory that
+predates this still holds `0644` files. `chmod 600 ~/wealth-tracker-backups/*`
+once, if you care about the ones already there.
+
 ### Restoring from a backup
 
 ```bash
@@ -106,6 +125,11 @@ the app. Only `VACUUM INTO` / `sqlite3 .backup` output is safe to ship.
 
 Settings → "Backup ora" (`POST /backup`), or `php artisan backup:run`. Both take
 the same path as the nightly job, including the upload and retention pruning.
+
+From a shell on a production host, run it as the account the app runs as —
+`docker compose -f docker-compose.prod.yml exec -u appuser app php artisan
+backup:run`. A root-owned archive is one the scheduled prune can never delete,
+and the directory then grows forever with nothing reporting a problem.
 
 ### Automatic backup on every snapshot
 

@@ -15,5 +15,11 @@ bootstrap/cache/
 **/*.sqlite
 **/*.sqlite-shm
 **/*.sqlite-wal
+# The Enable Banking signing key, same reasoning. A key baked into an image is
+# a key published to every registry the image reaches and present in every
+# layer cache that ever pulled it — and image layers are not revocable. It
+# belongs in the mounted data directory; see docs/enable-banking-usage.md.
+**/*.pem
+**/*.key
 .git/
 .phpunit.cache/

@@ -223,8 +223,35 @@ R2:
 
 ```bash
 docker compose -f docker-compose.prod.yml exec app php artisan schedule:list
-docker compose -f docker-compose.prod.yml exec app php artisan backup:run
+docker compose -f docker-compose.prod.yml exec -u appuser app php artisan backup:run
 docker compose -f docker-compose.prod.yml exec app php artisan backup:health
+```
+
+### Why `-u appuser` on anything that writes
+
+The app does not run as root. The entrypoint starts as root, takes ownership of
+the mounted directories, and re-execs itself through `gosu` as `appuser`, so the
+web server, the queue worker and the scheduler all run unprivileged — a flaw
+reached over HTTP is not a flaw reached as root.
+
+`docker compose exec` does **not** inherit that: it lands you as root. Reading
+is harmless, but anything that *writes* — `backup:run`, `config:clear`,
+`sc login`, `user:password` — leaves root-owned files the app itself then
+cannot rewrite or prune. The symptom arrives days later as a backup directory
+that never shrinks, or a cache the app cannot clear. So:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -u appuser app <command>
+```
+
+The uid is not fixed at 1000. The image is pulled, not built here, so it cannot
+know this host's uid; the entrypoint instead adopts whichever uid owns
+`~/wealth-tracker-data` and moves `appuser` onto it. That is right on nearly
+every host — set `PUID` / `PGID` in `.env` if yours is unusual (an NFS mount, a
+directory owned by a service account). The startup log says which it picked:
+
+```
+Dropping privileges: running as appuser (1000:1000)
 ```
 
 ## 7. Reconnect Scalable
@@ -233,8 +260,12 @@ The broker session does not transfer — it is tied to the machine's CLI state.
 Log in again from Settings → "Collega", or from the shell:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -it app sc login
+docker compose -f docker-compose.prod.yml exec -it -u appuser app sc login
 ```
+
+`-u appuser` matters here: as root the CLI writes its session where the app
+cannot read it, and the login looks like it worked right up until the next sync
+finds no session.
 
 The session lives in the `scalable-cli` volume and survives container
 recreation. `scalable:keep-alive` (every 6 hours) keeps it from lapsing; if the
@@ -406,11 +437,14 @@ docker compose -f docker-compose.prod.yml up -d
 # Logs
 docker compose -f docker-compose.prod.yml logs -f app
 
-# Shell
-docker compose -f docker-compose.prod.yml exec app bash
+# Shell (as the account the app runs as — see "Why -u appuser" in §6)
+docker compose -f docker-compose.prod.yml exec -u appuser app bash
 
 # Forgotten password (also signs out every session)
-docker compose -f docker-compose.prod.yml exec -it app php artisan user:password
+docker compose -f docker-compose.prod.yml exec -it -u appuser app php artisan user:password
+
+# The setup code, if the instance has no account yet
+docker compose -f docker-compose.prod.yml exec -u appuser app php artisan setup:token
 ```
 
 ## When something does not work
@@ -451,6 +485,9 @@ the file and the running config genuinely disagree by design.
 | Deploy job fails with `validating docker-compose.prod.yml: stat .: permission denied` | Something invoked the deploy script from a directory the running user cannot enter — the `deploy` account's home is mode 750. Both scripts now `cd` away from it; an older copy of `/usr/local/sbin/deploy-shell` predates that fix. |
 | The workflow is green but the app is on the old version | The host script rolled back: it found a missing `.env` key, or `/up` never answered. The job log has the reason; the app is still up on the previous release. |
 | Login page loops without an error | `app.url` does not match the address you opened. |
+| `Permission denied` writing the database or a log, right after an upgrade | The entrypoint adopted the wrong uid, or a root-owned file is left over from before the app ran unprivileged. `ls -ln ~/wealth-tracker-data` and compare with the `Dropping privileges:` line in the startup log; set `PUID`/`PGID` in `.env` if they disagree, or `sudo chown -R <uid>:<gid>` the stragglers. |
+| The backup directory only ever grows; nothing is ever pruned | Archives were written by a root `docker compose exec … backup:run`, so the scheduled prune — which runs as `appuser` — cannot delete them. `sudo chown` them to the app's uid, and use `-u appuser` from now on (§6). |
+| `sc login` succeeded but syncs still report no session | The login ran as root, so the session landed somewhere the app cannot read. Redo it with `-u appuser` (§7). |
 | Advisor never replies | Queue worker not running — check all three processes (§6). |
 | Data never refreshes, Scalable keeps logging out | Scheduler not running, so `scalable:keep-alive` never fires. |
 | **"Enable Banking non configurato"** with the credentials set, bank syncs failing | The `.pem` was never copied into the data directory (§8). Confirm with `grep "private key file not accessible" storage/logs/laravel.log`, then drop the cached empty bank list. |

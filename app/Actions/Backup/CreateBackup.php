@@ -43,35 +43,69 @@ class CreateBackup extends Action
         $timestamp = Carbon::now()->format('Ymd-His');
         $localPath = $backupDir.'/database-'.$timestamp.'.sqlite';
 
-        // VACUUM INTO is atomic and safe while the app is writing: SQLite reads
-        // a consistent view and writes a fresh, defragmented file.
-        DB::statement("VACUUM INTO '".$localPath."'");
+        return self::privately(function () use ($backupDir, $retentionDays, $timestamp, $localPath): string {
+            // VACUUM INTO is atomic and safe while the app is writing: SQLite
+            // reads a consistent view and writes a fresh, defragmented file.
+            DB::statement("VACUUM INTO '".$localPath."'");
 
-        $disk = $this->remoteDisk();
+            $disk = $this->remoteDisk();
 
-        if (! $disk instanceof Filesystem) {
+            if (! $disk instanceof Filesystem) {
+                $this->cleanupOldBackups($backupDir, $retentionDays);
+
+                return basename($localPath);
+            }
+
+            $encryptedPath = $localPath.'.enc';
+
+            try {
+                $this->encrypt->encrypt($localPath, $encryptedPath);
+                $key = $this->upload($disk, $encryptedPath, $timestamp);
+            } finally {
+                // The plaintext snapshot and the staged archive are byproducts:
+                // the durable copy is the uploaded object. Removing them keeps
+                // an unencrypted database from lingering on disk.
+                @unlink($encryptedPath);
+                @unlink($localPath);
+            }
+
+            $this->pruneRemote($disk, $retentionDays);
             $this->cleanupOldBackups($backupDir, $retentionDays);
 
-            return basename($localPath);
-        }
+            return $key;
+        });
+    }
 
-        $encryptedPath = $localPath.'.enc';
+    /**
+     * Run $work with a umask that makes every file it creates owner-only.
+     *
+     * A backup is the whole financial history in one file, and with no remote
+     * disk configured — the default — the *plaintext* snapshot stays in the
+     * backup directory for the retention window. Default permissions would make
+     * that 0644: readable by every other account on the host, and by every
+     * other container that mounts the same directory.
+     *
+     * umask rather than a chmod afterwards because the file is written by
+     * SQLite (VACUUM INTO), not by us, and because a chmod leaves the file
+     * world-readable for the window between creation and the mode change —
+     * which is the window where it is worth stealing. Restored in a finally:
+     * this runs inside the long-lived queue worker, which goes on to handle
+     * jobs that have nothing to do with backups.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    public static function privately(callable $work): mixed
+    {
+        $previous = umask(0o077);
 
         try {
-            $this->encrypt->encrypt($localPath, $encryptedPath);
-            $key = $this->upload($disk, $encryptedPath, $timestamp);
+            return $work();
         } finally {
-            // The plaintext snapshot and the staged archive are byproducts: the
-            // durable copy is the uploaded object. Removing them keeps an
-            // unencrypted database from lingering on disk.
-            @unlink($encryptedPath);
-            @unlink($localPath);
+            umask($previous);
         }
-
-        $this->pruneRemote($disk, $retentionDays);
-        $this->cleanupOldBackups($backupDir, $retentionDays);
-
-        return $key;
     }
 
     /**

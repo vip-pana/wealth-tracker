@@ -78,8 +78,11 @@ services:
       - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
       - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
       # Scalable CLI login session + signing key — survives container recreation,
-      # so `sc login` is not needed after every deploy.
-      - scalable-cli:/root/.config/scalable-cli
+      # so `sc login` is not needed after every deploy. Mounted under the
+      # unprivileged account's home rather than root's: the app no longer runs
+      # as root, and the CLI resolves this path through HOME. An existing volume
+      # carries over — the entrypoint takes ownership of it on the first start.
+      - scalable-cli:/home/appuser/.config/scalable-cli
     env_file:
       - .env
     environment:
@@ -94,6 +97,12 @@ services:
       # bank-consent redirect.
       APP_URL: ${APP_URL:-http://localhost:8080}
       LARAVEL_BYPASS_ENV_CHECK: "1"
+      # The app runs unprivileged. By default the entrypoint adopts whichever
+      # uid/gid owns the mounted data directory, which is right on nearly every
+      # host; set these to override it when the guess is wrong (an NFS mount, a
+      # directory owned by a service account).
+      PUID: ${PUID:-}
+      PGID: ${PGID:-}
     healthcheck:
       # Laravel's /up endpoint (configured in bootstrap/app.php). Marks the
       # container unhealthy if the web server dies while the container lives.

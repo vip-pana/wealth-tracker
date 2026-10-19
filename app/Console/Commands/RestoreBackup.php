@@ -68,7 +68,9 @@ class RestoreBackup extends Command
                 return Command::FAILURE;
             }
 
-            $local = fopen($encryptedPath, 'wb');
+            // Owner-only, like everything else the backup path writes — see
+            // CreateBackup::privately() for why it is a umask and not a chmod.
+            $local = CreateBackup::privately(fn () => fopen($encryptedPath, 'wb'));
             if ($local === false) {
                 fclose($stream);
                 $this->error("Unable to stage the download at {$encryptedPath}.");
@@ -88,7 +90,9 @@ class RestoreBackup extends Command
         $output = $this->option('output');
         $target = $output ?? $this->defaultTarget($encryptedPath);
 
-        $encrypt->decrypt($encryptedPath, $target);
+        // The output is a plaintext copy of the entire financial history, so it
+        // is the one file here that most needs to land owner-only.
+        CreateBackup::privately(fn () => $encrypt->decrypt($encryptedPath, $target));
 
         if ($cleanup) {
             @unlink($encryptedPath);
