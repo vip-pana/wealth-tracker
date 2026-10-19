@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
+use App\Advisor\AdvisorBudget;
+use App\Advisor\AdvisorBudgetExceeded;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use App\Models\Notification;
@@ -31,7 +33,7 @@ class GenerateAdvisorReportJob implements ShouldQueue
         private readonly int $sessionId,
     ) {}
 
-    public function handle(GenerateAdvisorReport $generate, PushNotification $notify): void
+    public function handle(GenerateAdvisorReport $generate, PushNotification $notify, AdvisorBudget $budget): void
     {
         $session = AdvisorSession::find($this->sessionId);
 
@@ -39,7 +41,30 @@ class GenerateAdvisorReportJob implements ShouldQueue
             return;
         }
 
-        $content = $generate->run();
+        // Account the analysis to its own session, so the ledger attributes the
+        // spend. One call, so the per-session cap is not the binding one here —
+        // the daily cap is.
+        $budget->for($session);
+
+        try {
+            $content = $generate->run();
+        } catch (AdvisorBudgetExceeded $e) {
+            // The generic failed() handler below blames the local model. Here
+            // the model is fine and was never asked, so say what actually
+            // happened — otherwise the owner goes debugging a working model.
+            $session->update(['status' => AdvisorSession::STATUS_FAILED, 'error' => $e->getMessage()]);
+            $notify->run(
+                type: Notification::TYPE_ADVISOR_REPORT_FAILED,
+                level: Notification::LEVEL_WARNING,
+                title: 'Analisi non generata',
+                body: $e->getMessage(),
+                actionUrl: '/advisor',
+            );
+
+            return;
+        } finally {
+            $budget->clear();
+        }
 
         if ($content === null) {
             $session->update(['status' => AdvisorSession::STATUS_FAILED, 'error' => 'Consulente AI non configurato.']);

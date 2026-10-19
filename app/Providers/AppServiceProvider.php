@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Advisor\AdvisorBudget;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Advisor\Tools\AdvisorWidgetCollector;
@@ -48,6 +49,12 @@ class AppServiceProvider extends ServiceProvider
         // (see AdvisorWidgetCollector): the tools append, ContinueChat persists.
         $this->app->singleton(AdvisorWidgetCollector::class);
 
+        // Request-scoped for the same reason: the caller (ContinueChat, the
+        // report action, the budget middleware) arms it with the session, and
+        // the provider — resolved separately — must see that same instance or
+        // the per-session cap would silently never apply.
+        $this->app->singleton(AdvisorBudget::class);
+
         // The advisor is swappable: a local model (Ollama) for development or a
         // cloud one (Anthropic) later, chosen by services.advisor.driver. Both
         // run through Prism, which unifies the tool-calling loop across them;
@@ -65,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
                     Config::string('services.advisor.anthropic.model', ''),
                     Config::integer('services.advisor.anthropic.timeout', 120),
                     $this->app->make(AdvisorToolFactory::class),
+                    $this->app->make(AdvisorBudget::class),
                 );
             }
 
@@ -78,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
                     Config::string('services.advisor.regolo.model', ''),
                     Config::integer('services.advisor.regolo.timeout', 120),
                     $this->app->make(AdvisorToolFactory::class),
+                    $this->app->make(AdvisorBudget::class),
                     [
                         'temperature' => Config::float('services.advisor.regolo.temperature', 0.2),
                     ],
@@ -93,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
                 Config::string('services.advisor.ollama.model', ''),
                 Config::integer('services.advisor.ollama.timeout', 120),
                 $this->app->make(AdvisorToolFactory::class),
+                $this->app->make(AdvisorBudget::class),
                 [
                     'temperature' => Config::float('services.advisor.ollama.temperature', 0.3),
                     'keep_alive' => Config::string('services.advisor.ollama.keep_alive', '30m'),

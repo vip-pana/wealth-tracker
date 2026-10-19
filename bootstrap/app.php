@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureAdvisorBudget;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireSetup;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -47,6 +48,11 @@ return Application::configure(basePath: dirname(__DIR__))
             SubstituteBindings::class,
             Authorize::class,
         ]);
+
+        // Refuses an advisor request whose token budget is already spent, so the
+        // user gets a readable 422 now instead of a pending bubble that fails
+        // minutes later in the queue. See EnsureAdvisorBudget.
+        $middleware->alias(['advisor.budget' => EnsureAdvisorBudget::class]);
 
         // Unauthenticated Inertia visits must land on the login page.
         $middleware->redirectGuestsTo(fn () => route('login'));

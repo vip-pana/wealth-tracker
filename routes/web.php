@@ -99,8 +99,10 @@ Route::middleware('auth')->group(function () {
     // model are the ones that can cost money on a cloud driver (`advisor-generate`),
     // the status endpoint is polled every 2.5s while a reply generates and needs
     // headroom (`advisor-poll`), and the rest are ordinary reads and writes.
-    // The rate limit bounds how often; the token budget (AdvisorBudget) bounds
-    // how much. Neither substitutes for the other.
+    // The rate limit bounds how often; the token budget (`advisor.budget`,
+    // applied to the same four) bounds how much. Neither substitutes for the
+    // other: a slow loop stays under any rate limit and still runs up a bill,
+    // and a burst that fits the budget still hammers the backend.
     Route::middleware('throttle:advisor')->group(function () {
         Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
         Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
@@ -109,7 +111,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/advisor/goal/composition', AdvisorStoreGoalCompositionController::class)->name('advisor.goal.composition.store');
     });
 
-    Route::middleware('throttle:advisor-generate')->group(function () {
+    Route::middleware(['throttle:advisor-generate', 'advisor.budget'])->group(function () {
         Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
         Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
     });
@@ -119,7 +121,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/advisor/{session}', AdvisorIndexController::class)->middleware('throttle:advisor')->name('advisor.show');
     Route::get('/advisor/{session}/status', AdvisorStatusController::class)->middleware('throttle:advisor-poll')->name('advisor.status');
 
-    Route::middleware('throttle:advisor-generate')->group(function () {
+    Route::middleware(['throttle:advisor-generate', 'advisor.budget'])->group(function () {
         Route::post('/advisor/{session}/message', AdvisorMessageController::class)->name('advisor.message');
         Route::post('/advisor/{session}/propose/{kind}', AdvisorProposeController::class)->name('advisor.propose');
         Route::post('/advisor/{session}/message/{message}/retry', AdvisorRetryMessageController::class)->name('advisor.message.retry');

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Clients;
 
 use App\Actions\Advisor\BuildAdvisorContext;
+use App\Advisor\AdvisorBudget;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Advisor\Tools\AdvisorWidgetCollector;
 use App\Http\Clients\PrismAdvisorProvider;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
 use Prism\Prism\Enums\Provider;
@@ -16,6 +18,11 @@ use Tests\TestCase;
 
 class PrismAdvisorProviderTest extends TestCase
 {
+    // The provider books every call's token usage through AdvisorBudget, so it
+    // needs the advisor_token_usage table even in tests that only assert on the
+    // outgoing HTTP request.
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,7 +38,7 @@ class PrismAdvisorProviderTest extends TestCase
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn(['portfolio' => ['hasData' => false], 'positionReturns' => null]);
 
-        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter, new AdvisorWidgetCollector), $tuning);
+        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter, new AdvisorWidgetCollector), new AdvisorBudget, $tuning);
     }
 
     public function test_is_not_configured_without_a_model(): void

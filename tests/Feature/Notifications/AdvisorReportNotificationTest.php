@@ -7,6 +7,7 @@ namespace Tests\Feature\Notifications;
 use App\Actions\Advisor\ContinueChat;
 use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
+use App\Advisor\AdvisorBudget;
 use App\Contracts\AdvisorProvider;
 use App\Jobs\ContinueChatJob;
 use App\Jobs\GenerateAdvisorReportJob;
@@ -63,6 +64,7 @@ class AdvisorReportNotificationTest extends TestCase
         new GenerateAdvisorReportJob($session->id)->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
+            app(AdvisorBudget::class),
         );
 
         $this->assertDatabaseHas('notifications', [
@@ -79,6 +81,7 @@ class AdvisorReportNotificationTest extends TestCase
         new GenerateAdvisorReportJob($session->id)->handle(
             app(GenerateAdvisorReport::class),
             app(PushNotification::class),
+            app(AdvisorBudget::class),
         );
 
         $this->assertDatabaseHas('notifications', [
