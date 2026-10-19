@@ -134,14 +134,22 @@ jobs:
       #
       # One listing serves both assertions, so they cannot disagree because a
       # process started or died between them.
+      #
+      # `pid` has to be in the column list even though nothing here reads it:
+      # docker finds the PID column in the ps output to select the container's
+      # own processes, and without it refuses with "Couldn't find PID field".
+      # `pipefail` is what makes that refusal fail the step — the pipeline
+      # would otherwise report tee's exit status and hand an empty listing to
+      # the assertions below.
       - name: List the container's processes
         run: |
-          docker top wt-ci -eo uid,args | tee processes.txt
+          set -o pipefail
+          docker top wt-ci -eo pid,uid,args | tee processes.txt
 
       - name: No application process runs as root
         run: |
-          uids=$(awk 'NR > 1 && /artisan/ { print $1 }' processes.txt | sort -u)
-          echo "artisan processes run as uid: $uids"
+          uids=$(awk 'NR > 1 && /artisan/ { print $2 }' processes.txt | sort -u)
+          echo "artisan processes run as uid: ${uids:-<none found>}"
           test "$uids" = "1234"
 
       - name: All three processes came up
