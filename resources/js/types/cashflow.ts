@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 export type FlowType = 'income' | 'expense' | 'transfer';
 
 export interface Account {

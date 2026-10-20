@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Markdown } from '@/Components/ui/Markdown';
 import { Sparkles, AlertTriangle, RotateCw } from 'lucide-react';
 import { type Message, type GoalData } from '@/Components/Advisor/types';

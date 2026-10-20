@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Money } from '@/Components/ui/Money';
 import { DELTA_EPSILON } from '@/lib/metrics';
 import { cn } from '@/lib/utils';

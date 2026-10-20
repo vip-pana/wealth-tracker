@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useForm, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/Components/ui/button';

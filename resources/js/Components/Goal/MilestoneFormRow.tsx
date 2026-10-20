@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Input } from '@/Components/ui/input';
 import { Button } from '@/Components/ui/button';
 import { ChevronDown, Trash2 } from 'lucide-react';

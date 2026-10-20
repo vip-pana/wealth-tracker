@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 export type Status = 'pending' | 'done' | 'failed';
 export type Kind = 'report' | 'chat' | string;
 
