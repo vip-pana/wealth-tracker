@@ -192,3 +192,60 @@ Riconnetti"** — a link and device code appear; open the link, enter the code a
 complete 2FA on any device. The session is long-lived; reconnect the same way
 when it lapses, or from a terminal with `docker exec -it wealth-tracker-app-1 sc
 login`. The daily 06:00 price job then reads balances automatically.
+
+## License
+
+Copyright (C) 2026 Vincenzo Panacciulli
+
+Wealth Tracker is free software, licensed under the
+[GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`).
+
+### What this means if you self-host it
+
+**Run it, for yourself, however you like.** Install it on your own machine or
+server, read the code, change it, keep your changes to yourself. The licence
+asks nothing of you. This is the normal case and it stays free.
+
+**Give a copy to someone else** — the code, a build, a Docker image — and the
+copy travels with its source and with this licence. You cannot hand out a
+modified binary and keep the changes private.
+
+**Modify it and let other people use it over a network, and you must publish
+your modified source to those people.** This is section 13 of the AGPL, and it
+is what sets this licence apart from the GPL. It applies even though you never
+distribute a file: running a modified version as a service that others use is
+enough to trigger it. You must offer those users the complete corresponding
+source of the version you are running — free of charge, downloadable from a
+server, and offered visibly from the application's interface.
+
+Two clarifications, because this clause is often read as stricter than it is:
+
+- It triggers on *modification*. Running this project unmodified for your
+  family, your flatmates, or your company changes nothing.
+- It triggers towards *the users of your service*, not towards the public. You
+  are not required to publish a fork on GitHub — though doing so is by far the
+  simplest way to comply.
+
+If you do run a modified version for others, the easiest way to satisfy section
+13 is to keep (or add) a link to your source in the application's settings page.
+
+### Commercial licensing
+
+If you want to build on Wealth Tracker in a way the AGPL does not allow — in
+particular, offering a modified version as a hosted service without releasing
+your changes — a separate commercial licence is available. Get in touch at
+<v.panacciulli@proton.me>.
+
+### Contributing
+
+Contributions are welcome. Because the project is offered under both the AGPL
+and separate commercial terms, contributors are asked to accept the
+[Contributor License Agreement](CLA.md) first. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Third-party code
+
+Wealth Tracker is built on the [Laravel](https://laravel.com) application
+skeleton, which is copyright (c) Taylor Otwell and licensed under the MIT
+licence. Dependencies retain their own licences; see `composer.lock` and
+`pnpm-lock.yaml`.
