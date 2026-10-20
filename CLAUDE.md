@@ -6,7 +6,8 @@ Load these docs when working in the relevant area:
 
 - **Testing** → @docs/testing.md
 - **Database & Backup** → @docs/database.md
-- **Self-hosting / deploy** → @docs/self-hosting.md
+- **Self-hosting / deploy** → @docs/self-hosting.md (generic; the maintainer's
+  own Tailscale + CI-deploy setup is in `docs/reference-deployment.md`)
 
 ## Claude-specific instructions
 

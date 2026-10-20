@@ -29,6 +29,17 @@ by a password — see [First run](#first-run).
 - **AI**: [Prism](https://github.com/prism-php/prism) as the LLM transport (Ollama / Anthropic / OpenAI-compatible)
 - **Package manager**: pnpm
 
+## Running it
+
+Two different things, and it is worth picking the right one:
+
+- **Trying it out, or working on it** — the development stack below. Source
+  mounted, Vite with hot reload, `php artisan serve`. Never expose it.
+- **Running it for real**, on a machine that stays on —
+  [docs/self-hosting.md](docs/self-hosting.md). A released image from ghcr.io, a
+  real web server, the queue worker and the scheduler, backups. Start there; it
+  assumes nothing about your setup.
+
 ## Running with Docker (recommended)
 
 ```bash
@@ -37,6 +48,9 @@ docker compose up
 ```
 
 The app will be available at [http://localhost:8080](http://localhost:8080).
+
+A new install starts with a usable set of categories and no goal — create your
+own from the Goal page.
 
 The SQLite database lives on the host at `~/wealth-tracker-data/database.sqlite`
 (bind-mounted into the container), so it's a normal file you can back up or
@@ -138,9 +152,12 @@ To bypass once (discouraged): `git push --no-verify`.
 
 ## Optional integrations
 
+- **Self-hosting** (running it on a machine that stays on) —
+  [docs/self-hosting.md](docs/self-hosting.md)
 - **Database & backups** — [docs/database.md](docs/database.md)
 - **Enable Banking** (open-banking bank balances) —
   [docs/enable-banking-usage.md](docs/enable-banking-usage.md)
+- **Contributing** — [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ### AI advisor
 

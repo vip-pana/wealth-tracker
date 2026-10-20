@@ -8,7 +8,7 @@ only need this when **connecting a new account** or **renewing consent** (~every
 > This page is about the **development Mac**. The self-hosted deployment serves
 > real HTTPS through a Tailscale sidecar, so there the redirect is registered
 > once and no tunnel runs — see
-> [self-hosting.md §8](self-hosting.md#8-enable-banking).
+> [self-hosting.md §8](self-hosting.md#8-optional-enable-banking).
 
 Prereqs (one-time): `brew install cloudflared`. Credentials already set in
 `.env` (`ENABLE_BANKING_APPLICATION_ID`, `ENABLE_BANKING_PRIVATE_KEY_PATH`) and
@@ -36,7 +36,7 @@ In the **mounted data directory**, next to the database:
 `.env` holds the *path*; the path points inside the container. That is the one
 thing that trips people moving to a new machine — copying `.env` carries the
 setting over and leaves the key behind, and the failure then reads as a
-credentials problem (see [self-hosting.md §8](self-hosting.md#8-enable-banking)).
+credentials problem (see [self-hosting.md §8](self-hosting.md#8-optional-enable-banking)).
 
 ### Permissions
 

@@ -7,7 +7,7 @@
 #   ./scripts/deploy-release.sh 1.6.0        # or v1.6.0
 #
 # This is also the only command GitHub Actions can run over ssh (see
-# docs/self-hosting.md "Automatic deploys"): the authorized_keys entry forces
+# docs/reference-deployment.md "Unattended deploys"): the login shell forces
 # it, so a stolen workflow secret cannot do anything but deploy a valid tag.
 # That is why the version is validated as a version and nothing here interpolates
 # it into a shell command.
@@ -21,7 +21,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
-COMPOSE=(docker compose -f "$ROOT/docker-compose.prod.yml")
+# Which stack to deploy. Defaults to the Tailscale one this machine runs
+# (docs/reference-deployment.md); an install that put its own reverse proxy in
+# front sets COMPOSE_FILE=docker-compose.standalone.yml instead. Everything
+# below addresses the `app` service, which both files define identically.
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+COMPOSE=(docker compose -f "$ROOT/$COMPOSE_FILE")
 
 # Work from the repo, whatever directory the caller was in. Every path below is
 # already absolute, but `docker compose` stats the working directory while
@@ -170,7 +175,7 @@ rollback() {
     fi
     "${COMPOSE[@]}" up -d app >/dev/null 2>&1 || true
     fail "$VERSION did not come up healthy. Rolled back; check the logs:
-  docker compose -f docker-compose.prod.yml logs --tail=80 app"
+  docker compose -f $COMPOSE_FILE logs --tail=80 app"
 }
 
 # Only `app` is recreated. The tailscale sidecar holds the node identity, and
@@ -198,7 +203,7 @@ for process in queue:work schedule:work; do
     "${COMPOSE[@]}" exec -T app sh -c \
         "for p in /proc/[0-9]*; do tr '\\0' ' ' < \$p/cmdline 2>/dev/null | grep -q '$process' && exit 0; done; exit 1" \
         || fail "$process is not running — the container is up but incomplete:
-  docker compose -f docker-compose.prod.yml logs --tail=80 app"
+  docker compose -f $COMPOSE_FILE logs --tail=80 app"
 done
 
 log "Deployed $VERSION"

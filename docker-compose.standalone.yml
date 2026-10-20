@@ -1,0 +1,63 @@
+# Production compose for a machine that reaches the network some other way:
+# a VPS behind Caddy or nginx, a home server behind an existing reverse proxy,
+# or a box where you only ever open the app over an SSH tunnel.
+#
+#   docker compose -f docker-compose.standalone.yml pull
+#   docker compose -f docker-compose.standalone.yml up -d
+#
+# docker-compose.prod.yml is the other half of the choice: it wraps the app in
+# a Tailscale sidecar that gets its own HTTPS certificate, which is how the
+# project's own instance runs (docs/reference-deployment.md). That stack needs
+# a tailnet and refuses to start without an auth key. This one needs neither.
+#
+# What it does NOT do is terminate TLS. The port is published on loopback only,
+# so nothing reaches the app until you put something in front of it. Read
+# docs/self-hosting.md §5 before pointing a domain at this.
+services:
+  app:
+    # The released version to run, pinned in .env. Pinning rather than tracking
+    # `latest` is what makes a rollback a one-line edit plus `up -d`: the old
+    # image is still in the local store, so going back costs no build.
+    image: ghcr.io/vip-pana/wealth-tracker:${APP_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      # 127.0.0.1 deliberately. Bound to 0.0.0.0 this would publish an app
+      # holding the owner's entire financial history straight onto whatever
+      # network the machine is on, over plain http, with the login as the only
+      # thing in front of it. Your reverse proxy connects over loopback.
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    volumes:
+      # Both must exist on the host first — the entrypoint refuses to start on
+      # a missing database rather than inventing an empty one.
+      - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
+      - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
+      # Scalable CLI login session + signing key, if that integration is used.
+      # Survives container recreation, so `sc login` is not a per-deploy chore.
+      - scalable-cli:/home/appuser/.config/scalable-cli
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/storage/app/database.sqlite
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: "30"
+      # Must match the address you actually open in a browser, including the
+      # scheme. A wrong value breaks absolute URLs and the bank-consent
+      # redirect, and shows up as a login page that loops without an error.
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      LARAVEL_BYPASS_ENV_CHECK: "1"
+      # The app runs unprivileged. The entrypoint adopts whichever uid/gid owns
+      # the mounted data directory; set these when that guess is wrong.
+      PUID: ${PUID:-}
+      PGID: ${PGID:-}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 60s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+
+volumes:
+  scalable-cli:
