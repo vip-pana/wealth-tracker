@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\EnsureAdvisorBudget;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireSetup;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -26,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Global rather than web-only: the CSP and its friends should also
+        // cover /up and anything else answered outside the web group.
+        $middleware->prepend(SecurityHeaders::class);
+
         // RequireSetup runs on every web request: it pushes a fresh install to
         // /setup so the app is never reachable without a password, and closes
         // /setup once an account exists.
