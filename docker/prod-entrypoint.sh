@@ -147,7 +147,9 @@ trap terminate INT TERM
 
 php artisan schedule:work &
 
-php artisan serve --host=0.0.0.0 --port=8000 &
+# The web server. FrankenPHP in its default, request-per-boot mode — see
+# docker/Caddyfile for why, and for why this is not `php artisan serve`.
+frankenphp run --config /etc/caddy/Caddyfile &
 
 # Exit as soon as any one of them dies, so the container's restart policy can
 # do its job instead of leaving a half-running app that still answers HTTP.

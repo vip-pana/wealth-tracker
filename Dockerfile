@@ -1,9 +1,19 @@
 # Stage 1: base PHP
-FROM php:8.4-cli AS base
+#
+# FrankenPHP rather than php:8.4-cli, because the production stage needs a real
+# web server and `php artisan serve` is not one — see docker/Caddyfile. The
+# image is the official PHP image with the server embedded, so the CLI, the
+# extension tooling and `php artisan` all behave exactly as before.
+FROM dunglas/frankenphp:1-php8.4 AS base
+
+# The image declares its own entrypoint, which would swallow every `command:`
+# in docker-compose.yml and the prod entrypoint below. We run the server from
+# our own supervisor, so reset it once here for both stages that build on this.
+ENTRYPOINT []
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libsqlite3-dev \
-    && docker-php-ext-install pdo pdo_sqlite pcntl \
+    && docker-php-ext-install pdo pdo_sqlite pcntl opcache \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -75,6 +85,12 @@ COPY --from=node-build /app/public/build ./public/build
 # a failed mount then serves as if the app were simply new. The entrypoint fails
 # loudly instead.
 RUN mkdir -p storage/app
+
+# The web server's configuration and PHP's. Both are baked in rather than
+# mounted: the image is pulled, not built, on the machines that run it, so
+# anything the server needs has to travel with it.
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/php-production.ini $PHP_INI_DIR/conf.d/zz-production.ini
 
 COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
 RUN chmod +x /usr/local/bin/prod-entrypoint

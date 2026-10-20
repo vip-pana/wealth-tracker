@@ -148,13 +148,13 @@ jobs:
 
       - name: No application process runs as root
         run: |
-          uids=$(awk 'NR > 1 && /artisan/ { print $2 }' processes.txt | sort -u)
-          echo "artisan processes run as uid: ${uids:-<none found>}"
+          uids=$(awk 'NR > 1 { print $2 }' processes.txt | sort -u)
+          echo "container processes run as uid: ${uids:-<none found>}"
           test "$uids" = "1234"
 
       - name: All three processes came up
         run: |
-          for process in "artisan serve" "queue:work" "schedule:work"; do
+          for process in "frankenphp" "queue:work" "schedule:work"; do
             grep -q -- "$process" processes.txt \
               || { echo "missing: $process"; exit 1; }
           done
