@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/vip-pana/wealth-tracker/compare/v1.10.1...v1.11.0) (2026-10-21)
+
+
+### Features
+
+* **dashboard:** open the timeline on the weekly view ([#115](https://github.com/vip-pana/wealth-tracker/issues/115)) ([678dd4a](https://github.com/vip-pana/wealth-tracker/commit/678dd4a0765dcae9738365adf53040a98298f9af))
+
 ## [1.10.1](https://github.com/vip-pana/wealth-tracker/compare/v1.10.0...v1.10.1) (2026-10-14)
 
 
