@@ -104,7 +104,7 @@ export default function Dashboard({
     positionReturns,
 }: Props) {
     const [macroMode, setMacroMode] = useState(false);
-    const [granularity, setGranularity] = useState<'snapshot' | DashboardPeriod>('snapshot');
+    const [granularity, setGranularity] = useState<'snapshot' | DashboardPeriod>('week');
     if (!hasData) {
         return (
             <>
