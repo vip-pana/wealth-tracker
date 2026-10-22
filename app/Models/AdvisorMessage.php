@@ -64,6 +64,24 @@ class AdvisorMessage extends Model
         return app(AdvisorOutputFilter::class)->filter($this->content);
     }
 
+    /**
+     * The widgets to send to the UI. Same two-pass reasoning as
+     * displayContent(): the free text the model wrote into a widget — a
+     * milestone's action and rationale, a proposal's notes — is screened again
+     * on the way out, so widgets stored before this existed are not shown
+     * unchecked. App-computed payloads are untouched.
+     *
+     * @return list<array{type: string, data: array<string, mixed>}>|null
+     */
+    public function displayWidgets(): ?array
+    {
+        if ($this->role !== self::ROLE_ASSISTANT) {
+            return $this->widgets;
+        }
+
+        return app(AdvisorOutputFilter::class)->filterWidgets($this->widgets);
+    }
+
     /** @return BelongsTo<AdvisorSession, $this> */
     public function session(): BelongsTo
     {

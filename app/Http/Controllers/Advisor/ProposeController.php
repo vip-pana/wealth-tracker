@@ -55,7 +55,7 @@ class ProposeController extends Controller
             'status' => $message->status,
             'error' => $message->error,
             'tool_activity' => $message->tool_activity,
-            'widgets' => $message->widgets,
+            'widgets' => $message->displayWidgets(),
             'created_at' => $message->created_at?->toISOString(),
         ];
     }

@@ -129,7 +129,7 @@ class IndexController extends Controller
                 'content' => $m->displayContent(),
                 'status' => $m->status,
                 'error' => $m->error,
-                'widgets' => $m->widgets,
+                'widgets' => $m->displayWidgets(),
                 'created_at' => $m->created_at?->toISOString(),
             ])
             ->all();

@@ -14,7 +14,7 @@ import { GoalMilestonesProposal } from '@/Components/Advisor/Widgets/GoalMilesto
 
 const data = {
     milestones: [
-        { label: 'Metà', action: 'Sposta 5% da Bitcoin a Obbligazioni.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
+        { label: 'Metà', action: 'Da qui la parte azionaria scende e quella obbligazionaria sale.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
         { label: null, action: null, rationale: null, target_value: 750000, target_date: '2090-01-01', allocation: [] },
     ],
 };
@@ -26,7 +26,7 @@ describe('GoalMilestonesProposal', () => {
         render(<GoalMilestonesProposal data={data} />);
         expect(screen.getByText('Metà')).toBeInTheDocument();
         expect(screen.getByText('Tappa 2')).toBeInTheDocument();
-        expect(screen.getByText(/Sposta 5% da Bitcoin/)).toBeInTheDocument();
+        expect(screen.getByText(/la parte azionaria scende/)).toBeInTheDocument();
         expect(screen.getByText(/Riduce la volatilità/)).toBeInTheDocument();
         // The allocation renders as a stacked bar with a legend (heading +
         // per-category label spans), not the old "Azioni 70% · …" text.
@@ -45,7 +45,7 @@ describe('GoalMilestonesProposal', () => {
         expect(post.mock.calls[0][0]).toBe('/advisor/goal/milestones');
         expect(post.mock.calls[0][1]).toEqual({
             milestones: [
-                { notes: 'Metà', action: 'Sposta 5% da Bitcoin a Obbligazioni.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
+                { notes: 'Metà', action: 'Da qui la parte azionaria scende e quella obbligazionaria sale.', rationale: 'Riduce la volatilità.', target_value: 500000, target_date: '2080-01-01', allocation: [{ category: 'Azioni', percentage: 70 }, { category: 'Liquidità', percentage: 30 }] },
                 { notes: null, action: null, rationale: null, target_value: 750000, target_date: '2090-01-01', allocation: [] },
             ],
         });

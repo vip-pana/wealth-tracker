@@ -33,7 +33,7 @@ class StatusController extends Controller
                     'status' => $m->status,
                     'error' => $m->error,
                     'tool_activity' => $m->tool_activity,
-                    'widgets' => $m->widgets,
+                    'widgets' => $m->displayWidgets(),
                     'created_at' => $m->created_at?->toISOString(),
                 ])
                 ->all(),

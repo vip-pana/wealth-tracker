@@ -135,7 +135,7 @@ class ContinueChat extends Action
             return;
         }
 
-        $widgets = $this->widgets->widgets();
+        $widgets = $this->filter->filterWidgets($this->widgets->widgets());
         $this->activity->clear();
         $this->widgets->clear();
         $this->budget->clear();
@@ -208,7 +208,7 @@ class ContinueChat extends Action
             return;
         }
 
-        $widgets = $this->widgets->widgets();
+        $widgets = $this->filter->filterWidgets($this->widgets->widgets());
         $this->activity->clear();
         $this->widgets->clear();
         $this->budget->clear();

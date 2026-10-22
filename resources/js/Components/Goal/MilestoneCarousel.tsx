@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Money } from '@/Components/ui/Money';
+import { AiDisclosure } from '@/Components/Advisor/AiDisclosure';
 import { MilestoneAllocationDetail } from '@/Components/Goal/MilestoneAllocationDetail';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
@@ -172,6 +173,14 @@ export function MilestoneCarousel({
                         <p className="text-xs text-muted-foreground pl-6">Nessun dettaglio per questa tappa.</p>
                     )}
                 </div>
+
+                {/* The label, action and rationale are the advisor's own words,
+                    saved from a proposal card and shown here for good — outside
+                    the chat, with none of its framing. This is the only notice
+                    they get, so it is shown whenever any step carries them. */}
+                {milestones.some((m) => m.milestone.notes || m.milestone.action || m.milestone.rationale) && (
+                    <AiDisclosure where="derived" className="pt-2" />
+                )}
         </div>
     );
 }

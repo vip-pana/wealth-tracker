@@ -169,3 +169,27 @@ describe('MilestoneCarousel — achieved steps', () => {
         expect(pending.querySelector('span.line-through')).toBeNull();
     });
 });
+
+describe('MilestoneCarousel — AI disclosure', () => {
+    // WEA-13 §6: the advisor's own text is kept on this page for good, outside
+    // the chat and outside the filter's footer, so the notice has to travel
+    // with it. It is the app that says this, not the model.
+    it('declares the text came from an AI and is not financial advice', () => {
+        render(<MilestoneCarousel milestones={three} initialIndex={0} />);
+
+        const notice = screen.getByTestId('ai-disclosure');
+        expect(notice.textContent).toContain('sistema di intelligenza artificiale');
+        expect(notice.textContent).toContain('non è consulenza finanziaria');
+        expect(notice.textContent).toContain('OCF');
+    });
+
+    it('stays out of the way when no step carries advisor text', () => {
+        const bare: MilestoneEntry[] = [
+            { milestone: { id: 1, target_value: 50000, target_date: '2030-06-01', notes: null }, achieved: false, segments: [] },
+        ];
+
+        render(<MilestoneCarousel milestones={bare} initialIndex={0} />);
+
+        expect(screen.queryByTestId('ai-disclosure')).toBeNull();
+    });
+});
