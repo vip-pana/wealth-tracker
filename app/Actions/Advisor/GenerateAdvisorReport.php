@@ -1,10 +1,14 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Actions\Advisor;
 
 use App\Actions\Action;
+use App\Advisor\AdvisorOutputFilter;
 use App\Contracts\AdvisorProvider;
 
 class GenerateAdvisorReport extends Action
@@ -13,6 +17,7 @@ class GenerateAdvisorReport extends Action
         private readonly BuildAdvisorContext $buildAdvisorContext,
         private readonly RenderAdvisorContext $renderAdvisorContext,
         private readonly AdvisorProvider $provider,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     /**
@@ -29,6 +34,6 @@ class GenerateAdvisorReport extends Action
 
         $briefing = $this->renderAdvisorContext->run($this->buildAdvisorContext->run());
 
-        return $this->provider->analyze($briefing);
+        return $this->filter->filter($this->provider->analyze($briefing));
     }
 }

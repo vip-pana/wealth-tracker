@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 /**
  * Format a number as Euro currency (Italian locale).
  * e.g. 12345.67 → "€ 12.345,67"

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import TransactionsDialog from '@/Components/Data/TransactionsDialog';

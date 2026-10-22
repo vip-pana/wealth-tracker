@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { render, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Markdown } from './Markdown';

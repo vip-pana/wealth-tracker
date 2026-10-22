@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useForm } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { RotateCcw } from 'lucide-react';

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { describe, expect, it } from 'vitest';
 import { PAC_MAX_MONTHS, projectPac, requiredMonthlyContribution } from './pacMath';
 

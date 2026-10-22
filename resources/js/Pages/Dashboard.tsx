@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Components/Layout/AppLayout';

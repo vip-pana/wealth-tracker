@@ -1,5 +1,8 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Advisor\Tools;
@@ -404,8 +407,8 @@ class AdvisorToolFactory
                     'Una tappa intermedia verso l\'obiettivo.',
                     [
                         new StringSchema('label', 'Breve etichetta della tappa, es. "Metà percorso". Facoltativa.'),
-                        new StringSchema('action', 'L\'AZIONE concreta da compiere una volta raggiunta questa tappa, in modo specifico e attuabile (es. "Sposta il 5% del portafoglio da Bitcoin a Obbligazioni e rivedi il PAC"). Se parli di una "fase di mantenimento" o di un cambio di strategia, spiega cosa significa in pratica.'),
-                        new StringSchema('rationale', 'Il PERCHÉ di questa azione: il ragionamento che faresti come consulente (es. "Avvicinandoti all\'obiettivo il rischio di sequenza dei rendimenti aumenta: ridurre gli asset volatili protegge il capitale accumulato"). Chiaro e concreto, spiega anche i termini tecnici che usi.'),
+                        new StringSchema('action', 'CHE COSA CAMBIA quando la tappa è raggiunta, descritto per CLASSI di attività e in termini di piano (es. "Da qui in poi il peso della parte azionaria scende e quello della parte obbligazionaria sale: è la fase di consolidamento"). NON indicare strumenti specifici per nome, ticker o ISIN, e non dare percentuali di acquisto o vendita su una singola posizione: la composizione target per categoria si esprime nel campo allocation, non qui. Se parli di "fase di mantenimento" o di un cambio di strategia, spiega cosa significa.'),
+                        new StringSchema('rationale', 'Il PERCHÉ di questo passaggio: il ragionamento sui compromessi (es. "Avvicinandoti alla data obiettivo il rischio di sequenza dei rendimenti pesa di più, e una quota maggiore di attività meno volatili protegge il capitale già accumulato"). Chiaro e concreto, spiega anche i termini tecnici che usi; vale anche qui il divieto di nominare strumenti specifici.'),
                         new NumberSchema('target_value', 'Importo della tappa in euro, es. 500000.'),
                         new StringSchema('target_date', "Data della tappa in formato AAAA-MM-GG, futura (dopo {$today})."),
                         new ArraySchema(

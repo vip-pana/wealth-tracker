@@ -70,7 +70,9 @@ use Illuminate\Support\Facades\Route;
 // closes /setup for good once an account exists.
 Route::middleware('guest')->group(function () {
     Route::get('/setup', [SetupController::class, 'create'])->name('setup.create');
-    Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
+    // Throttled because it is reachable by a stranger and now guards a secret
+    // (the setup token) rather than only a password policy.
+    Route::post('/setup', [SetupController::class, 'store'])->middleware('throttle:setup')->name('setup.store');
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
 });
@@ -94,22 +96,43 @@ Route::middleware('auth')->group(function () {
     // ─── Pages ────────────────────────────────────────────────────────────────────
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/input', IndexAssetController::class)->name('input.index');
-    Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
-    Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
-    Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
-    Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
-    Route::post('/advisor/goal', AdvisorStoreGoalCoreController::class)->name('advisor.goal.store');
-    Route::post('/advisor/goal/milestones', AdvisorStoreGoalMilestonesController::class)->name('advisor.goal.milestones.store');
-    Route::post('/advisor/goal/composition', AdvisorStoreGoalCompositionController::class)->name('advisor.goal.composition.store');
+    // ─── Advisor ──────────────────────────────────────────────────────────────
+    // Every advisor route is throttled, but not equally: the four that reach the
+    // model are the ones that can cost money on a cloud driver (`advisor-generate`),
+    // the status endpoint is polled every 2.5s while a reply generates and needs
+    // headroom (`advisor-poll`), and the rest are ordinary reads and writes.
+    // The rate limit bounds how often; the token budget (`advisor.budget`,
+    // applied to the same four) bounds how much. Neither substitutes for the
+    // other: a slow loop stays under any rate limit and still runs up a bill,
+    // and a burst that fits the budget still hammers the backend.
+    Route::middleware('throttle:advisor')->group(function () {
+        Route::get('/advisor', AdvisorIndexController::class)->name('advisor.index');
+        Route::post('/advisor/profile', AdvisorStoreProfileController::class)->name('advisor.profile.store');
+        Route::post('/advisor/goal', AdvisorStoreGoalCoreController::class)->name('advisor.goal.store');
+        Route::post('/advisor/goal/milestones', AdvisorStoreGoalMilestonesController::class)->name('advisor.goal.milestones.store');
+        Route::post('/advisor/goal/composition', AdvisorStoreGoalCompositionController::class)->name('advisor.goal.composition.store');
+    });
+
+    Route::middleware(['throttle:advisor-generate', 'advisor.budget'])->group(function () {
+        Route::post('/advisor/generate', AdvisorGenerateController::class)->name('advisor.generate');
+        Route::post('/advisor/chat', AdvisorStartChatController::class)->name('advisor.chat');
+    });
+
     // Session-scoped routes — the {session} wildcard goes last so it can't shadow
     // the static segments above.
-    Route::get('/advisor/{session}', AdvisorIndexController::class)->name('advisor.show');
-    Route::get('/advisor/{session}/status', AdvisorStatusController::class)->name('advisor.status');
-    Route::post('/advisor/{session}/message', AdvisorMessageController::class)->name('advisor.message');
-    Route::post('/advisor/{session}/propose/{kind}', AdvisorProposeController::class)->name('advisor.propose');
-    Route::post('/advisor/{session}/message/{message}/retry', AdvisorRetryMessageController::class)->name('advisor.message.retry');
-    Route::patch('/advisor/{session}', AdvisorRenameController::class)->name('advisor.rename');
-    Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advisor.destroy');
+    Route::get('/advisor/{session}', AdvisorIndexController::class)->middleware('throttle:advisor')->name('advisor.show');
+    Route::get('/advisor/{session}/status', AdvisorStatusController::class)->middleware('throttle:advisor-poll')->name('advisor.status');
+
+    Route::middleware(['throttle:advisor-generate', 'advisor.budget'])->group(function () {
+        Route::post('/advisor/{session}/message', AdvisorMessageController::class)->name('advisor.message');
+        Route::post('/advisor/{session}/propose/{kind}', AdvisorProposeController::class)->name('advisor.propose');
+        Route::post('/advisor/{session}/message/{message}/retry', AdvisorRetryMessageController::class)->name('advisor.message.retry');
+    });
+
+    Route::middleware('throttle:advisor')->group(function () {
+        Route::patch('/advisor/{session}', AdvisorRenameController::class)->name('advisor.rename');
+        Route::delete('/advisor/{session}', AdvisorDestroyController::class)->name('advisor.destroy');
+    });
     Route::get('/settings', IndexCategoryController::class)->name('settings.index');
     Route::get('/goal', IndexGoalController::class)->name('goal.index');
     Route::get('/cashflow', CashflowIndexController::class)->name('cashflow.index');
@@ -166,14 +189,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/{notification}/read', NotificationReadController::class)->name('notifications.read');
 
     // ─── Backup ───────────────────────────────────────────────────────────────────
-    Route::post('/backup', StoreBackupController::class)->name('backup.store');
+    // A synchronous VACUUM INTO of the whole database: the sharpest self-DoS the
+    // app has, so the tightest limit.
+    Route::post('/backup', StoreBackupController::class)->middleware('throttle:backup')->name('backup.store');
 
     // ─── Prices ───────────────────────────────────────────────────────────────────
-    Route::post('/prices/refresh', RefreshPriceController::class)->name('prices.refresh');
+    Route::post('/prices/refresh', RefreshPriceController::class)->middleware('throttle:prices')->name('prices.refresh');
 
     // ─── Scalable (broker sync via the official CLI) ──────────────────────────────
-    Route::post('/scalable/refresh', RefreshScalableController::class)->name('scalable.refresh');
-    Route::post('/scalable/cli/login', StartLoginScalableController::class)->name('scalable.cli.login');
+    Route::post('/scalable/refresh', RefreshScalableController::class)->middleware('throttle:prices')->name('scalable.refresh');
+    Route::post('/scalable/cli/login', StartLoginScalableController::class)->middleware('throttle:scalable-login')->name('scalable.cli.login');
     Route::get('/scalable/cli/login/status', LoginStatusScalableController::class)->name('scalable.cli.login.status');
     Route::post('/scalable/cli/login/cancel', CancelLoginScalableController::class)->name('scalable.cli.login.cancel');
     Route::post('/scalable/cli/logout', LogoutScalableController::class)->name('scalable.cli.logout');
@@ -182,7 +207,7 @@ Route::middleware('auth')->group(function () {
     // The callback is declared above, outside this group — the bank cannot present
     // our session when it redirects.
     Route::prefix('banking')->name('banking.')->group(function () {
-        Route::post('/connect', BankingConnectController::class)->name('connect');
+        Route::post('/connect', BankingConnectController::class)->middleware('throttle:banking')->name('connect');
         Route::post('/accounts/{account}/link', BankingLinkAccountController::class)->name('accounts.link');
         Route::delete('/connections/{connection}', BankingDisconnectController::class)->name('connections.disconnect');
     });
@@ -190,6 +215,6 @@ Route::middleware('auth')->group(function () {
     // ─── Export / Import (plain HTTP, not Inertia) ────────────────────────────────
     Route::get('/export/csv', ExportCsvController::class)->name('export.csv');
     Route::get('/import/csv/template', CsvTemplateController::class)->name('import.csv.template');
-    Route::post('/import/csv', ImportCsvController::class)->name('import.csv');
+    Route::post('/import/csv', ImportCsvController::class)->middleware('throttle:import')->name('import.csv');
 
 });

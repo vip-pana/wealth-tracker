@@ -64,6 +64,24 @@ return [
     // model is configured.
     'advisor' => [
         'driver' => env('ADVISOR_DRIVER', 'ollama'),
+        // Spend caps, in tokens — the unit every provider bills in. With the
+        // local Ollama driver these cost only CPU, but the same app pointed at a
+        // cloud model and exposed to the internet has nothing else between a
+        // runaway loop and the bill. Defaults are deliberately prudent: enough
+        // for a day of ordinary use, far below what an unattended script spends.
+        // See App\Advisor\AdvisorBudget.
+        'budget' => [
+            'enabled' => (bool) env('ADVISOR_BUDGET_ENABLED', true),
+            'daily_tokens' => (int) env('ADVISOR_DAILY_TOKENS', 500000),
+            // One reply can make several model calls (the tool loop, up to
+            // MAX_STEPS), each resending the briefing, so a session cap has to
+            // leave room for a real conversation — this is roughly a dozen turns.
+            'session_tokens' => (int) env('ADVISOR_SESSION_TOKENS', 150000),
+            // Per-request output cap, passed to the model as max_tokens. The
+            // other two notice a runaway only after it has spent; this bounds a
+            // single reply up front.
+            'max_output_tokens' => (int) env('ADVISOR_MAX_OUTPUT_TOKENS', 2000),
+        ],
         'ollama' => [
             'base_url' => env('OLLAMA_BASE_URL', 'http://host.docker.internal:11434'),
             'model' => env('OLLAMA_MODEL', ''),

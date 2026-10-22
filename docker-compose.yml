@@ -1,3 +1,9 @@
+# The development stack deliberately still runs as root, unlike production
+# (see docker-compose.prod.yml and docker/prod-entrypoint.sh). It bind-mounts
+# the working copy read-write and writes node_modules, vendor and the Vite cache
+# straight back into it, so the container has to match the developer's own host
+# uid — and this stack is never exposed beyond localhost. Production is the one
+# that faces a network, and that is where the app runs unprivileged.
 services:
   app:
     build:

@@ -1,10 +1,10 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "vip-pana/wealth-tracker",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "A single-user personal wealth tracker: assets by category, monthly snapshots, net-worth charts, forecasts and a savings goal.",
+    "keywords": ["wealth", "finance", "personal-finance", "self-hosted", "laravel"],
+    "license": "AGPL-3.0-only",
     "require": {
         "php": "^8.4",
         "inertiajs/inertia-laravel": "^3",

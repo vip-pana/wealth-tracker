@@ -7,6 +7,7 @@ namespace Tests\Feature\Controllers;
 use App\Actions\Advisor\ContinueChat;
 use App\Actions\Advisor\GenerateAdvisorReport;
 use App\Actions\Notifications\PushNotification;
+use App\Advisor\AdvisorBudget;
 use App\Contracts\AdvisorProvider;
 use App\Jobs\ContinueChatJob;
 use App\Jobs\GenerateAdvisorReportJob;
@@ -180,7 +181,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: true, reply: 'Il tuo portafoglio è solido.');
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
+        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class), app(AdvisorBudget::class));
 
         $session->refresh();
         $this->assertSame('done', $session->status);
@@ -196,7 +197,7 @@ class AdvisorControllerTest extends TestCase
         $this->bindProvider(configured: false);
         $session = AdvisorSession::create(['kind' => 'report', 'status' => 'pending']);
 
-        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class));
+        new GenerateAdvisorReportJob($session->id)->handle(app(GenerateAdvisorReport::class), app(PushNotification::class), app(AdvisorBudget::class));
 
         $this->assertSame('failed', $session->fresh()->status);
         $this->assertDatabaseCount('advisor_messages', 0);

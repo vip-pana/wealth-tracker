@@ -1,7 +1,14 @@
-# Production compose: a machine that runs the app 24/7 (a box at home behind
-# Tailscale, or a VPS). Deliberately separate from docker-compose.yml — that one
-# mounts the source tree, runs Vite and a log tailer, and assumes a developer is
-# watching. Nothing here mounts source: the image carries built assets.
+# Production compose, Tailscale flavour: a machine that runs the app 24/7 and
+# is reached over a tailnet, with the sidecar below terminating HTTPS. This is
+# how the project's own instance runs — docs/reference-deployment.md.
+#
+# **If you are not on Tailscale, use docker-compose.standalone.yml instead.**
+# It publishes the app on loopback for your own reverse proxy and needs no auth
+# key; see docs/self-hosting.md. This file refuses to start without TS_AUTHKEY.
+#
+# Deliberately separate from docker-compose.yml — that one mounts the source
+# tree, runs Vite and a log tailer, and assumes a developer is watching.
+# Nothing here mounts source: the image carries built assets.
 #
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
@@ -21,7 +28,7 @@ services:
   # https://wealth-tracker.<tailnet>.ts.net rather than a port on the host.
   #
   # That HTTPS is what removed the need for a throwaway cloudflared tunnel
-  # during the Enable Banking consent flow — see docs/self-hosting.md.
+  # during the Enable Banking consent flow — see docs/reference-deployment.md.
   #
   # `app` runs inside this network stack (network_mode: service:tailscale): to
   # the rest of the tailnet the two containers are one node, and serve reaches
@@ -78,8 +85,11 @@ services:
       - ${WEALTH_TRACKER_DATA_DIR:-~/wealth-tracker-data}:/app/storage/app
       - ${WEALTH_TRACKER_BACKUP_DIR:-~/wealth-tracker-backups}:/app/backups
       # Scalable CLI login session + signing key — survives container recreation,
-      # so `sc login` is not needed after every deploy.
-      - scalable-cli:/root/.config/scalable-cli
+      # so `sc login` is not needed after every deploy. Mounted under the
+      # unprivileged account's home rather than root's: the app no longer runs
+      # as root, and the CLI resolves this path through HOME. An existing volume
+      # carries over — the entrypoint takes ownership of it on the first start.
+      - scalable-cli:/home/appuser/.config/scalable-cli
     env_file:
       - .env
     environment:
@@ -94,6 +104,12 @@ services:
       # bank-consent redirect.
       APP_URL: ${APP_URL:-http://localhost:8080}
       LARAVEL_BYPASS_ENV_CHECK: "1"
+      # The app runs unprivileged. By default the entrypoint adopts whichever
+      # uid/gid owns the mounted data directory, which is right on nearly every
+      # host; set these to override it when the guess is wrong (an NFS mount, a
+      # directory owned by a service account).
+      PUID: ${PUID:-}
+      PGID: ${PGID:-}
     healthcheck:
       # Laravel's /up endpoint (configured in bootstrap/app.php). Marks the
       # container unhealthy if the web server dies while the container lives.

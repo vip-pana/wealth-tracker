@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Navigating between advisor sessions is a full page visit, so a page-enter
 // animation on the container would replay on every session switch — which reads
 // as noise. Internal navigations stamp this flag so the fresh mount skips the

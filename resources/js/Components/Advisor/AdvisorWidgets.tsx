@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { PacSimulator } from '@/Components/Advisor/Widgets/PacSimulator';
 import { PositionCard } from '@/Components/Advisor/Widgets/PositionCard';
 import { AllocationDonut } from '@/Components/Advisor/Widgets/AllocationDonut';

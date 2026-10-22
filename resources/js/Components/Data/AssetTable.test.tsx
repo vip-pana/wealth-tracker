@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { describe, it, expect, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import AssetTable from '@/Components/Data/AssetTable';

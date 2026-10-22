@@ -1,9 +1,13 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
 
+use App\Advisor\AdvisorOutputFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advisor\StoreGoalMilestonesRequest;
 use App\Models\Category;
@@ -12,6 +16,8 @@ use Illuminate\Http\RedirectResponse;
 
 class StoreGoalMilestonesController extends Controller
 {
+    public function __construct(private readonly AdvisorOutputFilter $filter) {}
+
     public function __invoke(StoreGoalMilestonesRequest $request): RedirectResponse
     {
         $goal = Goal::query()->first();
@@ -37,9 +43,13 @@ class StoreGoalMilestonesController extends Controller
         /** @var array<int, array<string, mixed>> $milestones */
         $milestones = $request->input('milestones', []);
         foreach ($milestones as $milestone) {
-            $notes = is_string($milestone['notes'] ?? null) ? $milestone['notes'] : '';
-            $action = is_string($milestone['action'] ?? null) ? $milestone['action'] : '';
-            $rationale = is_string($milestone['rationale'] ?? null) ? $milestone['rationale'] : '';
+            // The three free-text fields are the model's own words, posted back
+            // from the proposal card. Once saved they are shown on the Goal page
+            // for good, outside the advisor and outside its footer, so they go
+            // through the firewall here as well as on the way out.
+            $notes = $this->screen($milestone['notes'] ?? null);
+            $action = $this->screen($milestone['action'] ?? null);
+            $rationale = $this->screen($milestone['rationale'] ?? null);
             $created = $goal->milestones()->create([
                 'notes' => $notes !== '' ? $notes : null,
                 'action' => $action !== '' ? $action : null,
@@ -65,5 +75,10 @@ class StoreGoalMilestonesController extends Controller
         }
 
         return redirect()->back()->with('success', 'Tappe intermedie salvate.');
+    }
+
+    private function screen(mixed $value): string
+    {
+        return is_string($value) ? $this->filter->filterField($value) : '';
     }
 }

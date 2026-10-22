@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useState } from 'react';
 import axios from 'axios';
 import { Head, router } from '@inertiajs/react';
@@ -12,6 +15,7 @@ import { type InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 import { type SessionSummary, type ActiveSession, type GoalData } from '@/Components/Advisor/types';
 import { KindIcon } from '@/Components/Advisor/KindIcon';
 import { TypewriterText, markSessionForTitleAnimation } from '@/Components/Advisor/TypewriterText';
+import { AiDisclosure } from '@/Components/Advisor/AiDisclosure';
 import { SessionList } from '@/Components/Advisor/SessionList';
 import { Conversation } from '@/Components/Advisor/Conversation';
 import { NewConversation } from '@/Components/Advisor/NewConversation';
@@ -109,6 +113,11 @@ export default function Advisor({ configured, profile, goal, sessions, activeSes
                         </Button>
                     }
                 />
+
+                {/* Above the fold and outside the conditional: the disclosure
+                    is owed whether or not a model is configured, and it must
+                    not depend on scrolling a conversation. */}
+                <AiDisclosure className="shrink-0 -mt-2" />
 
                 {!configured ? (
                     <Card className="shrink-0">

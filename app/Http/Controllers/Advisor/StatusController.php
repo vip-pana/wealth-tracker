@@ -1,5 +1,8 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
@@ -26,11 +29,11 @@ class StatusController extends Controller
                 ->map(fn (AdvisorMessage $m): array => [
                     'id' => $m->id,
                     'role' => $m->role,
-                    'content' => $m->content,
+                    'content' => $m->displayContent(),
                     'status' => $m->status,
                     'error' => $m->error,
                     'tool_activity' => $m->tool_activity,
-                    'widgets' => $m->widgets,
+                    'widgets' => $m->displayWidgets(),
                     'created_at' => $m->created_at?->toISOString(),
                 ])
                 ->all(),

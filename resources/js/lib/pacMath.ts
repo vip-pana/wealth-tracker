@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 /**
  * PAC (monthly-contribution) compound projection, mirrored from the PHP that
  * powers the advisor's simulate_pac tool (AdvisorToolFactory::describePacSimulation

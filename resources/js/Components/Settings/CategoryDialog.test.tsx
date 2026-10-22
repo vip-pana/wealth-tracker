@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useState, useCallback } from 'react';
 import { render, screen } from '@testing-library/react';

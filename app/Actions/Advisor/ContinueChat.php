@@ -1,11 +1,17 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Actions\Advisor;
 
 use App\Actions\Action;
 use App\Actions\Transactions\ComputeMonthlySalary;
+use App\Advisor\AdvisorBudget;
+use App\Advisor\AdvisorBudgetExceeded;
+use App\Advisor\AdvisorOutputFilter;
 use App\Advisor\AdvisorPrompt;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorWidgetCollector;
@@ -39,6 +45,8 @@ class ContinueChat extends Action
         private readonly AdvisorToolActivityReporter $activity,
         private readonly AdvisorWidgetCollector $widgets,
         private readonly ComputeMonthlySalary $computeMonthlySalary,
+        private readonly AdvisorBudget $budget,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     /**
@@ -66,7 +74,7 @@ class ContinueChat extends Action
         return AdvisorMessage::create([
             'session_id' => $session->id,
             'role' => AdvisorMessage::ROLE_ASSISTANT,
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
         ]);
     }
 
@@ -92,6 +100,9 @@ class ContinueChat extends Action
         // counterpart can attach it to this reply.
         $this->activity->for($assistant);
         $this->widgets->for($assistant);
+        // Account this turn to the conversation, so the per-session cap applies
+        // and the ledger records which one spent the tokens.
+        $this->budget->for($session);
         // In a normal chat turn the model may NEVER emit a proposal card: the
         // only path to a card is the user clicking the offered button, which
         // hits ProposeController -> proposeNow(). So the propose_* gates stay
@@ -111,22 +122,46 @@ class ContinueChat extends Action
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $user->content, $user->id));
+        } catch (AdvisorBudgetExceeded $e) {
+            // Caught ahead of the generic handler below: that one blames the
+            // model, which here is working fine and simply was not asked. The
+            // exception's message already names the cap and when it frees up.
+            $this->fail($assistant, $e->getMessage());
+
+            return;
         } catch (\Throwable) {
-            $this->activity->clear();
-            $this->widgets->clear();
-            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.', 'tool_activity' => null]);
+            $this->fail($assistant, 'Il consulente non ha risposto. Riprova.');
 
             return;
         }
 
-        $widgets = $this->widgets->widgets();
+        $widgets = $this->filter->filterWidgets($this->widgets->widgets());
         $this->activity->clear();
         $this->widgets->clear();
+        $this->budget->clear();
         $assistant->update([
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
             'status' => AdvisorMessage::STATUS_DONE,
             'tool_activity' => null,
             'widgets' => $widgets === [] ? null : $widgets,
+        ]);
+    }
+
+    /**
+     * Mark a pending assistant turn failed with a reason the user can act on,
+     * releasing the armed helpers first so nothing leaks into the next turn.
+     * The UI polls `status` and shows `error` verbatim.
+     */
+    private function fail(AdvisorMessage $assistant, string $reason): void
+    {
+        $this->activity->clear();
+        $this->widgets->clear();
+        $this->budget->clear();
+
+        $assistant->update([
+            'status' => AdvisorMessage::STATUS_FAILED,
+            'error' => $reason,
+            'tool_activity' => null,
         ]);
     }
 
@@ -148,6 +183,7 @@ class ContinueChat extends Action
 
         $this->activity->for($assistant);
         $this->widgets->for($assistant);
+        $this->budget->for($session);
         $this->widgets->allowProfileProposal($kind === 'profile');
         $this->widgets->allowGoalProposal($kind === 'goal');
 
@@ -162,19 +198,22 @@ class ContinueChat extends Action
 
         try {
             $reply = $this->provider->chat($this->buildMessages($session, $instruction));
+        } catch (AdvisorBudgetExceeded $e) {
+            $this->fail($assistant, $e->getMessage());
+
+            return;
         } catch (\Throwable) {
-            $this->activity->clear();
-            $this->widgets->clear();
-            $assistant->update(['status' => AdvisorMessage::STATUS_FAILED, 'error' => 'Il consulente non ha risposto. Riprova.', 'tool_activity' => null]);
+            $this->fail($assistant, 'Il consulente non ha risposto. Riprova.');
 
             return;
         }
 
-        $widgets = $this->widgets->widgets();
+        $widgets = $this->filter->filterWidgets($this->widgets->widgets());
         $this->activity->clear();
         $this->widgets->clear();
+        $this->budget->clear();
         $assistant->update([
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
             'status' => AdvisorMessage::STATUS_DONE,
             'tool_activity' => null,
             'widgets' => $widgets === [] ? null : $widgets,
@@ -186,6 +225,11 @@ class ContinueChat extends Action
      * as it arrives. Persists the user turn and the full assistant reply only
      * after a successful stream (same no-orphan guarantee as run()). Returns the
      * saved assistant message, or null when the advisor isn't configured.
+     *
+     * No route reaches this today, and it must not be wired to one as it
+     * stands: AdvisorOutputFilter screens whole sentences, so it can clear what
+     * is stored but not the deltas already handed to $onChunk. Routing a stream
+     * means buffering until a sentence completes and filtering before emitting.
      *
      * @param  callable(string): void  $onChunk
      */
@@ -206,7 +250,7 @@ class ContinueChat extends Action
         return AdvisorMessage::create([
             'session_id' => $session->id,
             'role' => AdvisorMessage::ROLE_ASSISTANT,
-            'content' => $reply,
+            'content' => $this->filter->filter($reply),
         ]);
     }
 
