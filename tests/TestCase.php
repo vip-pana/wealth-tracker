@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
@@ -18,9 +19,22 @@ abstract class TestCase extends BaseTestCase
      */
     protected bool $authenticate = true;
 
+    /**
+     * Migrations seed a starting set of categories so a fresh install is
+     * usable, which would otherwise show up as six extra rows in every test
+     * that asserts on a category list. Tests start from an empty table and
+     * create the categories they mean to exercise; set this to true in the
+     * tests that are about the starting set itself.
+     */
+    protected bool $defaultCategories = false;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        if (! $this->defaultCategories && $this->usesDatabase()) {
+            Category::query()->withTrashed()->forceDelete();
+        }
 
         // Tests don't build frontend assets, so don't require the Vite manifest.
         $this->withoutVite();

@@ -1,20 +1,26 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Http\Clients;
 
+use App\Advisor\AdvisorBudget;
 use App\Advisor\AdvisorPrompt;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Contracts\AdvisorProvider;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
+use Prism\Prism\Streaming\Events\StreamEndEvent;
 use Prism\Prism\Streaming\Events\TextDeltaEvent;
 use Prism\Prism\Text\PendingRequest;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\SystemMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
+use Prism\Prism\ValueObjects\Usage;
 
 /**
  * Advisor backed by Prism, which speaks to either a local model (Ollama) for
@@ -55,6 +61,7 @@ class PrismAdvisorProvider implements AdvisorProvider
         private readonly string $model,
         private readonly int $timeout,
         private readonly AdvisorToolFactory $tools,
+        private readonly AdvisorBudget $budget,
         private readonly array $tuning = [],
         private readonly array $clientConfig = [],
     ) {}
@@ -101,6 +108,8 @@ class PrismAdvisorProvider implements AdvisorProvider
     {
         [$system, $conversation] = $this->split($messages);
 
+        $this->budget->ensureWithinBudget();
+
         try {
             $stream = $this->request($system, $conversation)->asStream();
         } catch (\Throwable $e) {
@@ -115,6 +124,14 @@ class PrismAdvisorProvider implements AdvisorProvider
                 $clean = $this->normalise($event->delta);
                 $full .= $clean;
                 $onChunk($clean);
+            }
+
+            // The stream reports what it spent only at the end; a caller that
+            // abandons the generator early therefore pays nothing on the ledger.
+            // Acceptable while nothing routes here (see ContinueChat::
+            // runStreaming), and the reason the cap above is checked up front.
+            if ($event instanceof StreamEndEvent && $event->usage instanceof Usage) {
+                $this->budget->record($event->usage->promptTokens, $event->usage->completionTokens);
             }
         }
 
@@ -135,6 +152,12 @@ class PrismAdvisorProvider implements AdvisorProvider
     {
         [$system, $conversation] = $this->split($messages);
 
+        // The authoritative spend check, immediately before the call that spends.
+        // Inside the retry loop deliberately: an empty reply still costs tokens,
+        // so the budget has to be re-read between attempts or a model that keeps
+        // answering nothing would blow straight through the cap.
+        $this->budget->ensureWithinBudget();
+
         try {
             $response = $this->request($system, $conversation)->asText();
         } catch (\Throwable $e) {
@@ -142,6 +165,10 @@ class PrismAdvisorProvider implements AdvisorProvider
 
             throw new \RuntimeException('Il modello non ha risposto. Verifica la configurazione.', $e->getCode(), $e);
         }
+
+        // Book the cost before judging the reply: an empty one was paid for too.
+        // Prism's response usage already sums every step of the tool loop.
+        $this->budget->record($response->usage->promptTokens, $response->usage->completionTokens);
 
         return trim($response->text) === '' ? null : trim($response->text);
     }
@@ -160,7 +187,10 @@ class PrismAdvisorProvider implements AdvisorProvider
             ->withClientOptions(['timeout' => $this->timeout])
             ->withMessages($this->toPrismMessages($conversation))
             ->withTools($this->tools->make())
-            ->withMaxSteps(self::MAX_STEPS);
+            ->withMaxSteps(self::MAX_STEPS)
+            // Bounds one reply's output at the model, so a runaway generation is
+            // stopped where it happens rather than billed and then noticed.
+            ->withMaxTokens($this->budget->maxOutputTokens());
 
         if (isset($this->tuning['temperature'])) {
             $request = $request->usingTemperature($this->tuning['temperature']);

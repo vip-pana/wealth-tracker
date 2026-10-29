@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Link, usePage, router } from '@inertiajs/react';
 import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';

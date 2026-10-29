@@ -1,5 +1,8 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
@@ -48,11 +51,11 @@ class ProposeController extends Controller
         return [
             'id' => $message->id,
             'role' => $message->role,
-            'content' => $message->content,
+            'content' => $message->displayContent(),
             'status' => $message->status,
             'error' => $message->error,
             'tool_activity' => $message->tool_activity,
-            'widgets' => $message->widgets,
+            'widgets' => $message->displayWidgets(),
             'created_at' => $message->created_at?->toISOString(),
         ];
     }

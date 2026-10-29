@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/vincenzo.panacciulli/Develop/wealth-tracker/.paperclip/worktrees/wt/-issueIdentifier/scripts/paperclip-issue-update.sh:*)",
+      "Bash(/Users/vincenzo.panacciulli/Develop/wealth-tracker/.paperclip/worktrees/wt/-issueIdentifier/scripts/paperclip:*)",
+      "Bash(curl:*)",
+      "Bash(env)",
+      "Bash(env:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/vincenzo.panacciulli/.paperclip/instances/default/companies/e0055ad5-93a3-4838-9a7e-fc0c47256c36",
+      "/Users/vincenzo.panacciulli/.paperclip/instances/default/companies/e0055ad5-93a3-4838-9a7e-fc0c47256c36/acp-engine/agents/868eb0d0-38a9-4df5-8f9a-04d8ef329ded",
+      "/Users/vincenzo.panacciulli/.paperclip/instances/default/workspaces/868eb0d0-38a9-4df5-8f9a-04d8ef329ded"
+    ],
+    "defaultMode": "default"
+  }
+}

@@ -116,4 +116,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Setup Token
+    |--------------------------------------------------------------------------
+    |
+    | The one-time secret /setup asks for before it will create the owner
+    | account, so a fresh install exposed to the internet is not a land grab.
+    | It defaults into the bind-mounted data directory, which is where the host
+    | can read it without a shell in the container. See App\Auth\SetupToken.
+    |
+    */
+
+    'setup_token_path' => env('SETUP_TOKEN_PATH', storage_path('app/setup-token.txt')),
+
 ];

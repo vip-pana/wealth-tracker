@@ -167,6 +167,67 @@ class CreateBackupTest extends TestCase
         $this->assertNull($this->action()->latestRemoteAt());
     }
 
+    /**
+     * With no remote disk — the default — the plaintext snapshot stays in the
+     * backup directory for the whole retention window. That file is the entire
+     * financial history, and at the default 0644 every other account on the
+     * host, and every container mounting the same directory, could read it.
+     */
+    public function test_the_local_snapshot_is_readable_only_by_its_owner(): void
+    {
+        config(['backup.disk' => '']);
+
+        $name = $this->action()->run();
+
+        $this->assertSame('0600', $this->mode($this->dir.'/'.$name));
+    }
+
+    /**
+     * The staged archive and the restored database are written by EncryptBackup
+     * rather than by the action, so the guard has to cover anything it opens —
+     * a restore's output is a plaintext database like any other.
+     */
+    public function test_everything_written_under_the_guard_is_owner_only(): void
+    {
+        $plain = $this->dir.'/plain.sqlite';
+        $archive = $this->dir.'/plain.sqlite.enc';
+        $restored = $this->dir.'/restored.sqlite';
+        file_put_contents($plain, 'not really a database');
+
+        CreateBackup::privately(function () use ($plain, $archive, $restored): void {
+            $encrypt = new EncryptBackup;
+            $encrypt->encrypt($plain, $archive);
+            $encrypt->decrypt($archive, $restored);
+        });
+
+        $this->assertSame('0600', $this->mode($archive));
+        $this->assertSame('0600', $this->mode($restored));
+    }
+
+    /** The umask must not leak into whatever the queue worker does next. */
+    public function test_the_private_umask_is_restored_afterwards(): void
+    {
+        $before = umask();
+
+        CreateBackup::privately(fn () => null);
+        $this->assertSame($before, umask());
+
+        try {
+            CreateBackup::privately(fn () => throw new \RuntimeException('boom'));
+        } catch (\RuntimeException) {
+            // Expected — the point is the umask below, not the exception.
+        }
+
+        $this->assertSame($before, umask());
+    }
+
+    private function mode(string $path): string
+    {
+        clearstatcache(true, $path);
+
+        return substr(sprintf('%o', fileperms($path)), -4);
+    }
+
     private function action(): CreateBackup
     {
         return new CreateBackup(new EncryptBackup);

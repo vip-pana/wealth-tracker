@@ -80,3 +80,97 @@ jobs:
 
       - name: Tests (Vitest)
         run: pnpm run test
+
+  container:
+    name: Container (builds, runs unprivileged, writes owner-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Until now nothing built the production image before a release, so a
+      # broken Dockerfile or entrypoint was discovered by the deploy that was
+      # supposed to ship it. These are also the only assertions that can cover
+      # the privilege drop at all: it is a property of the running container,
+      # invisible to PHPUnit.
+      - name: Build the production image
+        run: docker build --target prod -t wealth-tracker:ci .
+
+      # A uid that is nobody in particular, and deliberately not the 1000 baked
+      # into the image: the entrypoint is supposed to adopt whatever owns the
+      # mounted data directory, and 1000 would pass without proving that.
+      - name: Mount a data directory owned by an unrelated uid
+        run: |
+          mkdir -p data backups
+          touch data/database.sqlite
+          sudo chown -R 1234:1234 data backups
+
+      - name: Start it
+        run: |
+          docker run -d --name wt-ci -p 8000:8000 \
+            -e APP_KEY="base64:$(head -c 32 /dev/urandom | base64)" \
+            -e APP_ENV=production -e APP_DEBUG=false \
+            -e APP_URL=http://127.0.0.1:8000 \
+            -e DB_CONNECTION=sqlite -e DB_DATABASE=/app/storage/app/database.sqlite \
+            -e BACKUP_DIR=/app/backups \
+            -e LARAVEL_BYPASS_ENV_CHECK=1 \
+            -v "$PWD/data:/app/storage/app" \
+            -v "$PWD/backups:/app/backups" \
+            wealth-tracker:ci
+          for _ in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8000/up >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/up
+
+      # The point of the whole change: nothing long-lived is root.
+      #
+      # Listed with `docker top`, which runs ps on the host and so reports only
+      # the container's own processes. Walking /proc through `docker exec`
+      # cannot answer this question: `docker exec` lands as root, and the
+      # inspecting shell's command line carries the very word being grepped
+      # for — so the scan matches itself and reports a root `artisan` process
+      # that does not exist. The same self-match makes a presence check pass
+      # against an empty container, which is the worse failure of the two.
+      #
+      # One listing serves both assertions, so they cannot disagree because a
+      # process started or died between them.
+      #
+      # `pid` has to be in the column list even though nothing here reads it:
+      # docker finds the PID column in the ps output to select the container's
+      # own processes, and without it refuses with "Couldn't find PID field".
+      # `pipefail` is what makes that refusal fail the step — the pipeline
+      # would otherwise report tee's exit status and hand an empty listing to
+      # the assertions below.
+      - name: List the container's processes
+        run: |
+          set -o pipefail
+          docker top wt-ci -eo pid,uid,args | tee processes.txt
+
+      - name: No application process runs as root
+        run: |
+          uids=$(awk 'NR > 1 { print $2 }' processes.txt | sort -u)
+          echo "container processes run as uid: ${uids:-<none found>}"
+          test "$uids" = "1234"
+
+      - name: All three processes came up
+        run: |
+          for process in "frankenphp" "queue:work" "schedule:work"; do
+            grep -q -- "$process" processes.txt \
+              || { echo "missing: $process"; exit 1; }
+          done
+
+      - name: The setup code is printed and readable only by its owner
+        run: |
+          docker logs wt-ci 2>&1 | grep -q "Setup code:"
+          test "$(stat -c '%a' data/setup-token.txt)" = "600"
+
+      - name: A backup lands owner-only
+        run: |
+          docker exec -u appuser wt-ci php artisan backup:run
+          snapshot=$(ls -1 backups/database-*.sqlite | head -1)
+          test "$(stat -c '%a' "$snapshot")" = "600"
+          test "$(stat -c '%u' "$snapshot")" = "1234"
+
+      - name: Container logs
+        if: always()
+        run: docker logs wt-ci 2>&1 | tail -60

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Advisor;
 
+use App\Actions\Goals\FetchGoalData;
+use App\Advisor\AdvisorOutputFilter;
+use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Goal;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -61,16 +64,64 @@ class StoreGoalFromAdvisorTest extends TestCase
 
         $this->post('/advisor/goal/milestones', [
             'milestones' => [
-                ['notes' => 'Metà', 'action' => 'Sposta 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000, 'target_date' => '2080-01-01'],
+                ['notes' => 'Metà', 'action' => 'Da qui il peso della parte azionaria scende e quello della parte obbligazionaria sale.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000, 'target_date' => '2080-01-01'],
             ],
         ])->assertRedirect();
 
         $this->assertSame(1, $goal->milestones()->count());
-        $this->assertDatabaseHas('goal_milestones', ['notes' => 'Metà', 'action' => 'Sposta 5% da Bitcoin a Obbligazioni.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000.0, 'deleted_at' => null]);
+        $this->assertDatabaseHas('goal_milestones', ['notes' => 'Metà', 'action' => 'Da qui il peso della parte azionaria scende e quello della parte obbligazionaria sale.', 'rationale' => 'Riduce la volatilità.', 'target_value' => 500000.0, 'deleted_at' => null]);
         // The old milestone is gone from the active set (soft-deleted).
         $this->assertDatabaseMissing('goal_milestones', ['notes' => 'Vecchia', 'deleted_at' => null]);
         // The global composition (milestone_id null) is untouched.
         $this->assertSame(1, $goal->categoryAllocations()->whereNull('milestone_id')->count());
+    }
+
+    /**
+     * F1 of the WEA-10 review: a milestone's `action` is free text the model
+     * wrote, it was posted straight into `goal_milestones`, and the Goal page
+     * then showed it for good — outside the advisor, with no filter and no
+     * footer. It goes through the firewall on the way in now.
+     */
+    public function test_an_operative_instruction_in_a_milestone_is_redacted_before_it_is_stored(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+        Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                [
+                    'notes' => 'Metà',
+                    'action' => 'Sposta il 5% del portafoglio da Bitcoin a Obbligazioni e rivedi il PAC.',
+                    'rationale' => 'Riduce la volatilità avvicinandosi al target.',
+                    'target_value' => 500000,
+                    'target_date' => '2080-01-01',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('goal_milestones', ['action' => 'Sposta il 5% del portafoglio da Bitcoin a Obbligazioni e rivedi il PAC.']);
+        $this->assertDatabaseHas('goal_milestones', ['action' => AdvisorOutputFilter::REDACTION]);
+        // The reasoning around it is kept: only the instruction goes.
+        $this->assertDatabaseHas('goal_milestones', ['rationale' => 'Riduce la volatilità avvicinandosi al target.']);
+    }
+
+    /** The same field, read back: rows stored before the filter covered them. */
+    public function test_a_milestone_stored_before_the_filter_is_screened_on_the_way_out(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+        $goal->milestones()->create([
+            'notes' => 'Metà',
+            'action' => 'Vendi Bitcoin e compra obbligazioni.',
+            'target_value' => 500000,
+            'target_date' => '2080-01-01',
+        ]);
+
+        $data = app(FetchGoalData::class)->run();
+
+        $milestones = $data['goal']['milestones'];
+        $this->assertIsArray($milestones);
+        $this->assertSame(AdvisorOutputFilter::REDACTION, $milestones[0]['action']);
     }
 
     public function test_milestones_persist_their_own_target_allocation(): void

@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#121212">
     <title>Wealth Tracker</title>
-    <script>
+    <script nonce="{{ Vite::cspNonce() }}">
         if (localStorage.getItem('theme') !== 'light') {
             document.documentElement.classList.add('dark');
         } else {

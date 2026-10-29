@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Button } from '@/Components/ui/button';
 import { Sparkles, Loader2, MessageSquarePlus } from 'lucide-react';
 import { type SessionSummary } from '@/Components/Advisor/types';

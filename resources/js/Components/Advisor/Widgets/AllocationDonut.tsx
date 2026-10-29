@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import AllocationDonutChart from '@/Components/Charts/AllocationDonutChart';
 import type { AllocationDonutWidget } from '@/Components/Advisor/types';
 

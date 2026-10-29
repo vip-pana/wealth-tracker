@@ -19,6 +19,11 @@ yarn-error.log
 /auth.json
 /storage/app/database.sqlite
 /storage/database.sqlite
+# The first-boot setup code. Per-install and short-lived, never committed.
+/storage/app/setup-token.txt
+# Private keys — the Enable Banking signing key above all. It belongs in the
+# mounted data directory; see docs/enable-banking-usage.md.
+*.pem
 /.fleet
 /.idea
 /.nova

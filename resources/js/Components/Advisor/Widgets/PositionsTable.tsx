@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Money } from '@/Components/ui/Money';
 import { formatPercent } from '@/lib/formatters';

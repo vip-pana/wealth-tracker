@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 /**
  * Pure dashboard/chart calculations, extracted from page and chart components
  * so they can be unit-tested without rendering.

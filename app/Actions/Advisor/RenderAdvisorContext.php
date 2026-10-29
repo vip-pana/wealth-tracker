@@ -1,5 +1,8 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Actions\Advisor;
@@ -312,7 +315,7 @@ class RenderAdvisorContext extends Action
 
         $name = $profile['name'] ?? null;
         if (is_string($name) && $name !== '') {
-            $out .= "\n- Nome: ".$name.' (rivolgiti a lui/lei per nome, con naturalezza).';
+            $out .= "\n- Nome: ".$this->userText($name).' (rivolgiti a lui/lei per nome, con naturalezza).';
         }
 
         if (is_numeric($profile['age'] ?? null)) {
@@ -330,14 +333,20 @@ class RenderAdvisorContext extends Action
             $out .= "\n- Reddito netto mensile: ".$this->eur($profile['net_monthly_income']).' al mese, osservato dalle transazioni bancarie (media degli stipendi), non dichiarato a mano.';
         }
 
+        // Free text, and the longest-lived of it: `notes` is written by the
+        // profile proposal card and `memory` by remember_fact, the one profile
+        // tool that writes without a confirmation click. Both are replayed into
+        // this system message on every later turn, so they are the briefing's
+        // widest injection surface and get the same treatment as every other
+        // user-controlled value here.
         $notes = $profile['notes'] ?? null;
         if (is_string($notes) && $notes !== '') {
-            $out .= "\n- Note sul profilo di rischio: ".$notes;
+            $out .= "\n- Note sul profilo di rischio: ".$this->userText($notes);
         }
 
         $memory = $profile['memory'] ?? null;
         if (is_string($memory) && $memory !== '') {
-            $out .= "\n- Cose da ricordare su di lui/lei: ".$memory;
+            $out .= "\n- Cose da ricordare su di lui/lei: ".$this->userText($memory);
         }
 
         return $out;

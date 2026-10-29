@@ -1,0 +1,49 @@
+# The production web server.
+#
+# `php artisan serve` is PHP's built-in development server: the documentation
+# says in as many words that it is not intended for production. It has no
+# process supervision, serves static files through PHP, and its concurrency is
+# whatever PHP_CLI_SERVER_WORKERS happened to be set to. Documenting it as the
+# way to run the app was the problem; this file is the answer.
+#
+# FrankenPHP in its default, non-worker mode: every request boots the framework
+# fresh, exactly as php-fpm does, so none of Octane's shared-state hazards
+# apply. What changes is that a real server is in front — static assets served
+# directly and compressed, keep-alive, HTTP/2, proper connection handling.
+
+{
+	# Nothing reconfigures this server while it runs. Left on, the admin API is
+	# an unauthenticated control plane listening inside the container.
+	admin off
+
+	# TLS is terminated in front of us — the Tailscale sidecar on a home box, a
+	# reverse proxy on a VPS — and the app is reached over loopback. Caddy
+	# trying to obtain its own certificate here would fail and take the server
+	# with it.
+	auto_https off
+
+	# Nothing to persist: the configuration is this file, baked into the image.
+	persist_config off
+
+	frankenphp
+}
+
+:8000 {
+	root /app/public
+
+	encode zstd gzip
+
+	# Laravel already logs the application's own view of a request. Caddy
+	# repeating every one of them doubles the container log for no new
+	# information, so only its errors come through.
+	log {
+		output stderr
+		format console
+		level ERROR
+	}
+
+	# Serves the built assets directly and hands everything else to
+	# public/index.php. No PHP file outside the document root is reachable, and
+	# there is no directory listing.
+	php_server
+}

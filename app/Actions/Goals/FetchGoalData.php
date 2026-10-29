@@ -1,10 +1,14 @@
 <?php
 
+// SPDX-FileCopyrightText: 2026 Vincenzo Panacciulli
+// SPDX-License-Identifier: AGPL-3.0-only
+
 declare(strict_types=1);
 
 namespace App\Actions\Goals;
 
 use App\Actions\Action;
+use App\Advisor\AdvisorOutputFilter;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\InvestorProfile;
@@ -13,6 +17,8 @@ use Illuminate\Support\Carbon;
 
 class FetchGoalData extends Action
 {
+    public function __construct(private readonly AdvisorOutputFilter $filter) {}
+
     /** @return array<string, mixed> */
     public function run(): array
     {
@@ -87,9 +93,12 @@ class FetchGoalData extends Action
                 ->sortBy('target_date')
                 ->map(fn ($m) => [
                     'id' => $m->id,
-                    'notes' => $m->notes,
-                    'action' => $m->action,
-                    'rationale' => $m->rationale,
+                    // Written by the advisor and kept on this page for good, so
+                    // they are screened on the way out as well — rows saved
+                    // before the firewall covered this path are in the database.
+                    'notes' => $this->screen($m->notes),
+                    'action' => $this->screen($m->action),
+                    'rationale' => $this->screen($m->rationale),
                     'target_value' => $m->target_value,
                     'target_date' => $m->target_date->format('Y-m-d'),
                     'allocation' => $m->categoryAllocations
@@ -139,5 +148,10 @@ class FetchGoalData extends Action
             'currentMacroAllocation' => $currentMacroAllocation,
             'today' => Carbon::today()->format('Y-m-d'),
         ];
+    }
+
+    private function screen(?string $value): ?string
+    {
+        return $value === null ? null : $this->filter->filterField($value);
     }
 }
