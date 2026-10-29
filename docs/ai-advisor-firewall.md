@@ -336,6 +336,36 @@ That is the honest statement of where the word-list road ends. The alternative
 that does not have this shape is not a better list: it is not giving the model
 the per-position briefing in the first place, so that it has no position to name.
 
+#### What it measured
+
+Twelve samples of the fourteen questions, `regolo` / `qwen3.5-122b`. Six were
+worked against, three were held out mid-round, and three were drawn after the
+code was frozen and never tuned against.
+
+| Samples | Filter | Replies altered | Segments |
+| --- | --- | --- | --- |
+| 1-6 | before the round | 21/84 | 33 |
+| 1-6 | after | **5/84** | 5 |
+| 7-9 | mid-round | 6/42 | 6 |
+| 7-9 | after | 2/42 | 2 |
+| **10-12 (never tuned against)** | after | **7/42** | **8** |
+
+Read the last row, not the second. Samples 1-6 scoring 5/84 is the measure of
+how well the round fits text it was built from; 7/42 on text it has never seen
+is the result. Against the nearest comparable figure — 17/42 on samples 4-6
+before the round, which were also unseen at the time — that is roughly half the
+replies and a third of the segments. It is not zero, and it is not trending to
+zero.
+
+And note the spread inside that set: 2/14, 0/14, 5/14. A single sample still
+says nothing. Samples 1-3 and 4-6 scored 4/42 and 17/42 against *identical*
+code, which is the whole reason the probe takes samples at all.
+
+Of the segments still removed, one class is not a false positive: a suitability
+judgement on a named instrument, which an earlier round let through on a
+segment-initial `se` and this one closes. The rest are compliant speech, and
+all of them survive when screened alone.
+
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and
 wraps a user-controlled value in guillemets. The profile's `name`, `notes` and
