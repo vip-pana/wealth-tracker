@@ -489,7 +489,18 @@ The two segments the sample removed, both compliant:
 | Removed | Why |
 | --- | --- |
 | *"Se ci sono altri costi non visibili qui (es. commissioni di acquisto/vendita sulla tua piattaforma, costi di cambio valuta se compri in euro ma l'ETF è in dollari)"* | `compri` inside a conditional that explains a *cost*, not a purchase to make. A family of its own, not chased here. |
-| *"Capire se l'allocazione attuale è coerente con il tuo obiettivo (300.000€ entro il 2040)"* | The declared cost of the relational-noun fix, turning up on the first draw: `attuale` is not in the closed adjective list, so the noun reads as bare. It is deliberately not added — `complessiva` and `globale` say the noun is *of the whole*, while `attuale` says only *as of now*, which resolves nothing. Adding it would reopen the eleven anaphoric complements above. |
+| *"Capire se l'allocazione attuale è coerente con il tuo obiettivo (300.000€ entro il 2040)"* | The declared cost of the relational-noun fix, turning up on the first draw: `attuale` is not in the closed adjective list, so the noun reads as bare. It is deliberately not added — `complessiva` and `globale` say the noun is *of the whole*, while `attuale` says only *as of now*, which resolves nothing. |
+
+The fifth review agreed with keeping `attuale` out and corrected the reason,
+which matters because the correction is what found the next defect. Adding it
+would not have reopened the eleven anaphoric complements — none of those carries
+an adjective — it would have opened a twelfth member of the same family. The
+conclusion underneath is stronger than the one drawn here: the adjective branch
+should not be an unconditional licence for *anyone*, and `complessiva`,
+`globale`, `totale` and `generale` were sitting in exactly `attuale`'s position
+while being inside the list. See the round below. The false positive is still
+owed, and the place to pay it is `DESCRIPTIVE` — "capire se … è coerente con il
+tuo obiettivo" reports rather than prescribes — not the adjective list.
 
 #### Cases
 
@@ -523,6 +534,94 @@ subject that was not valid UTF-8, and the fallback handed back the raw value —
 newlines and all — so the escape failed on exactly the input most likely to be
 hostile. A single `0x80` byte was enough, and `memory` is written without a
 confirmation click.
+
+### The seventh round: a closed list is not a closed family
+
+The sixth round attacked its own changes, which was the method the round before
+it skipped, and the fifth review confirmed it reopened nothing: **31 new attack
+sentences, 0 regressions — every one of them passed the previous commit too.**
+That is the differential working. What it also showed is that running the
+differential is not the same as closing anything.
+
+Each of the three blocking fixes had been implemented as **a closed list of the
+instances the review sent**: the apposition markers excluded from the
+attribution span, the conjunctions the event-subject span may not cross, the
+adjectives that make a relational noun generic. The review attacked each list
+with the synonym of its own first element and walked out of all three.
+`ad esempio` was excluded, `per esempio` was not. `quindi` was, `dunque` was
+not. The comma was, the colon was not. `chi` was, and `chiunque` got in by being
+spelled with the same three letters.
+
+So the rule above gets its second line:
+
+> **A list of what is forbidden is open by enumeration; a list of what is
+> permitted is closed by construction.** When the fix is a list, the attack is
+> the synonym of its first element — and a branch that returns `true` before a
+> test annuls that test.
+
+| Walked out | Why | Closed by |
+| --- | --- | --- |
+| `La decisione su cosa fare con Bitcoin personalmente venderei una parte è tua` | The attribution span excluded five apposition markers and three first-person ones by word. Eleven shapes used a ninth: `per esempio`, `in pratica`, `magari`, `a mio avviso`, `al posto tuo`, `fino al cinque per cento`. Not a list that was too short — the next synonym is always outside it. | The span now says what it may **contain**: interrogatives, conjunctions, operation verbs as infinitives, and prepositional phrases. The argument was already written down — *a legitimate attribution names operations* — and is simply applied. Every word class in it is closed in the language, not by somebody's list. |
+| `Un calo del 30%: un investitore prudente ridurrebbe la quota di Bitcoin al 5%` | The event-subject span was held to one clause by a list of conjunctions and the comma. Nine shapes used a colon, a dash, `dunque`, `pertanto`, `allora`, `laddove`, or no separator at all. | `THIRD_PERSON` has already established the verb is a third-person conditional, so a subject other than the event has to *be* in the span — and a subject is a determiner with a noun, or a pronoun, which are closed word classes. The span may not cross a bare indefinite determiner or an indefinite pronoun. One introduced by a preposition is the event's own modifier: "un calo del 30% in un anno" is still arithmetic. The conjunctions stay as a second net, no longer load-bearing. |
+| `Parliamo di Bitcoin. … Ridurrei l'esposizione complessiva` | The sharpest of the three, and not a list that was too short. `isGenericRelational()` returned on the adjective branch **before** the complement's class test ran, so the four adjectives of totality were an unconditional licence that test never saw. `azionaria` names a class; `complessiva` only quantifies — it says *all*, not *all of what* — so the head stays as anaphoric as it was and the anaphor moves behind the adjective. | The four are out of the branch. `azionaria` and the other five class adjectives stay, and `l'esposizione azionaria complessiva` still survives because the class adjective matches first. |
+| `Valuta se, viste le valutazioni correnti, vendere Bitcoin adesso` | Not one of the three, but the same per-instance shape standing next to one of them: the reflection frame's object window was left measuring raw characters while the event-subject window stopped. Twelve characters of inciso and an instruction is the protected question. | The window is measured with the asides that fill the gap exactly not counted as distance — nothing before them, nothing after them but space, so the room cannot be padded with anything else. A directive *inside* an aside is its own entry in the offsets, measured over its own unreduced gap. |
+
+#### What this round costs, stated rather than discovered
+
+Closing the attribution span by construction means an attribution whose
+operation takes a **bare object** loses the licence: *"la decisione su se
+vendere Bitcoin è tua"* is removed. A bare noun phrase after an operation is
+also how *"ovvero venderne una parte"* is spelled, and the span cannot tell them
+apart without reading the sentence. The shape the clauses actually ask for puts
+the object in the interrogative (*"su cosa vendere"*) or behind a preposition
+(*"su quanto vendere di Bitcoin"*), and both keep the licence. Pinned in
+`attributionFalsePositivesNowAccepted()`, the same way the arrow's cost is.
+
+#### What is deliberately left open
+
+- **The proxy subject behind a definite article with no punctuation at all** —
+  *"… è plausibile l'investitore prudente ridurrebbe …"*. Barring bare definite
+  articles would take the temporal adjunct with it (*"un calo del 30% il
+  prossimo anno ridurrebbe il tuo patrimonio dell'8%"*), and deleting that
+  arithmetic is the WEA-14 harm this pattern exists to undo.
+- **The reflection object window is still per-instance.** An ordinary adverbial
+  buys room (*"valuta se in questo preciso momento vendere Bitcoin"*), because
+  distance is the wrong question: whether the directive is the frame's object
+  depends on whether a clause of its own stands between them. Replacing the
+  window with that test is a change this round had no measurement budget to
+  attack properly.
+- **The future arithmetic check on the arrow has a wider surface than this doc
+  said.** The cost recorded above was "the occasional current-allocation
+  bullet"; the review pointed out that `Obiettivo: 107.000€ → 300.000€ entro il
+  2040` is removed too, and that is the savings-goal trajectory the app exists
+  to compute. `GOAL_CONTRIBUTION` does not cover it — it looks for
+  `versar|risparmi|accantonar|contribut` and none of those words is there. Not a
+  regression, it was removed before this round as well; but when the arithmetic
+  check arrives it has to cover that shape and not only allocation bullets.
+
+#### The measurement
+
+| Same set, filter invoked with the probe's portfolio | before (`3cd44b6`) | after |
+| --- | --- | --- |
+| Bypasses that must be removed (35) | 33/35 open, 2 already closed | **35/35 closed** |
+| Controls that must pass (13) | 13/13 | **13/13** |
+
+The two that were already closed are kept as guards rather than claimed:
+`Ridurrei l'esposizione totale a Bitcoin` was removed before because the segment
+names the instrument outright, and `l'esposizione residua` because `residua` was
+never in the adjective list. Filter suite 313 → **363**; PHPUnit 955 → **1005**.
+
+All of it is in `AdvisorOutputFilterTest` in both directions, as
+`fifthReviewBypasses` and `fifthReviewControls`. Six of the 35 came from
+attacking this round's own fixes rather than from the review: an aside spelled
+as a prepositional phrase, which the allowlist admits by design; the same shape
+carrying a first-person opinion; a proxy subject parked behind a
+preposition-introduced determiner; two asides where dropping one left the other;
+an aside punctuated with dashes; an adjective nobody had listed.
+
+**The false-positive rate after this round is still not known.** Every fix here
+tightens. The number to quote remains **7/42 on the held-out set, measured
+before the sixth round**, with that date attached.
 
 ## Related
 

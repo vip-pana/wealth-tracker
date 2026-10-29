@@ -1186,6 +1186,182 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'arrow: the position restated as a share' => ['Bitcoin: 18.000€ → 16% del portafoglio.'];
     }
 
+    /**
+     * The fifth review attacked each of the fourth round's three fixes for the
+     * synonym of its first element, and walked out of all three. Every one of
+     * these passed the previous commit too — none is a regression — which is
+     * exactly how a differential run against the *reported* defects reports a
+     * family closed while its neighbour is one word away.
+     *
+     * The lesson is one line longer than the one already written above it: a
+     * list of what is forbidden is open by enumeration, so when the fix is a
+     * list, the attack is the synonym of its first element. `ad esempio` →
+     * `per esempio`. `quindi` → `dunque`. The comma → the colon.
+     */
+    #[DataProvider('fifthReviewBypasses')]
+    public function test_a_bypass_found_by_the_fifth_review_is_removed(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the fifth review bypass passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function fifthReviewBypasses(): iterable
+    {
+        // §A — the attribution span, excluded by word. Five apposition markers
+        // and three first-person ones were listed; these are the ones that
+        // were not. The span is an allowlist now, so none of them is named
+        // anywhere: they are out because they are not an interrogative, a
+        // conjunction, an operation or a prepositional phrase.
+        yield 'attribution: per esempio' => ['La scelta su cosa fare con Bitcoin per esempio venderne una parte è tua.'];
+        yield 'attribution: in pratica' => ['La scelta su cosa fare con Bitcoin in pratica venderne una parte è tua.'];
+        yield 'attribution: nello specifico' => ['La scelta su cosa fare con Bitcoin nello specifico venderne una parte è tua.'];
+        yield 'attribution: e quindi' => ['La scelta su cosa fare con Bitcoin e quindi venderne una parte è tua.'];
+        yield 'attribution: magari' => ['La scelta su cosa fare con Bitcoin magari venderne una parte è tua.'];
+        yield 'attribution: diciamo' => ['La scelta su cosa fare con Bitcoin diciamo venderne una parte è tua.'];
+        yield 'attribution: credo' => ['La scelta su cosa fare con Bitcoin credo venderne una parte è tua.'];
+        yield 'attribution: a mio avviso' => ['La scelta su cosa fare con Bitcoin a mio avviso venderne una parte è tua.'];
+        yield 'attribution: personalmente' => ['La decisione su cosa fare con Bitcoin personalmente venderei una parte è tua.'];
+        yield 'attribution: al posto tuo' => ['La decisione su cosa fare con Bitcoin al posto tuo venderei una parte è tua.'];
+        // The quantity spelled out, which the exclusion of digits never saw.
+        yield 'attribution: the quantity in letters' => ['La decisione su quanto ridurre Bitcoin fino al cinque per cento resta tua.'];
+
+        // §B — the event-subject span, held to one clause by a list of
+        // conjunctions and one comma. The colon and the dash separate a clause
+        // more sharply than the comma does, and the conjunctions had synonyms.
+        // Each of these parks a proxy subject behind the separator.
+        yield 'event: the colon as the separator' => ['Un calo del 30%: un investitore prudente ridurrebbe la quota di Bitcoin al 5%.'];
+        yield 'event: the em dash as the separator' => ['Un calo del 30% — un investitore prudente ridurrebbe la quota di Bitcoin al 5%.'];
+        yield 'event: the spaced hyphen as the separator' => ['Un calo del 30% - un investitore prudente ridurrebbe la quota di Bitcoin al 5%.'];
+        yield 'event: dunque' => ['Un calo del 30% è possibile dunque un investitore prudente venderebbe Bitcoin.'];
+        yield 'event: pertanto' => ['Un calo del 30% è possibile pertanto un investitore prudente venderebbe Bitcoin.'];
+        yield 'event: allora' => ['Un calo del 30% è possibile allora un investitore prudente venderebbe Bitcoin.'];
+        yield 'event: laddove' => ['Un calo del 30% è possibile laddove un investitore prudente venderebbe Bitcoin.'];
+        yield 'event: chiunque, which chi did not cover' => ['Un calo del 30% è plausibile chiunque sia esposto come te venderebbe Bitcoin.'];
+        yield 'event: no separator at all' => ['Un calo del 30% è plausibile un investitore prudente venderebbe Bitcoin.'];
+
+        // §C — the relational noun, and the sharpest of the three: the
+        // adjective branch returned before the complement's class test ever
+        // ran, so the four adjectives of totality were an unconditional
+        // licence. They quantify without naming a class, which leaves the head
+        // as anaphoric as it was, and the anaphor simply moved behind them.
+        yield 'relational: complessiva, bare' => ["Parliamo di Bitcoin. È la tua posizione più volatile.\nRidurrei l'esposizione complessiva."];
+        yield 'relational: complessiva + questo' => ["Parliamo di Bitcoin. È la tua posizione più volatile.\nRidurrei l'esposizione complessiva a questo."];
+        yield 'relational: totale + tale strumento' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione totale a tale strumento."];
+        yield 'relational: globale, bare' => ["Parliamo di Bitcoin. È volatile.\nTaglierei la quota globale."];
+        yield 'relational: generale, bare' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'allocazione generale."];
+        yield 'relational: totale + the instrument itself' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione totale a Bitcoin."];
+        yield 'relational: complessiva + quest ultimo' => ["Parliamo di Bitcoin. È volatile.\nRidurrei la quota complessiva di quest'ultimo."];
+
+        // §D — not one of the three blockers, but the same per-instance shape
+        // standing next to one of them: the reflection frame's object window
+        // was left measuring raw characters while the event-subject window
+        // stopped. Twelve characters of inciso and the instruction is the
+        // protected question.
+        yield 'reflection: an inciso inside the object window' => ['Valuta se, viste le valutazioni correnti, vendere Bitcoin adesso.'];
+        yield 'reflection: an inciso, with a number' => ['Verifica se, considerato il tuo orizzonte, ridurre Bitcoin al 5%.'];
+
+        // --- And the same treatment turned on this round's own changes. Each
+        // of these passed an intermediate version of the fixes above.
+
+        // Dropping one aside leaves two, and a comma is not the only way to
+        // punctuate one.
+        yield 'self: two asides fill the gap' => ['Valuta se, viste le valutazioni, (per quel che vale) vendere Bitcoin adesso.'];
+        yield 'self: the aside punctuated with dashes' => ['Valuta se — viste le valutazioni correnti — vendere Bitcoin adesso.'];
+
+        // The allowlist admits a prepositional phrase, which is how the
+        // operation says what it acts on — so an aside that is *spelled* as
+        // one gets in with it unless what follows it still has to pass.
+        yield 'self: the aside as a prepositional phrase' => ['La decisione su cosa fare con Bitcoin con ogni probabilità venderei una parte è tua.'];
+        yield 'self: the opinion as a prepositional phrase' => ['La decisione su cosa fare con Bitcoin secondo il mio parere venderne una parte è tua.'];
+
+        // The event span may cross a preposition-introduced determiner,
+        // because that one modifies the event. Behind it is still a proxy.
+        yield 'self: the proxy behind a preposition' => ['Un calo del 30% in un contesto come questo un investitore prudente venderebbe Bitcoin.'];
+
+        // The totality adjectives are gone from the short-circuit, so a
+        // relational noun with no complement at all is anaphoric again —
+        // including when the adjective is simply a different one.
+        yield 'self: an adjective nobody listed' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione residua."];
+    }
+
+    /**
+     * The other direction of the same three fixes: what tightening them must
+     * not take with it. The §C control is the review's own — an adjective that
+     * names a class still licenses the head, and it is the line the whole
+     * distinction rests on.
+     */
+    #[DataProvider('fifthReviewControls')]
+    public function test_the_fifth_review_fixes_leave_compliant_speech_alone(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function fifthReviewControls(): iterable
+    {
+        // The attribution the allowlist exists to keep, in all the shapes it
+        // is actually written in.
+        yield 'control: operations and an interrogative' => ['La decisione su cosa comprare o vendere è tua.'];
+        yield 'control: an operation with a prepositional object' => ['La decisione su quanto vendere di Bitcoin resta tua.'];
+        yield 'control: the operation acting on the portfolio' => ['La decisione su come riequilibrare il portafoglio spetta a te.'];
+        yield 'control: a clitic operation' => ['La scelta su quanto venderne o tenerne resta tua.'];
+        yield 'control: the handover naming the instrument through a preposition' => ['La decisione finale su cosa fare con il tuo Bitcoin resta sempre tua.'];
+
+        // The event subject, with the separators that are not separators: a
+        // preposition-introduced determiner modifies the event, and a decimal
+        // point is not a full stop.
+        yield 'control: the event with a prepositional adjunct' => ['Un calo del 30% in un solo anno ridurrebbe il tuo portafoglio di circa 32.100€.'];
+        yield 'control: the event with a definite temporal adjunct' => ['Un calo del 30% il prossimo anno ridurrebbe il tuo portafoglio di circa 32.100€.'];
+        yield 'control: the event named through a preposition' => ['Un calo del 50% su Bitcoin ridurrebbe il tuo portafoglio totale del 8% solo per questo fattore.'];
+
+        // The relational noun with an adjective that names a class. This is
+        // the line the §C fix has to stay on the right side of: `azionaria`
+        // says *of what*, `complessiva` only says *all*, and the first one
+        // matches whichever order they are written in.
+        yield 'control: the class adjective still licenses the head' => ["Parliamo di Bitcoin, 18.000€.\nRidurrei l'esposizione azionaria complessiva."];
+        yield 'control: the class adjective alone' => ["Parliamo di Bitcoin, 18.000€.\nRidurrei l'esposizione obbligazionaria."];
+        yield 'control: the class as a complement' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione alla liquidità."];
+
+        // The reflection question the clauses ask for, whose directive belongs
+        // to a clause of its own rather than to the frame. Not counting an
+        // aside as distance must not reach this one.
+        yield 'control: the reflection question with a second clause' => ['Valuta se questa concentrazione ti dà sicurezza o se preferiresti ridurre Bitcoin.'];
+        yield 'control: the hold verb behind an inciso' => ['Valuta se, con calma, mantenere entrambi gli ETF ha senso.'];
+    }
+
+    /**
+     * The price of closing the attribution span by construction, declared the
+     * same way the arrow's was. An attribution whose operation takes a bare
+     * object — "la decisione su se vendere Bitcoin è tua" — loses the licence,
+     * because a bare noun phrase after an operation is also how "ovvero
+     * venderne una parte" is spelled, and the span cannot tell them apart
+     * without reading the sentence.
+     *
+     * The shape the clauses actually ask for puts the object in the
+     * interrogative ("su *cosa* vendere") or behind a preposition ("su quanto
+     * vendere *di* Bitcoin"), and both of those keep the licence. The cost is
+     * asserted here so the next round sees the trade instead of re-opening the
+     * span to pay it back.
+     */
+    #[DataProvider('attributionFalsePositivesNowAccepted')]
+    public function test_the_attribution_with_a_bare_object_is_removed_on_purpose(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function attributionFalsePositivesNowAccepted(): iterable
+    {
+        yield 'attribution: a bare object after the operation' => ['La decisione su se vendere Bitcoin è tua.'];
+        yield 'attribution: an adverb after the operation' => ['La decisione su quanto vendere di Bitcoin adesso resta tua.'];
+    }
+
     /** The portfolio the WEA-14 harness ran against. */
     private function wea14Portfolio(): void
     {

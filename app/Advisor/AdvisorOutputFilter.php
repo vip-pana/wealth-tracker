@@ -566,25 +566,78 @@ class AdvisorOutputFilter
      * `[^.;:!?]` hold an aside comfortably. "La decisione su quanto vendere di
      * Bitcoin (io direi il 40%) resta tua" is refuse-in-form-advise-in-
      * substance with the advice parked in a parenthesis — fourteen such shapes
-     * passed, every one of them removed by the commit before. So the span is
-     * closed to the punctuation an aside is built from, to first-person asides
-     * by way of it, and to digits: a legitimate attribution names *operations*
-     * — which is what the filter's own refusal text does ("indicarti se
-     * comprare, vendere o quanto detenere") — and needs neither a number nor
-     * an inciso to do it. `di` goes with them, because "la decisione di ridurre
-     * Bitcoin al 5%" is not an attribution, it is the recommendation wearing
-     * one as a hat.
+     * passed, every one of them removed by the commit before.
      *
-     * Closing the punctuation is not enough on its own: an apposition does not
-     * need a comma ("la decisione su cosa fare con Bitcoin ovvero venderne una
-     * parte è tua"), and neither does a first-person opinion. Those markers are
-     * therefore excluded from the span by word as well.
+     * The round after that answered by excluding what an aside is made of: the
+     * punctuation, then the apposition markers and the first person by word.
+     * The fifth review walked out of it in eleven more shapes, every one of
+     * them the synonym of a listed word — `ad esempio` was excluded and `per
+     * esempio` was not, `io` was and `personalmente` was not — and that is not
+     * a list that was too short. A list of what is forbidden is open by
+     * enumeration; the next synonym is always outside it.
+     *
+     * So the span says what it may *contain* instead. The argument for it was
+     * already written here and is simply applied now: a legitimate attribution
+     * names *operations* — which is what the filter's own refusal text does
+     * ("indicarti se comprare, vendere o quanto detenere") — so the span is
+     * interrogatives, conjunctions, operation verbs, and prepositional
+     * phrases, and nothing else reaches the closing "è tua". Every word class
+     * in it is closed in the language rather than closed by somebody's list,
+     * which is what makes the whole span closed by construction: `magari`,
+     * `al posto tuo`, `(io direi il 40%)` and `fino al cinque per cento` are
+     * out because they are not any of those things, not because they were
+     * foreseen.
+     *
+     * `di` as the opening preposition stays out, because "la decisione di
+     * ridurre Bitcoin al 5%" is not an attribution, it is the recommendation
+     * wearing one as a hat.
+     *
+     * The cost is declared rather than discovered: an attribution whose
+     * operation takes a bare object ("la decisione su se vendere Bitcoin è
+     * tua") no longer holds the licence, because a bare noun phrase is how
+     * "ovvero venderne una parte" is spelled too. See
+     * attributionFalsePositivesNowAccepted().
      */
     private const string DECISION_IS_YOURS = '/\b(?:la|ogni|l\')\s*(?:decisione|scelta|ultima\s+parola)'
-        .'\s+(?:finale\s+)?(?:su|sul|sulla|circa|riguardo\s+a)'
-        .'(?:(?!\s(?:ovvero|cioè|cioe|ossia|vale\s+a\s+dire|ad\s+esempio|io|secondo\s+me|direi)\s)'
-        .'[^.;:!?,()\-—–0-9%€]){0,80}?'
-        .'\s+(?:è|resta|rimane|spetta)\s+(?:sempre\s+|comunque\s+|soltanto\s+|solo\s+)?(?:tua|a\s+te)\b/iu';
+        .'\h+(?:finale\h+)?(?:su|sul|sulla|circa|riguardo\h+a)'
+        // The object of that preposition, which the preposition licenses the
+        // same way one inside the span licenses its own.
+        .'(?:\h+'.self::ATTRIBUTION_NOMINAL.')?'
+        .'(?:\h+(?:'.self::ATTRIBUTION_TOKEN.'))*'
+        .'\h+(?:è|resta|rimane|spetta)\h+(?:sempre\h+|comunque\h+|soltanto\h+|solo\h+)?(?:tua|a\h+te)\b/iu';
+
+    /** The interrogative an attribution hands the decision over as. */
+    private const string ATTRIBUTION_INTERROGATIVE = 'che\h+cosa|cosa|quant[aeio]|qual[ei]|come|se|quando|dove|che';
+
+    /** Operation verbs, as infinitives with or without a clitic: this is what an attribution may name. */
+    private const string ATTRIBUTION_OPERATION = '(?:comprar|acquistar|vender|liquidar|disinvestir'
+        .'|investir|reinvestir|tener|detener|mantener|conservar|ridurr|ridur|aumentar|incrementar'
+        .'|diminuir|alleggerir|rafforzar|spostar|trasferir|convertir|ribilanciar|riequilibrar'
+        .'|bilanciar|allocar|destinar|versar|accantonar|risparmiar|diversificar|concentrar'
+        .'|far|muover|proceder|agir|modificar|cambiar|riveder|chiuder|aprir|entrar|uscir'
+        .'|attender|aspettar)(?:e|ne|ti|si|mi|ci|vi|l[aeio]|sene|sel[ao])';
+
+    /**
+     * A prepositional phrase: what the operation acts on, named through a
+     * preposition rather than bare. The first-person possessives are
+     * deliberately absent from the determiners — an attribution hands the
+     * decision to *you*, so it never needs "a mio avviso" to do it.
+     */
+    private const string ATTRIBUTION_PHRASE = '(?:(?:di|a|da|in|con|su|per|tra|fra|verso|circa|entro|presso'
+        .'|del|dello|della|dei|degli|delle|al|allo|alla|ai|agli|alle|dal|dallo|dalla|dai|dagli|dalle'
+        .'|nel|nello|nella|nei|negli|nelle|sul|sullo|sulla|sui|sugli|sulle|col|coi)\h+'
+        .'|(?:d|dell|all|dall|nell|sull)\'\h*)'
+        .'(?:(?:il|lo|la|i|gli|le|un|uno|una|quest[aeio]|quell[aeio]|quei|quegli|tu[ao]|tu[oe]i|tue'
+        .'|ogni|ciascun[ao]?|altr[aeio]|stess[ao])\h+|(?:un|l|quell|dell)\'\h*)?'
+        .self::ATTRIBUTION_NOMINAL;
+
+    /** A name, with no digit in it: a number in an attribution is a recommendation. */
+    private const string ATTRIBUTION_NOMINAL = '\p{L}[\p{L}\'’]*';
+
+    private const string ATTRIBUTION_TOKEN = self::ATTRIBUTION_INTERROGATIVE
+        .'|e|ed|o|od|oppure|né|ne'
+        .'|'.self::ATTRIBUTION_OPERATION
+        .'|'.self::ATTRIBUTION_PHRASE;
 
     /**
      * Statements *about* advice rather than statements *of* it: the MiFID
@@ -649,8 +702,18 @@ class AdvisorOutputFilter
      * question and must not be protected; "valuta se questa concentrazione ti
      * dà sicurezza o se preferiresti…" is the real thing, and its directive
      * token is far past this window.
+     *
+     * Measured over the gap with an aside dropped, for the reason the
+     * event-subject window is: the fifth review noted this window was left in
+     * the per-instance form its neighbour had just been taken out of, and
+     * "valuta se, viste le valutazioni correnti, vendere Bitcoin adesso" is
+     * twelve characters of inciso away from being protected. See
+     * reflectionDistance().
      */
     private const int REFLECTION_OBJECT_WINDOW = 12;
+
+    /** An aside, by each of the three ways it is punctuated. See reflectionDistance(). */
+    private const string ASIDE = '(?:,[^,()]*,|\([^()]*\)|—[^—]*—|–[^–]*–)';
 
     /**
      * Epistemic verbs whose object is something to find out — the things the
@@ -869,17 +932,64 @@ class AdvisorOutputFilter
      * Dropping them is itself room bought, though, and the same attack lands
      * on it — pad a parenthesis and the proxy subject behind it comes inside
      * sixty characters. So the span is held to one *clause* as well as to one
-     * sentence: it may not cross a comma or a coordinating conjunction, and
-     * may not cross `chi`, which is how the proxy subject is spelled. An event
-     * that is the subject of this very verb has nothing of the sort between
-     * the two.
+     * sentence. An event that is the subject of this very verb has nothing of
+     * the sort between the two.
+     *
+     * How the clause is held is the fifth review's correction, and it is a
+     * change of kind rather than of length. The round before spelled the
+     * boundary as a list of conjunctions, and a list of conjunctions is open:
+     * `quindi` was in it and `dunque`, `pertanto` and `allora` were not, the
+     * comma was in it and the colon and the dash were not, `chi` was in it and
+     * `chiunque` got in by being spelled with the same three letters. Nine
+     * shapes walked out that way.
+     *
+     * The rule that closes them is not a longer list but the one thing every
+     * one of them has to do. THIRD_PERSON has already established that the
+     * verb is a third-person conditional, so if its subject is not the event
+     * then the span has to *contain* that subject — and a subject is a
+     * determiner with a noun, or a pronoun. Those are closed word classes in
+     * the language, not a semantic family somebody has to keep enumerating.
+     * So the span may not cross a bare indefinite determiner or an indefinite
+     * pronoun: `un investitore prudente`, `chi è esposto come te`, `chiunque
+     * sia esposto`. One introduced by a preposition is the event's own
+     * modifier, not a new subject, which is what the lookbehinds let through —
+     * "un calo del 30% in un anno" is still arithmetic.
+     *
+     * The conjunctions stay as a second net, no longer load-bearing. What is
+     * deliberately *not* closed is the proxy subject behind a definite article
+     * and no punctuation at all ("… è plausibile l'investitore prudente
+     * ridurrebbe …"): barring bare definite articles would take the temporal
+     * adjunct with it ("un calo del 30% il prossimo anno ridurrebbe il tuo
+     * patrimonio dell'8%"), and deleting that arithmetic is the WEA-14 harm
+     * this pattern exists to undo.
      */
     private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel)\s+'
         .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
         .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'
-        .'(?:(?!\s(?:e|ed|ma|però|pero|quindi|perciò|percio|mentre|oppure|chi)\s)'
-        .'(?:[^.!?;,\n]|\.(?=\d)))'
-        .'{0,60}$/iu';
+        .'(?<span>(?:[^.!?;:,\n—–]|\.(?=\d)){0,60})$/iu';
+
+    /**
+     * What may not stand between the event and its verb. Applied to the span
+     * EVENT_SUBJECT captures, rather than repeated inside it: the assertions
+     * are long and a bounded repeat expands them sixty times, which PCRE
+     * refuses to compile.
+     *
+     * Read the first branch inside out. The lookbehinds hold when the
+     * determiner is *not* introduced by a preposition, so the branch only
+     * matches there — "in un anno" and "a chi guarda i grafici" modify the
+     * event, "e un investitore" starts a clause of its own. The second branch
+     * is the older net, kept for a clause that starts without a new subject
+     * and no longer load-bearing.
+     */
+    private const string NEW_CLAUSE = '/(?:'
+        .'(?<!\bdi)(?<!\bin)(?<!\bsu)(?<!\bda)(?<!\bfra)(?<!\btra)(?<!\bcon)(?<!\bper)(?<!\ba)'
+        .'(?<!\bcome)(?<!\bverso)(?<!\bdopo)(?<!\bentro)(?<!\bsenza)(?<!\bsotto)(?<!\bsopra)'
+        .'(?<!\bcontro)(?<!\bdurante)(?<!\bpresso)(?<!\boltre)'
+        .'\s(?:uno?|una|chi|chiunque|qualcuno|qualsiasi|qualunque|nessuno|ognuno|ciascuno'
+        .'|molt[ie]|alcun[ie]|tutt[ie]|poch[ie]|parecchi|talun[ie])\b'
+        .'|\s(?:e|ed|ma|però|pero|quindi|perciò|percio|dunque|pertanto|allora|mentre|laddove'
+        .'|oppure|ossia|anzi|tuttavia|eppure|invece)\s'
+        .')/iu';
 
     /** The third-person forms a consequence is stated in. */
     private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)$/iu';
@@ -1205,13 +1315,24 @@ class AdvisorOutputFilter
      *
      * The adjectival form is listed rather than left open, because an open
      * `\w+` after the noun would read "l'esposizione eccessiva" as a class.
+     *
+     * Every adjective here has to *name a class*, and the fifth review is why.
+     * The round before also listed `complessiva`, `globale`, `totale` and
+     * `generale`, which only quantify: they say *all*, not *all of what*, so
+     * they leave the head as anaphoric as it was. The branch returns before the
+     * complement's class test runs, so listing them there was an unconditional
+     * licence that test never saw — "Parliamo di Bitcoin. Ridurrei
+     * l'esposizione complessiva" walked out, and so did the same sentence with
+     * the anaphor restored behind the adjective ("…complessiva a questo").
+     * `attuale` is kept out for the same reason, and that is the whole reason:
+     * a branch that returns true before a test annuls the test.
      */
     private const string RELATIONAL_OBJECT_HEAD = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
         .'(?:'.self::RELATIONAL_OBJECT.')'
         .'(?:'
         .'(?<adjective>\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
-        .'|complessiv|global|total|generale)[aeio]?\b)'
+        .')[aeio]?\b)'
         // The preposition has to end where it ends: `a[il]?` without a
         // boundary swallowed the `a` of "l'esposizione azionaria" and read the
         // adjective as a complement.
@@ -1755,7 +1876,38 @@ class AdvisorOutputFilter
             return false;
         }
 
-        return preg_match(self::EVENT_SUBJECT, $this->withoutTrailingAside(substr($segment, 0, $offset))) === 1;
+        $lookback = $this->withoutTrailingAside(substr($segment, 0, $offset));
+
+        if (preg_match(self::EVENT_SUBJECT, $lookback, $m) !== 1) {
+            return false;
+        }
+
+        return preg_match(self::NEW_CLAUSE, $m['span']) !== 1;
+    }
+
+    /**
+     * How far a directive sits from the reflection frame it might belong to,
+     * with an aside between the two not counted as distance.
+     *
+     * The asides have to fill the gap exactly — nothing between them but space
+     * — so this is room that cannot be padded with anything else, which is the
+     * restriction withoutTrailingAside() carries for the same reason. A
+     * directive *inside* an aside is not reached by this: it is its own entry
+     * in the offsets, measured over its own unreduced gap.
+     *
+     * What is deliberately left per-instance is the window itself: an ordinary
+     * adverbial still buys room ("valuta se in questo preciso momento vendere
+     * Bitcoin"), because distance is the wrong question. Whether the directive
+     * is the frame's object is decided by whether a clause of its own stands
+     * between them, not by how many characters do, and replacing the window
+     * with that test is a change this round has no measurement budget to
+     * attack properly. Declared rather than left to be found.
+     */
+    private function reflectionDistance(string $segment, int $frameEnd, int $offset): int
+    {
+        $gap = substr($segment, $frameEnd, $offset - $frameEnd);
+
+        return strlen((string) preg_replace('/^(\h*)(?:'.self::ASIDE.'\h*)+$/u', '$1', $gap));
     }
 
     /**
@@ -2016,7 +2168,7 @@ class AdvisorOutputFilter
                 // entrambi ha senso" is the reflection the clauses ask for,
                 // while "valuta se vendere VWCE" is still an instruction.
                 if ($offset >= $frameEnd
-                    && $offset - $frameEnd <= self::REFLECTION_OBJECT_WINDOW
+                    && $this->reflectionDistance($segment, $frameEnd, $offset) <= self::REFLECTION_OBJECT_WINDOW
                     && preg_match('/^\W*(?:'.self::HOLDING_VERB.')/iu', substr($segment, $offset)) !== 1) {
                     return false;
                 }
