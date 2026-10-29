@@ -387,10 +387,18 @@ class RenderAdvisorContext extends Action
      * all — so the escape did not happen on exactly the input most likely to
      * be hostile. The class is ASCII and those bytes cannot occur inside a
      * multi-byte sequence, so dropping `/u` loses nothing and cannot fail.
+     *
+     * The invalid byte then survives the strip instead of defeating it, which
+     * is the residue the fourth review pointed at: the briefing goes out as a
+     * `system` message and `json_encode` returns false on a string that is not
+     * valid UTF-8, so one stray byte in an asset name could fail the whole
+     * request. `mb_scrub` replaces it rather than leaving that to be found in
+     * production.
      */
     private function userText(string $value): string
     {
         $clean = (string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value);
+        $clean = mb_scrub($clean, 'UTF-8');
         $clean = str_replace(['«', '»'], ['“', '”'], $clean);
         $clean = trim($clean);
 

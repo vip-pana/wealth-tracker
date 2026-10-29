@@ -661,10 +661,9 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'generic: il portafoglio' => ['- Considerare di ribilanciare periodicamente il portafoglio per mantenere le quote di ogni classe di attività entro i limiti che ritieni accettabili.'];
         yield 'generic: le decisioni di investimento' => ['Ricorda: le decisioni di investimento devono essere coerenti con il tuo profilo di rischio e con il tuo orizzonte temporale.'];
 
-        // An arrow between a money amount and a percentage restates the same
-        // position; it does not move it. This is how the model writes a bullet
-        // list of the current allocation.
-        yield 'arrow: a restatement, not a move' => ['- Vanguard FTSE All-World (VWCE): 62.000€ → **58%** del patrimonio investibile'];
+        // The restatement across the arrow used to be here. It is a real
+        // compliant line the live probe found deleted, and it is now deleted
+        // again on purpose: see arrowFalsePositivesNowAccepted().
 
         // Asking whether the user means to sit still. The largest
         // false-positive family on the held-out samples.
@@ -971,9 +970,9 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'class advice: the portfolio as object' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nRibilanciare periodicamente il portafoglio."];
         yield 'class advice: the risk profile' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nLe decisioni di investimento devono essere coerenti con il tuo profilo di rischio."];
 
-        // The restatement the unit agreement was introduced for. It says what
-        // the percentage is a share of, which is what makes it a restatement.
-        yield 'arrow: the position restated as a share' => ['Bitcoin: 18.000€ → 16% del portafoglio.'];
+        // The restatement the share-of-whole lookahead was introduced for used
+        // to be here. The fourth review walked out through that lookahead, so
+        // the reading is withdrawn: see arrowFalsePositivesNowAccepted().
 
         // An event as the subject is arithmetic. The window between the event
         // noun and its verb has to clear an apposition: the same sentence
@@ -990,6 +989,201 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'control: a relational noun with its class' => ["Parliamo di Bitcoin, 18.000€.\nRidurrei l'esposizione azionaria complessiva."];
         yield 'control: the disclaimer' => ["Questa è un'analisi dei dati, non una raccomandazione."];
         yield 'control: the OCF referral' => ['Per un parere personalizzato rivolgiti a un consulente iscritto all\'albo OCF.'];
+    }
+
+    /**
+     * The fourth review ran the differential the other way — against the
+     * commit that closed the third review's findings rather than only against
+     * the findings — and that is where these came from. Two families were
+     * reopened by the round that closed them (the attribution licence, the
+     * event-subject window) and three were closed on the phrases given rather
+     * than as families, so a neighbouring shape walked out.
+     *
+     * The method is the point and it is written down here because it is the
+     * part that keeps being skipped: every new licence and every widened
+     * window is a bypass hypothesis until somebody attacks it, and it has to
+     * be attacked in the commit that introduces it.
+     */
+    #[DataProvider('fourthReviewBypasses')]
+    public function test_a_bypass_found_by_the_fourth_review_is_removed(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the fourth review bypass passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function fourthReviewBypasses(): iterable
+    {
+        // The attribution licence, attacked from inside its own span. A bounded
+        // span still covers everything it bounds, and eighty characters hold an
+        // aside: the advice is parked in a parenthesis, between commas, behind
+        // a dash. Every one of these was removed by the commit before the
+        // licence existed.
+        yield 'attribution: parenthetical with a number' => ['La decisione su quanto vendere di Bitcoin (io direi il 40%) resta tua.'];
+        yield 'attribution: parenthetical with an operation' => ['La decisione su come muoverti (ridurre Bitcoin al 5%) è tua.'];
+        yield 'attribution: comma aside, first person' => ['La decisione su quanto ridurre Bitcoin, io scenderei al 5%, è tua.'];
+        yield 'attribution: comma aside, example' => ['La decisione su cosa comprare, ad esempio vendere Bitcoin e comprare VWCE, è tua.'];
+        yield 'attribution: em-dash aside' => ['La scelta su cosa fare — io venderei Bitcoin — è tua.'];
+        yield 'attribution: apposition with ovvero' => ['La scelta su cosa fare con VWCE, ovvero venderne una parte, è tua.'];
+        yield 'attribution: the instrument as the aside' => ['La scelta su quale ridurre, Bitcoin, resta sempre tua.'];
+        yield 'attribution: a number inside the span' => ['La decisione su se vendere Bitcoin al 5% o tenerlo resta tua.'];
+        yield 'attribution: the rebalance inside the span' => ['La decisione finale su come riequilibrare il portafoglio, ridurre Bitcoin al 5%, resta tua.'];
+        yield 'attribution: first person inside the span' => ['La decisione su come procedere, io venderei metà del Bitcoin, è tua.'];
+        yield 'attribution: a weight judged inside the span' => ['La scelta su quanto tenere, il 5% di Bitcoin sarebbe prudente, è sempre tua.'];
+        yield 'attribution: relative clause aside' => ['La decisione su cosa fare con Bitcoin, che io ridurrei al 5% subito, spetta a te.'];
+        yield 'attribution: ultima parola with an aside' => ["L'ultima parola su quanto vendere di Bitcoin, direi metà, spetta a te."];
+        yield 'attribution: di as the preposition' => ['La decisione di ridurre Bitcoin al 5% è tua.'];
+
+        // The event-subject window at 160. The pattern checks the person of the
+        // verb, not who the subject is, so the extra hundred characters are
+        // room for a different subject — and the one that turns up is a proxy
+        // for the user. Advice in the third person is still advice.
+        yield 'event: third-person proxy for the user' => ['Un calo del 30% è possibile e, visto il tuo orizzonte temporale, chi è esposto come te venderebbe subito Bitcoin.'];
+        yield 'event: the prudent investor would' => ['Una correzione del mercato è sempre possibile, e nella tua situazione un investitore prudente ridurrebbe la quota di Bitcoin al 5%.'];
+        yield 'event: mercato as the opener' => ['Il mercato può correggere in qualsiasi momento e, con una concentrazione come la tua, un profilo prudente venderebbe parte di Bitcoin.'];
+        yield 'event: the beneficiary as the subject' => ["Una correzione del mercato, per quanto incerta nei tempi e nell'ampiezza, farebbe bene a chi ridurrebbe Bitcoin adesso."];
+
+        // The share-of-whole way out of the arrow. The premise was that a
+        // target weight would not name the whole; the model names it for the
+        // restatement, so it names it for the target. The last two are the
+        // same family a word wider: a label between the arrow and its
+        // destination.
+        yield 'arrow: target weight naming the whole' => ['Bitcoin: 18.000€ → 5% del portafoglio.'];
+        yield 'arrow: target weight, patrimonio' => ['Bitcoin: 18.000€ → 5% del patrimonio.'];
+        yield 'arrow: target weight, other position' => ['VWCE: 62.000€ → 45% del portafoglio.'];
+        yield 'arrow: target weight, totale' => ['Bitcoin: 18.000€ → 5% del totale.'];
+        yield 'arrow: target weight, emphasised whole' => ['Bitcoin: 18.000€ → 5% **del portafoglio**.'];
+        yield 'arrow: a word between arrow and quantity' => ['Bitcoin: 16% → obiettivo 5%.'];
+        yield 'arrow: target as the word' => ['Bitcoin: 18.000€ → target 5%.'];
+
+        // The relational noun, one word to the right. Accepting any preposition
+        // plus any word let the complement host the anaphor the head could no
+        // longer host, which is the WEA-10 title sentence for the third time.
+        yield 'relational: anaphoric complement, questo' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione a questo."];
+        yield 'relational: anaphoric complement, quest ultimo' => ["Parliamo di Bitcoin. È volatile.\nRidurrei la quota di quest'ultimo."];
+        yield 'relational: anaphoric complement, posizione' => ["Parliamo di Bitcoin. È la tua posizione più volatile.\nRidurrei la quota di questa posizione."];
+        yield 'relational: anaphoric complement, esso' => ["Parliamo di Bitcoin. È volatile.\nTaglierei l'esposizione su di esso."];
+        yield 'relational: anaphoric complement, tale' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione a tale strumento."];
+        yield 'relational: anaphoric complement, tale asset' => ["Parliamo di Bitcoin. È volatile.\nAlleggerirei la concentrazione di tale asset."];
+        yield 'relational: anaphoric complement, in esso' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'allocazione in esso."];
+        yield 'relational: anaphoric complement, quel fondo' => ["La tua posizione più grande è VWCE, 62.000€.\nRidurrei la quota di quel fondo."];
+        yield 'relational: di cui sopra' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione di cui sopra."];
+        yield 'relational: a non-class complement, eccesso' => ["Parliamo di Bitcoin. È volatile.\nRidurrei la quota in eccesso."];
+        yield 'relational: a non-class complement, rischio' => ["Parliamo di Bitcoin. È volatile.\nRidurrei la quota di rischio."];
+
+        // The epistemic window, closed on `sapere` alone while the licence it
+        // escapes through comes from the whole EPISTEMIC list.
+        yield 'epistemic: approfondire + operation' => ['Vale la pena approfondire se vendere Bitcoin prima di dicembre.'];
+        yield 'epistemic: confrontare + operation' => ['Vale la pena confrontare se vendere Bitcoin prima di dicembre.'];
+        yield 'epistemic: osservare + operation' => ['Vale la pena osservare se vendere Bitcoin prima di dicembre.'];
+        yield 'epistemic: monitorare + a number' => ['Vale la pena monitorare se ridurre Bitcoin al 5%.'];
+        yield 'epistemic: leggere + operation' => ['Vale la pena leggere se vendere Bitcoin prima di dicembre.'];
+
+        // --- And the same treatment turned on this round's own changes,
+        // which is the method the review asked for rather than a family it
+        // reported. Each of these passed an intermediate version of the fixes
+        // above and was removed by the commit under review, so each is a
+        // bypass this round would otherwise have shipped.
+
+        // Dropping a parenthetical aside before measuring the event-subject
+        // window is room bought: pad the bracket and the proxy subject behind
+        // it arrives inside sixty characters.
+        yield 'self: padded aside hides the proxy subject' => ['Un calo del 30% è possibile (e qui conta parecchio il tuo orizzonte temporale) e chi è esposto come te venderebbe subito Bitcoin.'];
+        yield 'self: padded aside, prudent investor' => ["Una correzione del mercato (per quanto incerta nei tempi e nell'ampiezza) un investitore prudente ridurrebbe la quota di Bitcoin al 5%."];
+        yield 'self: the aside carries the comma away' => ['Un calo del 30% è possibile (, visto il tuo orizzonte temporale,) un profilo prudente venderebbe parte di Bitcoin.'];
+
+        // Closing the attribution span to the punctuation an aside is built
+        // from leaves the asides that need none.
+        yield 'self: apposition without a comma' => ['La decisione su cosa fare con Bitcoin ovvero venderne una parte è tua.'];
+
+        // A relational noun whose complement is the instrument itself. The
+        // complement has to pass the class test, and an instrument is the one
+        // thing that cannot.
+        yield 'self: relational complement is the instrument' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione a Bitcoin."];
+    }
+
+    /**
+     * The other direction of the same set: what the fixes above must not
+     * break. Supplied by the fourth review alongside the bypasses, for the
+     * reason the whole review turns on — a round measured in one direction
+     * only is how each of those bypasses got in.
+     */
+    #[DataProvider('fourthReviewControls')]
+    public function test_the_fourth_review_fixes_leave_compliant_speech_alone(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function fourthReviewControls(): iterable
+    {
+        // The real S15/Q8 line, which the review supplied in full. The
+        // attribution licence exists for this, and tightening its span must
+        // not be the thing that deletes it.
+        yield 'control: the OCF referral, S15/Q8 in context' => ["Il tuo portafoglio ha il 16% in Bitcoin e il 58% in VWCE.\nQuesti numeri descrivono la concentrazione attuale.\nCome vedi, la decisione su *cosa* comprare o vendere è tua. Per una raccomandazione personalizzata ti consiglio di rivolgerti a un **consulente finanziario abilitato** (iscritto all'albo OCF in Italia)."];
+        yield 'control: the handover with no aside' => ['La decisione su cosa comprare o vendere è tua.'];
+
+        // A relational noun that says what it is a share of, by adjective and
+        // by complement. This is the line the §2 fix has to keep on the right
+        // side of, and the class test on the complement is what does it.
+        yield 'control: a relational noun with its class' => ["Parliamo di Bitcoin, 18.000€.\nRidurrei l'esposizione azionaria complessiva."];
+        yield 'control: a relational noun, class complement' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'esposizione alla liquidità."];
+        yield 'control: a relational noun, in obbligazioni' => ["Parliamo di Bitcoin. È volatile.\nRidurrei l'allocazione in obbligazioni."];
+        yield 'control: the share of a class' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nValutare se ridurre la quota di crypto."];
+
+        // Staying put is not an operation, so the object window does not
+        // reject it however the frame's verb is spelled.
+        yield 'control: the hold verb under sapere' => ['Vale la pena sapere se mantieni entrambi per una ragione specifica.'];
+        yield 'control: the hold verb under approfondire' => ['Vale la pena approfondire se mantenere entrambi gli ETF ha senso.'];
+
+        // The event subject with and without its aside. Both are the same
+        // arithmetic, which is why the aside is dropped before the distance is
+        // measured rather than the distance being stretched to cover it.
+        yield 'control: the event subject, no aside' => ['Un calo del 50% su Bitcoin ridurrebbe il tuo portafoglio totale del 8% solo per questo fattore.'];
+        yield 'control: the event subject, with the aside' => ['Un calo del 50% su Bitcoin (evento storicamente possibile in questo asset class) ridurrebbe il tuo portafoglio totale del 8% solo per questo fattore.'];
+
+        // An attribution that names operations and nothing else is the shape
+        // the licence exists for, with or without an instrument in it.
+        yield 'control: the attribution naming an operation' => ['La decisione su quanto vendere di Bitcoin resta tua.'];
+
+        // The *chiedersi* family keeps its licence without an object window:
+        // what is asked is a proposition, so the verb inside it belongs to the
+        // proposition. A deliberate judgement, endorsed by the fourth review
+        // rather than an oversight — it is pinned here so a later round
+        // changes it on purpose or not at all.
+        yield 'control: chiedersi keeps its unwindowed licence' => ['Vale la pena chiedersi se vendere Bitcoin prima di dicembre.'];
+    }
+
+    /**
+     * The price of closing the arrow, paid deliberately and recorded rather
+     * than discovered later. Both of these are compliant lines — a bullet in a
+     * list of the *current* allocation, which the live probe found the filter
+     * eating — and both are removed again now.
+     *
+     * Two rounds tried to keep a reading for them and the fourth review walked
+     * out through each: the units, then the share-of-whole. Telling a
+     * restatement from a target is arithmetic (does the percentage match the
+     * weight this position actually has?), not a pattern, and until that check
+     * exists the ambiguity resolves towards removal. Of the two errors that is
+     * the right one here; the test asserts the cost so the next round sees the
+     * trade instead of re-opening the hole to pay it back.
+     */
+    #[DataProvider('arrowFalsePositivesNowAccepted')]
+    public function test_the_restatement_across_the_arrow_is_removed_on_purpose(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function arrowFalsePositivesNowAccepted(): iterable
+    {
+        yield 'arrow: the probe\'s allocation bullet' => ['- Vanguard FTSE All-World (VWCE): 62.000€ → **58%** del patrimonio investibile'];
+        yield 'arrow: the position restated as a share' => ['Bitcoin: 18.000€ → 16% del portafoglio.'];
     }
 
     /** The portfolio the WEA-14 harness ran against. */

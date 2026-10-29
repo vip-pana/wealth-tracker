@@ -307,46 +307,52 @@ class AdvisorOutputFilter
      * them carries a verb — which is why no amount of widening the word lists
      * reached them. `VWCE: 40% → 25%` is an instruction with nothing to list.
      *
-     * Between two quantities of the same unit, the arrow is a move. Across
-     * units it is ambiguous, and the third review showed the ambiguity had
-     * been resolved the wrong way: `62.000€ → 58%` is the same money said
-     * twice, which is how the model writes a bullet list of the current
-     * allocation — the live probe found five such lines deleted from one reply
-     * — but `18.000€ → 5%` is a target weight, and *what you hold today, then
-     * what you should hold* is the most natural shape a proposed allocation
-     * line takes. Letting the units decide passed all three.
+     * Whatever the units, the arrow is a move. Two previous rounds tried to
+     * keep a reading for the restatement — `62.000€ → 58%` is the same money
+     * said twice, which is how the model writes a bullet list of the current
+     * allocation, and the live probe found five such lines deleted from one
+     * reply. First the units were made to decide, which let through
+     * `18.000€ → 5%`; then the restatement was granted against an explicit
+     * share-of-whole, and the fourth review walked straight out through it:
+     * `Bitcoin: 18.000€ → 5% del portafoglio` is a target weight that happens
+     * to name the whole, and the premise that a target would not name it is
+     * false — the model writes `→ **58%** del patrimonio investibile` for the
+     * restatement, so it writes it for the target too.
      *
-     * What tells them apart is not the units but whether the percentage says
-     * what it is a share of. A restatement has to: `58%` alone restates
-     * nothing. A target does not, and naming the whole would be odd in one
-     * ("portalo al 5% del portafoglio" is a target that says so, and the other
-     * notation patterns have it). So the restatement reading is granted only
-     * against an explicit share-of-whole, and only in that direction — in
-     * `16% → 5.000€` there is no reading but the move.
+     * Telling them apart is arithmetic, not lexical: `62.000€ → 58%` restates
+     * because 58% *is* that position's weight. The filter has the weights, so
+     * that check is possible and is the right fix; it is also more than a
+     * pattern. Until it exists the ambiguity is resolved the other way, on the
+     * review's instruction: every arrow is a move, and the cost is the
+     * occasional current-allocation bullet removed. Of the two errors that is
+     * the one to make here — over-blocking a list line is product damage,
+     * letting a target weight through is the exposure the layer exists for.
      *
      * A label on the left needs no unit to agree with, so `VWCE → 25%` stays
      * notation.
      */
     private const string ARROW = '\s*(?:→|➔|➜|⇒|=>|-+>|~>)\s*';
 
+    /**
+     * A name for the destination of the arrow: `16% → obiettivo 5%`,
+     * `18.000€ → target 5%`. The arrow is the transition operator, so whatever
+     * sits between it and the destination quantity labels that destination.
+     * Bounded by length rather than by a word list on purpose — a list of the
+     * labels seen so far is the per-instance fix the fourth review named as
+     * the thread running through every reopening.
+     */
+    private const string ARROW_LABEL = '(?:\p{L}{2,12}\s+){0,2}';
+
     private const string PERCENTAGE = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*%';
 
     private const string MONEY = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:€|euro\b)';
 
-    /**
-     * The whole a percentage can be a share of. Matched after the percentage
-     * and through the blanked emphasis, which is where the model puts it:
-     * `62.000€ → **58%** del patrimonio investibile`.
-     */
-    private const string SHARE_OF_WHOLE = '\s*(?:del|dell\'|della|sul|sull\'|sulla|di|rispetto\s+al)\s*'
-        .'(?:portafogli|patrimoni|total|capital|investit|investibil|complessiv|allocazion|ricchezz)';
-
     private const string NOTATION_ARROW = '/(?:'
-        .self::PERCENTAGE.self::ARROW.self::PERCENTAGE
-        .'|'.self::MONEY.self::ARROW.self::MONEY
-        .'|'.self::MONEY.self::ARROW.self::PERCENTAGE.'(?!'.self::SHARE_OF_WHOLE.')'
-        .'|'.self::PERCENTAGE.self::ARROW.self::MONEY
-        .'|[\p{L}\p{N}]{2,}'.self::ARROW.self::QUANTITY
+        .self::PERCENTAGE.self::ARROW.self::ARROW_LABEL.self::PERCENTAGE
+        .'|'.self::MONEY.self::ARROW.self::ARROW_LABEL.self::MONEY
+        .'|'.self::MONEY.self::ARROW.self::ARROW_LABEL.self::PERCENTAGE
+        .'|'.self::PERCENTAGE.self::ARROW.self::ARROW_LABEL.self::MONEY
+        .'|[\p{L}\p{N}]{2,}'.self::ARROW.self::ARROW_LABEL.self::QUANTITY
         .')/u';
 
     /**
@@ -554,9 +560,30 @@ class AdvisorOutputFilter
      * matter — but an attribution does not: "la scelta è tua, io venderei
      * VWCE" is advice with a preamble. So this licence covers only the
      * directives inside its own span. See isProtectedSpeech().
+     *
+     * The span is what the fourth review attacked, and a bounded span is still
+     * a licence: everything *inside* it was covered, and eighty characters of
+     * `[^.;:!?]` hold an aside comfortably. "La decisione su quanto vendere di
+     * Bitcoin (io direi il 40%) resta tua" is refuse-in-form-advise-in-
+     * substance with the advice parked in a parenthesis — fourteen such shapes
+     * passed, every one of them removed by the commit before. So the span is
+     * closed to the punctuation an aside is built from, to first-person asides
+     * by way of it, and to digits: a legitimate attribution names *operations*
+     * — which is what the filter's own refusal text does ("indicarti se
+     * comprare, vendere o quanto detenere") — and needs neither a number nor
+     * an inciso to do it. `di` goes with them, because "la decisione di ridurre
+     * Bitcoin al 5%" is not an attribution, it is the recommendation wearing
+     * one as a hat.
+     *
+     * Closing the punctuation is not enough on its own: an apposition does not
+     * need a comma ("la decisione su cosa fare con Bitcoin ovvero venderne una
+     * parte è tua"), and neither does a first-person opinion. Those markers are
+     * therefore excluded from the span by word as well.
      */
     private const string DECISION_IS_YOURS = '/\b(?:la|ogni|l\')\s*(?:decisione|scelta|ultima\s+parola)'
-        .'\s+(?:finale\s+)?(?:su|sul|sulla|di|circa|riguardo\s+a)[^.;:!?]{0,80}?'
+        .'\s+(?:finale\s+)?(?:su|sul|sulla|circa|riguardo\s+a)'
+        .'(?:(?!\s(?:ovvero|cioè|cioe|ossia|vale\s+a\s+dire|ad\s+esempio|io|secondo\s+me|direi)\s)'
+        .'[^.;:!?,()\-—–0-9%€]){0,80}?'
         .'\s+(?:è|resta|rimane|spetta)\s+(?:sempre\s+|comunque\s+|soltanto\s+|solo\s+)?(?:tua|a\s+te)\b/iu';
 
     /**
@@ -600,13 +627,17 @@ class AdvisorOutputFilter
         // "potresti verificare se". It belongs here and not among the
         // indicative frames precisely so that the object window still applies:
         // "dovresti valutare se vendere VWCE" must stay an instruction.
-        // `sapere` belongs here and not only among the indicative frames: it
-        // is in EPISTEMIC, so "vale la pena sapere se" was granted the licence
-        // the whole family gets and the window never ran — the third review
-        // found "vale la pena sapere se vendere Bitcoin prima di dicembre"
-        // passing while the same sentence with `capire` was removed.
+        //
+        // The verb list is EPISTEMIC_WINDOWED rather than a list written out
+        // beside it, and the fourth review is why. The third round answered
+        // "vale la pena sapere se vendere Bitcoin" by adding `sapere` here;
+        // the licence it was escaping through comes from EPISTEMIC, so five
+        // other stems in that list — `approfondire`, `confrontare`,
+        // `osservare`, `monitorare`, `leggere` — escaped the window exactly
+        // the same way. Two lists that must agree will not; one list split
+        // once, on a stated reason, will.
         .'|(?:dovrest[ei]|potrest[ei]|puoi|prova\s+a|vale\s+la\s+pena(?:\s+di)?)\s+'
-        .'(?:valutare|verificare|controllare|considerare|capire|sapere)\s+se'
+        .'(?:'.self::EPISTEMIC_WINDOWED.')\w*\s+se'
         .'|riuscirest[ei]\s+a|te\s+la\s+sentirest[ei]|saresti\s+(?:disposto|disposta|in\s+grado)'
         .'|ti\s+permetterest[ei]|sopporterest[ei]|reagirest[ei]|farest[ei]\s+se'
         .'|preferirest[ei]|ti\s+sentirest[ei]|ti\s+dà\s+(?:sicurezza|fastidio|serenità)'
@@ -622,18 +653,34 @@ class AdvisorOutputFilter
     private const int REFLECTION_OBJECT_WINDOW = 12;
 
     /**
-     * Epistemic verbs — the things the clauses ask the advisor to tell the user
-     * to do ("dire che cosa l'utente dovrebbe VERIFICARE, CONTROLLARE o
-     * CHIEDERSI"). Shared by SOFT_DIRECTIVES, which clears a soft directive
-     * that governs one of them, and by REFLECTION_INDICATIVE, where the same
-     * list turns "vale la pena" into a reflection frame rather than a verdict.
+     * Epistemic verbs whose object is something to find out — the things the
+     * clauses ask the advisor to tell the user to do ("dire che cosa l'utente
+     * dovrebbe VERIFICARE o CONTROLLARE"). "Vale la pena verificare se vendere
+     * Bitcoin" names an operation to perform, not a thing to find out, so
+     * these are the stems REFLECTION puts an object window on.
      */
-    private const string EPISTEMIC = 'verificar|controllar|chieder|valutar|considerar|capir|saper|confrontar'
-        .'|monitorar|legger|informart|documentart|parlar|domandar|osservar|guardar'
+    private const string EPISTEMIC_WINDOWED = 'verificar|controllar|valutar|considerar|capir|saper|confrontar'
+        .'|monitorar|legger|informart|documentart|parlar|osservar|guardar'
         // Only the idiom. Bare `tener` cleared "ti conviene tenere VWCE" as
         // though it were "tenere presente", which turned a hold recommendation
         // into no directive at all.
         .'|ricordar|tener\s+(?:present|cont|d\'occhio|a\s+mente)|aggiornar|approfondir|rivedere i dati';
+
+    /**
+     * The reflexive half of the same family — "chiedersi se", "domandarsi se".
+     * The clauses name it among the things the advisor SHOULD do, and what is
+     * asked is a proposition, so the directive inside it is the proposition's
+     * verb: exactly what an object window would reject. Hence the split, and
+     * hence REFLECTION_INDICATIVE licensing these without one.
+     */
+    private const string EPISTEMIC_REFLEXIVE = 'chieder|domandar';
+
+    /**
+     * Both halves. Shared by SOFT_DIRECTIVES, which clears a soft directive
+     * that governs one of them, and by REFLECTION_INDICATIVE, where the same
+     * list turns "vale la pena" into a reflection frame rather than a verdict.
+     */
+    private const string EPISTEMIC = self::EPISTEMIC_WINDOWED.'|'.self::EPISTEMIC_REFLEXIVE;
 
     /**
      * The same reflection frame in the indicative rather than the imperative:
@@ -803,16 +850,36 @@ class AdvisorOutputFilter
      * directive and the verb has to be third person — "un calo ridurrebbe" is
      * a consequence, "riduci" after the word *calo* is still an instruction.
      *
-     * The window is wide because an apposition goes between the subject and
-     * its verb and is as long as the model wants: the third review found the
-     * same sentence surviving at 71 and 91 characters and removed at 149, with
-     * the only difference a parenthesis. Widening it costs nothing the verb
-     * does not already pay for — the span cannot cross a sentence boundary,
-     * and a first-person conditional or an imperative is not third person.
+     * The window is deliberately short, and the fourth review is why. The
+     * third round found the same sentence surviving at 91 characters and
+     * removed at 149, the only difference a parenthesis, and the round after
+     * answered it by widening the window to 160. That was the wrong
+     * instrument: the test behind this pattern checks the *person* of the verb,
+     * not who the subject is, so a hundred extra characters is room for a
+     * different subject to appear — and the one that appears is a proxy for
+     * the user. "Una correzione del mercato è sempre possibile, e nella tua
+     * situazione un investitore prudente ridurrebbe la quota di Bitcoin al 5%"
+     * is advice in the third person, and `mercato` and `andamento` are
+     * ordinary ways to open a sentence. Four such shapes passed at 160 and
+     * none at 60.
+     *
+     * What the apposition needed was not a wider window but to not be counted:
+     * isConsequence() drops parenthetical asides before measuring.
+     *
+     * Dropping them is itself room bought, though, and the same attack lands
+     * on it — pad a parenthesis and the proxy subject behind it comes inside
+     * sixty characters. So the span is held to one *clause* as well as to one
+     * sentence: it may not cross a comma or a coordinating conjunction, and
+     * may not cross `chi`, which is how the proxy subject is spelled. An event
+     * that is the subject of this very verb has nothing of the sort between
+     * the two.
      */
     private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel)\s+'
         .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
-        .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'.self::SAME_SENTENCE.'{0,160}$/iu';
+        .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'
+        .'(?:(?!\s(?:e|ed|ma|però|pero|quindi|perciò|percio|mentre|oppure|chi)\s)'
+        .'(?:[^.!?;,\n]|\.(?=\d)))'
+        .'{0,60}$/iu';
 
     /** The third-person forms a consequence is stated in. */
     private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)$/iu';
@@ -1132,26 +1199,30 @@ class AdvisorOutputFilter
     private const string RELATIONAL_OBJECT = 'quot[ae]|esposizion[ei]|concentrazion[ei]|allocazion[ei]';
 
     /**
-     * What turns a relational noun into a class one: "la quota di crypto",
-     * "l'esposizione al monetario", "l'allocazione azionaria". The complement
-     * cannot be an instrument — if it were, the segment would name one and
-     * this check would never run — which is the same argument the whole
-     * carve-out already rests on.
+     * A relational head with whatever says what it is a share *of* captured,
+     * so that part can be put through the same class test the head would have
+     * had to pass. See isGenericRelational().
      *
      * The adjectival form is listed rather than left open, because an open
      * `\w+` after the noun would read "l'esposizione eccessiva" as a class.
      */
-    private const string OBJECT_COMPLEMENT = '(?:'
-        .'\s+(?:di|in|su|verso|a[il]?|a(?:llo|lla|ll\'|gli|lle)|d[ae](?:l|llo|lla|ll\'|i|gli|lle)?)\s*\w+'
-        .'|\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
-        .'|complessiv|global|total|generale)[aeio]?'
-        .')';
+    private const string RELATIONAL_OBJECT_HEAD = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
+        .self::GENERIC_DETERMINER
+        .'(?:'.self::RELATIONAL_OBJECT.')'
+        .'(?:'
+        .'(?<adjective>\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
+        .'|complessiv|global|total|generale)[aeio]?\b)'
+        // The preposition has to end where it ends: `a[il]?` without a
+        // boundary swallowed the `a` of "l'esposizione azionaria" and read the
+        // adjective as a complement.
+        .'|\s+(?:(?:di|in|su|verso|a|ai|al|alla|allo|agli|alle'
+        .'|da|dai|dal|dalla|dallo|dagli|dalle|de|dei|del|della|dello|degli|delle)\b'
+        .'|(?:all|dall|dell|d)\')\s*(?<complement>.*)'
+        .')/iu';
 
     private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
-        .'(?:(?:'.self::GENERIC_CLASS_OBJECT.')'
-        .'|(?:'.self::RELATIONAL_OBJECT.')'.self::OBJECT_COMPLEMENT
-        .')\b/iu';
+        .'(?:'.self::GENERIC_CLASS_OBJECT.')\b/iu';
 
     /** @var non-empty-string|null Built from a constant, so it is memoised for the whole process. */
     private static ?string $knownPattern = null;
@@ -1684,7 +1755,32 @@ class AdvisorOutputFilter
             return false;
         }
 
-        return preg_match(self::EVENT_SUBJECT, substr($segment, 0, $offset)) === 1;
+        return preg_match(self::EVENT_SUBJECT, $this->withoutTrailingAside(substr($segment, 0, $offset))) === 1;
+    }
+
+    /**
+     * The text up to the directive with a parenthetical aside dropped, so the
+     * distance from a subject to its verb is measured over the sentence and
+     * not over the inciso. "Un calo del 50% su Bitcoin (evento storicamente
+     * possibile …) ridurrebbe il tuo patrimonio" is the same arithmetic as the
+     * sentence without the parenthesis, and the third review found only the
+     * long one removed.
+     *
+     * Only an aside that the verb immediately follows, and that restriction is
+     * the whole of it. Dropping asides anywhere is itself room bought, and the
+     * same attack lands on it: pad a parenthesis and a proxy subject sitting
+     * behind it arrives inside the window, so "Una correzione del mercato (per
+     * quanto incerta nei tempi e nell'ampiezza) un investitore prudente
+     * ridurrebbe la quota di Bitcoin al 5%" would read as arithmetic. An
+     * apposition stands between a subject and *its own* verb; if anything but
+     * space follows the bracket, the bracket is not what separates them.
+     *
+     * The aside leaves a space behind rather than nothing, so no two words are
+     * joined into one that neither of them is.
+     */
+    private function withoutTrailingAside(string $text): string
+    {
+        return (string) preg_replace('/\([^()]*\)(\s*)$/u', ' $1', $text);
     }
 
     /**
@@ -1734,12 +1830,49 @@ class AdvisorOutputFilter
         // are anchored at the head of the object.
         $object = (string) preg_replace('/^\W*(?:(?:ad\s+)?es|p\.es|per\s+esempio|ad\s+esempio|ovvero|cioè)\b\.?/iu', '', $object);
 
-        if (preg_match(self::GENERIC_OBJECT, $object) === 1
-            || preg_match(self::$genericClassPattern ??= $this->buildGenericClassPattern(), $this->deaccent($object)) === 1) {
+        if ($this->namesAClass($object) || $this->isGenericRelational($object)) {
             return 'generic';
         }
 
         return preg_match('/\p{L}/u', $object) === 1 ? 'other' : 'empty';
+    }
+
+    /** Whether this text opens with the name of the whole or of a class of it. */
+    private function namesAClass(string $text): bool
+    {
+        return preg_match(self::GENERIC_OBJECT, $text) === 1
+            || preg_match(self::$genericClassPattern ??= $this->buildGenericClassPattern(), $this->deaccent($text)) === 1;
+    }
+
+    /**
+     * Whether a relational head — exposure, weight, concentration, allocation
+     * — says what it is a share *of*, which is the only thing that makes it a
+     * class rather than an anaphor.
+     *
+     * The complement has to pass the same class test the head would have had
+     * to pass, and the fourth review is why. The round before accepted any
+     * preposition followed by any word, so the anaphor the head could no
+     * longer host simply moved one word to the right: "l'esposizione a questo"
+     * is still exposure to whatever was named a line earlier, and eleven such
+     * shapes passed. A filter that removes "l'esposizione" and keeps
+     * "l'esposizione a questo" has not closed a vector, it has asked the model
+     * to add two words.
+     *
+     * The complement cannot be an instrument — if it were, the segment would
+     * name one and this check would never run — which is the same argument the
+     * whole carve-out already rests on.
+     */
+    private function isGenericRelational(string $object): bool
+    {
+        if (preg_match(self::RELATIONAL_OBJECT_HEAD, $object, $m) !== 1) {
+            return false;
+        }
+
+        if ($m['adjective'] !== '') {
+            return true;
+        }
+
+        return $this->namesAClass($m['complement']);
     }
 
     /**

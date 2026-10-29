@@ -310,7 +310,7 @@ nothing to do with vocabulary:
 | Markdown emphasis splitting a frame | `**Considera** se…` is not the phrase `considera se`. Every pattern now matches against a view with the markers blanked, byte for byte, so the offsets still line up. |
 | A full stop inside an abbreviation | `(es. obbligazioni…)` cut one question into two segments, each missing what the other held. |
 | A noun spelled like a verb | `di acquisti`, `gli aumenti`. A second-person verb never takes a determiner, so the determiner is the test. The previous round met this as `aspetti` and solved it by deleting one conjugation. |
-| An arrow between different units | `62.000€ → 58%` restates a position; `40% → 25%` moves it. The unit has to agree. |
+| An arrow between different units | `62.000€ → 58%` restates a position; `40% → 25%` moves it. The unit was made to agree — *withdrawn twice since, see below: the arrow is now always a move.* |
 | A negation or a denial | "non una **raccomandazione**" was removed on the word that makes it a disclaimer — the refusal's trap again. Negation cancels the directive *noun* only: `non vendere VWCE` is still an instruction. |
 | An event as the subject | "Un calo del 50% **ridurrebbe** il tuo patrimonio dell'8%" is arithmetic. |
 | A question about staying put | The largest family by far. "Intendi mantenere…?", "Quanto tempo puoi permetterti di aspettare?" — holding needs no instruction, so asking about it proposes nothing. Asserting it still does, and so does any proposed number beside it. |
@@ -336,10 +336,15 @@ one segment at a time.
 > way. The third review falsified it on the first sample it drew: the event-as-
 > subject sentence was removed *on its own* once an apposition pushed its verb
 > past `EVENT_SUBJECT`'s window, which was 60 characters. The family the round
-> declared closed was closed only for short sentences. The window is now 160 and
-> the sentence is a test case — but the lesson is the claim, not the number: a
-> round that measures one direction should not make a universal statement about
-> the other.
+> declared closed was closed only for short sentences. The sentence is a test
+> case — but the lesson is the claim, not the number: a round that measures one
+> direction should not make a universal statement about the other.
+>
+> The fix that followed widened the window to 160, and that was the wrong
+> instrument: the fourth review walked four pieces of third-person advice
+> through the extra hundred characters. The window is back at 60 and the
+> apposition is dropped before the distance is measured instead. See the sixth
+> round.
 
 That is the honest statement of where the word-list road ends. The alternative
 that does not have this shape is not a better list: it is not giving the model
@@ -390,7 +395,7 @@ covers.
 | Reopened | Why | Closed by |
 | --- | --- | --- |
 | `Ridurrei l'esposizione` after a named position | `esposizione`, `concentrazione`, `quota`, `allocazione` are *relational* nouns — they denote a relation to whatever was last named — and `GENERIC_OBJECT` was letting them cancel the lookback that would have resolved it. The WEA-10 title sentence back by another route. | `GENERIC_OBJECT` split into class nouns, which stand alone, and relational ones, which are generic only when they say what they are a share *of* (`la quota di crypto`, `l'esposizione azionaria`). |
-| `Bitcoin: 18.000€ → 5%` | Requiring the units to agree told `62.000€ → 58%` (a restatement) from `40% → 25%` (a move) — and let through the most natural shape a proposed allocation line takes: what you hold today, then what you should hold. | The restatement reading is granted against an explicit share-of-whole (`→ 16% del portafoglio`), not against the units, and only in that direction. |
+| `Bitcoin: 18.000€ → 5%` | Requiring the units to agree told `62.000€ → 58%` (a restatement) from `40% → 25%` (a move) — and let through the most natural shape a proposed allocation line takes: what you hold today, then what you should hold. | The restatement reading was granted against an explicit share-of-whole (`→ 16% del portafoglio`) instead. *Superseded in the sixth round: that lookahead was itself the way out.* |
 
 Two smaller ones went with them: `vale la pena **sapere** se vendere Bitcoin`
 passed while the same sentence with `capire` did not, because `sapere` reached
@@ -418,6 +423,70 @@ not a measurement**. It scored 42/50 when it was first taken and that was a
 fact; frozen, it now measures only itself, and it stayed green straight through
 the arrow regression above. Re-generating the phrases is what would make it a
 measurement again.
+
+### The sixth round: the differential, pointed the other way
+
+The fifth round took the lesson above and applied it to the *findings* — it
+measured itself against the previous commit on the review's cases, in both
+directions, and the numbers held when the reviewer re-ran them. It did not apply
+it to its own changes, and that is where the next fourteen-plus-four bypasses
+were: shapes the previous commit removed and this one let through.
+
+So the rule, stated once and properly:
+
+> **Every new licence and every widened window is a bypass hypothesis until
+> somebody attacks it, and it has to be attacked in the commit that introduces
+> it.** Closing the phrases a reviewer sent is not closing the family they came
+> from; the neighbouring shape is a word away and the gate cannot see it,
+> because the gate contains the phrases.
+
+| Reopened or left open | Why | Closed by |
+| --- | --- | --- |
+| `La decisione su quanto vendere di Bitcoin (io direi il 40%) resta tua` | A bounded licence still covers everything it bounds, and eighty characters of `[^.;:!?]` hold an aside comfortably. Fourteen attributions with the advice parked in a parenthesis, between commas or behind a dash — refuse-in-form-advise-in-substance, one more time. | The span is closed to the punctuation an aside is built from, to digits, and to the apposition markers that need no comma. A legitimate attribution names *operations* — which is what the filter's own refusal text does — and needs neither a number nor an inciso. `di` is gone too: "la decisione **di** ridurre Bitcoin al 5%" is the recommendation wearing an attribution as a hat. |
+| `…e chi è esposto come te venderebbe subito Bitcoin` | `EVENT_SUBJECT` at 160. The test behind it checks the **person** of the verb, not who the subject is, and a hundred extra characters is room for a different subject to appear — the one that appears is a proxy for the user. `mercato` and `andamento` are ordinary sentence openers. | Window back to 60, with the parenthetical aside dropped before the distance is measured, and the span held to one *clause*: it may not cross a comma, a coordinating conjunction or `chi`. |
+| `Bitcoin: 18.000€ → 5% del portafoglio` | The share-of-whole lookahead rested on the premise that a target weight would not name the whole. The model writes `→ **58%** del patrimonio investibile` for the restatement, so it writes it for the target: the way out was two words. | The reading is withdrawn. Every arrow is a move. See below for what that costs. |
+| `Ridurrei l'esposizione a questo` | The relational-noun split accepted any preposition plus any word as the complement, so the anaphor the head could no longer host moved one word to the right. Eleven shapes. A filter that removes `l'esposizione` and keeps `l'esposizione a questo` has not closed a vector — it has asked the model to add two words. | The complement has to pass the same class test the head would have had to pass. |
+| `Vale la pena approfondire se vendere Bitcoin` | The round before answered the same sentence with `sapere` by adding `sapere` to the reflection frame's verb list. The licence being escaped comes from `EPISTEMIC`, so five other stems in it escaped identically. | The frame's verb list **is** `EPISTEMIC`, split once into the windowed half and the reflexive `chiedersi` half, on a stated reason. Two lists that must agree will not. |
+
+#### What the arrow costs, stated rather than discovered
+
+`62.000€ → 58% del patrimonio investibile` is a compliant line — a bullet in a
+list of the *current* allocation, and the live probe found the filter eating
+exactly that. It is removed again now, on purpose.
+
+Telling a restatement from a target is **arithmetic, not lexical**: `58%` is a
+restatement because it *is* that position's weight. The filter already holds the
+weights, so the check is possible and is the right fix; it is also more than a
+pattern, and it is not in this round. Until it exists the ambiguity resolves
+towards removal, which of the two errors is the right one here — over-blocking a
+list line is product damage, letting a target weight through is the exposure the
+layer exists for. The two lines are pinned in
+`arrowFalsePositivesNowAccepted()` so the next round sees the trade instead of
+reopening the hole to pay it back.
+
+#### The false-positive rate after this round is not known
+
+The fixes above all **tighten** the filter: every bare relational noun is now
+removed in context, `l'esposizione eccessiva` with it, and so is every arrow
+between a money amount and a percentage. The rate therefore probably went up,
+and it has not been re-measured — four samples overrun `AdvisorBudget`'s daily
+ceiling, and the fourth review did not make the rate a condition of approval
+(mandatory disclosure does not pass through the filter at all: `AiDisclosure` is
+app markup, and the OCF referral is a test case in both directions).
+
+So the number to quote is still **7/42 on the held-out set, measured before this
+round and independently confirmed**, and it should be quoted with that date
+attached. Do not read it as the rate today.
+
+#### Cases
+
+All of the above are in `AdvisorOutputFilterTest` in both directions —
+`fourthReviewBypasses` and `fourthReviewControls` — alongside
+`thirdReviewBypasses` / `thirdReviewFalsePositives` from the round before. The
+last block of `fourthReviewBypasses` is this round's changes attacked on their
+own terms: dropping a parenthetical aside buys room the same way widening the
+window did, an apposition does not need a comma, and a relational complement can
+be the instrument itself. Each passed an intermediate version of these fixes.
 
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and
