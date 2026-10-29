@@ -1860,6 +1860,236 @@ class AdvisorOutputFilterTest extends TestCase
         return "La decisione su quanto ridurre di Bitcoin a {$word} resta tua.";
     }
 
+    /**
+     * An object the filter reads as generic stops being generic once it
+     * carries a pro-form that points back, whichever branch of objectKind()
+     * read it.
+     *
+     * This is the eighth review's §A, and the family it names is not the one
+     * the round before closed. `objectKind()` decides with an OR, the seventh
+     * round made `isGenericRelational()` fail closed, and `namesAClass()` —
+     * evaluated *first*, so it short-circuits the branch that was fixed —
+     * stayed anchored at the head and tolerant of whatever followed. Measured
+     * over seven class objects and seven anaphoric tails: 49 of 49 passed
+     * before this round and 0 of 49 after, while the relational branch was
+     * 0 of 28 on both. Zero movement on the half that was still open, inside
+     * the commit that declared the family closed 27/27.
+     *
+     * So the family is defined on the vector and not on the code path: *an
+     * object the filter reads as generic, carrying an anaphor the lookback
+     * would resolve.* See AdvisorOutputFilter::pointsBack().
+     */
+    #[DataProvider('everyAnaphoricProForm')]
+    public function test_a_pro_form_in_the_object_denies_the_generic_licence(string $predicate): void
+    {
+        $this->wea14Portfolio();
+
+        $text = $this->anaphorFrame($predicate);
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the anaphor in the object did not deny the generic licence');
+    }
+
+    /**
+     * The frame of the test above, with a tail that points at nothing, passes.
+     *
+     * Without this the provider would only be saying that a directive on a
+     * class object is removed near a named instrument, which is the opposite
+     * of what the generic licence is for — and it would stay green with the
+     * whole pro-form class deleted from the filter.
+     */
+    public function test_the_pro_form_frame_is_inert(): void
+    {
+        $this->wea14Portfolio();
+
+        foreach (['a scopo precauzionale', 'del 10%', 'entro giugno', 'gradualmente',
+            "a favore dell'obbligazionario", 'in questa fase', "quest'anno"] as $tail) {
+            $text = $this->anaphorFrame("l'azionario {$tail}");
+
+            $this->assertSame($text, $this->filter()->filter($text), 'the frame removes the directive on its own, so the slot proves nothing');
+        }
+    }
+
+    private function anaphorFrame(string $predicate): string
+    {
+        return "Parliamo di Bitcoin. Ridurrei {$predicate}.";
+    }
+
+    /**
+     * Each pro-form in the tail of a generic object, in a frame it is
+     * grammatical in: bare where it can stand alone, with a position noun
+     * where it is adnominal only, behind an article where it is a pronoun only
+     * there.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function everyAnaphoricProForm(): iterable
+    {
+        foreach (self::closedClass('Anaphoric pro-forms') as $form) {
+            yield "a favore di {$form}" => ["l'azionario a favore di {$form}"];
+        }
+
+        foreach (self::closedClass('Anaphoric pro-forms used with a noun') as $form) {
+            yield "a favore di {$form} strumento" => ["l'azionario a favore di {$form} strumento"];
+        }
+
+        foreach (self::closedClass('Anaphoric pro-forms that need an article') as $form) {
+            yield "verso {$form}" => ["l'azionario verso ".self::withArticle($form)];
+        }
+
+        // The matrix the review measured: every class object against every
+        // shape of anaphoric tail, so the family is covered on both branches
+        // of objectKind() and not only on the one the fix touched.
+        foreach (["l'azionario", 'le obbligazioni', 'la liquidità', 'il portafoglio',
+            'la crypto', 'gli ETF', "l'immobiliare", "l'esposizione azionaria",
+            'la quota di crypto', "l'allocazione obbligazionaria"] as $object) {
+            foreach (['a questo', 'a favore di questo', 'verso questo', 'a questa posizione',
+                'a scapito di quello', 'su questo', 'in favore di ciò'] as $tail) {
+                yield "{$object} {$tail}" => ["{$object} {$tail}"];
+            }
+        }
+    }
+
+    /**
+     * A directive's object may run on; what it may not do is point somewhere
+     * else. These are the tails that run on, in the frame the pro-form test
+     * uses and in the one the WEA-14 harness cares about most.
+     *
+     * This is the measured half of the §A decision and the reason the fix is
+     * not `namesOnlyAClass()` on a directive's object. That stricter rule was
+     * tried first and costs 17 of these 30 — every reflection question with
+     * any tail at all — because "che cosa significherebbe ridurre l'azionario
+     * del 10%?" is a tail, a question mark, and exactly what the clauses
+     * permit. The suite stayed green under it, which is why it had to be
+     * measured against a corpus written for the question rather than trusted.
+     */
+    #[DataProvider('conformingTailsOnAGenericObject')]
+    public function test_a_conforming_tail_on_a_generic_object_survives(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /**
+     * Enumerated by *kind* of tail rather than by example, with a named
+     * instrument in the segment before — which is how a real reply reads, and
+     * the only condition under which the generic licence is load-bearing.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function conformingTailsOnAGenericObject(): iterable
+    {
+        $tails = [
+            'bare' => "l'azionario",
+            'quantity' => "l'azionario del 10%",
+            'quantity in euro' => "l'azionario di 5.000€",
+            'temporal' => "l'azionario entro giugno",
+            'temporal, open' => 'la liquidità nel tempo',
+            'purpose' => 'la liquidità a scopo precauzionale',
+            'another class' => "l'azionario a favore dell'obbligazionario",
+            'manner' => "l'azionario gradualmente",
+            'relative clause' => "l'azionario che hai scelto",
+            'comparative' => "l'azionario rispetto al passato",
+            'class modifier' => "l'azionario globale",
+            // A demonstrative that says *now* rather than *that one*. The
+            // blunter rule took all of these.
+            'deictic: stage' => "l'azionario in questa fase",
+            'deictic: year' => "l'azionario quest'anno",
+            'deictic: point' => "l'azionario a questo punto",
+            // A pro-form that is only a pronoun behind an article, used here
+            // as the preposition and the adverb it also is.
+            'ordinal as preposition' => "l'azionario prima di andare in pensione",
+            'ordinal as adverb' => "l'azionario in secondo luogo",
+            'identity as adverbial' => "l'azionario allo stesso modo",
+            'alterity on a class' => "l'azionario e le altre classi di attività",
+        ];
+
+        $frames = [
+            'third person' => "Molti investitori riducono %s con l'avvicinarsi della pensione.",
+            'nominalised' => 'Ridurre %s è una scelta che dipende dal tuo orizzonte.',
+            'reflection question' => 'Che cosa significherebbe per te ridurre %s?',
+        ];
+
+        foreach ($tails as $kind => $object) {
+            foreach ($frames as $frame => $template) {
+                yield "{$kind}, {$frame}" => [
+                    'VWCE pesa il 62% del portafoglio. '.sprintf($template, $object),
+                ];
+            }
+        }
+    }
+
+    /**
+     * The one shape of the §A family this round leaves open, declared rather
+     * than left to be found.
+     *
+     * The clitic pronoun is in the class grammatically — `lo`, `la`, `li`,
+     * `le`, `ne` — and it is not in ANAPHOR, because spelled alone those words
+     * are the definite article: "gli ETF" would read as a pronoun governing a
+     * position noun and a plain class object would stop being generic. It is a
+     * pronoun only attached to the verb, which is a position this test cannot
+     * see from the object.
+     *
+     * Closing it means reading the *directive token* rather than its object,
+     * and that is a different change from this one. Asserting it here means
+     * the next round that touches the directive token is told the case exists.
+     */
+    public function test_the_enclitic_pro_form_is_still_open(): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "Parliamo di Bitcoin. Ridurrei l'azionario per comprarlo.";
+
+        $this->assertSame($text, $this->filter()->filter($text), 'the enclitic is closed now — update the docs and delete this test');
+    }
+
+    /**
+     * A line break the model writes inside a sentence is not a sentence
+     * boundary, so an object cannot be cut off from the anaphor that follows
+     * it.
+     *
+     * The eighth review's §A-bis: the segmenter splits on `\n`, so the object
+     * became the short half, the licensing branch read a bare class name, and
+     * the anaphor landed in a segment carrying no directive at all. Every test
+     * in this class that reads an object was evadable with one newline — and
+     * wrapping a bullet is exactly how the model writes a list.
+     */
+    public function test_a_wrapped_line_is_one_sentence(): void
+    {
+        $this->wea14Portfolio();
+
+        foreach (["Parliamo di Bitcoin.\nRidurrei l'azionario\na questo.",
+            "Parliamo di Bitcoin.\nRidurrei l'esposizione azionaria\na questo.",
+            "Parliamo di Bitcoin.\n- Ridurrei l'azionario\n  a questo."] as $text) {
+            $this->assertNotSame($text, $this->filter()->filter($text), 'a newline inside the sentence still cuts the object off from its anaphor');
+        }
+
+        // And a new bullet is still its own segment: the continuation rule
+        // reads the next line's opening, and a marker or a capital starts one.
+        $separate = "Il portafoglio è diversificato.\n- Ribilanciare periodicamente aiuta.\n- Una riserva di liquidità riduce il rischio.";
+
+        $this->assertSame($separate, $this->filter()->filter($separate));
+    }
+
+    /** The definite article this word takes, so the frame above is Italian. */
+    private static function withArticle(string $word): string
+    {
+        $plural = str_ends_with($word, 'i') || str_ends_with($word, 'e');
+        $feminine = str_ends_with($word, 'a') || str_ends_with($word, 'e');
+        $vowel = preg_match('/^[aeiou]/iu', $word) === 1;
+        $impure = preg_match('/^(?:s[^aeiou]|z|gn|ps|pn|x)/iu', $word) === 1;
+
+        if ($plural) {
+            return $feminine ? "le {$word}" : (($vowel || $impure) ? "gli {$word}" : "i {$word}");
+        }
+
+        if ($vowel) {
+            return "l'{$word}";
+        }
+
+        return $feminine ? "la {$word}" : ($impure ? "lo {$word}" : "il {$word}");
+    }
+
     /** @return iterable<string, array{string}> */
     public static function everyQuantitySpelledOut(): iterable
     {
@@ -2023,9 +2253,16 @@ class AdvisorOutputFilterTest extends TestCase
     /** @return iterable<string, array{string, string}> */
     public static function closedClassMembership(): iterable
     {
-        yield 'prepositions, simple' => ['PREPOSITION', 'Simple prepositions'];
-        yield 'prepositions, articulated' => ['PREPOSITION', 'Articulated prepositions'];
-        yield 'prepositions, improper' => ['PREPOSITION', 'Improper prepositions'];
+        // One sub-list to one heading, now that PREPOSITION is built from its
+        // three parts: a preposition transcribed under the wrong heading used
+        // to pass on the strength of a sibling list holding it.
+        yield 'prepositions, simple' => ['SIMPLE_PREPOSITION', 'Simple prepositions'];
+        yield 'prepositions, articulated' => ['ARTICULATED_PREPOSITION', 'Articulated prepositions'];
+        yield 'prepositions, improper' => ['IMPROPER_PREPOSITION', 'Improper prepositions'];
+        yield 'prepositions, all three through PREPOSITION' => ['PREPOSITION', 'Simple prepositions'];
+        yield 'articles' => ['ARTICLE', 'Articles'];
+        yield 'anaphoric pro-forms' => ['ANAPHOR', 'Anaphoric pro-forms'];
+        yield 'anaphoric pro-forms behind an article' => ['ANAPHOR_AFTER_ARTICLE', 'Anaphoric pro-forms that need an article'];
         yield 'determiners, singular' => ['DETERMINER', 'Determiners, singular'];
         yield 'determiners, plural' => ['DETERMINER', 'Determiners, plural'];
         yield 'numerals' => ['QUANTITY_IN_LETTERS', 'numerals'];
@@ -2156,7 +2393,11 @@ class AdvisorOutputFilterTest extends TestCase
     {
         $found = [];
 
-        foreach (['\b(?:di|in|sul)', '\ball[oa]?', '\bsul?', '\b(?:di|a)'] as $offender) {
+        foreach (['\b(?:di|in|sul)', '\ball[oa]?', '\bsul?', '\b(?:di|a)',
+            // The eighth review's shape: one accented character against two
+            // ASCII ones is two bytes against two, so the byte-counting
+            // version of this gate called it fixed and PCRE2 did not.
+            '\b(?:è|su)', '\b(?:tré|ab)', '\b(?:metà|abc)'] as $offender) {
             $found[$offender] = ! $this->isFixedLength($offender);
         }
 
@@ -2165,11 +2406,15 @@ class AdvisorOutputFilterTest extends TestCase
             '\ball[oa]?' => true,
             '\bsul?' => true,
             '\b(?:di|a)' => true,
+            '\b(?:è|su)' => true,
+            '\b(?:tré|ab)' => true,
+            '\b(?:metà|abc)' => true,
         ], $found);
 
         // And the shapes that do compile everywhere are not flagged, because a
         // gate that cries wolf is the one somebody deletes.
-        foreach (['\bdi', '\bsul', '[\p{L}\p{N}]', '\b(?:di|in|su)', 'di|insu'] as $clean) {
+        foreach (['\bdi', '\bsul', '[\p{L}\p{N}]', '\b(?:di|in|su)', 'di|insu',
+            '\bè|\bsu', '\b(?:tré|chi)', '\bperò'] as $clean) {
             $this->assertTrue($this->isFixedLength($clean), $clean.' is fixed-length and was flagged');
         }
 
@@ -2180,6 +2425,63 @@ class AdvisorOutputFilterTest extends TestCase
         $this->assertContains('newClausePattern()', $names);
         $this->assertContains('knownInstrumentPattern()', $names);
         $this->assertContains('buildGenericClassPattern()', $names);
+    }
+
+    /**
+     * Every lookbehind written in the filter's source sits somewhere the gate
+     * above can enumerate.
+     *
+     * The eighth review's §B.3, and the point it makes is about the kind of
+     * property this is. The gate enumerates *values* — the constants, and what
+     * the argument-free methods return — so it can only see a lookbehind that
+     * ends up in one of those. Two did not: `unemphasised()` held one as a
+     * literal in a method body, which no reflection over values can reach at
+     * all, and `namePattern(array $raw)` built one behind an argument, reached
+     * only second-hand through two wrappers that return null when the
+     * portfolio is empty. That is coverage contingent on a fixture.
+     *
+     * So the property is asserted against the *source text*, which is where a
+     * lookbehind is actually written. A source analysis cannot replace the
+     * gate — it has no way to evaluate a concatenation — but it can say
+     * whether every site is one the gate reaches, and that is what makes the
+     * next lookbehind written in a blind spot fail rather than escape.
+     *
+     * A site counts as reachable when it is inside a string constant or an
+     * argument-free method: the two shapes patternsTheFilterRuns() enumerates.
+     */
+    public function test_every_lookbehind_in_the_source_is_one_the_gate_can_reach(): void
+    {
+        $source = file_get_contents((string) new \ReflectionClass(AdvisorOutputFilter::class)->getFileName());
+
+        $this->assertIsString($source);
+
+        // Docblocks quote lookbehinds to explain them; only code declares one.
+        $code = (string) preg_replace('#/\*.*?\*/#su', '', $source);
+
+        $sites = [];
+        $member = 'file scope';
+
+        foreach (explode("\n", $code) as $line) {
+            if (preg_match('/\bconst\s+string\s+(\w+)\s*=/', $line, $m) === 1) {
+                $member = $m[1];
+            } elseif (preg_match('/\bfunction\s+(\w+)\s*\((.*)$/', $line, $m) === 1) {
+                $member = $m[1].'('.(trim($m[2]) === ')' || str_starts_with(trim($m[2]), '):') ? '' : '…').')';
+            }
+
+            if (str_contains($line, '(?<!') || str_contains($line, '(?<=')) {
+                $sites[] = $member;
+            }
+        }
+
+        $reachable = array_keys($this->patternsTheFilterRuns());
+
+        $unreachable = array_values(array_unique(array_filter(
+            $sites,
+            static fn (string $site): bool => ! in_array($site, $reachable, true),
+        )));
+
+        $this->assertNotSame([], $sites, 'the source scan found no lookbehind at all, so it is measuring nothing');
+        $this->assertSame([], $unreachable, 'a lookbehind written where the gate cannot enumerate it is a lookbehind the gate does not check');
     }
 
     /**
@@ -2261,6 +2563,13 @@ class AdvisorOutputFilterTest extends TestCase
      * A fragment split on the alternation bars that are not inside a group or
      * a character class.
      *
+     * Walked character by character, not byte by byte, and the eighth review
+     * is why: PCRE2 counts a lookbehind's length in characters, so `(?:è|su)`
+     * is one character against two and does not compile — while in bytes it is
+     * two against two and passed this gate. The error was in the direction
+     * that opens, in a class whose lists this round filled with `tré`, `metà`
+     * and `fuorché`.
+     *
      * @return list<string>
      */
     private function topLevelBranches(string $fragment): array
@@ -2269,12 +2578,14 @@ class AdvisorOutputFilterTest extends TestCase
         $current = '';
         $depth = 0;
         $inClass = false;
+        $chars = mb_str_split($fragment);
+        $total = count($chars);
 
-        for ($i = 0; $i < strlen($fragment); $i++) {
-            $char = $fragment[$i];
+        for ($i = 0; $i < $total; $i++) {
+            $char = $chars[$i];
 
             if ($char === '\\') {
-                $current .= substr($fragment, $i, 2);
+                $current .= $char.($chars[$i + 1] ?? '');
                 $i++;
 
                 continue;
@@ -2332,28 +2643,43 @@ class AdvisorOutputFilterTest extends TestCase
     /**
      * A branch split into items, each one an atom with its quantifier, if any.
      *
+     * Character-indexed for the same reason topLevelBranches() is: an accented
+     * literal is one item, and counting it as two bytes made a variable-length
+     * branch look fixed.
+     *
      * @return list<string>
      */
     private function items(string $branch): array
     {
         $items = [];
+        $chars = mb_str_split($branch);
+        $total = count($chars);
+        $closing = static function (array $chars, int $from) use ($total): int {
+            for ($j = $from; $j < $total; $j++) {
+                if ($chars[$j] === '}') {
+                    return $j + 1;
+                }
+            }
 
-        for ($i = 0; $i < strlen($branch);) {
+            return $total;
+        };
+
+        for ($i = 0; $i < $total;) {
             $start = $i;
-            $char = $branch[$i];
+            $char = $chars[$i];
 
             if ($char === '\\') {
                 $i += 2;
 
                 // `\p{L}` and `\P{Nd}` carry a braced property name.
-                if ($i < strlen($branch) && $branch[$i] === '{' && in_array($branch[$i - 1], ['p', 'P'], true)) {
-                    $i = ($close = strpos($branch, '}', $i)) === false ? strlen($branch) : $close + 1;
+                if ($i < $total && $chars[$i] === '{' && in_array($chars[$i - 1], ['p', 'P'], true)) {
+                    $i = $closing($chars, $i);
                 }
             } elseif ($char === '[') {
                 $i++;
 
-                while ($i < strlen($branch) && $branch[$i] !== ']') {
-                    $i += $branch[$i] === '\\' ? 2 : 1;
+                while ($i < $total && $chars[$i] !== ']') {
+                    $i += $chars[$i] === '\\' ? 2 : 1;
                 }
 
                 $i++;
@@ -2361,14 +2687,14 @@ class AdvisorOutputFilterTest extends TestCase
                 $depth = 1;
                 $i++;
 
-                while ($i < strlen($branch) && $depth > 0) {
-                    if ($branch[$i] === '\\') {
+                while ($i < $total && $depth > 0) {
+                    if ($chars[$i] === '\\') {
                         $i += 2;
 
                         continue;
                     }
 
-                    $depth += match ($branch[$i]) {
+                    $depth += match ($chars[$i]) {
                         '(' => 1,
                         ')' => -1,
                         default => 0,
@@ -2381,17 +2707,15 @@ class AdvisorOutputFilterTest extends TestCase
 
             // The quantifier belongs to the atom in front of it, with its lazy
             // or possessive modifier.
-            if ($i < strlen($branch) && in_array($branch[$i], ['?', '*', '+', '{'], true)) {
-                $i = $branch[$i] === '{'
-                    ? (($close = strpos($branch, '}', $i)) === false ? strlen($branch) : $close + 1)
-                    : $i + 1;
+            if ($i < $total && in_array($chars[$i], ['?', '*', '+', '{'], true)) {
+                $i = $chars[$i] === '{' ? $closing($chars, $i) : $i + 1;
 
-                if ($i < strlen($branch) && in_array($branch[$i], ['?', '+'], true)) {
+                if ($i < $total && in_array($chars[$i], ['?', '+'], true)) {
                     $i++;
                 }
             }
 
-            $items[] = substr($branch, $start, $i - $start);
+            $items[] = implode('', array_slice($chars, $start, $i - $start));
         }
 
         return $items;

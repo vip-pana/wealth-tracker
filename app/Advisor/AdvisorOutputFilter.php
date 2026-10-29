@@ -269,6 +269,19 @@ class AdvisorOutputFilter
         .')\b/iu';
 
     /**
+     * The common noun that denotes a holding rather than a class of them, and
+     * so is what a demonstrative points at when it points at one: "quella
+     * posizione", "il primo strumento".
+     *
+     * One list and not two: it is read here, by the ordinal periphrasis, and
+     * by pointsBack(), which asks the same question about the noun a
+     * demonstrative governs. The fifth review's §6 is why — two lists that
+     * have to agree will not agree.
+     */
+    private const string POSITION_NOUN = 'strument[oi]|posizion[ei]|righ[ae]|rig[ae]|voc[ei]'
+        .'|asset|fond[oi]|ETF|titol[oi]|quot[ae]';
+
+    /**
      * A reference to one specific position made without naming it — the three
      * periphrases the boundary clauses forbid by name, plus the shapes the
      * harness found around them. Each of these singles out a single holding,
@@ -288,7 +301,7 @@ class AdvisorOutputFilter
         .'|\d+\s+(?:delle\s+)?(?:tue\s+)?quote\b|le\s+tue\s+quote\b'
         .'|(?:il|un)\s+PAC\s+(?:da|su|di|a)\b'
         .'|(?:il|la|lo)\s+(?:prim|second|terz|quart|quint|sest|ultim)\w*\s+'
-        .'(?:strumento|posizione|riga|voce|asset|fondo|ETF|titolo)'
+        .'(?:'.self::POSITION_NOUN.')'
         .'|(?:della|nella|in)\s+tabella\s+(?:qui\s+)?(?:sopra|sotto)'
         .')/iu';
 
@@ -1216,16 +1229,30 @@ class AdvisorOutputFilter
      * following word with no space, and the space is what this sits in front
      * of.
      */
-    private const string PREPOSITION = 'di|a|da|in|con|su|per|tra|fra'
-        .'|del|dello|della|dei|degli|delle|al|allo|alla|ai|agli|alle'
-        .'|dal|dallo|dalla|dai|dagli|dalle|nel|nello|nella|nei|negli|nelle'
-        .'|col|coi|sul|sullo|sulla|sui|sugli|sulle'
-        .'|come|verso|dopo|entro|senza|sotto|sopra|contro|durante|presso|oltre'
+    private const string PREPOSITION = self::SIMPLE_PREPOSITION
+        .'|'.self::ARTICULATED_PREPOSITION
+        .'|'.self::IMPROPER_PREPOSITION;
+
+    private const string SIMPLE_PREPOSITION = 'di|a|da|in|con|su|per|tra|fra';
+
+    /**
+     * The preposition fused with its article, which is why it is also the left
+     * context a pro-form of identity or order needs — "a favore dello stesso"
+     * carries the article inside the preposition. See ANAPHOR_AFTER_ARTICLE.
+     */
+    private const string ARTICULATED_PREPOSITION = 'del|dello|della|dei|degli|delle'
+        .'|al|allo|alla|ai|agli|alle|dal|dallo|dalla|dai|dagli|dalle'
+        .'|nel|nello|nella|nei|negli|nelle|col|coi|sul|sullo|sulla|sui|sugli|sulle';
+
+    /**
+     * The improper prepositions the round before stopped at, which the seventh
+     * review measured as fourteen more sentences of conforming arithmetic
+     * being deleted. The list is the grammar's — see
+     * tests/Feature/Advisor/closed-classes.md.
+     */
+    private const string IMPROPER_PREPOSITION = 'come|verso|dopo|entro|senza|sotto|sopra'
+        .'|contro|durante|presso|oltre'
         .'|mediante|salvo|tranne|eccetto|secondo|circa|lungo|dietro|davanti'
-        // The improper prepositions the round before stopped at, which the
-        // seventh review measured as fourteen more sentences of conforming
-        // arithmetic being deleted. The list is now the grammar's — see
-        // tests/Feature/Advisor/closed-classes.md.
         .'|nonostante|malgrado|attraverso|tramite|rasente|fuorché|fuorche'
         .'|escluso|incluso|compreso|eccettuato|stante|tolto|visto|causa';
 
@@ -1238,7 +1265,15 @@ class AdvisorOutputFilter
      * ATTRIBUTION_BARE_OBJECT, which uses the same class to tell an object
      * from an apposition.
      */
-    private const string DETERMINER = 'il|lo|la|i|gli|le|l\'|un|uno|una|un\''
+    /**
+     * The article alone, which is also the left context a pro-form of identity
+     * or order needs before it is a pronoun rather than an adverb — see
+     * ANAPHOR_AFTER_ARTICLE. Split out of DETERMINER rather than written
+     * twice, which is the fifth review's §6.
+     */
+    private const string ARTICLE = 'il|lo|la|i|gli|le|un|uno|una';
+
+    private const string DETERMINER = self::ARTICLE.'|l\'|un\''
         .'|quest[aeio]|quest\'|codest[aeio]|codest\'|cotest[aeio]|cotest\''
         .'|quell[aeio]|quel|quei|quegli|quell\''
         .'|tale|tali|siffatt[aeio]|medesim[aeio]|stess[aeio]'
@@ -1458,11 +1493,32 @@ class AdvisorOutputFilter
      */
     private const string NOUN_HOMOGRAPH = '/^(?:ri)?(?:acquisti|aumenti|incrementi|tagli|spostamenti|ingressi|aperture|chiusure)$/iu';
 
+    /**
+     * The word boundary this class means — a letter or a digit on either side,
+     * rather than PCRE's `\b`, which counts `_` as a word character and stops
+     * at an accent on some builds.
+     *
+     * Written once and concatenated, not spelled out at each site, and the
+     * eighth review is why. The lookbehind gate enumerates the patterns the
+     * filter *runs*: the constants, and the argument-free methods that return
+     * one. A lookbehind written as a literal inside a method body — which is
+     * where two of these were — is neither, and no enumeration over values can
+     * reach it. Routing every one through a constant makes the gate's
+     * coverage structural instead of incidental; the gate asserts it, in
+     * test_every_lookbehind_in_the_source_is_one_the_gate_can_reach().
+     */
+    private const string NOT_WORD_BEFORE = '(?<![\p{L}\p{N}])';
+
+    private const string NOT_WORD_AFTER = '(?![\p{L}\p{N}])';
+
+    /** The markdown emphasis underscore: one outside a word, so snake_case stays whole. */
+    private const string LONE_UNDERSCORE = '/'.self::NOT_WORD_BEFORE.'_|_'.self::NOT_WORD_AFTER.'/u';
+
     /** A 12-character ISIN: two letters, nine alphanumerics, a check digit. */
-    private const string ISIN = '/(?<![\p{L}\p{N}])[A-Z]{2}[A-Z0-9]{9}[0-9](?![\p{L}\p{N}])/u';
+    private const string ISIN = '/'.self::NOT_WORD_BEFORE.'[A-Z]{2}[A-Z0-9]{9}[0-9]'.self::NOT_WORD_AFTER.'/u';
 
     /** An all-caps 3-6 character token — the shape of a ticker. */
-    private const string TICKER = '/(?<![\p{L}\p{N}])[A-Z][A-Z0-9]{2,5}(?![\p{L}\p{N}])/u';
+    private const string TICKER = '/'.self::NOT_WORD_BEFORE.'[A-Z][A-Z0-9]{2,5}'.self::NOT_WORD_AFTER.'/u';
 
     /**
      * All-caps tokens that are never a ticker: domain vocabulary, currencies,
@@ -1597,6 +1653,62 @@ class AdvisorOutputFilter
         .'|class[ei]\s+(?:di\s+)?(?:attività|asset|investiment\w+)|categori[ae]'
         .'|decision[ei]\s+(?:di\s+)?investiment\w*|profil[oi](?:\s+di\s+rischio)?|orizzonte'
         .'|cuscinett[oi]|fond[oi]\s+di\s+emergenza|riserv[ae]';
+
+    /**
+     * The word whose whole job is to point at something named earlier: the
+     * third-person and demonstrative pronoun. Closed in the language, not by
+     * a list someone keeps — which is why this is the test the generic licence
+     * can rest on, and an adjective list is not.
+     *
+     * The elided forms are spelled out because the apostrophe binds the noun
+     * to the determiner: "quell'ETF" is one token to a word boundary.
+     *
+     * Relative pronouns are deliberately absent. `che`, `cui` and `quale`
+     * point *inside* the sentence at the noun they modify, not back across a
+     * segment boundary, so "ridurre l'azionario che hai scelto" names no
+     * instrument. Likewise the first and second person: the user and the
+     * advisor are not positions.
+     *
+     * The clitics — `lo`, `la`, `li`, `le`, `ne`, `gli` — are deliberately
+     * absent, and not by oversight: spelled alone they are the definite
+     * article, so "gli ETF" would read as a pronoun governing a position noun
+     * and a plain class object would stop being generic. They are a pronoun
+     * only in a position this test cannot see, attached to the verb rather
+     * than standing in the object. The enclitic is measured and declared open
+     * in docs/ai-advisor-firewall.md.
+     *
+     * The list is transcribed in tests/Feature/Advisor/closed-classes.md and
+     * gated against it, so a pro-form the grammar has and this does not fails
+     * the suite rather than passing the filter.
+     *
+     * Whatever word follows is captured, because a demonstrative is only an
+     * anaphor when it stands for the thing rather than describing it — see
+     * governsAnAnaphor().
+     */
+    private const string ANAPHOR = 'ciò|cio|ess[oaie]|quest[oaie]|quell[oaie]|quel|quei|quegli'
+        .'|codest[oaie]|cotest[oaie]|tal[ei]|entrambi|entrambe|ambedue';
+
+    /**
+     * The pro-form that is a pronoun only behind an article, and an adverb or
+     * a preposition without one.
+     *
+     * `prima` is why this group exists and why it is not simply in ANAPHOR.
+     * "Ridurre l'azionario prima di andare in pensione" is a conforming
+     * sentence and `prima` there is a preposition; "a favore del primo" is the
+     * anaphor. The article is the test, which is the same answer the filter
+     * already gives for a noun spelled like a verb — see NOUN_HOMOGRAPH.
+     */
+    private const string ANAPHOR_AFTER_ARTICLE = 'stess[oaie]|medesim[oaie]|altr[oaie]'
+        .'|prim[oaie]|second[oaie]|terz[oaie]|ultim[oaie]|penultim[oaie]';
+
+    private const string ANAPHORIC_PRONOUN = '/'.self::NOT_WORD_BEFORE.'(?:'
+        .'(?:quest|quell|codest|cotest)\''
+        .'|(?:'.self::ANAPHOR.')'.self::NOT_WORD_AFTER
+        .'|(?:'.self::ARTICLE.'|'.self::ARTICULATED_PREPOSITION.')\s+'
+        .'(?:'.self::ANAPHOR_AFTER_ARTICLE.')'.self::NOT_WORD_AFTER
+        .'|(?:l|un|dell|all|dall|nell|sull|coll)\''
+        .'(?:'.self::ANAPHOR_AFTER_ARTICLE.')'.self::NOT_WORD_AFTER
+        .')\s*(?<governed>[\p{L}\']+)?/iu';
 
     /** A head noun that only means something once it says what it is a share of. */
     private const string RELATIONAL_OBJECT = 'quot[ae]|esposizion[ei]|concentrazion[ei]|allocazion[ei]';
@@ -1977,7 +2089,7 @@ class AdvisorOutputFilter
             return [self::REFUSAL, 1, 0];
         }
 
-        $parts = $this->rejoinAbbreviations($parts);
+        $parts = $this->rejoinSentences($parts);
 
         /** @var list<array{index: int, names: bool, header: bool, question: bool, view: string}> $segments */
         $segments = [];
@@ -2068,21 +2180,32 @@ class AdvisorOutputFilter
     }
 
     /**
-     * Put back the full stops that end an abbreviation rather than a sentence.
-     * The split above treats every `.` as a boundary, so "(es. obbligazioni,
-     * liquidità)" cut a question in half and left each half without the context
-     * the other held — the live probe reported one reflection question as two
-     * separate removals, and neither half could see the frame that licensed it.
+     * Put back the boundaries that do not end a sentence.
+     *
+     * Two of them. The split above treats every `.` as one, so "(es.
+     * obbligazioni, liquidità)" cut a question in half and left each half
+     * without the context the other held — the live probe reported one
+     * reflection question as two separate removals, and neither half could see
+     * the frame that licensed it.
+     *
+     * And it treats every newline as one, which the eighth review measured as
+     * a way round every test in this class that reads an object: the model
+     * wraps its bullets, so "Ridurrei l'esposizione azionaria\na questo"
+     * arrives as two segments, the object is the short half, and the anaphor
+     * is in a segment that carries no directive. A line break is only a
+     * sentence boundary when the next line starts one; a line continued in
+     * lower case is the same sentence, and a new bullet or a heading is not —
+     * they open with a marker, a digit or a capital.
      *
      * Rebuilt rather than spliced in place, because the array is read by
      * parity — even entries are segments, odd ones the terminators that follow
-     * them — and a rejoined pair has to carry its full stop back into the text
-     * while keeping that alternation intact.
+     * them — and a rejoined pair has to carry its terminator back into the
+     * text while keeping that alternation intact.
      *
      * @param  list<string>  $parts
      * @return list<string>
      */
-    private function rejoinAbbreviations(array $parts): array
+    private function rejoinSentences(array $parts): array
     {
         $total = count($parts);
         $out = [];
@@ -2091,11 +2214,13 @@ class AdvisorOutputFilter
             $segment = $parts[$i];
             $terminator = $parts[$i + 1] ?? '';
 
-            while ($terminator === '.'
-                && isset($parts[$i + 2])
-                && preg_match(self::ABBREVIATION, $segment) === 1
-                && preg_match('/^\s*\p{Ll}/u', $parts[$i + 2]) === 1) {
-                $segment .= '.'.$parts[$i + 2];
+            while (isset($parts[$i + 2])
+                && preg_match('/^\s*\p{Ll}/u', $parts[$i + 2]) === 1
+                && (
+                    ($terminator === '.' && preg_match(self::ABBREVIATION, $segment) === 1)
+                    || preg_match('/^\n+$/', $terminator) === 1
+                )) {
+                $segment .= $terminator.$parts[$i + 2];
                 $i += 2;
                 $terminator = $parts[$i + 1] ?? '';
             }
@@ -2126,7 +2251,7 @@ class AdvisorOutputFilter
         // point is that the result is the same length as what it stands in for.
         $out = str_replace('*', ' ', $segment);
 
-        return (string) preg_replace('/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u', ' ', $out);
+        return (string) preg_replace(self::LONE_UNDERSCORE, ' ', $out);
     }
 
     /**
@@ -2458,10 +2583,87 @@ class AdvisorOutputFilter
         $object = (string) preg_replace('/^\W*(?:(?:ad\s+)?es|p\.es|per\s+esempio|ad\s+esempio|ovvero|cioè)\b\.?/iu', '', $object);
 
         if ($this->namesAClass($object) || $this->isGenericRelational($object)) {
-            return 'generic';
+            return $this->pointsBack(substr($segment, $end)) ? 'other' : 'generic';
         }
 
         return preg_match('/\p{L}/u', $object) === 1 ? 'other' : 'empty';
+    }
+
+    /**
+     * Whether this object points at something named earlier, in which case it
+     * is not generic however it opens.
+     *
+     * The eighth review is why this exists, and the family it names is the one
+     * the round before measured on the wrong half. `objectKind()` decides with
+     * an OR, and the seventh round made only the relational branch fail
+     * closed; `namesAClass()` stayed anchored at the head and tolerant of the
+     * tail, and it is evaluated *first*, so an object opening with a class
+     * name never reached the branch that had been fixed. "Parliamo di Bitcoin.
+     * Ridurrei l'azionario a questo" passed in every measured shape, before
+     * the fix and after it.
+     *
+     * The family is not "relational object" and never was. It is *an object
+     * the filter reads as generic, carrying an anaphor the lookback would
+     * resolve* — so the test belongs here, above both branches, rather than
+     * being written twice.
+     *
+     * Making the object fail closed instead — requiring namesOnlyAClass() of
+     * a directive's object — was measured first and is not affordable: it
+     * takes the reflection question with it, seventeen conforming sentences
+     * on a sixty-case corpus, because "che cosa significherebbe ridurre
+     * l'azionario del 10%?" has a tail and a question mark and is exactly
+     * what the clauses permit. A directive's object may run on; what it may
+     * not do is point somewhere else. See ANAPHORIC_PRONOUN.
+     *
+     * See governsAnAnaphor() for where the line falls between a demonstrative
+     * that stands for a holding and one that only says *now*.
+     */
+    private function pointsBack(string $object): bool
+    {
+        if (preg_match_all(self::ANAPHORIC_PRONOUN, $object, $matches, PREG_SET_ORDER) < 1) {
+            return false;
+        }
+
+        foreach ($matches as $match) {
+            if ($this->governsAnAnaphor($match['governed'] ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a demonstrative followed by this word is standing in for a
+     * holding, given what it governs.
+     *
+     * The distinction is pronominal against adnominal, and it is the whole
+     * reason this is not simply "a demonstrative denies the licence". Measured
+     * on a ninety-three-case conforming corpus, that blunter rule cost eight
+     * reflection questions — "che cosa significherebbe ridurre l'azionario in
+     * questa fase?", "…in questo momento?", "…quest'anno?" — which is the
+     * WEA-14 harm arriving inside the commit that exists to close a bypass.
+     *
+     * A demonstrative with nothing to determine *is* its referent, so it
+     * points back. One that determines a noun points at what that noun
+     * denotes: a holding when the noun is a POSITION_NOUN, and a stage of the
+     * conversation when it is not.
+     *
+     * A function word is not a noun a demonstrative could be determining, so
+     * the demonstrative was pronominal after all — "a questo e alla liquidità"
+     * reads `e`, and the pronoun in front of it still points back.
+     */
+    private function governsAnAnaphor(string $governed): bool
+    {
+        if ($governed === '') {
+            return true;
+        }
+
+        if (preg_match('/^(?:'.self::PREPOSITION.'|'.self::NEW_CLAUSE_CONJUNCTION.')$/iu', $governed) === 1) {
+            return true;
+        }
+
+        return preg_match('/^(?:'.self::POSITION_NOUN.')$/iu', $governed) === 1;
     }
 
     /** Whether this text opens with the name of the whole or of a class of it. */
@@ -2805,7 +3007,7 @@ class AdvisorOutputFilter
             $names,
         ));
 
-        return self::$knownPattern = '/(?<![\p{L}\p{N}])(?:'.$alternation.')(?![\p{L}\p{N}])/iu';
+        return self::$knownPattern = '/'.self::NOT_WORD_BEFORE.'(?:'.$alternation.')'.self::NOT_WORD_AFTER.'/iu';
     }
 
     /**
@@ -2923,7 +3125,7 @@ class AdvisorOutputFilter
             $sorted,
         ));
 
-        return '/(?<![\p{L}\p{N}])(?:'.$alternation.')(?![\p{L}\p{N}])/iu';
+        return '/'.self::NOT_WORD_BEFORE.'(?:'.$alternation.')'.self::NOT_WORD_AFTER.'/iu';
     }
 
     /**
