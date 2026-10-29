@@ -543,8 +543,17 @@ class AdvisorOutputFilterTest extends TestCase
      * of error here: it is a compliance loss in its own right.
      *
      * Every phrase below was taken out of a real reply by the filter as it
-     * stood. Measured after this work: 0/14 altered, and 0/14 on the live
-     * probe's fourteen full replies (see LiveModelProbeTest).
+     * stood, and every one of them survives now: 0/14 altered here.
+     *
+     * That number does NOT carry over to the live probe, and the earlier claim
+     * that it did was measured on a single sample of replies. Re-run against
+     * two fresh samples from the same model it gives 4/14 and 3/14 replies
+     * altered, every removed segment a false positive, and among them the two
+     * findings WEA-14 withheld approval for: a refusal ("Non posso darti un
+     * parere su cosa fare con una posizione specifica") and the MiFID referral
+     * to an OCF-registered adviser. Fixing the phrases a sample produced does
+     * not fix the shape, because the next sample phrases it differently —
+     * a provider here is a regression guard, not a measurement.
      */
     #[DataProvider('protectedSpeech')]
     public function test_speech_the_clauses_require_is_not_removed(string $text): void

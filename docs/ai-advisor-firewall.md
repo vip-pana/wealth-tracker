@@ -262,14 +262,31 @@ questions through the shipped prompt, tool loop and budget, against whatever
 call); run it with `LIVE_MODEL_PROBE=1` after touching the filter, and read the
 segments it reports as removed rather than the count.
 
-Measured on `regolo` / `qwen3.5-122b`: **18 segments removed across 9 of 14
-replies before this work, 0 after** — and all 18 were compliant speech, since
-none of the fourteen replies contained a forbidden recommendation. The gates
-that fixed it are the protected-speech ones in `isProtectedSpeech()`: a refusal,
-a disclaimer, a reflection question, an interrogative, a hypothetical. Each is
-withheld on terms that are themselves tested, because a licence is also a way
-through: the interrogative one covers judgement words only, never an operative
-verb, a proposed number, or an assertion with a tag bolted on.
+The gates built for it are the protected-speech ones in `isProtectedSpeech()`:
+a refusal, a disclaimer, a reflection question, an interrogative, a
+hypothetical. Each is withheld on terms that are themselves tested, because a
+licence is also a way through: the interrogative one covers judgement words
+only, never an operative verb, a proposed number, or an assertion with a tag
+bolted on.
+
+**They narrow the problem; they do not close it, and the claim that they did is
+withdrawn.** Measured on `regolo` / `qwen3.5-122b`: 18 segments removed across 9
+of 14 replies before this work. After it, the same probe reported 0/14 — but
+that was one sample, and a sample is not the rate. Two fresh runs of the same
+probe against the same model, with no code change between them, scored **4/14
+and 3/14 replies altered**. Every removed segment was compliant speech in all
+three samples, since none of the replies contained a forbidden recommendation,
+and the removals still include the two WEA-14 withheld approval for: a refusal
+(`Non posso darti un parere su cosa fare con una posizione specifica`) and the
+referral to an OCF-registered adviser.
+
+Read that as the shape of the result, not a score to improve. Each round closes
+the phrasings the last sample produced, and the next sample phrases it
+differently — the model has the individual positions in its input, so it names
+them when it explains, which is what the co-occurrence rule fires on. Three
+rounds have not changed that, and a fourth is not obviously different in kind.
+Anyone picking this up should re-run the probe several times before believing a
+number from it, and should treat a single clean run as noise.
 
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and
