@@ -262,6 +262,16 @@ questions through the shipped prompt, tool loop and budget, against whatever
 call); run it with `LIVE_MODEL_PROBE=1` after touching the filter, and read the
 segments it reports as removed rather than the count.
 
+**One run is not a rate, and the probe is built so that it cannot be read as
+one.** `LIVE_MODEL_PROBE_SAMPLES=n` asks every question once per sample and
+reports the total; replies are cached per sample index, so re-running an index
+re-scores the same text — a change in the count is then the code and not a new
+draw — while a higher index draws fresh. `LIVE_MODEL_PROBE_FROM` skips the low
+indices, which is how a held-out set is measured: tune against the samples you
+have, then report on indices the filter has never seen. Do that, and report the
+held-out number. Tuning until the samples in hand come back clean is the one
+result this exercise has repeatedly shown to mean nothing.
+
 The gates built for it are the protected-speech ones in `isProtectedSpeech()`:
 a refusal, a disclaimer, a reflection question, an interrogative, a
 hypothetical. Each is withheld on terms that are themselves tested, because a
@@ -284,9 +294,47 @@ Read that as the shape of the result, not a score to improve. Each round closes
 the phrasings the last sample produced, and the next sample phrases it
 differently — the model has the individual positions in its input, so it names
 them when it explains, which is what the co-occurrence rule fires on. Three
-rounds have not changed that, and a fourth is not obviously different in kind.
-Anyone picking this up should re-run the probe several times before believing a
-number from it, and should treat a single clean run as noise.
+rounds have not changed that. Anyone picking this up should re-run the probe
+several times before believing a number from it, and should treat a single
+clean run as noise.
+
+### The fourth round, and what it found
+
+A fourth round went after *shapes* rather than phrasings, which is the part the
+previous three had not tried. Nine samples were drawn — six to work against,
+three held out — and the false positives in them had seven causes that have
+nothing to do with vocabulary:
+
+| Cause | What it cost |
+| --- | --- |
+| Markdown emphasis splitting a frame | `**Considera** se…` is not the phrase `considera se`. Every pattern now matches against a view with the markers blanked, byte for byte, so the offsets still line up. |
+| A full stop inside an abbreviation | `(es. obbligazioni…)` cut one question into two segments, each missing what the other held. |
+| A noun spelled like a verb | `di acquisti`, `gli aumenti`. A second-person verb never takes a determiner, so the determiner is the test. The previous round met this as `aspetti` and solved it by deleting one conjugation. |
+| An arrow between different units | `62.000€ → 58%` restates a position; `40% → 25%` moves it. The unit has to agree. |
+| A negation or a denial | "non una **raccomandazione**" was removed on the word that makes it a disclaimer — the refusal's trap again. Negation cancels the directive *noun* only: `non vendere VWCE` is still an instruction. |
+| An event as the subject | "Un calo del 50% **ridurrebbe** il tuo patrimonio dell'8%" is arithmetic. |
+| A question about staying put | The largest family by far. "Intendi mantenere…?", "Quanto tempo puoi permetterti di aspettare?" — holding needs no instruction, so asking about it proposes nothing. Asserting it still does, and so does any proposed number beside it. |
+
+**The one that matters most is none of those.** `LOOKBACK` carries an instrument
+forward five segments so that an anaphor can be resolved — "Parliamo di Bitcoin.
+È la tua posizione più volatile. Io la venderei." On a real reply the model names
+a position on nearly every line, so that condition is satisfied almost always,
+and the co-occurrence rule quietly degenerates into a one-sided one: *any*
+directive is removed, and the instrument half stops contributing. That is the
+mechanism behind most of what the probe deletes, including the generic advice
+ESMA35-43-3861 ¶48-50 permits and the product exists to give.
+
+`GENERIC_OBJECT` narrows it — a directive whose own object is a class or the
+portfolio inherits nothing from its neighbours — and that is what the measured
+improvement is mostly made of. It does not close it. After the round, **every**
+remaining false positive in the samples survives the filter when screened on its
+own and is removed only in context; the lookback is the sole surviving cause.
+Dropping the lookback would reopen the WEA-10 anaphora bypass, so this is the
+floor for a filter that reads one segment at a time.
+
+That is the honest statement of where the word-list road ends. The alternative
+that does not have this shape is not a better list: it is not giving the model
+the per-position briefing in the first place, so that it has no position to name.
 
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and

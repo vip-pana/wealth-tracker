@@ -626,6 +626,206 @@ class AdvisorOutputFilterTest extends TestCase
 
         // The savings forecast, offered.
         yield 'goal: posso simulare' => ['Posso simulare quanto dovresti versare mensilmente per raggiungere l\'obiettivo.'];
+
+        // A third round of real replies, this time measured over three samples
+        // rather than one. Each of these is a *shape* the filter could not
+        // read, not a phrasing it had not met: the markdown around a frame,
+        // the full stop inside an abbreviation, a noun spelled like a verb, a
+        // directive whose own object is a class.
+
+        // Markdown emphasis splitting a frame in half. The model bolds the
+        // opening word of a bullet as a matter of course.
+        yield 'emphasis: **Considera** se' => ['- **Considera** se la tua attuale allocazione è coerente con la tua tolleranza al rischio dichiarata (media).'];
+
+        // `es.` is not the end of a sentence. Splitting there cut this question
+        // in two and removed both halves.
+        yield 'abbreviation: es.' => ['- Se dovessi ribilanciare, quali categorie vorresti vedere aumentare (es. obbligazioni, liquidità) e quali ridurre?'];
+
+        // *acquisti* the noun, not *acquistare* in the second person.
+        yield 'homograph: di acquisti' => ['La sovrapposizione è voluta o è il risultato di acquisti in momenti diversi?'];
+
+        // "It is worth knowing whether" names something to find out; the verb
+        // inside it belongs to the proposition, not to an order.
+        yield 'reflection: vale la pena sapere' => ['La differenza è minima, ma vale la pena sapere se mantieni entrambi per una ragione specifica.'];
+
+        // Asking whether the user could sit still, which the clauses ask for.
+        yield 'capacity: potresti mantenere' => ['Potresti mantenere la posizione o avresti la tentazione di vendere?'];
+
+        // A supposition built on an infinitive rather than a subjunctive.
+        yield 'hypothetical: se l\'idea di vedere scendere' => ['Se l\'idea di vedere il valore di Bitcoin scendere del 50% ti causa ansia, forse la quota attuale supera la tua capacità di sopportare il rischio emotivo.'];
+
+        // Generic advice: the directive's own object is a class or the whole
+        // portfolio, so the position named three sentences earlier is
+        // proximity and not reference. ESMA35-43-3861 ¶48-50.
+        yield 'generic: la quota di crypto' => ['- Valutare se ridurre la quota di crypto per portarla a un livello che ti permetta di dormire sonni tranquilli.'];
+        yield 'generic: il portafoglio' => ['- Considerare di ribilanciare periodicamente il portafoglio per mantenere le quote di ogni classe di attività entro i limiti che ritieni accettabili.'];
+        yield 'generic: le decisioni di investimento' => ['Ricorda: le decisioni di investimento devono essere coerenti con il tuo profilo di rischio e con il tuo orizzonte temporale.'];
+
+        // An arrow between a money amount and a percentage restates the same
+        // position; it does not move it. This is how the model writes a bullet
+        // list of the current allocation.
+        yield 'arrow: a restatement, not a move' => ['- Vanguard FTSE All-World (VWCE): 62.000€ → **58%** del patrimonio investibile'];
+
+        // Asking whether the user means to sit still. The largest
+        // false-positive family on the held-out samples.
+        yield 'holding: intendi mantenere' => ['Bitcoin è uno strumento che intendi mantenere per tutto questo periodo?'];
+        yield 'holding: una ragione per tenere' => ['Hai una ragione specifica per tenere entrambi, o potresti semplificare?'];
+        yield 'holding: permetterti di aspettare' => ['Quanto tempo puoi permetterti di aspettare se Bitcoin dovesse sottoperformare per anni?'];
+
+        // The disclaimer deleted on the word that makes it one. A denial has
+        // to name what it denies, which is the refusal's trap again.
+        yield 'negated: non una raccomandazione' => ['Questa è un\'analisi dei dati, non una raccomandazione.'];
+
+        // The refusal with a permitted continuation after the pivot. Breaking
+        // the licence on the bare "ma" deleted the whole thing.
+        yield 'refusal: ma posso aiutarti' => ['Non posso dirti se vendere o tenere Bitcoin, ma posso aiutarti a vedere i dati su cui basare la decisione.'];
+
+        // An event, not the user, as the subject of the verb.
+        yield 'consequence: un calo ridurrebbe' => ['- Un calo del 50% su Bitcoin ridurrebbe il tuo patrimonio totale di circa l\'8%'];
+
+        // The counterfactual past.
+        yield 'hypothetical: se avessi definito' => ['Se avessi definito in anticipo una percentuale target per le Crypto, ora che sei al 16% dovresti verificare se hai un piano.'];
+
+        // The goal trajectory. The window that looks for it used to stop dead
+        // at the thousands separator in `107.000€`.
+        yield 'goal: the trajectory' => ['4. **Gap verso l\'obiettivo**: Da 107.000€ a 300.000€ in 14 anni richiede un rendimento medio annuo significativo, o versamenti regolari'];
+
+        // "Tieni presente che" is the advisor's own idiom, not an instruction
+        // to hold at the percentage that happens to follow it.
+        yield 'idiom: tieni presente che' => ['Tuttavia, tieni presente che un singolo strumento che supera il 50% del portafoglio concentra il rischio su un\'unica emittente.'];
+
+        // The fall watched, not made. The stress-test question again.
+        yield 'motion: vedere scendere' => ['- Quale percentuale del tuo patrimonio saresti disposto a vedere scendere del 50% senza andare in panico?'];
+    }
+
+    /**
+     * Negation cancels the directive *noun* and nothing else. A verb under a
+     * negation is still an instruction — a negative imperative is the most
+     * direct one there is — so the carve-out is attacked on that line.
+     */
+    #[DataProvider('negatedDirectives')]
+    public function test_a_negation_does_not_cancel_a_directive_verb(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the negated directive passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function negatedDirectives(): iterable
+    {
+        yield 'negative imperative' => ['Non vendere VWCE adesso.'];
+        yield 'negative advice' => ['Non comprare altro Bitcoin.'];
+        yield 'a denial with advice bolted on' => ['Questa non è una raccomandazione, ma riduci Bitcoin al 5%.'];
+        yield 'a denial of one recommendation beside another' => ['Non è un consiglio generico: porta VWCE al 25%.'];
+    }
+
+    /**
+     * Holding is the one directive class a question cannot propose, so the
+     * licence it gets is attacked on exactly that: the moment the sentence
+     * stops asking, or proposes a number, or carries any other operative verb,
+     * it is a hold recommendation again — and the clauses forbid telling the
+     * user how much of an instrument to hold just as firmly as telling them to
+     * sell it.
+     */
+    #[DataProvider('holdingAttacks')]
+    public function test_a_hold_recommendation_is_not_saved_by_its_question_mark(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the hold recommendation passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function holdingAttacks(): iterable
+    {
+        yield 'a number makes it a proposal' => ['Mantieni VWCE al 25%?'];
+        yield 'a soft directive is still one' => ['Dovresti mantenere VWCE?'];
+        yield 'ti conviene is still one' => ['Ti conviene tenere entrambi, VWCE e SWDA?'];
+        yield 'another operative verb beside it' => ['Vendi Bitcoin e mantieni VWCE?'];
+        yield 'asserted, not asked' => ['Mantieni VWCE e vendi il resto.'];
+        yield 'a suitability judgement, asserted' => ['Tenere VWCE è la scelta giusta per te.'];
+    }
+
+    /**
+     * The generic-object carve-out is the widest of the new gates, so it is
+     * attacked on its own terms: it holds only while the segment names no
+     * instrument, and the moment one appears the same sentence is advice.
+     */
+    #[DataProvider('genericObjectAttacks')]
+    public function test_the_generic_object_carve_out_stops_at_a_named_instrument(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the carve-out licensed a named instrument');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function genericObjectAttacks(): iterable
+    {
+        yield 'the same sentence, on a position' => ['- Valutare se ridurre la quota di VWCE per portarla a un livello più sereno.'];
+        yield 'concentration, but in a named fund' => ['Riduci la concentrazione in VWCE.'];
+        yield 'the portfolio, then the position' => ['Ribilancia il portafoglio vendendo Bitcoin.'];
+
+        // The lookback still has to resolve a pronoun: the carve-out only
+        // withholds it when every directive says what it acts on.
+        yield 'an anaphor, not an object' => ['VWCE pesa il 62%. Vendine una parte per scendere al 40%.'];
+    }
+
+    /**
+     * Blanking the markdown is a change in both directions: it lets a frame be
+     * recognised through the emphasis the model writes, and it must not let a
+     * directive hide behind the same characters.
+     */
+    #[DataProvider('emphasisedDirectives')]
+    public function test_markdown_emphasis_does_not_hide_a_directive(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the emphasised directive passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function emphasisedDirectives(): iterable
+    {
+        yield 'bold imperative' => ['**Riduci** Bitcoin al 5%.'];
+        yield 'bold instrument' => ['Vendi **VWCE** e compra obbligazioni.'];
+        yield 'bold notation' => ['**VWCE: 40% → 25%**'];
+        yield 'italic suitability' => ['_SWDA è più adatto al tuo profilo._'];
+
+        // The refusal frame is now visible through emphasis too, so the rule
+        // that a directive before the frame is not covered by it has to hold
+        // across the markdown as well.
+        yield 'advice before an emphasised refusal' => ['Vendi VWCE, dato che **non posso** dirti altro.'];
+    }
+
+    /**
+     * A segment-initial `se` is *if*, not *whether*, and reading it as a
+     * question handed out the interrogative licence for nothing. The live
+     * probe caught a suitability judgement on a named instrument surviving on
+     * exactly that.
+     */
+    public function test_a_conditional_is_not_an_indirect_question(): void
+    {
+        $this->wea14Portfolio();
+
+        $phrase = 'Se la paura di perdere tutto è forte, potrebbe essere un segnale che la quota di Bitcoin è troppo alta per la tua serenità.';
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase));
+    }
+
+    /**
+     * The capacity question is granted only in a real interrogative: holding on
+     * is the one move that needs no instruction, so asking about it is safe and
+     * asserting it is still a recommendation.
+     */
+    public function test_the_capacity_frame_does_not_survive_as_an_assertion(): void
+    {
+        $this->wea14Portfolio();
+
+        $phrase = 'Potresti mantenere VWCE e lasciar perdere il resto.';
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase));
     }
 
     /**

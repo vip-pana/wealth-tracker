@@ -40,6 +40,17 @@ use Illuminate\Support\Facades\Log;
  * declares the AI or asks the user to reflect is never removed, however many
  * directive tokens it contains. See docs/ai-advisor-firewall.md for how that
  * gate is kept from becoming the bypass.
+ *
+ * And hence the fourth, GENERIC_OBJECT, which is about the *instrument* half
+ * rather than the directive half. LOOKBACK carries a name forward five segments
+ * so an anaphor can be resolved, but a real reply names a position on nearly
+ * every line, so that condition holds almost always and the co-occurrence rule
+ * degenerates into a one-sided one — every directive removed, the instrument
+ * half contributing nothing. A segment whose directives already say they act on
+ * a class or on the portfolio therefore inherits nothing from its neighbours.
+ * That is what keeps the ¶48-50 safe harbour alive in context and not only in
+ * isolation, and measuring it needs real replies: on hand-written phrases the
+ * lookback is never exercised, so the defect is invisible by construction.
  */
 class AdvisorOutputFilter
 {
@@ -113,7 +124,10 @@ class AdvisorOutputFilter
         .'|dimezz(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|azzer(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|monetizz(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
+        // "Mettere alla prova la pazienza", "mettere in discussione un piano",
+        // "mettere da parte" — idioms, not an instruction to place money.
         .'|mett(?:i|ere?|endo|erei|eresti|erebbe|iamo|ete)'
+        .'(?!\s+(?:alla\s+prova|in\s+discussione|in\s+conto|in\s+chiaro|a\s+fuoco|da\s+parte))'
         .'|prefer(?:irei|irebbe)'
         .'|lasc(?:ia|iare?|erei|eresti|erebbe) perdere'
         .'|esci|entra|entrar(?:e)?'
@@ -208,11 +222,7 @@ class AdvisorOutputFilter
         .'|ti consiglierei|consiglierei|ti suggerirei|suggerirei|ti raccomanderei'
         .'|se fossi in te|al posto tuo|al tuo posto'
         .'|la mia preferenza|la mia scelta sarebbe|personalmente (?:io )?'
-        .')\b(?!(?:\W+\w+){0,3}\W+(?:'
-        .'verificar|controllar|chieder|valutar|considerar|capir|saper|confrontar'
-        .'|monitorar|legger|informart|documentart|parlar|domandar|osservar|guardar'
-        .'|ricordar|tener|aggiornar|approfondir|rivedere i dati'
-        .'))/iu';
+        .')\b(?!(?:\W+\w+){0,3}\W+(?:'.self::EPISTEMIC.'))/iu';
 
     /**
      * Suitability judgements. Prohibited whenever they land on a specific
@@ -270,6 +280,16 @@ class AdvisorOutputFilter
         .')/iu';
 
     /**
+     * One character of the same sentence. A full stop ends it only when a
+     * digit does not follow, because Italian groups thousands with it — the
+     * same exception `screen()` makes when it splits. Without it a window
+     * stops dead at `107.000€`, which is where every figure in this app sits,
+     * and the live probe found the goal trajectory "da 107.000€ a 300.000€ in
+     * 14 anni richiede versamenti regolari" redacted for exactly that reason.
+     */
+    private const string SAME_SENTENCE = '(?:[^.!?;\n]|\.(?=\d))';
+
+    /**
      * A percentage or a money amount, however the model groups and spaces it:
      * `25%`, `0 %`, `5.000€`, `1.234,50 euro`.
      */
@@ -282,11 +302,24 @@ class AdvisorOutputFilter
      * them carries a verb — which is why no amount of widening the word lists
      * reached them. `VWCE: 40% → 25%` is an instruction with nothing to list.
      *
-     * The arrow is taken as notation unconditionally: Italian prose describing
-     * what a position did says "è passato dal 40% al 25%", it does not draw an
-     * arrow.
+     * Between two quantities the unit has to match, and that is what separates
+     * a move from a restatement. `40% → 25%` and `62.000€ → 50.000€` are
+     * transitions; `62.000€ → 58%` is the same money said twice, which is how
+     * the model writes a bullet list of the current allocation — the live
+     * probe found five such lines deleted from one reply. A label on the left
+     * needs no unit to agree with, so `VWCE → 25%` stays notation.
      */
-    private const string NOTATION_ARROW = '/(?:'.self::QUANTITY.'|[\p{L}\p{N}]{2,})\s*(?:→|➔|➜|⇒|=>|-+>|~>)\s*'.self::QUANTITY.'/u';
+    private const string ARROW = '\s*(?:→|➔|➜|⇒|=>|-+>|~>)\s*';
+
+    private const string PERCENTAGE = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*%';
+
+    private const string MONEY = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:€|euro\b)';
+
+    private const string NOTATION_ARROW = '/(?:'
+        .self::PERCENTAGE.self::ARROW.self::PERCENTAGE
+        .'|'.self::MONEY.self::ARROW.self::MONEY
+        .'|[\p{L}\p{N}]{2,}'.self::ARROW.self::QUANTITY
+        .')/u';
 
     /**
      * The same move written as a span rather than as an arrow: "Bitcoin da
@@ -295,6 +328,14 @@ class AdvisorOutputFilter
      * 25% negli ultimi sei mesi").
      */
     private const string NOTATION_RANGE = '/\bda(?:l|llo|lla|ll\')?\s+'.self::QUANTITY.'\s+a(?:l|llo|lla|ll\')?\s+'.self::QUANTITY.'/iu';
+
+    /**
+     * What a price does, as an infinitive. Used by HYPOTHETICAL to recognise a
+     * scenario built on a verb rather than on a subjunctive — the subject of
+     * these is always the money, never the user.
+     */
+    private const string MARKET_MOTION = '(?:scender|salir|perder|guadagnar|crollar|dimezzars'
+        .'|raddoppiar|aumentar|calar|andar|arrivar|toccar)e';
 
     /** A markdown table row. */
     private const string TABLE_ROW = '/^\s*\|.*\|\s*$/u';
@@ -355,6 +396,16 @@ class AdvisorOutputFilter
      */
     private const string NOTATION_MOVE = '/\b(?:'
         .'port(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
+        // Holding *at a weight* is a proposed weight: "Mantieni VWCE al 25%"
+        // is the same instruction as "Porta VWCE al 25%", and without this the
+        // interrogative licence for staying put would hand it the question
+        // mark as a way through. Composure is unaffected — "mantenere la
+        // calma … se perdesse il 50%" is dropped by ABSTRACT_OBJECT first.
+        .'|mantien[ia]|manten(?:ere?|endo|iamo|ete)|manterr(?:ei|esti|ebbe)'
+        // Same exclusion as HARD_DIRECTIVES: "tieni presente che un singolo
+        // strumento supera il 50%" is the advisor's own idiom, and without
+        // this it reads as an instruction to hold at 50%.
+        .'|(?:tien[ia]|ten(?:ere|endo))(?!\s+(?:present|cont|d\'occhio|a\s+mente))|terr(?:ei|esti|ebbe)'
         .'|lasc(?:ia|i|iare?|iando|erei|eresti|erebbe|iamo|iate)'
         .'|vers(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|destin(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
@@ -364,7 +415,7 @@ class AdvisorOutputFilter
         .'|limit(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|alloc(?:a|hi|are?|ando|herei|heresti|herebbe|hiamo|ate)'
         .'|concentr(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
-        .')'.self::CLITIC.'\b(?:(?!per\s+raggiunger|obiettivo|traguardo)[^.!?;\n]){0,60}?'.self::QUANTITY.'/iu';
+        .')'.self::CLITIC.'\b(?:(?!per\s+raggiunger|obiettivo|traguardo)'.self::SAME_SENTENCE.'){0,60}?'.self::QUANTITY.'/iu';
 
     /**
      * A signed amount in a list or a table cell: `VWCE: -5.000€`,
@@ -417,6 +468,20 @@ class AdvisorOutputFilter
     private const string HYPOTHETICAL = '/(?:'
         .'\bse\s+(?:\w+\s+){0,3}(?:scendess|salisse|perdess|guadagnass|crollass|dimezzass'
         .'|raddoppiass|aumentass|calass|facess|andass|arrivass|toccass)\w*'
+        // The same supposition built on an infinitive instead of a subjunctive:
+        // "Se l'idea di vedere il valore di Bitcoin scendere del 50% ti causa
+        // ansia". Same stems, so this widens the shape and not the vocabulary;
+        // the subject in between is why the fixed three-word window above
+        // cannot reach it.
+        .'|\bse\s+[^,;:]{0,80}?\b'.self::MARKET_MOTION.'\b'
+        // The motion watched rather than made: "quale percentuale del tuo
+        // patrimonio saresti disposto a vedere scendere del 50%". What falls
+        // is the money, not something the user is being told to do, so the
+        // pair of numbers is a scenario and not a proposed move.
+        .'|\b(?:vedere|veder[mt]i|assistere\s+a|guardare)\s+[^,;:]{0,40}?\b'.self::MARKET_MOTION.'\b'
+        // The counterfactual past: "Se avessi definito in anticipo una
+        // percentuale target…" supposes a plan that was never made.
+        .'|\bse\s+(?:\w+\s+){0,2}(?:avess[ie]|foss[ie]|dovess[ie])\b'
         .'|\bipotes\w+|\bipotetic\w+|\bimmagina\b|\bimmaginiamo\b|\bsupponiamo\b'
         .'|\bmettiamo\s+(?:che|caso)|\bper\s+assurdo\b|\bnello\s+scenario\b|\bscenario\s+(?:in\s+cui|peggiore)'
         .'|\bin\s+caso\s+di\s+(?:crollo|calo|ribasso|discesa)'
@@ -483,6 +548,12 @@ class AdvisorOutputFilter
      */
     private const string REFLECTION = '/\b(?:'
         .'valuta\s+se|verifica\s+se|controlla\s+se|considera\s+se|rifletti\s+su|ragiona\s+su'
+        // The same frame built with a modal — "dovresti valutare se",
+        // "potresti verificare se". It belongs here and not among the
+        // indicative frames precisely so that the object window still applies:
+        // "dovresti valutare se vendere VWCE" must stay an instruction.
+        .'|(?:dovrest[ei]|potrest[ei]|puoi|prova\s+a|vale\s+la\s+pena(?:\s+di)?)\s+'
+        .'(?:valutare|verificare|controllare|considerare|capire)\s+se'
         .'|riuscirest[ei]\s+a|te\s+la\s+sentirest[ei]|saresti\s+(?:disposto|disposta|in\s+grado)'
         .'|ti\s+permetterest[ei]|sopporterest[ei]|reagirest[ei]|farest[ei]\s+se'
         .'|preferirest[ei]|ti\s+sentirest[ei]|ti\s+dà\s+(?:sicurezza|fastidio|serenità)'
@@ -496,6 +567,20 @@ class AdvisorOutputFilter
      * token is far past this window.
      */
     private const int REFLECTION_OBJECT_WINDOW = 12;
+
+    /**
+     * Epistemic verbs — the things the clauses ask the advisor to tell the user
+     * to do ("dire che cosa l'utente dovrebbe VERIFICARE, CONTROLLARE o
+     * CHIEDERSI"). Shared by SOFT_DIRECTIVES, which clears a soft directive
+     * that governs one of them, and by REFLECTION_INDICATIVE, where the same
+     * list turns "vale la pena" into a reflection frame rather than a verdict.
+     */
+    private const string EPISTEMIC = 'verificar|controllar|chieder|valutar|considerar|capir|saper|confrontar'
+        .'|monitorar|legger|informart|documentart|parlar|domandar|osservar|guardar'
+        // Only the idiom. Bare `tener` cleared "ti conviene tenere VWCE" as
+        // though it were "tenere presente", which turned a hold recommendation
+        // into no directive at all.
+        .'|ricordar|tener\s+(?:present|cont|d\'occhio|a\s+mente)|aggiornar|approfondir|rivedere i dati';
 
     /**
      * The same reflection frame in the indicative rather than the imperative:
@@ -517,13 +602,55 @@ class AdvisorOutputFilter
      */
     private const string REFLECTION_INDICATIVE = '/\b(?:'
         .'chiediti|chieditelo|domandati|ti\s+sei\s+(?:mai\s+)?chiest[oa]'
-        .'|prova\s+a\s+chiedert[ei]|potrest[ei]\s+chiedert[ei]'
+        // The bare infinitive covers every way the advisor introduces it —
+        // "dovresti chiederti", "prova a chiederti", "vale la pena chiederti",
+        // and `Chiederti se…` opening a bullet.
+        .'|chiedert[ei]|domandart[ei]|interrogart[ei]'
         .'|ti\s+chiedi\s+se|ci\s+si\s+chiede\s+se|c\'è\s+da\s+chiedersi'
-        .'|vale\s+la\s+pena\s+(?:di\s+)?(?:chiedersi|domandarsi|interrogarsi)'
+        // "Vale la pena sapere se mantieni entrambi per una ragione specifica"
+        // names something to find out, and the operative verb inside it is the
+        // proposition's, not an order — the same reading the *chiedersi* family
+        // gets. Restricted to the epistemic verbs the clauses already name, so
+        // "vale la pena vendere" is untouched.
+        .'|vale\s+la\s+pena\s+(?:di\s+)?(?:'.self::EPISTEMIC.')\w*'
         .'|(?:una|la)\s+domanda\s+da\s+(?:port[ei]|fart[ei]|fars[ei])'
         .'|la\s+domanda\s+(?:che\s+conta|giusta|vera|chiave|è\s+se)'
         .'|ti\s+senti\s+di|te\s+la\s+senti\s+di|sei\s+disposto\s+a|sei\s+disposta\s+a'
         .')\b/iu';
+
+    /**
+     * The stress test asked as a question about the user's own nerve:
+     * "Potresti mantenere la posizione o avresti la tentazione di vendere?".
+     * `potresti` is left out of REFLECTION because on its own it proposes as
+     * often as it asks — "potresti vendere VWCE?" — so the frame is granted
+     * only for verbs that name *staying put* and only in a real interrogative.
+     * Holding on is the one move that needs no instruction, which is what makes
+     * the question safe to ask and the assertion still worth removing.
+     *
+     * The live probe found the whole question deleted, and the clauses ask the
+     * advisor to pose it.
+     */
+    private const string CAPACITY_QUESTION = '/\b(?:potrest[ei]|riuscirest[ei]\s+a|sarest[ei]\s+in\s+grado\s+di|te\s+la\s+sentirest[ei]\s+di)'
+        .'\s+(?:'.self::HOLDING_VERB.')\w*/iu';
+
+    /**
+     * Staying put: keeping a position, waiting, sitting through a drawdown.
+     *
+     * These are the one class of directive that proposes nothing when it is
+     * asked rather than asserted, because doing nothing needs no instruction —
+     * so in a real interrogative they do not withhold the licence. It is the
+     * largest false-positive family the live probe found on fresh samples:
+     * "Bitcoin è uno strumento che intendi mantenere per tutto questo
+     * periodo?", "Hai una ragione specifica per tenere entrambi?", "Quanto
+     * tempo puoi permetterti di aspettare?" are all questions the clauses ask
+     * the advisor to pose, and all three were deleted.
+     *
+     * The hold *recommendation* is untouched: "dovresti mantenere VWCE?" and
+     * "ti conviene tenere entrambi?" carry a SOFT_DIRECTIVE, which is not in
+     * this class and still blocks the licence on its own.
+     */
+    private const string HOLDING_VERB = 'manten|mantien|manterr|tener|tien|terr|conserv|sopport'
+        .'|regg|resist|rest|riman|continu|conviv|aspett|attend';
 
     /**
      * Advice wearing a question mark. These are the frames that turn an
@@ -562,8 +689,22 @@ class AdvisorOutputFilter
      * Treated exactly like an interrogative, so it earns the licence only on
      * the same terms: judgement words alone, never an operative verb or a
      * proposed number. "Se vuoi, vendi VWCE" is therefore still removed.
+     *
+     * The bullet is required, not optional, and that is the whole difference
+     * between *whether* and *if*. A list item opening with `se` is a thing to
+     * check; a sentence opening with `se` is an ordinary conditional with a
+     * main clause after the comma, and reading it as a question handed out the
+     * licence for free. The live probe caught that: "Se la paura di perdere
+     * tutto è forte, potrebbe essere un segnale che la quota di Bitcoin è
+     * troppo alta per la tua serenità" is a suitability judgement on a named
+     * instrument, and it survived on nothing but its leading `se`.
      */
-    private const string INDIRECT_QUESTION = '/^[\s\-*#>•]*(?:\d+[.)]\s*)?(?:e\s+|oppure\s+)?se\b/iu';
+    private const string INDIRECT_QUESTION = '/^\s*(?:[-*#>•]+|\d+[.)])[\s"\'«“(]*(?:e\s+|oppure\s+)?'
+        // The bullet that asks outright but loses its question mark to the
+        // list formatting: "- Quanto tempo puoi permetterti di aspettare".
+        // Same licence and therefore the same terms — an operative verb or a
+        // proposed number still withholds it.
+        .'(?:se|quanto|quanta|quanti|quante|quale|quali|come|perché|perche|quando|dove|chi|cosa|che\s+cosa)\b/iu';
 
     /**
      * The pivot from refusing to advising. Everything after one of these is
@@ -600,6 +741,23 @@ class AdvisorOutputFilter
     private const int INVERSION_WINDOW = 24;
 
     /**
+     * The directive whose subject is a market event rather than the user:
+     * "Un calo del 50% su Bitcoin ridurrebbe il tuo patrimonio totale dell'8%".
+     * That is arithmetic about a scenario, and the live probe found two
+     * consecutive lines of it deleted from one reply.
+     *
+     * The event noun has to be the subject, so it is looked for behind the
+     * directive and the verb has to be third person — "un calo ridurrebbe" is
+     * a consequence, "riduci" after the word *calo* is still an instruction.
+     */
+    private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel)\s+'
+        .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
+        .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'.self::SAME_SENTENCE.'{0,60}$/iu';
+
+    /** The third-person forms a consequence is stated in. */
+    private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)$/iu';
+
+    /**
      * The directive verb aimed at an abstraction instead of at a position:
      * "la diversificazione serve a ridurre il rischio", "aumentando il rischio
      * del tuo portafoglio". Nothing is being bought or sold there — it is the
@@ -619,11 +777,12 @@ class AdvisorOutputFilter
      * is the stress-test question the clauses ask for, and the live probe
      * found it redacted on the word "mantenere".
      */
-    private const string ABSTRACT_OBJECT = '/^\W*(?:(?:ulteriormente|molto|notevolmente|sensibilmente|leggermente|troppo)\s+)?'
+    private const string ABSTRACT_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .'(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\')\s*)?'
         .'(?:rischi[oi]|volatilit[àa]|cost[oi]|spes[ae]|commission[ei]|impost[ae]|tass[ae]'
         .'|incertezz[ae]|complessit[àa]|probabilit[àa]|dubbi|stress|ansia|drawdown|impatt[oi]'
         .'|oscillazion[ei]|fluttuazion[ei]|sensibilit[àa]|margine\s+di\s+errore'
+        .'|tolleranz[ae]|capacit[àa]|propension[ei]'
         // Composure only. `piano`, `strategia` and `equilibrio` are pointedly
         // NOT here: "apri un piano di accumulo su Amundi" is a recommendation,
         // and the harness carries it.
@@ -631,6 +790,18 @@ class AdvisorOutputFilter
 
     /** How far after a directive its object is looked for. */
     private const int OBJECT_WINDOW = 40;
+
+    /**
+     * The adverb that can sit between a directive and its object without
+     * changing what the object is: "ridurre *parzialmente* il rischio",
+     * "ribilanciare *periodicamente* il portafoglio". Shared by the two
+     * object-anchored patterns so that an adverb learned for one is not a
+     * blind spot in the other — the live probe found "aiuta a bilanciare
+     * parzialmente il rischio" removed on exactly that gap.
+     */
+    private const string DEGREE_ADVERB = 'ulteriormente|molto|notevolmente|sensibilmente|leggermente'
+        .'|troppo|parzialmente|periodicamente|regolarmente|progressivamente|gradualmente'
+        .'|eventualmente|subito|significativamente|drasticamente|moderatamente|comunque';
 
     /**
      * The infinitive used as the subject of the sentence rather than as an
@@ -671,8 +842,91 @@ class AdvisorOutputFilter
      * is untouched: `vendere` is not one of these verbs and HARD_DIRECTIVES is
      * not suppressed.
      */
-    private const string GOAL_CONTRIBUTION = '/\b(?:versar|risparmiar|accantonar|investir|mettere\s+da\s+parte)\w*'
-        .'[^.!?;\n]{0,80}?\b(?:per\s+raggiunger|per\s+arrivare\s+a|obiettivo|traguardo)/iu';
+    private const string GOAL_CONTRIBUTION = '/(?:'
+        // The goal named first and the contribution after it — "Gap verso
+        // l'obiettivo: da 107.000€ a 300.000€ in 14 anni richiede versamenti
+        // regolari". A colon is not a segment boundary, so the heading and the
+        // figure are one segment and the order is whichever the model chose.
+        .'\b(?:obiettivo|traguardo)\b'.self::SAME_SENTENCE.'{0,120}?\b(?:versar|versament|risparmi|accantonar|contribut)'
+        .'|\b(?:versar|versament|risparmiar|accantonar|investir|mettere\s+da\s+parte)\w*'
+        .self::SAME_SENTENCE.'{0,80}?\b(?:per\s+raggiunger|per\s+arrivare\s+a|obiettivo|traguardo'
+        // A contribution stated as a rate is saving too, whether or not the
+        // goal is named in the same sentence: "quanto riesci a versare
+        // mensilmente con il tuo reddito attuale (2.400€)" is the app's own
+        // forecast input, and the live probe found it redacted.
+        .'|mensilmente|al\s+mese|ogni\s+mese|annualmente|all\'anno|ogni\s+anno)'
+        .')/iu';
+
+    /**
+     * Italian abbreviations whose full stop is not the end of a sentence.
+     * `es.` is the one that matters: the model writes "(es. obbligazioni,
+     * liquidità)" constantly, and splitting there cut one question into two
+     * halves, each missing the context the other held — the live probe found a
+     * single reflection question reported as two separate removals.
+     *
+     * Matched against the segment, whose terminator the split has already taken
+     * off, and only when a lowercase word follows — so a genuine sentence end
+     * before a capital still splits.
+     */
+    private const string ABBREVIATION = '/\b(?:es|p\.es|ecc|etc|ca|cfr|art|pag|pagg|fig|vs|sig|dott|prof|ing|avv|nr|num|min|max|ved)$/iu';
+
+    /**
+     * Nouns that are spelled like the second person of a directive verb:
+     * *acquisti*, *aumenti*, *tagli*, *costi*, *spostamenti*. Italian marks the
+     * difference with a determiner or a preposition in front — "di acquisti",
+     * "gli aumenti", "i tagli" — because a second-person verb never takes one.
+     *
+     * The previous round met this collision as `aspetti` ("Aspetti da
+     * valutare:" read as an instruction to wait) and solved it by dropping that
+     * one conjugation from the list. The live probe then found `acquisti` doing
+     * exactly the same thing in "il risultato di acquisti in momenti diversi",
+     * so the collision is a class and gets a rule rather than another deletion.
+     */
+    private const string NOUN_DETERMINER = '/(?:^|[^\p{L}\p{N}\'])(?:(?:'
+        // Articles and the articulated prepositions built on them.
+        .'il|lo|la|i|gli|le'
+        .'|di|del|dello|della|dei|degli|delle'
+        .'|al|allo|alla|ai|agli|alle'
+        .'|da|dal|dallo|dalla|dai|dagli|dalle'
+        .'|in|nel|nello|nella|nei|negli|nelle'
+        .'|con|col|coi|su|sul|sullo|sulla|sui|sugli|sulle'
+        .'|per|tra|fra|senza|dopo|durante'
+        // Possessives and quantifiers, which mark a noun just as firmly.
+        .'|quest[ei]|quegli|quell[ei]|tuoi|suoi|miei|nostri|loro'
+        .'|alcuni|molti|tanti|pochi|vari|diversi|nuovi|altri|ulteriori'
+        .'|continui|grandi|piccoli|futuri|passati|eventuali|successivi'
+        .')\s+|(?:l|dell|all|dall|nell|sull|un)\'\s*)$/iu';
+
+    /** How far back the determiner that marks a noun is looked for. */
+    private const int DETERMINER_WINDOW = 12;
+
+    /**
+     * The nominalised directive under a negation: "Questa è un'analisi dei
+     * dati, **non una raccomandazione**." A denial has to name what it denies,
+     * which is the same structural trap as the refusal — and here it costs the
+     * disclaimer the clauses require, on the single word that makes it one.
+     *
+     * Confined to the nominal family on purpose. Negation does not neutralise
+     * a verb — "non vendere VWCE" is an instruction, not the absence of one —
+     * so this may not be generalised to HARD_DIRECTIVES.
+     */
+    private const string NEGATED_NOMINAL = '/\b(?:non|nessun[ao]?)\s+(?:(?:è|era|sono|si\s+tratta\s+di'
+        .'|costituisce|rappresenta|vuole\s+essere|intende\s+essere|va\s+intes[oa]\s+come)\s+)?'
+        .'(?:un[ao]?\s*\'?\s*)?$/iu';
+
+    /** The directive nouns a negation can cancel. */
+    private const string NOMINAL_FORM = '/^(?:raccomandazion|suggeriment|consiglio)/iu';
+
+    /** How far back the negation that cancels a nominal directive is looked for. */
+    private const int NEGATION_WINDOW = 40;
+
+    /**
+     * The directive conjugations that are also a common plural noun. Only
+     * these consult NOUN_DETERMINER; every other form is unambiguous, and
+     * running the check on all of them would start forgiving real imperatives
+     * after an innocuous preposition.
+     */
+    private const string NOUN_HOMOGRAPH = '/^(?:ri)?(?:acquisti|aumenti|incrementi|tagli|spostamenti|ingressi|aperture|chiusure)$/iu';
 
     /** A 12-character ISIN: two letters, nine alphanumerics, a check digit. */
     private const string ISIN = '/(?<![\p{L}\p{N}])[A-Z]{2}[A-Z0-9]{9}[0-9](?![\p{L}\p{N}])/u';
@@ -761,8 +1015,58 @@ class AdvisorOutputFilter
     private const string EXPLANATORY = '/\b(?:significa|vuol dire|consiste (?:nel|in)|si intende'
         .'|per definizione|in generale|ad esempio|per esempio|è il processo)\b/iu';
 
+    /**
+     * The directive's own object, when that object is a class or the portfolio
+     * as a whole rather than a position. A segment whose directive already says
+     * what it acts on inherits no instrument from its neighbours: there is
+     * nothing in it pointing back.
+     *
+     * This is what keeps the co-occurrence rule from degenerating into a
+     * one-sided one on real output. LOOKBACK carries an instrument forward five
+     * segments so that an anaphor can be resolved — "Parliamo di Bitcoin. È la
+     * tua posizione più volatile. Io la venderei" — but a real reply names a
+     * position on nearly every line, so the lookback is satisfied almost
+     * always, and the instrument half of the rule stops contributing. The live
+     * probe showed the cost: "Valutare se ridurre la quota di crypto",
+     * "ribilanciare periodicamente il portafoglio" and "le decisioni di
+     * investimento devono essere coerenti con il tuo profilo di rischio" were
+     * all removed, and all three are the generic advice ESMA35-43-3861 ¶48-50
+     * permits and the product exists to give.
+     *
+     * Anchored at the directive, not searched for anywhere in the segment:
+     * "Vendine una parte. La concentrazione resta il rischio" must stay
+     * removed, and a free search for `concentrazione` would spare it.
+     *
+     * Everything here is safe to list only because this is consulted *after*
+     * the segment has been found not to name an instrument — `concentrazione`,
+     * `esposizione` and `profilo di rischio` would all be recommendations the
+     * moment a position appeared beside them, and then `names` is already true
+     * and this is never reached.
+     */
+    private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
+        .'(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\'|tu[ao]|tu[oe]i|tue|sua|suo'
+        // The interrogative determiner, which is how a reflection question
+        // names a class: "quali categorie vorresti vedere aumentare".
+        .'|quali|quale|quant[ei]|ogni|ciascun[ao]?'
+        // The adjective that sits between the determiner and the head noun:
+        // "un solo ETF", "una sola classe ad alta volatilità".
+        .'|sol[aoi]|solamente|soltanto|unic[ao]|singol[ao]|stess[ao]|altr[aeio]|propri[ao])\s*)*'
+        .'(?:portafogli[oi]|patrimoni[oi]|allocazion[ei]|asset\s+allocation|ripartizion[ei]'
+        .'|concentrazion[ei]|esposizion[ei]|diversificazion[ei]|composizion[ei]'
+        .'|class[ei]\s+(?:di\s+)?(?:attività|asset|investiment\w+)|categori[ae]'
+        .'|decision[ei]\s+(?:di\s+)?investiment\w*|profil[oi](?:\s+di\s+rischio)?|orizzonte'
+        .'|cuscinett[oi]|fond[oi]\s+di\s+emergenza|riserv[ae]'
+        // "la quota di X" / "l'esposizione in X". The head noun is generic and
+        // what follows it cannot be an instrument: if it were, the segment
+        // would name one and this check would never run.
+        .'|quot[ae]\s+(?:di|in|d[ae]l?l[ao\']?)\s*\w+'
+        .')\b/iu';
+
     /** @var non-empty-string|null Built from a constant, so it is memoised for the whole process. */
     private static ?string $knownPattern = null;
+
+    /** @var non-empty-string|null Built from a constant, so it is memoised for the whole process. */
+    private static ?string $genericClassPattern = null;
 
     /** @var non-empty-string|null Memoised across a request; null = nothing to match. */
     private ?string $heldPattern = null;
@@ -915,15 +1219,25 @@ class AdvisorOutputFilter
             return [self::REFUSAL, 1, 0];
         }
 
-        /** @var list<array{index: int, names: bool, header: bool, question: bool}> $segments */
+        $parts = $this->rejoinAbbreviations($parts);
+
+        /** @var list<array{index: int, names: bool, header: bool, question: bool, view: string}> $segments */
         $segments = [];
 
         foreach ($parts as $index => $part) {
             if ($index % 2 === 0 && trim($part) !== '') {
+                // Every pattern in this class reads the sentence, not its
+                // formatting, so each segment is matched against a view with
+                // the markdown emphasis blanked out. Offsets into the view are
+                // offsets into the segment, which is what lets isProtectedSpeech
+                // keep comparing them.
+                $view = $this->unemphasised($part);
+
                 $segments[] = [
                     'index' => $index,
-                    'names' => $this->mentionsInstrument($part),
-                    'header' => preg_match(self::TABLE_TARGET_HEADER, $part) === 1,
+                    'view' => $view,
+                    'names' => $this->mentionsInstrument($view),
+                    'header' => preg_match(self::TABLE_TARGET_HEADER, $view) === 1,
                     // The split consumed the terminator, so whether this
                     // segment is a question is recorded from the delimiter
                     // that follows it rather than from the segment itself.
@@ -936,13 +1250,15 @@ class AdvisorOutputFilter
         $kept = 0;
 
         foreach ($segments as $ordinal => $segment) {
-            $part = $parts[$segment['index']];
-            $notational = $this->notationalDirectiveOffsets($part);
-            $operative = $this->operativeDirectiveOffsets($part);
-            $directives = array_merge($operative, $this->judgementDirectiveOffsets($part), $notational);
+            $view = $segment['view'];
+            $notational = $this->notationalDirectiveOffsets($view);
+            $operative = $this->operativeDirectiveOffsets($view);
+            $found = array_merge($operative, $this->judgementDirectiveOffsets($view), $notational);
+
+            $directives = array_map(static fn (array $d): int => $d['start'], $found);
             sort($directives);
 
-            $tabled = $this->isTargetTableRow($segments, $ordinal, $part);
+            $tabled = $this->isTargetTableRow($segments, $ordinal, $view);
 
             if ($directives === [] && ! $tabled) {
                 $kept++;
@@ -954,21 +1270,36 @@ class AdvisorOutputFilter
             // about a judgement: no operative verb, no proposed number, and
             // not an assertion with a tag bolted on. "Vendi VWCE?" and "Porta
             // VWCE al 25%?" are instructions whose punctuation changes nothing.
-            $asking = ($segment['question'] || preg_match(self::INDIRECT_QUESTION, $part) === 1)
+            //
+            // Asking about staying put is the exception, because doing nothing
+            // needs no instruction. See HOLDING_VERB.
+            $proposing = array_filter(
+                $operative,
+                static fn (array $d): bool => preg_match('/^(?:'.self::HOLDING_VERB.')/iu', $d['text']) !== 1,
+            );
+
+            // …and only when staying put is all the segment asks about. A
+            // judgement word *governing* a hold verb is a hold recommendation
+            // again — "dovresti mantenere VWCE?", "tenere VWCE è la scelta
+            // giusta per te?" — so the two may not appear together.
+            $judgement = $this->judgementDirectiveOffsets($view);
+
+            $asking = ($segment['question'] || preg_match(self::INDIRECT_QUESTION, $view) === 1)
                 && $notational === []
-                && $operative === []
-                && preg_match(self::TAG_QUESTION, $part) !== 1;
+                && $proposing === []
+                && ($operative === [] || $judgement === [])
+                && preg_match(self::TAG_QUESTION, $view) !== 1;
 
             // A table row is never a refusal or a reflection question, so the
             // protected-speech gate does not apply to it.
-            if (! $tabled && $this->isProtectedSpeech($part, $directives, $asking)) {
+            if (! $tabled && $this->isProtectedSpeech($view, $directives, $asking, $segment['question'])) {
                 $kept++;
 
                 continue;
             }
 
-            if ($this->pointsAtInstrument($segments, $ordinal, $part)) {
-                $parts[$segment['index']] = $this->leadingMarkup($part).self::REDACTION;
+            if ($this->pointsAtInstrument($segments, $ordinal, $view, $found)) {
+                $parts[$segment['index']] = $this->leadingMarkup($parts[$segment['index']]).self::REDACTION;
                 $redacted++;
             } else {
                 $kept++;
@@ -976,6 +1307,68 @@ class AdvisorOutputFilter
         }
 
         return [implode('', $parts), $redacted, $kept];
+    }
+
+    /**
+     * Put back the full stops that end an abbreviation rather than a sentence.
+     * The split above treats every `.` as a boundary, so "(es. obbligazioni,
+     * liquidità)" cut a question in half and left each half without the context
+     * the other held — the live probe reported one reflection question as two
+     * separate removals, and neither half could see the frame that licensed it.
+     *
+     * Rebuilt rather than spliced in place, because the array is read by
+     * parity — even entries are segments, odd ones the terminators that follow
+     * them — and a rejoined pair has to carry its full stop back into the text
+     * while keeping that alternation intact.
+     *
+     * @param  list<string>  $parts
+     * @return list<string>
+     */
+    private function rejoinAbbreviations(array $parts): array
+    {
+        $total = count($parts);
+        $out = [];
+
+        for ($i = 0; $i < $total; $i += 2) {
+            $segment = $parts[$i];
+            $terminator = $parts[$i + 1] ?? '';
+
+            while ($terminator === '.'
+                && isset($parts[$i + 2])
+                && preg_match(self::ABBREVIATION, $segment) === 1
+                && preg_match('/^\s*\p{Ll}/u', $parts[$i + 2]) === 1) {
+                $segment .= '.'.$parts[$i + 2];
+                $i += 2;
+                $terminator = $parts[$i + 1] ?? '';
+            }
+
+            $out[] = $segment;
+            $out[] = $terminator;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The segment with its markdown emphasis blanked out, byte for byte, so
+     * that an offset into the result is still an offset into the original.
+     *
+     * The model bolds the opening word of a bullet as a matter of course, and
+     * `**Considera** se la tua allocazione è coerente…` is not the phrase
+     * `considera se`: the live probe found that one reflection question deleted
+     * because two asterisks sat between the frame's two words. Blanking the
+     * markers once here fixes every pattern at the same time, in both
+     * directions — a directive split by emphasis was equally invisible.
+     *
+     * `_` is only blanked outside a word, so a snake_case token stays whole.
+     */
+    private function unemphasised(string $segment): string
+    {
+        // One marker to one space, never a run to a single space: the whole
+        // point is that the result is the same length as what it stands in for.
+        $out = str_replace('*', ' ', $segment);
+
+        return (string) preg_replace('/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u', ' ', $out);
     }
 
     /**
@@ -1012,14 +1405,26 @@ class AdvisorOutputFilter
      * follows (a heading names its subject on the next line).
      *
      * @param  list<array{index: int, names: bool}>  $segments
+     * @param  list<array{start: int, end: int, text: string}>  $directives
      */
-    private function pointsAtInstrument(array $segments, int $ordinal, string $part): bool
+    private function pointsAtInstrument(array $segments, int $ordinal, string $part, array $directives): bool
     {
         if ($segments[$ordinal]['names']) {
             return true;
         }
 
         if (preg_match(self::EXPLANATORY, $part) === 1) {
+            return false;
+        }
+
+        // At least one directive says it acts on a class, and none of the
+        // others points anywhere else — they either name a class too or, in a
+        // coordination like "quali categorie aumentare e quali ridurre", name
+        // nothing at all. Nothing here points back, so the neighbours'
+        // instrument is proximity rather than reference. See GENERIC_OBJECT.
+        $objects = array_map(fn (array $d): string => $this->objectKind($part, $d['end']), $directives);
+
+        if (in_array('generic', $objects, true) && ! in_array('other', $objects, true)) {
             return false;
         }
 
@@ -1043,7 +1448,7 @@ class AdvisorOutputFilter
      * dropped here rather than reported and then forgiven — "senza vendere in
      * preda al panico" carries no directive at all.
      *
-     * @return list<int>
+     * @return list<array{start: int, end: int, text: string}>
      */
     private function operativeDirectiveOffsets(string $segment): array
     {
@@ -1063,7 +1468,7 @@ class AdvisorOutputFilter
      * what the clauses want, whereas "vendi VWCE?" is an instruction whose
      * punctuation changes nothing.
      *
-     * @return list<int>
+     * @return list<array{start: int, end: int, text: string}>
      */
     private function judgementDirectiveOffsets(string $segment): array
     {
@@ -1088,7 +1493,7 @@ class AdvisorOutputFilter
      * (HYPOTHETICAL): both are the innocent reading of a bare pair of numbers,
      * which is all this family has to go on.
      *
-     * @return list<int>
+     * @return list<array{start: int, end: int, text: string}>
      */
     private function notationalDirectiveOffsets(string $segment): array
     {
@@ -1124,7 +1529,7 @@ class AdvisorOutputFilter
 
     /**
      * @param  list<string>  $patterns
-     * @return list<int>
+     * @return list<array{start: int, end: int, text: string}>
      */
     private function offsetsOf(string $segment, array $patterns): array
     {
@@ -1142,16 +1547,19 @@ class AdvisorOutputFilter
                 $end = $offset + strlen($text);
 
                 if ($this->isInverted($segment, $offset)
+                    || $this->isConsequence($segment, $text, $offset)
+                    || $this->isNegatedNominal($segment, $text, $offset)
+                    || $this->isNoun($segment, $text, $offset)
                     || $this->hasAbstractObject($segment, $end)
                     || $this->isNominalisedSubject($segment, $offset, $end)) {
                     continue;
                 }
 
-                $offsets[] = $offset;
+                $offsets[] = ['start' => $offset, 'end' => $end, 'text' => $text];
             }
         }
 
-        sort($offsets);
+        usort($offsets, static fn (array $a, array $b): int => $a['start'] <=> $b['start']);
 
         return $offsets;
     }
@@ -1173,6 +1581,107 @@ class AdvisorOutputFilter
         $start = max(0, $offset - self::INVERSION_WINDOW);
 
         return preg_match(self::INVERTED_DIRECTIVE, substr($segment, $start, $offset - $start)) === 1;
+    }
+
+    /**
+     * Whether this directive states what an event would do rather than what
+     * the user should do. See EVENT_SUBJECT.
+     */
+    private function isConsequence(string $segment, string $text, int $offset): bool
+    {
+        if (preg_match(self::THIRD_PERSON, $text) !== 1) {
+            return false;
+        }
+
+        return preg_match(self::EVENT_SUBJECT, substr($segment, 0, $offset)) === 1;
+    }
+
+    /**
+     * Whether this is a directive noun being denied rather than given.
+     * See NEGATED_NOMINAL.
+     */
+    private function isNegatedNominal(string $segment, string $text, int $offset): bool
+    {
+        if (preg_match(self::NOMINAL_FORM, $text) !== 1) {
+            return false;
+        }
+
+        $start = max(0, $offset - self::NEGATION_WINDOW);
+
+        return preg_match(self::NEGATED_NOMINAL, substr($segment, $start, $offset - $start)) === 1;
+    }
+
+    /**
+     * Whether this match is the noun it is spelled like rather than the verb:
+     * *gli aumenti*, *di acquisti*, *i tagli*. See NOUN_HOMOGRAPH.
+     */
+    private function isNoun(string $segment, string $text, int $offset): bool
+    {
+        if (preg_match(self::NOUN_HOMOGRAPH, $text) !== 1) {
+            return false;
+        }
+
+        $start = max(0, $offset - self::DETERMINER_WINDOW);
+
+        return preg_match(self::NOUN_DETERMINER, substr($segment, $start, $offset - $start)) === 1;
+    }
+
+    /**
+     * What the directive ending at this offset says it acts on: `generic` for a
+     * class or the portfolio, `empty` when the object is elided — the second
+     * half of "quali categorie aumentare e quali ridurre" — and `other` for
+     * anything that names something of its own.
+     *
+     * @return 'generic'|'empty'|'other'
+     */
+    private function objectKind(string $segment, int $end): string
+    {
+        $object = substr($segment, $end, self::OBJECT_WINDOW);
+
+        // "aumentare (es. obbligazioni, liquidità)" — the example marker
+        // introduces the object rather than being one, and both patterns below
+        // are anchored at the head of the object.
+        $object = (string) preg_replace('/^\W*(?:(?:ad\s+)?es|p\.es|per\s+esempio|ad\s+esempio|ovvero|cioè)\b\.?/iu', '', $object);
+
+        if (preg_match(self::GENERIC_OBJECT, $object) === 1
+            || preg_match(self::$genericClassPattern ??= $this->buildGenericClassPattern(), $this->deaccent($object)) === 1) {
+            return 'generic';
+        }
+
+        return preg_match('/\p{L}/u', $object) === 1 ? 'other' : 'empty';
+    }
+
+    /**
+     * One alternation over GENERIC_CLASS_NAMES, anchored to the head of the
+     * object and matched against an accent-free view so that `liquidità` meets
+     * the stored `liquidita`. Longest first, for the same reason the other two
+     * alternations are.
+     *
+     * @return non-empty-string
+     */
+    private function buildGenericClassPattern(): string
+    {
+        $names = self::GENERIC_CLASS_NAMES;
+        usort($names, static fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+
+        $alternation = implode('|', array_map(
+            static fn (string $name): string => preg_quote($name, '/'),
+            $names,
+        ));
+
+        return '/^\W*(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\'|tu[ao]|tu[oe]i|tue'
+            .'|quali|quale|quant[ei]|ogni|ciascun[ao]?'
+            .'|sol[aoi]|solamente|soltanto|unic[ao]|singol[ao]|stess[ao]|altr[aeio]|propri[ao])\s*)*'
+            .'(?:'.$alternation.')(?![\p{L}\p{N}])/iu';
+    }
+
+    /** The segment with its Italian accents flattened, for GENERIC_CLASS_NAMES. */
+    private function deaccent(string $segment): string
+    {
+        return strtr(mb_strtolower($segment), [
+            'à' => 'a', 'á' => 'a', 'è' => 'e', 'é' => 'e', 'ì' => 'i', 'í' => 'i',
+            'ò' => 'o', 'ó' => 'o', 'ù' => 'u', 'ú' => 'u',
+        ]);
     }
 
     /** Whether the directive ending at this offset acts on an abstraction, not a position. */
@@ -1220,8 +1729,9 @@ class AdvisorOutputFilter
      *
      * @param  list<int>  $directives  offsets of the directives found, ascending
      * @param  bool  $asking  the segment is a question proposing no number
+     * @param  bool  $question  the segment ends in a question mark, whatever it carries
      */
-    private function isProtectedSpeech(string $segment, array $directives, bool $asking = false): bool
+    private function isProtectedSpeech(string $segment, array $directives, bool $asking = false, bool $question = false): bool
     {
         $licence = null;
 
@@ -1254,11 +1764,23 @@ class AdvisorOutputFilter
             $licence = min($licence ?? PHP_INT_MAX, $m[0][1]);
         }
 
+        // Asking whether the user could sit still. Only in a real
+        // interrogative: the same words asserted are a hold recommendation.
+        if ($question && preg_match(self::CAPACITY_QUESTION, $segment, $m, PREG_OFFSET_CAPTURE) === 1) {
+            $licence = min($licence ?? PHP_INT_MAX, $m[0][1]);
+        }
+
         if (preg_match(self::REFLECTION, $segment, $m, PREG_OFFSET_CAPTURE) === 1) {
             $frameEnd = $m[0][1] + strlen($m[0][0]);
 
             foreach ($directives as $offset) {
-                if ($offset >= $frameEnd && $offset - $frameEnd <= self::REFLECTION_OBJECT_WINDOW) {
+                // Staying put is not an operation, so it is not the kind of
+                // object this window exists to reject: "valutare se mantenere
+                // entrambi ha senso" is the reflection the clauses ask for,
+                // while "valuta se vendere VWCE" is still an instruction.
+                if ($offset >= $frameEnd
+                    && $offset - $frameEnd <= self::REFLECTION_OBJECT_WINDOW
+                    && preg_match('/^\W*(?:'.self::HOLDING_VERB.')/iu', substr($segment, $offset)) !== 1) {
                     return false;
                 }
             }
@@ -1270,7 +1792,16 @@ class AdvisorOutputFilter
             return false;
         }
 
-        if (preg_match(self::ADVERSATIVE, $segment, $m, PREG_OFFSET_CAPTURE) === 1 && $m[0][1] > $licence) {
+        // The pivot ends the licence only when something is actually said after
+        // it. "Non posso dirti se vendere o tenere, ma posso aiutarti a vedere
+        // i dati" is the refusal the clauses require, and breaking the licence
+        // on the bare `ma` deleted it — the live probe found exactly that, and
+        // it is the finding WEA-14 withheld approval over. What the rule is
+        // for is "non posso dirtelo, ma la direzione è ridurre Bitcoin", where
+        // the advice sits past the pivot; that still fails here.
+        if (preg_match(self::ADVERSATIVE, $segment, $m, PREG_OFFSET_CAPTURE) === 1
+            && $m[0][1] > $licence
+            && array_any($directives, static fn (int $offset): bool => $offset > $m[0][1])) {
             return false;
         }
 
@@ -1407,11 +1938,7 @@ class AdvisorOutputFilter
      */
     private function isGenericClassName(string $name): bool
     {
-        $normalised = mb_strtolower(trim($name));
-        $normalised = strtr($normalised, [
-            'à' => 'a', 'á' => 'a', 'è' => 'e', 'é' => 'e', 'ì' => 'i', 'í' => 'i',
-            'ò' => 'o', 'ó' => 'o', 'ù' => 'u', 'ú' => 'u',
-        ]);
+        $normalised = $this->deaccent(trim($name));
         $normalised = trim((string) preg_replace('/\s+/u', ' ', $normalised));
 
         return in_array($normalised, self::GENERIC_CLASS_NAMES, true);

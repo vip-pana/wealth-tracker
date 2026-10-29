@@ -30,6 +30,19 @@ use Tests\TestCase;
  * and now runs against Regolo with no change beyond the `.env`.
  *
  *     ADVISOR_DRIVER=regolo LIVE_MODEL_PROBE=1 php artisan test --filter=LiveModelProbeTest
+ *
+ * **One run is not a rate.** The model is stochastic, and a previous round of
+ * this work recorded a single `0/14` draw in three places as if it closed the
+ * question; re-running the same code scored 4/14 and 3/14. So the probe asks
+ * each question once per *sample* and reports the total across samples:
+ *
+ *     LIVE_MODEL_PROBE_SAMPLES=3 … php artisan test --filter=LiveModelProbeTest
+ *
+ * Replies are cached per sample index, so re-running scores the same text
+ * again (cheap, and the only way to tell a filter change from a new draw)
+ * while a higher index draws fresh. `LIVE_MODEL_PROBE_FROM` skips the low
+ * indices, which is how a held-out set is measured: tune against samples 1-3,
+ * then report on 4-6, which the filter has never seen.
  */
 class LiveModelProbeTest extends TestCase
 {
@@ -97,37 +110,55 @@ class LiveModelProbeTest extends TestCase
 
         // Keyed by the backend as well as by the prompt, so switching drivers
         // re-asks instead of silently re-scoring the previous model's replies.
+        // The cache is what makes a filter change measurable at all: re-running
+        // a sample index scores the same text again, so a difference in the
+        // count is the code and not a new draw.
         $cache = sys_get_temp_dir().'/wea16-probe-'.md5($driver.'|'.$model.'|'.$system.$briefing.implode('|', $questions)).'.json';
         /** @var array<string, string> $replies */
         $replies = is_file($cache) ? (array) json_decode((string) file_get_contents($cache), true) : [];
 
+        $from = max(1, (int) (getenv('LIVE_MODEL_PROBE_FROM') ?: '1'));
+        $to = max($from, (int) (getenv('LIVE_MODEL_PROBE_SAMPLES') ?: (string) $from));
+
         $filter = new AdvisorOutputFilter;
         $altered = 0;
         $segments = 0;
+        $asked = 0;
 
-        fwrite(STDERR, "\n===== driver: $driver, model: $model =====\n");
+        fwrite(STDERR, "\n===== driver: $driver, model: $model, samples $from..$to =====\n");
 
-        foreach ($questions as $i => $q) {
-            $reply = $replies[$q] ?? $this->ask($provider, $system, $briefing, $q);
-            if (! is_string($reply)) {
-                $this->markTestSkipped("model unreachable via driver $driver");
+        for ($sample = $from; $sample <= $to; $sample++) {
+            $sampleAltered = 0;
+            $sampleSegments = 0;
+
+            foreach ($questions as $i => $q) {
+                $key = $sample.'|'.$q;
+                $reply = $replies[$key] ?? $this->ask($provider, $system, $briefing, $q);
+                if (! is_string($reply)) {
+                    $this->markTestSkipped("model unreachable via driver $driver");
+                }
+                $replies[$key] = $reply;
+                file_put_contents($cache, json_encode($replies, JSON_THROW_ON_ERROR));
+
+                $out = $filter->filter($reply);
+                $changed = $out !== $reply;
+                $sampleAltered += $changed ? 1 : 0;
+                $removed = substr_count($out, AdvisorOutputFilter::REDACTION) + ($out === AdvisorOutputFilter::REFUSAL ? 1 : 0);
+                $sampleSegments += $removed;
+                $asked++;
+
+                fwrite(STDERR, "\n\n######## S$sample Q".($i + 1).': '.$q.' — '.($changed ? "ALTERED, $removed segment(s)" : 'intact')."\n");
+                foreach ($this->removals($reply, $out) as $line) {
+                    fwrite(STDERR, "  REMOVED: $line\n");
+                }
             }
-            $replies[$q] = $reply;
-            file_put_contents($cache, json_encode($replies, JSON_THROW_ON_ERROR));
 
-            $out = $filter->filter($reply);
-            $changed = $out !== $reply;
-            $altered += $changed ? 1 : 0;
-            $removed = substr_count($out, AdvisorOutputFilter::REDACTION) + ($out === AdvisorOutputFilter::REFUSAL ? 1 : 0);
-            $segments += $removed;
-
-            fwrite(STDERR, "\n\n######## Q".($i + 1).': '.$q.' — '.($changed ? "ALTERED, $removed segment(s)" : 'intact')."\n");
-            foreach ($this->removals($reply, $out) as $line) {
-                fwrite(STDERR, "  REMOVED: $line\n");
-            }
+            $altered += $sampleAltered;
+            $segments += $sampleSegments;
+            fwrite(STDERR, "\n--- sample $sample: $sampleAltered/".count($questions)." altered, $sampleSegments removed ---\n");
         }
 
-        fwrite(STDERR, "\n\n===== LIVE ($driver/$model): $altered/".count($questions)." replies altered, $segments segments removed =====\n");
+        fwrite(STDERR, "\n\n===== LIVE ($driver/$model) samples $from..$to: $altered/$asked replies altered, $segments segments removed =====\n");
 
         $this->assertTrue(true);
     }
