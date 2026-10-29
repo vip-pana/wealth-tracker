@@ -380,10 +380,17 @@ class RenderAdvisorContext extends Action
      * never moved the model in testing, but a marker that the data can forge is
      * not a marker. They become ordinary typographic quotes, which is what
      * PrismAdvisorProvider::normalise() turns them into on the way out anyway.
+     *
+     * The control-character strip is matched as bytes, without `/u`. With it,
+     * `preg_replace` returns null on a subject that is not valid UTF-8 and the
+     * old `?? $value` fallback then handed back the raw string — newlines and
+     * all — so the escape did not happen on exactly the input most likely to
+     * be hostile. The class is ASCII and those bytes cannot occur inside a
+     * multi-byte sequence, so dropping `/u` loses nothing and cannot fail.
      */
     private function userText(string $value): string
     {
-        $clean = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? $value;
+        $clean = (string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value);
         $clean = str_replace(['«', '»'], ['“', '”'], $clean);
         $clean = trim($clean);
 

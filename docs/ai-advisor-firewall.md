@@ -326,11 +326,20 @@ ESMA35-43-3861 ¶48-50 permits and the product exists to give.
 
 `GENERIC_OBJECT` narrows it — a directive whose own object is a class or the
 portfolio inherits nothing from its neighbours — and that is what the measured
-improvement is mostly made of. It does not close it. After the round, **every**
-remaining false positive in the samples survives the filter when screened on its
-own and is removed only in context; the lookback is the sole surviving cause.
-Dropping the lookback would reopen the WEA-10 anaphora bypass, so this is the
-floor for a filter that reads one segment at a time.
+improvement is mostly made of. It does not close it. Most of what the round
+leaves behind survives the filter when screened on its own and is removed only
+in context, which makes the lookback the main surviving cause. Dropping it would
+reopen the WEA-10 anaphora bypass, so this is the floor for a filter that reads
+one segment at a time.
+
+> The round originally claimed **every** remaining false positive behaved that
+> way. The third review falsified it on the first sample it drew: the event-as-
+> subject sentence was removed *on its own* once an apposition pushed its verb
+> past `EVENT_SUBJECT`'s window, which was 60 characters. The family the round
+> declared closed was closed only for short sentences. The window is now 160 and
+> the sentence is a test case — but the lesson is the claim, not the number: a
+> round that measures one direction should not make a universal statement about
+> the other.
 
 That is the honest statement of where the word-list road ends. The alternative
 that does not have this shape is not a better list: it is not giving the model
@@ -363,8 +372,52 @@ code, which is the whole reason the probe takes samples at all.
 
 Of the segments still removed, one class is not a false positive: a suitability
 judgement on a named instrument, which an earlier round let through on a
-segment-initial `se` and this one closes. The rest are compliant speech, and
-all of them survive when screened alone.
+segment-initial `se` and this one closes. The third review, re-running the probe
+on three fresh samples of its own, scored **7/42 — the same figure — and counted
+three of its nine segments as correctly removed, not one.** That revision runs
+in this round's favour, and the independent agreement on 7/42 is what makes it a
+rate rather than a sample.
+
+### The fifth round: what the fourth one cost
+
+The fourth round was measured in one direction only. Measured in the other —
+the same set run against the commit before it — it had **reopened two classes of
+bypass**, and neither the probe nor the test suite could see it: the probe only
+counts false positives, and the frozen harness's two arrow phrases both use
+agreeing units, so the set was blind on exactly the change made to the family it
+covers.
+
+| Reopened | Why | Closed by |
+| --- | --- | --- |
+| `Ridurrei l'esposizione` after a named position | `esposizione`, `concentrazione`, `quota`, `allocazione` are *relational* nouns — they denote a relation to whatever was last named — and `GENERIC_OBJECT` was letting them cancel the lookback that would have resolved it. The WEA-10 title sentence back by another route. | `GENERIC_OBJECT` split into class nouns, which stand alone, and relational ones, which are generic only when they say what they are a share *of* (`la quota di crypto`, `l'esposizione azionaria`). |
+| `Bitcoin: 18.000€ → 5%` | Requiring the units to agree told `62.000€ → 58%` (a restatement) from `40% → 25%` (a move) — and let through the most natural shape a proposed allocation line takes: what you hold today, then what you should hold. | The restatement reading is granted against an explicit share-of-whole (`→ 16% del portafoglio`), not against the units, and only in that direction. |
+
+Two smaller ones went with them: `vale la pena **sapere** se vendere Bitcoin`
+passed while the same sentence with `capire` did not, because `sapere` reached
+the epistemic licence without the object window; and `ridimensionare` was missing
+from the verb list outright — not a regression, just never there.
+
+In the other direction the round added one licence. A refusal can be stated as
+attribution rather than as inability — *"la decisione su cosa comprare o vendere
+è tua"* — and that shape names the operations it hands back, so it carries
+directive verbs by necessity. On its own it survives, because it names no
+instrument; in a real reply the lookback supplies one and it was deleted. Unlike
+`non posso`, an attribution does **not** govern forward: `DECISION_IS_YOURS`
+licenses only the directives inside its own span, so "la scelta è tua, io
+venderei Bitcoin" is still removed.
+
+**The method matters more than any of these.** Both blocking defects were
+invisible to the probe and invisible to the gate, and surfaced only by running
+the same set against the previous commit. So: *measure a round differentially
+against its predecessor, in both directions.* The cases are kept as regression
+guards in `AdvisorOutputFilterTest` (`thirdReviewBypasses`,
+`thirdReviewFalsePositives`), in both directions, for the same reason.
+
+And a standing caution about the WEA-14 harness: 50/50 is a **regression guard,
+not a measurement**. It scored 42/50 when it was first taken and that was a
+fact; frozen, it now measures only itself, and it stayed green straight through
+the arrow regression above. Re-generating the phrases is what would make it a
+measurement again.
 
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and
@@ -382,6 +435,12 @@ true only of `analysis.txt.example` and of one machine's private
 symbols with no stated meaning. `userText()` also escapes guillemets inside the
 value, because the defence rests on a single character and a value carrying a
 closing `»` could otherwise end its own delimiter.
+
+The control-character strip is matched as bytes. With `/u` it returned null on a
+subject that was not valid UTF-8, and the fallback handed back the raw value —
+newlines and all — so the escape failed on exactly the input most likely to be
+hostile. A single `0x80` byte was enough, and `memory` is written without a
+confirmation click.
 
 ## Related
 

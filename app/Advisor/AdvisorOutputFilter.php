@@ -140,6 +140,11 @@ class AdvisorOutputFilter
         .'|abbandon(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|trasfer(?:isci|ire?|endo|irei|iresti|irebbe|iamo|ite)'
         .'|congel(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
+        // Not a regression of the fourth round — the third review checked, and
+        // it passed before it too. Its object is the one idiom that is not a
+        // position ("ridimensionare le aspettative"), which ABSTRACT_OBJECT
+        // now carries.
+        .'|ridimension(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|smett(?:i|ere?|endo|erei|eresti|erebbe|iamo|ete)'
         .'|togl(?:i|iere?|iendo|ierei|ieresti|ierebbe|iamo|iete)'
         .'|mantien[ia]|manten(?:ere?|endo|iamo|ete)|manterr(?:ei|esti|ebbe)'
@@ -302,12 +307,25 @@ class AdvisorOutputFilter
      * them carries a verb — which is why no amount of widening the word lists
      * reached them. `VWCE: 40% → 25%` is an instruction with nothing to list.
      *
-     * Between two quantities the unit has to match, and that is what separates
-     * a move from a restatement. `40% → 25%` and `62.000€ → 50.000€` are
-     * transitions; `62.000€ → 58%` is the same money said twice, which is how
-     * the model writes a bullet list of the current allocation — the live
-     * probe found five such lines deleted from one reply. A label on the left
-     * needs no unit to agree with, so `VWCE → 25%` stays notation.
+     * Between two quantities of the same unit, the arrow is a move. Across
+     * units it is ambiguous, and the third review showed the ambiguity had
+     * been resolved the wrong way: `62.000€ → 58%` is the same money said
+     * twice, which is how the model writes a bullet list of the current
+     * allocation — the live probe found five such lines deleted from one reply
+     * — but `18.000€ → 5%` is a target weight, and *what you hold today, then
+     * what you should hold* is the most natural shape a proposed allocation
+     * line takes. Letting the units decide passed all three.
+     *
+     * What tells them apart is not the units but whether the percentage says
+     * what it is a share of. A restatement has to: `58%` alone restates
+     * nothing. A target does not, and naming the whole would be odd in one
+     * ("portalo al 5% del portafoglio" is a target that says so, and the other
+     * notation patterns have it). So the restatement reading is granted only
+     * against an explicit share-of-whole, and only in that direction — in
+     * `16% → 5.000€` there is no reading but the move.
+     *
+     * A label on the left needs no unit to agree with, so `VWCE → 25%` stays
+     * notation.
      */
     private const string ARROW = '\s*(?:→|➔|➜|⇒|=>|-+>|~>)\s*';
 
@@ -315,9 +333,19 @@ class AdvisorOutputFilter
 
     private const string MONEY = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:€|euro\b)';
 
+    /**
+     * The whole a percentage can be a share of. Matched after the percentage
+     * and through the blanked emphasis, which is where the model puts it:
+     * `62.000€ → **58%** del patrimonio investibile`.
+     */
+    private const string SHARE_OF_WHOLE = '\s*(?:del|dell\'|della|sul|sull\'|sulla|di|rispetto\s+al)\s*'
+        .'(?:portafogli|patrimoni|total|capital|investit|investibil|complessiv|allocazion|ricchezz)';
+
     private const string NOTATION_ARROW = '/(?:'
         .self::PERCENTAGE.self::ARROW.self::PERCENTAGE
         .'|'.self::MONEY.self::ARROW.self::MONEY
+        .'|'.self::MONEY.self::ARROW.self::PERCENTAGE.'(?!'.self::SHARE_OF_WHOLE.')'
+        .'|'.self::PERCENTAGE.self::ARROW.self::MONEY
         .'|[\p{L}\p{N}]{2,}'.self::ARROW.self::QUANTITY
         .')/u';
 
@@ -512,6 +540,26 @@ class AdvisorOutputFilter
         .')/iu';
 
     /**
+     * The refusal stated as attribution rather than as inability: "la decisione
+     * su *cosa* comprare o vendere è tua". The clauses ask for exactly this —
+     * hand the decision back — and the shape names the operations it hands
+     * back, so it carries directive verbs by necessity, like every other
+     * refusal. Filtered on its own it survives, because it names no
+     * instrument; in a real reply the lookback supplies one from a line or two
+     * earlier and it is deleted. That is the WEA-14 finding arriving on a
+     * sentence nobody had written down.
+     *
+     * Deliberately *not* in REFUSAL_FRAME, and the difference matters. A
+     * refusal governs forward — everything after "non posso" is its subject
+     * matter — but an attribution does not: "la scelta è tua, io venderei
+     * VWCE" is advice with a preamble. So this licence covers only the
+     * directives inside its own span. See isProtectedSpeech().
+     */
+    private const string DECISION_IS_YOURS = '/\b(?:la|ogni|l\')\s*(?:decisione|scelta|ultima\s+parola)'
+        .'\s+(?:finale\s+)?(?:su|sul|sulla|di|circa|riguardo\s+a)[^.;:!?]{0,80}?'
+        .'\s+(?:è|resta|rimane|spetta)\s+(?:sempre\s+|comunque\s+|soltanto\s+|solo\s+)?(?:tua|a\s+te)\b/iu';
+
+    /**
      * Statements *about* advice rather than statements *of* it: the MiFID
      * disclaimer, the referral to the OCF register, and the Art. 50(1) AI Act
      * declaration. Unlike a refusal these license the whole segment, because
@@ -552,8 +600,13 @@ class AdvisorOutputFilter
         // "potresti verificare se". It belongs here and not among the
         // indicative frames precisely so that the object window still applies:
         // "dovresti valutare se vendere VWCE" must stay an instruction.
+        // `sapere` belongs here and not only among the indicative frames: it
+        // is in EPISTEMIC, so "vale la pena sapere se" was granted the licence
+        // the whole family gets and the window never ran — the third review
+        // found "vale la pena sapere se vendere Bitcoin prima di dicembre"
+        // passing while the same sentence with `capire` was removed.
         .'|(?:dovrest[ei]|potrest[ei]|puoi|prova\s+a|vale\s+la\s+pena(?:\s+di)?)\s+'
-        .'(?:valutare|verificare|controllare|considerare|capire)\s+se'
+        .'(?:valutare|verificare|controllare|considerare|capire|sapere)\s+se'
         .'|riuscirest[ei]\s+a|te\s+la\s+sentirest[ei]|saresti\s+(?:disposto|disposta|in\s+grado)'
         .'|ti\s+permetterest[ei]|sopporterest[ei]|reagirest[ei]|farest[ei]\s+se'
         .'|preferirest[ei]|ti\s+sentirest[ei]|ti\s+dà\s+(?:sicurezza|fastidio|serenità)'
@@ -749,10 +802,17 @@ class AdvisorOutputFilter
      * The event noun has to be the subject, so it is looked for behind the
      * directive and the verb has to be third person — "un calo ridurrebbe" is
      * a consequence, "riduci" after the word *calo* is still an instruction.
+     *
+     * The window is wide because an apposition goes between the subject and
+     * its verb and is as long as the model wants: the third review found the
+     * same sentence surviving at 71 and 91 characters and removed at 149, with
+     * the only difference a parenthesis. Widening it costs nothing the verb
+     * does not already pay for — the span cannot cross a sentence boundary,
+     * and a first-person conditional or an imperative is not third person.
      */
     private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel)\s+'
         .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
-        .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'.self::SAME_SENTENCE.'{0,60}$/iu';
+        .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'.self::SAME_SENTENCE.'{0,160}$/iu';
 
     /** The third-person forms a consequence is stated in. */
     private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)$/iu';
@@ -782,7 +842,7 @@ class AdvisorOutputFilter
         .'(?:rischi[oi]|volatilit[àa]|cost[oi]|spes[ae]|commission[ei]|impost[ae]|tass[ae]'
         .'|incertezz[ae]|complessit[àa]|probabilit[àa]|dubbi|stress|ansia|drawdown|impatt[oi]'
         .'|oscillazion[ei]|fluttuazion[ei]|sensibilit[àa]|margine\s+di\s+errore'
-        .'|tolleranz[ae]|capacit[àa]|propension[ei]'
+        .'|tolleranz[ae]|capacit[àa]|propension[ei]|aspettativ[ae]'
         // Composure only. `piano`, `strategia` and `equilibrio` are pointedly
         // NOT here: "apri un piano di accumulo su Amundi" is a recommendation,
         // and the harness carries it.
@@ -1042,24 +1102,55 @@ class AdvisorOutputFilter
      * `esposizione` and `profilo di rischio` would all be recommendations the
      * moment a position appeared beside them, and then `names` is already true
      * and this is never reached.
+     *
+     * The head nouns are in two groups, and the third review is why. A *class*
+     * noun denotes the whole or a slice of it whatever came before it: "il
+     * portafoglio" is the portfolio. A *relational* noun — exposure, weight,
+     * concentration, allocation — denotes a relation to something, and left
+     * bare that something is whatever was last named: "Parliamo di Bitcoin. È
+     * la tua posizione più volatile. Ridurrei la tua esposizione" is the WEA-10
+     * finding arriving by another route, with `esposizione` cancelling the very
+     * lookback that would have resolved it. So a relational noun is generic
+     * only when it says what it is a share *of*.
      */
-    private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
-        .'(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\'|tu[ao]|tu[oe]i|tue|sua|suo'
+    private const string GENERIC_DETERMINER = '(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\'|tu[ao]|tu[oe]i|tue|sua|suo'
         // The interrogative determiner, which is how a reflection question
         // names a class: "quali categorie vorresti vedere aumentare".
         .'|quali|quale|quant[ei]|ogni|ciascun[ao]?'
         // The adjective that sits between the determiner and the head noun:
         // "un solo ETF", "una sola classe ad alta volatilità".
-        .'|sol[aoi]|solamente|soltanto|unic[ao]|singol[ao]|stess[ao]|altr[aeio]|propri[ao])\s*)*'
-        .'(?:portafogli[oi]|patrimoni[oi]|allocazion[ei]|asset\s+allocation|ripartizion[ei]'
-        .'|concentrazion[ei]|esposizion[ei]|diversificazion[ei]|composizion[ei]'
+        .'|sol[aoi]|solamente|soltanto|unic[ao]|singol[ao]|stess[ao]|altr[aeio]|propri[ao])\s*)*';
+
+    /** A head noun that names the whole or a class of it on its own terms. */
+    private const string GENERIC_CLASS_OBJECT = 'portafogli[oi]|patrimoni[oi]|asset\s+allocation'
+        .'|ripartizion[ei]|diversificazion[ei]|composizion[ei]'
         .'|class[ei]\s+(?:di\s+)?(?:attività|asset|investiment\w+)|categori[ae]'
         .'|decision[ei]\s+(?:di\s+)?investiment\w*|profil[oi](?:\s+di\s+rischio)?|orizzonte'
-        .'|cuscinett[oi]|fond[oi]\s+di\s+emergenza|riserv[ae]'
-        // "la quota di X" / "l'esposizione in X". The head noun is generic and
-        // what follows it cannot be an instrument: if it were, the segment
-        // would name one and this check would never run.
-        .'|quot[ae]\s+(?:di|in|d[ae]l?l[ao\']?)\s*\w+'
+        .'|cuscinett[oi]|fond[oi]\s+di\s+emergenza|riserv[ae]';
+
+    /** A head noun that only means something once it says what it is a share of. */
+    private const string RELATIONAL_OBJECT = 'quot[ae]|esposizion[ei]|concentrazion[ei]|allocazion[ei]';
+
+    /**
+     * What turns a relational noun into a class one: "la quota di crypto",
+     * "l'esposizione al monetario", "l'allocazione azionaria". The complement
+     * cannot be an instrument — if it were, the segment would name one and
+     * this check would never run — which is the same argument the whole
+     * carve-out already rests on.
+     *
+     * The adjectival form is listed rather than left open, because an open
+     * `\w+` after the noun would read "l'esposizione eccessiva" as a class.
+     */
+    private const string OBJECT_COMPLEMENT = '(?:'
+        .'\s+(?:di|in|su|verso|a[il]?|a(?:llo|lla|ll\'|gli|lle)|d[ae](?:l|llo|lla|ll\'|i|gli|lle)?)\s*\w+'
+        .'|\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
+        .'|complessiv|global|total|generale)[aeio]?'
+        .')';
+
+    private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
+        .self::GENERIC_DETERMINER
+        .'(?:(?:'.self::GENERIC_CLASS_OBJECT.')'
+        .'|(?:'.self::RELATIONAL_OBJECT.')'.self::OBJECT_COMPLEMENT
         .')\b/iu';
 
     /** @var non-empty-string|null Built from a constant, so it is memoised for the whole process. */
@@ -1744,6 +1835,19 @@ class AdvisorOutputFilter
 
         if (preg_match(self::REFUSAL_FRAME, $segment, $m, PREG_OFFSET_CAPTURE) === 1) {
             $licence = min($licence ?? PHP_INT_MAX, $m[0][1]);
+        }
+
+        // The bounded licence: granted only when every directive sits inside
+        // the attribution itself, so nothing after it is covered. An
+        // ADVERSATIVE past this point can carry no directive by construction,
+        // which is why returning here skips that check safely.
+        if (preg_match(self::DECISION_IS_YOURS, $segment, $m, PREG_OFFSET_CAPTURE) === 1) {
+            $start = $m[0][1];
+            $end = $start + strlen($m[0][0]);
+
+            if (array_all($directives, static fn (int $offset): bool => $offset >= $start && $offset < $end)) {
+                return true;
+            }
         }
 
         // The interrogative licence, and the reason the filter stopped eating

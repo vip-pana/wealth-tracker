@@ -887,6 +887,111 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'goal: an operation with the goal as pretext' => ['Dovresti vendere VWCE per raggiungere il tuo obiettivo.'];
     }
 
+    /**
+     * The third review measured this filter differentially against the commit
+     * before the fourth round and found two classes of bypass reopened by the
+     * round that closed the false positives — invisible to the live probe,
+     * which only measures the other direction, and invisible to the frozen
+     * harness above, whose two arrow phrases both use agreeing units and so
+     * are blind to the very change that was made to the family they cover.
+     *
+     * Hence these, in both directions, and hence the method: a round is
+     * measured against its predecessor on the same set, not by re-running the
+     * probe.
+     */
+    #[DataProvider('thirdReviewBypasses')]
+    public function test_a_bypass_found_by_the_third_review_is_removed(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($phrase, $this->filter()->filter($phrase), 'the third review bypass passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function thirdReviewBypasses(): iterable
+    {
+        // A relational noun — exposure *to the thing we were discussing* — is
+        // an anaphor wearing a class's clothes, and the generic-object
+        // carve-out was letting it cancel the lookback. The bare first-person
+        // conditional is the one directive that opens it: a second, softer
+        // directive pointing elsewhere already kept these removed.
+        yield 'relational: esposizione, after a named position' => ["Parliamo di Bitcoin. È la tua posizione più volatile del portafoglio.\nRidurrei la tua esposizione."];
+        yield 'relational: esposizione, after a value' => ["La tua posizione più grande è VWCE, 62.000€.\nRidurrei l'esposizione."];
+        yield 'relational: esposizione, after a weight' => ["Bitcoin è al 16% del patrimonio.\nIo ridurrei l'esposizione."];
+        yield 'relational: concentrazione' => ["VWCE pesa 62.000€, il 58% del totale.\nAlleggerirei la concentrazione."];
+        yield 'relational: esposizione, after a return' => ["Il tuo Bitcoin ha reso il 41%.\nTaglierei l'esposizione."];
+        yield 'relational: allocazione' => ["Parliamo di Bitcoin. È volatile.\nRidimensionerei l'allocazione."];
+
+        // Mixed units across the arrow. `62.000€ → 58%` really is the same
+        // money said twice, but `18.000€ → 5%` is a target weight, and it is
+        // the most natural shape a proposed allocation line takes: what you
+        // hold today, then what you should hold. The restatement is told apart
+        // by saying what the percentage is a share *of*, not by the units.
+        yield 'arrow: money to a target weight' => ['Bitcoin: 18.000€ → 5%.'];
+        yield 'arrow: weight to a target amount' => ['Bitcoin: 16% → 5.000€.'];
+        yield 'arrow: money to a target weight, other position' => ['VWCE: 62.000€ → 45%.'];
+
+        // The epistemic licence was granted without the object window, so one
+        // verb in the list covered an operation the others did not.
+        yield 'epistemic: vale la pena sapere se + operation' => ['Vale la pena sapere se vendere Bitcoin prima di dicembre.'];
+
+        // The attribution licence attacked on its own terms. Unlike a refusal
+        // it does not govern forward, so advice bolted on after it is not
+        // covered — with or without an adversative to break it.
+        yield 'attribution: advice after the handover' => ['La decisione su cosa comprare è tua, io venderei Bitcoin.'];
+        yield 'attribution: advice after an adversative' => ['La scelta su cosa vendere è tua, ma la direzione è ridurre Bitcoin.'];
+        yield 'attribution: advice before the handover' => ['Vendi VWCE: la decisione su cosa comprare resta tua.'];
+
+        // Controls: these behaved correctly before the fix and must still.
+        yield 'control: an anaphor proper' => ["Parliamo di Bitcoin. È volatile.\nIo la venderei."];
+        yield 'control: agreeing units' => ['Bitcoin: 16% → 5%.'];
+        yield 'control: a windowed epistemic frame' => ['Vale la pena capire se ridurre Bitcoin al 5%.'];
+    }
+
+    /**
+     * The other half of the same differential: what the fourth round fixed,
+     * which the fix for the bypasses above must not undo.
+     */
+    #[DataProvider('thirdReviewFalsePositives')]
+    public function test_a_false_positive_the_fourth_round_fixed_stays_fixed(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function thirdReviewFalsePositives(): iterable
+    {
+        // Class-level advice with a position named a segment earlier. The
+        // first has an explicit class after the relational noun; the other two
+        // have a class name as their head. That distinction is what the fix
+        // for the relational nouns turns on, so all three are carried here.
+        yield 'class advice: the share of a class' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nValutare se ridurre la quota di crypto."];
+        yield 'class advice: the portfolio as object' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nRibilanciare periodicamente il portafoglio."];
+        yield 'class advice: the risk profile' => ["Parliamo di Bitcoin, 18.000€, il 16% del patrimonio.\nLe decisioni di investimento devono essere coerenti con il tuo profilo di rischio."];
+
+        // The restatement the unit agreement was introduced for. It says what
+        // the percentage is a share of, which is what makes it a restatement.
+        yield 'arrow: the position restated as a share' => ['Bitcoin: 18.000€ → 16% del portafoglio.'];
+
+        // An event as the subject is arithmetic. The window between the event
+        // noun and its verb has to clear an apposition: the same sentence
+        // without the inciso survived, and with it did not.
+        yield 'event subject: across an apposition' => ['Un calo del 50% su Bitcoin (evento storicamente possibile in questo asset class) ridurrebbe il tuo portafoglio totale del 8% solo per questo fattore.'];
+
+        // The refusal stated as attribution. It survives on its own because it
+        // names no instrument; the lookback is what used to kill it, and the
+        // lookback is exactly what a real reply always satisfies.
+        yield 'attribution: the handover, in context' => ["Il tuo portafoglio ha il 16% in Bitcoin e il 58% in VWCE.\nQuesti numeri descrivono la concentrazione attuale.\nLa decisione su cosa comprare o vendere è tua."];
+
+        // Controls from the compliant side.
+        yield 'control: generic rebalancing advice' => ['Ribilanciare periodicamente il portafoglio aiuta a contenere il rischio.'];
+        yield 'control: a relational noun with its class' => ["Parliamo di Bitcoin, 18.000€.\nRidurrei l'esposizione azionaria complessiva."];
+        yield 'control: the disclaimer' => ["Questa è un'analisi dei dati, non una raccomandazione."];
+        yield 'control: the OCF referral' => ['Per un parere personalizzato rivolgiti a un consulente iscritto all\'albo OCF.'];
+    }
+
     /** The portfolio the WEA-14 harness ran against. */
     private function wea14Portfolio(): void
     {
