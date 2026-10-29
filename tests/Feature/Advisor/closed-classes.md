@@ -231,6 +231,13 @@ edition. Correct this file against those entries, not against the filter.
 
 ## Dates without a digit
 
+The calendar nouns and the feast names, which fill the one bare-noun slot the
+attribution span leaves open. The eighth review measured three of these still
+passing — `Pentecoste`, `la vigilia`, `il ponte` — and two of the three are
+plainly in this class. `ponte` is not: it is an ordinary noun that happens to
+mean a long weekend, so it is declared open rather than listed, because a
+grammar does not call it a date.
+
 - gennaio
 - febbraio
 - marzo
@@ -278,6 +285,14 @@ edition. Correct this file against those entries, not against the filter.
 - Epifania
 - Immacolata
 - Ognissanti
+- Pentecoste
+- Assunzione
+- Candelora
+- Befana
+- Avvento
+- Quaresima
+- vigilia
+- antivigilia
 
 ## Anaphoric pro-forms
 

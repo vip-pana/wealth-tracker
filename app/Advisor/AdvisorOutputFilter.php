@@ -781,7 +781,14 @@ class AdvisorOutputFilter
         .'|oggi|domani|dopodomani|ieri|stasera|stamattina|stanotte|stamane'
         .'|mattina|mattino|pomeriggio|sera|serata|notte|mezzogiorno|mezzanotte'
         .'|primavera|estate|autunno|inverno|weekend'
-        .'|natale|capodanno|ferragosto|pasqua|epifania|immacolata|ognissanti';
+        .'|natale|capodanno|ferragosto|pasqua|epifania|immacolata|ognissanti'
+        // The eighth review measured three of this class still passing the
+        // attribution span, and two of them are calendar words the list did
+        // not have. Growing it only ever denies a licence — DATE_IN_LETTERS
+        // sits inside a negative lookahead — so the direction of a missing
+        // member here is a bypass, never a deletion.
+        .'|pentecoste|assunzione|candelora|befana|avvento|quaresima'
+        .'|vigilia|antivigilia';
 
     /**
      * The one bare noun an operation or an interrogative may take as its
