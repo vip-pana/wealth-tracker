@@ -1274,13 +1274,7 @@ class AdvisorOutputFilter
             return false;
         }
 
-        foreach ($directives as $offset) {
-            if ($offset < $licence) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($directives, fn (int $offset): bool => $offset >= $licence);
     }
 
     /**
