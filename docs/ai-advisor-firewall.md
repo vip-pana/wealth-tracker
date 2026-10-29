@@ -1015,8 +1015,163 @@ constant it tested was missing a quarter of its compounds.
 
 **The false-positive rate after this round is still not known, and the probe was
 not re-run.** This round loosens in four places and tightens in two. The number
-to quote remains **7/42 on the held-out set, measured before the sixth round**,
-with that date attached.
+quoted at the time was **7/42 on the held-out set, measured before the sixth
+round**.
+
+> **That number is withdrawn.** The round after this one re-ran the probe and
+> found the fixture it was measured against to be random — see *The fixture the
+> filter was measured against was random*. Do not carry 7/42 forward; the
+> current figure is in the tenth round's measurement below.
+
+### The tenth round: closing one branch of an OR leaves the other open
+
+The round before declared the relational-object family closed 27/27, and the
+number was true. The family was not.
+
+`objectKind()` decides with an OR — `namesAClass($object) ||
+isGenericRelational($object)` — and the ninth round made the *second* one fail
+closed. The first is evaluated first, so it short-circuits the branch that was
+fixed, and it stayed anchored at the head and tolerant of whatever followed.
+Measured over seven class objects and seven anaphoric tails:
+
+| | before (`e5b785c`) | after |
+| --- | --- | --- |
+| Anaphor behind a class name (49) | **49 pass** | **0 pass** |
+| Anaphor behind a relational head (28) | 0 pass | 0 pass |
+
+Zero movement on the open half, inside the commit that declared the family
+closed. The lesson generalises past this filter and is recorded in
+`reviews.jsonl`: when a fix touches one branch of a condition in OR, the
+measurement has to be repeated on *every* branch, and on the short-circuiting
+one first.
+
+So the family is defined on the vector rather than on the code path: **an
+object the filter reads as generic, carrying an anaphor the lookback would
+resolve.** The test sits above both branches.
+
+#### Why the object is not made to fail closed
+
+The obvious repair — require `namesOnlyAClass()` of a directive's object, the
+same move that fixed the relational branch — was measured first, and it is not
+affordable. On a 30-case corpus of conforming sentences it removes **17**:
+every reflection question with any tail at all, because *"che cosa
+significherebbe ridurre l'azionario del 10%?"* is a tail, a question mark, and
+precisely what the clauses permit. The full filter suite stayed green under it,
+which is why it had to be measured against a corpus written for the question.
+
+A directive's object may run on. What it may not do is point somewhere else —
+so the test is the pro-form, which unlike an adjective list is closed in the
+language. It is transcribed in `tests/Feature/Advisor/closed-classes.md` and
+gated against it, with an inertness control on the behavioural frame. Measured
+cost on a 123-case conforming corpus: **unchanged from before the round.**
+
+#### A newline was a way round every object test in the class
+
+The segmenter split on every `\n`, so *"Ridurrei l'esposizione azionaria\na
+questo"* arrived as two segments: the object was the short half, the licensing
+branch read a bare class name, and the anaphor landed in a segment carrying no
+directive. The model wraps its bullets as a matter of course, so this was not a
+laboratory shape. A line continued in lower case is now the same sentence; a
+marker, a digit or a capital still starts a new one.
+
+#### The gate that checks the lookbehinds was wrong twice more
+
+- **It counted bytes where PCRE2 counts characters.** `(?:è|su)` is one
+  character against two and does not compile before 10.43 — but it is two bytes
+  against two, so it passed. The error was in the direction that opens, in a
+  class whose lists the round before filled with `tré`, `metà` and `fuorché`.
+- **It enumerates values, so a lookbehind written anywhere else was invisible.**
+  Two were: a literal inside `unemphasised()`, which no reflection over values
+  can reach at all, and `namePattern(array $raw)`, covered only second-hand
+  through two wrappers that return `null` on an empty portfolio — coverage
+  contingent on a fixture. Every lookbehind now goes through
+  `NOT_WORD_BEFORE`/`NOT_WORD_AFTER`, and a new gate asserts that every `(?<`
+  site *in the source* sits somewhere the enumeration reaches. Verified against
+  a planted offender in each of the two shapes.
+
+#### The fixture the filter was measured against was random
+
+Found by the probe, and it is the most portable finding of the round. The probe
+scored 3/14 and 4/14 on byte-identical cached replies within a minute, with no
+code change in between.
+
+`Asset::factory()` fills `category_id` with `Category::factory()`, whose name is
+`fake()->word()` — a draw from a 172-word lorem list that includes `non`,
+`vero`, `sed`, `minus` and `dolore`. A category name is part of the filter's
+instrument vocabulary, because the boundary clauses say a category the user
+named after an instrument *is* one. So the vocabulary was five random words wide
+and a different five on every run, in the probe and in all 1081 filter tests.
+
+That makes a probe which exists to measure a filter change unable to do it: a
+difference in the count could always have been the draw. Both fixtures are
+pinned now, and the probe re-scores the held-out set identically three runs in a
+row.
+
+#### The fail-closed nominal, measured rather than written
+
+The ninth review asked for the cost of requiring the attribution's nominal to be
+a name the filter recognises, rather than merely not a quantity or a date.
+
+**It costs 6 of the 9 conforming attributions that survive today** — *a
+piacere*, *a tua discrezione*, *in autonomia*, *in base ai tuoi obiettivi*, *con
+calma*, *in conoscenza di causa* — and it removes the quantity frame's own
+inertness control, which is `a piacere`. That is not a small cost, so the answer
+is not the fail-closed nominal and the question goes back with the number.
+
+What the measurement does say is that two of the three leaks the review found —
+`Pentecoste` and `la vigilia` — are calendar words missing from a class the
+grammar file already keeps. `DATE_IN_LETTERS` sits inside a *negative
+lookahead*, so a missing member there is a bypass and a new member is never a
+deletion: it is the one place on this branch where growing a list is the
+fail-closed direction.
+
+#### What is deliberately left open
+
+- **The enclitic pro-form.** *"Ridurrei l'azionario per comprarlo"* still
+  passes. The clitic is in the pro-form class grammatically, and it is
+  deliberately not in `ANAPHOR`: spelled alone, `lo`, `la`, `li`, `le` and `gli`
+  are the definite article, so listing them would make *"gli ETF"* read as a
+  pronoun governing a position noun and a plain class object would stop being
+  generic. Closing it means reading the *directive token* rather than its
+  object. Asserted by `test_the_enclitic_pro_form_is_still_open`.
+- **`il ponte`.** An ordinary noun that happens to mean a long weekend. No
+  grammar calls it a date, so it is not in the date class and the attribution
+  span still takes it.
+- **`Una riduzione di Bitcoin al venti per cento`** — unchanged; still the
+  arithmetic test owed on the arrow.
+- **The `=== 1` / `!== 1` idiom across the filter.** Unchanged, and open *as of
+  29 October 2026*. The ninth review's condition was that it carry a date and
+  never enter a compliance document as resolved; it is the first work of the
+  round after the filter stops moving.
+
+#### The measurement
+
+Filter suite 877 → **1081**; PHPUnit 1530 → **1734**.
+
+**The probe was re-run.** The number in the three rounds before this one —
+7/42, measured before the sixth round — is withdrawn as the figure to quote: it
+is three rounds stale, and it was measured against the random fixture described
+above.
+
+On the held-out sample indices 10–12, through Regolo (`qwen3.5-122b`), 14
+questions each: **5 of 42 replies altered, 5 segments removed.** All five are
+false positives; none of the 42 replies carried a forbidden recommendation.
+
+| Removed | Family |
+| --- | --- |
+| *"Come bilanciare la concentrazione su un singolo strumento mantenendo la diversificazione"* | A heading listing what the reply will discuss |
+| *"**Peso obbligazionario:** Con il 5% in obbligazioni, la parte difensiva è molto bassa… Sei consapevole di questa scelta?"* | Education plus a reflection question |
+| *"**Valuta la tua reale tolleranza al rischio**: Se la paura di perdere tutto è forte…"* | Reflection |
+| *"La tua reazione emotiva a un eventuale calo del 50% su Bitcoin (che ridurrebbe il portafoglio di circa 9.000€…)"* | Scenario arithmetic |
+| *"**Il tuo livello di comfort emotivo:** … Se il valore di Bitcoin scendesse del 50%…, come reagiresti emotivamente?"* | Reflection plus scenario arithmetic |
+
+**Read this as a new measurement, not as a differential.** The reply cache from
+the earlier rounds did not survive, so these are freshly drawn replies: 5/42
+against 7/42 is two measurements of a stochastic system three rounds apart, not
+a change of three segments. What can be said is that the rate is of the same
+order, that it did not rise across a round that tightens, and that it is not
+tending to zero. The three questions whose answers were never altered in any
+sample are not evidence of anything either; one draw is not a rate.
 
 ## Related
 
