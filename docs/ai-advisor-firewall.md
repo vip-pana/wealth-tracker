@@ -792,7 +792,9 @@ pattern read through that window is anchored at the head of it.
   al 5%"*. `QUANTITY_IN_LETTERS` exists now and is the class it would need;
   wiring it into `QUANTITY` changes five call sites at once, including the
   `asking` gate, and that is a licence-sized change that has to be attacked in
-  the commit that makes it. Flagged here rather than half-done.
+  the commit that makes it. Flagged here rather than half-done. **Closed in the
+  round below** — and the dependency named there was real: the numeral class
+  was a quarter short at the time this was written.
 - **§D, the reflection window and the `ASIDE` reduction**, both per-instance —
   see the round above, where the correction is now stated properly.
 
@@ -831,6 +833,190 @@ round.
 was not re-run.** Every fix here tightens except §C and the object window,
 which loosen. The number to quote remains **7/42 on the held-out set, measured
 before the sixth round**, with that date attached.
+
+### The ninth round: a parse that discards what it cannot read
+
+The eighth review's blocker was not a missing word. `RELATIONAL_OBJECT_HEAD`
+parsed greedily to the left and tolerantly to the right, and **whatever it could
+not parse it dropped in silence** — after which the licensing branch spoke on
+the half it could.
+
+- **An adjective outside the two closed groups hid the complement.** `diretta`,
+  `netta`, `eccessiva`, seventeen more: the preposition group failed, the
+  complement came back empty, and `isGenericRelational()` fell through to the
+  class adjective — the branch §C exists to subordinate. *"Parliamo di Bitcoin.
+  Ridurrei l'esposizione azionaria diretta a questo"* passed, in **20 measured
+  shapes**.
+- **The complement test was anchored at its own head**, so a class name in first
+  position licensed whatever anaphor followed it: *"l'esposizione alla liquidità
+  a favore di questo"*, *"l'esposizione in azionario su questo"*. Six more, and
+  one of them — *"l'esposizione per categoria su questo"* — was a regression of
+  the round before, opened by adding `per` to the complement prepositions.
+
+The remedy is not another adjective list. §C says why: an open `\w+` would read
+*"l'esposizione eccessiva"* as a class. It is the **direction of the failure** —
+the object parses whole or the licence is denied, and the complement has to be a
+class name and nothing else.
+
+The complement prepositions are now the same list the event span reads. The
+hand-written one held `in` and not `nel`, so *"la concentrazione nel
+portafoglio"* never parsed a complement at all; under a fail-closed parse that
+stops being a silent miss and becomes a redaction, so it had to be the grammar's
+list. Widening it cannot open an anaphor — the complement still has to be a
+class name and end there.
+
+#### The enumeration moved out of the code
+
+`tests/Feature/Advisor/closed-classes.md` is transcribed from a grammar of
+Italian and **not** from `AdvisorOutputFilter`, and a gate compares the two.
+
+The eighth review proved why that had to happen: a provider typed out of the
+constant it tests cannot fail for a missing member, only for a regression. It
+deleted all 33 cardinals from `QUANTITY_IN_LETTERS` and the 55-case provider
+stayed green — every sentence carried *"per cento"*, and `cento` is itself in
+the class under test. So each behavioural frame now has an **inertness test**:
+the same frame with a non-member in the slot has to pass. That is the assertion
+that would have failed on the day the old provider was written.
+
+What the grammar found on its first run, none of it reported by anyone:
+
+- **14 improper prepositions** still deleting conforming arithmetic —
+  `nonostante`, `malgrado`, `attraverso`, `tramite`, `rasente`, `fuorché`,
+  `escluso`, `incluso`, `compreso`, `eccettuato`, `stante`, `tolto`, `visto`,
+  `causa`.
+- **11 determiner forms** carrying a proxy subject through the span: `cotesto`,
+  `diverso`, `vario`, and the superlatives — `moltissimi`, `svariati`,
+  `numerosi`, `innumerevoli`.
+- **The compound numerals were a quarter short by construction.** The generator
+  wrote the compounds as a tens stem plus a unit, which produces `ventiuno` and
+  `ventitre`. Italian elides the tens vowel in front of `uno` and `otto`
+  (`ventuno`, `quarantotto`) and accents the `tre` of a compound (`ventitré`),
+  so **24 of the 72 compounds between 21 and 99** were absent — in the constant
+  whose docblock claimed to close the class by construction. The rule is written
+  now instead of the results.
+- **A bare time complement takes no determiner in Italian**, which is exactly
+  why it fits the one slot the attribution span leaves open for a bare noun.
+  The months were there; `lunedì`, `domani`, `stasera`, `Natale`, `primavera`
+  were not. `DATE_IN_LETTERS` is the class, split from the numerals because the
+  numerals are wired into `QUANTITY` and dates must not be.
+
+#### `EVENT_SUBJECT`'s determiner slot was a fifth of its class
+
+The round before taught the pattern the plural conditional and then listed five
+determiners that can introduce a plural event. With the verb now read as a
+directive, the other fourteen turned conforming arithmetic into advice: *"quattro
+cali del 30% ridurrebbero il tuo patrimonio"* was removed. **38 of 48** measured
+sentences were being deleted — the WEA-14 harm, in the commit written to undo it,
+introduced by teaching the plural.
+
+The slot is `DETERMINER` itself now, plus the numerals and digits. Which
+determiner introduces the event decides nothing: what keeps the licence safe is
+the span test, and the span test does not look at it.
+
+#### The numeric channel reads letters
+
+Declared and not fixed in the round before. `QUANTITY` matched `\d`, so *"Porta
+Bitcoin al cinque per cento"* walked past the notation layer that removes *"Porta
+Bitcoin al 5%"*. The review ordered it **last of five** on a dependency, and the
+dependency was real: wiring the letters in while the numeral class was missing a
+quarter of its compounds would have closed *"al venti per cento"* and left *"al
+ventotto"*. The class is complete first, then the one change.
+
+The unit is required — a bare numeral is a count of anything, *"negli ultimi
+cinque anni"* — so it is `per cento`, a currency, or a share of the whole.
+
+#### The lookbehind gate was wrong twice
+
+Worth recording in full, because both halves are general.
+
+It read `getConstants()`, and the correction it was written for had moved the
+pattern **out** of the constants into `newClausePattern()`. **67 lookbehinds run;
+3 were inspected**, and 61 of the invisible ones were created by the commit the
+gate was supposed to protect. A gate on a property of the patterns has to
+enumerate the patterns the filter *executes*, not the constants it stores them
+in — so it now also invokes every argument-free string-returning method on the
+class. The method corollary: *"verified against a planted offender"* proves the
+detector fires, not that it is aimed at the production artefact.
+
+And it tested `str_contains($body, '|')`, which is a **proxy** for the property
+and not the property. Too weak in the direction that matters: `(?<!\ball[oa]?)`
+— one more preposition written the way the sister list `DETERMINER` already
+writes them — has no `|` in it and is variable-length all the same. Too strong
+in the other: `(?<!di|insu)` has always compiled, because PCRE2 required each
+*top-level* branch to be fixed and let the branches differ from one another. The
+gate counts branch lengths now.
+
+**One claim from the round before is withdrawn here, because it is written in
+three places and a reader would draw the opposite conclusion.** *"A pattern that
+fails to compile makes `preg_match` return `false`, which a `=== 1` check reads
+as 'did not match', so the firewall decides the opposite thing silently"* is true
+of the language and **not true of this application**. Laravel's error handler
+turns the warning into an `ErrorException`, nothing in `app/Advisor` or
+`app/Jobs` catches it, and the eighth review measured it: a non-compiling
+lookbehind planted in `newClausePattern()` fails 174 tests with
+`ErrorException: preg_match(): Compilation failed`. The simplest proof is CI
+itself — if the filter had decided in silence, the offending commit would have
+been green.
+
+The gate is still the right idea, for the narrow case no test can reach: a
+construct that compiles on the developer's PCRE2 and not on CI's. But the
+`!== 1` idiom is a *latent* hazard rather than a live one, and it is latent for
+two reasons that are configuration and not code — `E_WARNING` is reported and
+nobody catches. Change either and a `preg_match(...) !== 1` returning
+"protected" on error becomes a bypass. That property has no gate.
+
+#### What this round costs, stated rather than discovered
+
+- **A relational head with an unparseable modifier is redacted.** *"Ridurrei
+  l'esposizione azionaria diretta all'obbligazionario"* loses its licence along
+  with the twenty bypasses, because the parse cannot tell the two apart without
+  an open adjective slot — which is the thing §C rules out. This is the
+  fail-closed trade taken deliberately, and the conforming shapes that still
+  parse whole are held by `seventhReviewRelationalControls`.
+- **A bare plural with an adjectival premodifier is not covered.** *"Ripetuti
+  cali del 30% …"* is still removed: `ripetuti` is an adjective, not a
+  determiner, and adjectives are not a closed class. It is asserted as a cost in
+  `test_the_event_subject_frame_is_inert` rather than left to be found.
+- **`QUANTITY` is wider**, so a sentence that reports with a number in letters is
+  now exposed to the notation layer. Five such sentences are held as controls;
+  the rate on real replies is not known.
+
+#### What is deliberately left open
+
+- **`Una riduzione di Bitcoin al venti per cento`** — unchanged from the round
+  before, and still not a span defect. It needs the arithmetic test owed on the
+  arrow.
+- **The `=== 1` / `!== 1` idiom across the filter.** Named above; no gate holds
+  it, and building one means deciding what every call site should do on a
+  `false`, which is a change the size of a licence.
+
+#### The measurement
+
+Same set both sides, swapping only `AdvisorOutputFilter.php`. `before` is
+`1a8f2d9`, the commit the seventh review read.
+
+| | before | after |
+| --- | --- | --- |
+| Relational-object bypasses (27) | 1/27 closed | **27/27** |
+| Relational-object controls (9) | 7/9 pass | **9/9** |
+| Attribution bypasses — numerals, dates (26) | 0/26 closed | **26/26** |
+| Determiners that may introduce an event (48) | 10/48 pass | **48/48** |
+| Numerals and dates as a class (179) | 102/179 closed | **179/179** |
+| The same instruction in letters (10) | 1/10 closed | **10/10** |
+| Frame-inertness checks (2) | pass | **pass** |
+
+Filter suite 618 → **877**; PHPUnit 1271 → **1530**.
+
+Two rows carry the argument. **10/48** is a count of conforming sentences the
+round before was deleting, found by a class the filter did not write. And
+**102/179** is the numeral and date class measured against a generator rather
+than against itself — the provider that preceded it scored 55/55 while the
+constant it tested was missing a quarter of its compounds.
+
+**The false-positive rate after this round is still not known, and the probe was
+not re-run.** This round loosens in four places and tightens in two. The number
+to quote remains **7/42 on the held-out set, measured before the sixth round**,
+with that date attached.
 
 ## Related
 
