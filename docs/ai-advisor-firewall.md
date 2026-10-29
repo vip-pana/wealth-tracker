@@ -179,6 +179,79 @@ the database, which is the copy that matters if anyone ever asks what the system
 said. The filter is idempotent, so running it in both places costs nothing.
 `displayContent()` returns user turns untouched: those are the user's own words.
 
+### The numeric channel — the half no word list can reach
+
+Beside the text sits a channel that carries the same propositions as numbers.
+`propose_goal_milestones` takes an `allocation`: a target weight per category,
+persisted into `goal_category_allocations` and redrawn on the Goal page as a
+glide path for as long as the goal lives. `propose_goal_composition` is the same
+thing without the glide path. Until this was closed, the three free-text fields
+beside them went through `filterField()` and the weights went through nothing but
+a shape check — `exists:categories,name`, `numeric 0-100`, and a sum of ~100.
+
+So the same proposition was **blocked as a sentence and saved as a row**:
+
+| | |
+| --- | --- |
+| `Azionario 60 / Obbligazioni 30 / Liquidità 10` | allocation by asset class — inside the ESMA35-43-3861 ¶48-50 safe harbour the whole product rests on |
+| `Bitcoin 5%` | a target weight on a specific instrument, conditioned on the user's profile and goal, persisted and redrawn |
+
+The clauses already draw that line for text — *"se l'utente ha dato un nome di
+strumento a una categoria, trattala come strumento specifico"* — and the text
+channel applies it through `GENERIC_CLASS_NAMES`. The numeric channel did not
+apply it at all. **The user names their own categories**, so the app cannot
+assume the benign reading.
+
+`AdvisorOutputFilter::namesInstrument()` is that test, run on a bare label: a
+category name is an instrument when it is **not** one of the
+`GENERIC_CLASS_NAMES` **and** it matches a position the user holds, a ticker, an
+ISIN, or something in `KNOWN_INSTRUMENTS`. `instrumentNames()` runs it over a
+whole allocation.
+
+**It is matched against the user's positions, never against their categories.**
+`heldPattern()` — what the text channel uses — includes the category names,
+because in a sentence a category name is just another way to point at a holding.
+Testing a *bare category name* against that pattern matches it against itself:
+every non-generic bucket the user ever invented (`Immobili Milano`, `Pensione
+integrativa`) comes back "instrument", and the gate refuses every allocation it
+is given. `positionPattern()` exists for that reason and must stay free of the
+category list. Not being generic is necessary and nowhere near sufficient.
+
+**The verdict is on the set, not on the bucket.** The weights sum to 100 by
+contract, so dropping only the offending row leaves an allocation that silently
+no longer adds up. Everywhere the gate fires it takes the whole allocation:
+
+- *Proposal* (`AdvisorToolFactory`) — no card is emitted at all, and the model is
+  told what was refused and asked to re-propose by class. A glide path with a
+  step missing is a plan the user cannot see the hole in.
+- *Write* (`StoreGoalMilestonesController`, `StoreGoalCompositionController`) —
+  refused **before** the delete those writes open with. Both replace everything
+  they touch, so refusing afterwards would cost the user the plan they already
+  had and leave them with nothing.
+- *Read* (`FetchGoalData`, the advisor `IndexController`, and
+  `allocation_vs_target`) — rows saved before this existed are already in the
+  database. The last one matters on its own: that tool reads the stored target
+  back **to the model**, which would hand it its own refused proposal as
+  established fact, in the app's own voice.
+
+The `cap_amount` field's description was rewritten at the same time. It offered
+`"Bitcoin mai sopra 100.000"` as its example — a ceiling on a named instrument,
+which is the thing `NOTATION_CAP` removes from the text one layer up.
+
+**False positives are real here and are the accepted cost.** A category named
+after the user's broker (`Fineco`, `Directa`) matches `KNOWN_INSTRUMENTS` and
+refuses the allocation. The refusal says which name it refused, so the user can
+rename the bucket; silently saving a weight on a named instrument has no
+comparable escape.
+
+**What is still open, and is a question for a lawyer rather than for the code:**
+whether a target allocation *by asset class*, conditioned on the user's profile
+and goal, is already a personal recommendation under Art. 4(1)(4) MiFID II /
+Arts. 18-bis–18-ter TUF, or whether ESMA35-43-3861 ¶48-50 keeps it out. The gate
+above is right either way — it closes the asymmetry between the two channels in
+both scenarios — but if the answer is "yes", the per-class glide path itself
+needs rethinking, not just the per-instrument one.
+
 ## Where this stops — read this part
 
 **Streaming is not covered.** `ContinueChat::runStreaming()` filters what it

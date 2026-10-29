@@ -889,6 +889,120 @@ class AdvisorToolFactoryTest extends TestCase
         $this->assertCount(2, $widgets[0]['data']['buckets']);
     }
 
+    // ---- The numeric channel: a target weight on a named instrument ----
+
+    /**
+     * The firewall's text half would remove "porta Bitcoin al 5%" from a reply.
+     * The same proposition reaches the Goal page as a row through `allocation`,
+     * where no lexical check can see it — so the class test runs here too.
+     * Nothing is emitted: a glide path with a step missing is a plan the user
+     * cannot see the hole in.
+     */
+    public function test_propose_goal_milestones_refuses_an_allocation_weighting_an_instrument(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Bitcoin']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $out = $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà', 'target_value' => 500000, 'target_date' => '2099-06-30', 'allocation' => [
+                ['category' => 'Azioni', 'percentage' => 95],
+                ['category' => 'Bitcoin', 'percentage' => 5],
+            ]],
+        ]);
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('Bitcoin', $out);
+        $this->assertStringContainsString('CLASSI', $out);
+    }
+
+    /**
+     * The other direction, and the one that matters most: an allocation by
+     * asset class is what the product is for, and it has to keep working.
+     */
+    public function test_propose_goal_milestones_allows_an_allocation_by_asset_class(): void
+    {
+        Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'Obbligazioni']);
+        Category::factory()->create(['name' => 'Liquidità']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà', 'target_value' => 500000, 'target_date' => '2099-06-30', 'allocation' => [
+                ['category' => 'Azionario', 'percentage' => 60],
+                ['category' => 'Obbligazioni', 'percentage' => 30],
+                ['category' => 'Liquidità', 'percentage' => 10],
+            ]],
+        ]);
+
+        $this->assertCount(3, $collector->widgets()[0]['data']['milestones'][0]['allocation']);
+    }
+
+    /**
+     * A category named after one of the user's own positions, rather than after
+     * something in KNOWN_INSTRUMENTS. The clauses already say to treat that
+     * name as a specific instrument; this is the numeric channel agreeing.
+     */
+    public function test_propose_goal_milestones_refuses_a_category_named_after_a_position(): void
+    {
+        Asset::factory()->create(['name' => 'Vanguard FTSE All-World', 'ticker' => 'VWCE']);
+        Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'VWCE']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $out = $this->tool($factory, 'propose_goal_milestones')->handle(milestones: [
+            ['label' => 'Metà', 'target_value' => 500000, 'target_date' => '2099-06-30', 'allocation' => [
+                ['category' => 'Azionario', 'percentage' => 60],
+                ['category' => 'VWCE', 'percentage' => 40],
+            ]],
+        ]);
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('VWCE', $out);
+    }
+
+    /**
+     * The same gate one tool over. The composition is the goal's global target
+     * rather than a glide-path step, but a weight on a named instrument is the
+     * same proposition — and leaving it open would make the milestone gate a
+     * detour rather than a limit.
+     */
+    public function test_propose_goal_composition_refuses_a_bucket_weighting_an_instrument(): void
+    {
+        Category::factory()->create(['name' => 'Azioni']);
+        Category::factory()->create(['name' => 'Bitcoin']);
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+
+        $out = $this->tool($factory, 'propose_goal_composition')->handle(
+            buckets: [
+                ['category' => 'Azioni', 'percentage' => 95],
+                ['category' => 'Bitcoin', 'percentage' => 5],
+            ],
+            rationale: 'Una quota satellite.',
+        );
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('Bitcoin', $out);
+    }
+
+    /**
+     * Rows saved before the write gate existed are in the database, and this
+     * tool reads them straight back to the model — which would hand it its own
+     * refused proposal as established fact, from the app's own mouth.
+     */
+    public function test_allocation_vs_target_ignores_a_stored_target_weighting_an_instrument(): void
+    {
+        $bitcoin = Category::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'FIRE', 'target_value' => 100000, 'target_date' => '2040-01-01']);
+        GoalCategoryAllocation::create(['goal_id' => $goal->id, 'category_id' => $bitcoin->id, 'percentage' => 100]);
+
+        [$factory, $collector] = $this->armedFactory($this->portfolioContext);
+        $out = $this->tool($factory, 'allocation_vs_target')->handle();
+
+        $this->assertSame([], $collector->widgets());
+        $this->assertStringContainsString('non posso confrontare', $out);
+    }
+
     public function test_offer_profile_proposal_emits_a_proposal_offer_button(): void
     {
         [$factory, $collector] = $this->armedFactory($this->portfolioContext);

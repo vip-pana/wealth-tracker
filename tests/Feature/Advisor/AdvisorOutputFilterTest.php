@@ -1452,4 +1452,87 @@ class AdvisorOutputFilterTest extends TestCase
             ->assertOk()
             ->assertJsonPath('messages.0.content', AdvisorOutputFilter::REFUSAL);
     }
+
+    // ---- The numeric channel: the same test applied to a bare category name ----
+
+    /**
+     * An allocation by asset class is the thing the product exists to do, and
+     * the thing ESMA35-43-3861 ¶48-50 leaves outside personal recommendation.
+     * Every one of these has to pass, however the user capitalised or accented
+     * it, or the glide path stops working at all.
+     */
+    #[DataProvider('classNames')]
+    public function test_a_category_naming_an_asset_class_is_not_an_instrument(string $name): void
+    {
+        $this->holding('Vanguard FTSE All-World', 'VWCE', 'IE00BK5BQT80');
+
+        $this->assertFalse($this->filter()->namesInstrument($name));
+    }
+
+    /** @return list<array{string}> */
+    public static function classNames(): array
+    {
+        return [
+            ['Azionario'], ['Obbligazioni'], ['Liquidità'], ['liquidita'],
+            ['Immobiliare'], ['ETF'], ['Fondo pensione'], ['Oro'], ['Altro'],
+        ];
+    }
+
+    /**
+     * The category the user named after one of their own positions. The text
+     * channel already treats that name as a specific instrument — the clauses
+     * say so outright — and this is the same proposition carried as a number.
+     */
+    public function test_a_category_named_after_a_held_position_is_an_instrument(): void
+    {
+        $this->holding('Vanguard FTSE All-World', 'VWCE', 'IE00BK5BQT80');
+
+        $this->assertTrue($this->filter()->namesInstrument('VWCE'));
+        $this->assertTrue($this->filter()->namesInstrument('Vanguard FTSE All-World'));
+        $this->assertTrue($this->filter()->namesInstrument('IE00BK5BQT80'));
+    }
+
+    public function test_a_category_named_after_an_instrument_the_user_does_not_hold_is_an_instrument(): void
+    {
+        $this->assertTrue($this->filter()->namesInstrument('Bitcoin'));
+        $this->assertTrue($this->filter()->namesInstrument('iShares Core MSCI World'));
+    }
+
+    public function test_a_ticker_shaped_category_is_an_instrument(): void
+    {
+        $this->assertTrue($this->filter()->namesInstrument('SWDA'));
+        // …but the domain's own acronyms are not tickers.
+        $this->assertFalse($this->filter()->namesInstrument('PAC'));
+    }
+
+    /**
+     * The category list is deliberately NOT part of the test: a bare category
+     * name matched against heldPattern() matches itself, and every bucket the
+     * user ever invented would come back "instrument". A name the user made up
+     * is a bucket until something says otherwise.
+     */
+    public function test_a_category_the_user_invented_is_not_an_instrument(): void
+    {
+        Category::factory()->create(['name' => 'Immobili Milano']);
+        Category::factory()->create(['name' => 'Pensione integrativa']);
+
+        $this->assertFalse($this->filter()->namesInstrument('Immobili Milano'));
+        $this->assertFalse($this->filter()->namesInstrument('Pensione integrativa'));
+    }
+
+    /**
+     * The verdict is on the set, not on the bucket: the weights sum to 100 by
+     * contract, so a caller that dropped only the offending row would be left
+     * with an allocation that silently no longer adds up.
+     */
+    public function test_instrument_names_reports_every_offending_bucket_once(): void
+    {
+        $this->holding('Vanguard FTSE All-World', 'VWCE');
+
+        $this->assertSame([], $this->filter()->instrumentNames(['Azionario', 'Obbligazioni', 'Liquidità']));
+        $this->assertSame(
+            ['VWCE', 'Bitcoin'],
+            $this->filter()->instrumentNames(['Azionario', 'VWCE', 'Bitcoin', 'vwce', 'Liquidità']),
+        );
+    }
 }

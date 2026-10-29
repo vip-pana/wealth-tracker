@@ -422,7 +422,7 @@ class AdvisorToolFactory
                                 [
                                     new EnumSchema('category', 'La categoria (una tra quelle reali dell\'utente).', $categories),
                                     new NumberSchema('percentage', 'Quota percentuale (0-100).'),
-                                    new NumberSchema('cap_amount', 'FACOLTATIVO. Tetto massimo in valore assoluto per questa categoria a questa tappa (nella valuta del portafoglio, es. 50000). Quando la percentuale applicata all\'importo della tappa supererebbe questo tetto, la categoria si ferma al tetto e la quota eccedente viene ridistribuita sulle altre categorie senza tetto. Usalo quando l\'utente vuole che una categoria non cresca oltre una certa cifra (es. "la liquidità non oltre 50.000", "Bitcoin mai sopra 100.000"). Ometti se non c\'è un tetto.'),
+                                    new NumberSchema('cap_amount', 'FACOLTATIVO. Tetto massimo in valore assoluto per questa categoria a questa tappa (nella valuta del portafoglio, es. 50000). Quando la percentuale applicata all\'importo della tappa supererebbe questo tetto, la categoria si ferma al tetto e la quota eccedente viene ridistribuita sulle altre categorie senza tetto. Usalo quando l\'utente vuole che una classe di attività non cresca oltre una certa cifra (es. "la liquidità non oltre 50.000"). Vale anche qui il divieto sugli strumenti specifici: il tetto si mette su una classe, non su una singola posizione. Ometti se non c\'è un tetto.'),
                                 ],
                                 requiredFields: ['category', 'percentage'],
                             ),
@@ -885,6 +885,13 @@ class AdvisorToolFactory
                     : ($a->macro_category ?? 'Sconosciuta');
                 $targets[$label] = round((float) $a->percentage, 2);
             }
+
+            // Rows saved before the numeric channel was screened are in the
+            // database, and this tool reads them straight back to the model —
+            // which would hand it its own refused proposal as established fact.
+            if ($this->filter->instrumentNames(array_keys($targets)) !== []) {
+                $targets = [];
+            }
         }
 
         if ($targets === []) {
@@ -1199,6 +1206,7 @@ class AdvisorToolFactory
     private function describeGoalMilestonesProposal(array $milestones): string
     {
         $valid = [];
+        $blocked = [];
         foreach ($milestones as $m) {
             $value = is_numeric($m['target_value'] ?? null) ? (float) $m['target_value'] : null;
             $rawDate = is_string($m['target_date'] ?? null) ? trim($m['target_date']) : '';
@@ -1222,9 +1230,27 @@ class AdvisorToolFactory
             $rationale = is_string($m['rationale'] ?? null) && trim($m['rationale']) !== ''
                 ? mb_substr(trim($m['rationale']), 0, 800)
                 : null;
+            // The whole milestone goes, not the offending bucket: the weights
+            // sum to 100 by contract, so dropping one would leave a glide-path
+            // step that no longer adds up and says nothing about why.
+            $named = $this->instrumentBuckets($m['allocation'] ?? null);
+            if ($named !== []) {
+                $blocked = [...$blocked, ...$named];
+
+                continue;
+            }
+
             $allocation = $this->validMilestoneAllocation($m['allocation'] ?? null);
 
             $valid[] = ['label' => $label, 'action' => $action, 'rationale' => $rationale, 'target_value' => $value, 'target_date' => $date, 'allocation' => $allocation];
+        }
+
+        // Nothing is shown when a milestone was refused, not even the ones that
+        // passed: the glide path is a sequence, and a card with a step missing
+        // is a plan the user cannot see the hole in. The model is told what was
+        // wrong so it can propose the same path by class.
+        if ($blocked !== []) {
+            return $this->allocationInstruction($blocked);
         }
 
         if ($valid === []) {
@@ -1259,6 +1285,49 @@ class AdvisorToolFactory
         $lines[] = 'La proposta è mostrata con un pulsante per confermare: non è ancora salvata.';
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * The category names in a proposed allocation that name a specific
+     * instrument rather than an asset class — the numeric channel's half of
+     * the firewall. Reads the raw buckets rather than the validated ones so a
+     * refusal still names what it refuses when the set also fails to sum to
+     * 100.
+     *
+     * @return list<string>
+     */
+    private function instrumentBuckets(mixed $allocation): array
+    {
+        if (! is_array($allocation)) {
+            return [];
+        }
+
+        $names = [];
+        foreach ($allocation as $b) {
+            if (is_array($b) && is_string($b['category'] ?? null)) {
+                $names[] = $b['category'];
+            }
+        }
+
+        return $this->filter->instrumentNames($names);
+    }
+
+    /**
+     * What the model is told when its proposed weights land on an instrument.
+     * Phrased as an instruction to re-propose rather than as an error, because
+     * the proposal by CLASS is the thing the product wants and the model is one
+     * retry away from it.
+     *
+     * @param  list<string>  $names
+     */
+    private function allocationInstruction(array $names): string
+    {
+        return 'Non posso proporre questa allocazione: assegna un peso obiettivo a uno strumento '
+            .'specifico ('.implode(', ', array_unique($names)).'). Una quota target su una singola '
+            .'posizione è un\'indicazione operativa, e non puoi darla. Riproponi la stessa tappa '
+            .'esprimendo la composizione per CLASSI di attività (azionario, obbligazionario, '
+            .'liquidità, immobiliare), oppure proponi le tappe senza allocazione. Spiega all\'utente '
+            .'che puoi ragionare sul peso delle classi, non su quanto detenere di uno strumento.';
     }
 
     /**
@@ -1317,6 +1386,16 @@ class AdvisorToolFactory
     private function describeGoalCompositionProposal(array $buckets, ?string $rationale): string
     {
         $rationale = $rationale !== null && trim($rationale) !== '' ? mb_substr(trim($rationale), 0, 1000) : null;
+
+        // Same numeric channel, one tool over. The composition is the goal's
+        // global target weights rather than a glide-path step, but a weight on
+        // a named instrument is the same proposition either way — and leaving
+        // this one open would have made the milestone gate a detour rather
+        // than a limit.
+        $named = $this->instrumentBuckets($buckets);
+        if ($named !== []) {
+            return $this->allocationInstruction($named);
+        }
 
         $allowed = $this->goalCategoryNames();
 

@@ -1356,6 +1356,11 @@ class AdvisorOutputFilter
 
     private bool $heldPatternBuilt = false;
 
+    /** @var non-empty-string|null Memoised across a request; null = nothing to match. */
+    private ?string $positionPattern = null;
+
+    private bool $positionPatternBuilt = false;
+
     /**
      * Screen an assistant reply. Returns it unchanged when clean, with the
      * offending segments replaced when not, or the refusal when nothing
@@ -1447,6 +1452,111 @@ class AdvisorOutputFilter
         }
 
         return $out;
+    }
+
+    /**
+     * Whether a bare category name denotes one specific instrument rather than
+     * an asset class.
+     *
+     * This is the numeric channel, and it is the one thing a lexical filter
+     * cannot reach. A milestone's target allocation carries the same
+     * proposition as a sentence this class removes, with no text in it:
+     * `Azionario 60 / Obbligazioni 30 / Liquidità 10` is an allocation by
+     * class, inside the ESMA35-43-3861 ¶48-50 safe harbour the product rests
+     * on, while `Bitcoin 5%` is a personalised target weight on a named
+     * instrument — persisted as a row and redrawn as a glide path for as long
+     * as the goal lives. The clauses already draw that line for text ("se
+     * l'utente ha dato un nome di strumento a una categoria, trattala come
+     * strumento specifico"); without this the two channels disagreed, and the
+     * same proposition was blocked as a sentence and saved as a row.
+     *
+     * The user names their own categories, so neither reading can be assumed.
+     * The test is the one mentionsInstrument() applies inside a segment, minus
+     * the category half of heldPattern(): a name is an instrument when it is
+     * not one of the GENERIC_CLASS_NAMES *and* it matches a position the user
+     * holds, a ticker, an ISIN, or something in KNOWN_INSTRUMENTS.
+     *
+     * Not being generic is necessary and nowhere near sufficient. A category
+     * called `Immobili Milano` or `Pensione integrativa` is a bucket the user
+     * invented, not an instrument, and refusing those would refuse nearly every
+     * real portfolio — which is why the positive half is matched against the
+     * positions and never against the category list. See positionPattern().
+     */
+    public function namesInstrument(string $name): bool
+    {
+        $name = trim($name);
+
+        if ($name === '' || $this->isGenericClassName($name)) {
+            return false;
+        }
+
+        if (preg_match(self::ISIN, $name) === 1) {
+            return true;
+        }
+
+        if (preg_match($this->knownInstrumentPattern(), $name) === 1) {
+            return true;
+        }
+
+        $pattern = $this->positionPattern();
+
+        if ($pattern !== null && preg_match($pattern, $name) === 1) {
+            return true;
+        }
+
+        if (preg_match_all(self::TICKER, $name, $matches) >= 1) {
+            foreach ($matches[0] as $token) {
+                if (! in_array($token, self::NOT_TICKERS, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The names in a target allocation that name a specific instrument, in the
+     * order they were given and without repeats. An empty result means the
+     * whole set is by class and may be proposed, saved and drawn.
+     *
+     * Callers treat a non-empty result as a verdict on the set, not on the one
+     * bucket: the weights sum to 100 by contract, so dropping a single bucket
+     * would leave an allocation that silently no longer adds up.
+     *
+     * @param  list<string>  $names
+     * @return list<string>
+     */
+    public function instrumentNames(array $names): array
+    {
+        $blocked = [];
+
+        foreach ($names as $name) {
+            $key = mb_strtolower(trim($name));
+
+            // The first spelling wins: the message names what was refused back
+            // to the user, and the user wrote the category once.
+            if (! isset($blocked[$key]) && $this->namesInstrument($name)) {
+                $blocked[$key] = trim($name);
+            }
+        }
+
+        return array_values($blocked);
+    }
+
+    /**
+     * Why a target allocation was refused, for the user. Takes the same line as
+     * REFUSAL — name what was refused and why, then say what the product does
+     * instead — because a write that silently drops a milestone is
+     * indistinguishable from a bug.
+     */
+    public static function allocationRefusal(string ...$names): string
+    {
+        return 'Allocazione non salvata: assegna un peso obiettivo a uno strumento specifico ('
+            .implode(', ', $names).'), e questo assistente non può indicare quanto detenere di una '
+            .'singola posizione. Le tappe esprimono la composizione per classi di attività '
+            .'(azionario, obbligazionario, liquidità). Per una raccomandazione personalizzata serve '
+            .'un consulente finanziario abilitato (in Italia, iscritto all\'albo OCF).';
     }
 
     /**
@@ -2292,6 +2402,60 @@ class AdvisorOutputFilter
             $raw[] = $category->name;
         }
 
+        return $this->heldPattern = $this->namePattern($raw);
+    }
+
+    /**
+     * The same alternation over the user's POSITIONS alone — their category
+     * names deliberately left out.
+     *
+     * heldPattern() includes the categories because in a sentence a category
+     * name is just another way to point at a holding. Testing a bare category
+     * name against that pattern would match it against itself: every
+     * non-generic category the user ever named would come back "instrument",
+     * and the numeric channel would refuse every allocation it was given.
+     *
+     * What makes a category an instrument is that it is named after one — a
+     * position the user holds, a ticker, an ISIN, or something in
+     * KNOWN_INSTRUMENTS. See namesInstrument().
+     *
+     * @return non-empty-string|null
+     */
+    private function positionPattern(): ?string
+    {
+        if ($this->positionPatternBuilt) {
+            return $this->positionPattern;
+        }
+
+        $this->positionPatternBuilt = true;
+
+        /** @var list<string> $raw */
+        $raw = [];
+
+        foreach (Asset::query()->withTrashed()->get(['name', 'ticker', 'isin']) as $asset) {
+            $raw[] = $asset->name;
+
+            if ($asset->ticker !== null) {
+                $raw[] = $asset->ticker;
+            }
+
+            if ($asset->isin !== null) {
+                $raw[] = $asset->isin;
+            }
+        }
+
+        return $this->positionPattern = $this->namePattern($raw);
+    }
+
+    /**
+     * One case-insensitive alternation over a set of names, dropping the ones
+     * too short to be a signal and the ones that denote an asset class.
+     *
+     * @param  list<string>  $raw
+     * @return non-empty-string|null
+     */
+    private function namePattern(array $raw): ?string
+    {
         $names = [];
         foreach ($raw as $name) {
             $name = trim($name);
@@ -2317,7 +2481,7 @@ class AdvisorOutputFilter
             $sorted,
         ));
 
-        return $this->heldPattern = '/(?<![\p{L}\p{N}])(?:'.$alternation.')(?![\p{L}\p{N}])/iu';
+        return '/(?<![\p{L}\p{N}])(?:'.$alternation.')(?![\p{L}\p{N}])/iu';
     }
 
     /**

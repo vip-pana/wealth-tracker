@@ -297,4 +297,141 @@ class StoreGoalFromAdvisorTest extends TestCase
 
         $this->assertSame(0, Goal::query()->count());
     }
+
+    // ---- The numeric channel: a target weight on a named instrument ----
+
+    /**
+     * `notes` / `action` / `rationale` go through the filter; the allocation is
+     * percentages against category names and no lexical check can reach it. A
+     * weight on a category the user named after an instrument is the
+     * proposition the filter removes from the text, persisted as a row.
+     */
+    public function test_milestone_allocation_weighting_a_named_instrument_is_refused(): void
+    {
+        Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                ['notes' => 'Metà', 'target_value' => 500000, 'target_date' => '2080-01-01', 'allocation' => [
+                    ['category' => 'Azionario', 'percentage' => 95],
+                    ['category' => 'Bitcoin', 'percentage' => 5],
+                ]],
+            ],
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(0, $goal->milestones()->count());
+        $this->assertSame(0, $goal->categoryAllocations()->count());
+    }
+
+    /**
+     * The write replaces every milestone, so the refusal has to come BEFORE the
+     * delete: otherwise a rejected submission costs the user the plan they
+     * already had and leaves them with nothing.
+     */
+    public function test_a_refused_milestone_write_leaves_the_existing_plan_intact(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+        $existing = $goal->milestones()->create(['notes' => 'Tappa', 'target_value' => 100000, 'target_date' => '2050-01-01']);
+        $goal->categoryAllocations()->create([
+            'milestone_id' => $existing->id, 'category_id' => $azioni->id, 'macro_category' => null, 'percentage' => 100,
+        ]);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                ['target_value' => 500000, 'target_date' => '2080-01-01', 'allocation' => [
+                    ['category' => 'Bitcoin', 'percentage' => 100],
+                ]],
+            ],
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(1, $goal->milestones()->count());
+        $this->assertSame(1, $existing->categoryAllocations()->count());
+    }
+
+    /** The category named after one of the user's own positions, not after a known instrument. */
+    public function test_milestone_allocation_named_after_a_held_position_is_refused(): void
+    {
+        Asset::factory()->create(['name' => 'Vanguard FTSE All-World', 'ticker' => 'VWCE']);
+        Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'VWCE']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+
+        $this->post('/advisor/goal/milestones', [
+            'milestones' => [
+                ['target_value' => 500000, 'target_date' => '2080-01-01', 'allocation' => [
+                    ['category' => 'Azionario', 'percentage' => 60],
+                    ['category' => 'VWCE', 'percentage' => 40],
+                ]],
+            ],
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(0, $goal->milestones()->count());
+    }
+
+    public function test_composition_weighting_a_named_instrument_is_refused_without_losing_the_current_one(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azionario']);
+        Category::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+        $goal->categoryAllocations()->create(['category_id' => $azioni->id, 'macro_category' => null, 'percentage' => 100]);
+
+        $this->post('/advisor/goal/composition', [
+            'allocations' => [
+                ['category' => 'Azionario', 'percentage' => 95],
+                ['category' => 'Bitcoin', 'percentage' => 5],
+            ],
+        ])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(1, $goal->categoryAllocations()->count());
+        $this->assertDatabaseHas('goal_category_allocations', ['category_id' => $azioni->id, 'percentage' => 100.0]);
+    }
+
+    /**
+     * Read as well as write: rows saved before this gate existed are already in
+     * the database, and the Goal page redraws them as a glide path for as long
+     * as the goal lives. All-or-nothing, because the weights sum to 100.
+     */
+    public function test_a_stored_allocation_weighting_an_instrument_is_not_drawn(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azionario']);
+        $bitcoin = Category::factory()->create(['name' => 'Bitcoin']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+        $milestone = $goal->milestones()->create(['notes' => 'Tappa', 'target_value' => 500000, 'target_date' => '2080-01-01']);
+
+        foreach ([[$azioni->id, 95.0], [$bitcoin->id, 5.0]] as [$categoryId, $pct]) {
+            $goal->categoryAllocations()->create([
+                'milestone_id' => $milestone->id, 'category_id' => $categoryId, 'macro_category' => null, 'percentage' => $pct,
+            ]);
+        }
+
+        $data = app(FetchGoalData::class)->run();
+
+        $this->assertSame([], $data['goal']['milestones'][0]['allocation']);
+        $this->assertSame([], $data['goal']['categoryAllocations']);
+        // The milestone itself survives — only its target composition is withheld.
+        $this->assertSame(500000.0, (float) $data['goal']['milestones'][0]['target_value']);
+    }
+
+    public function test_a_stored_allocation_by_asset_class_is_drawn_unchanged(): void
+    {
+        $azioni = Category::factory()->create(['name' => 'Azionario']);
+        $liquidita = Category::factory()->create(['name' => 'Liquidità']);
+        $goal = Goal::create(['name' => 'G', 'target_value' => 1000000, 'target_date' => '2099-01-01']);
+        $milestone = $goal->milestones()->create(['notes' => 'Tappa', 'target_value' => 500000, 'target_date' => '2080-01-01']);
+
+        foreach ([[$azioni->id, 70.0], [$liquidita->id, 30.0]] as [$categoryId, $pct]) {
+            $goal->categoryAllocations()->create([
+                'milestone_id' => $milestone->id, 'category_id' => $categoryId, 'macro_category' => null, 'percentage' => $pct,
+            ]);
+        }
+
+        $data = app(FetchGoalData::class)->run();
+
+        $this->assertCount(2, $data['goal']['milestones'][0]['allocation']);
+        $this->assertCount(2, $data['goal']['categoryAllocations']);
+    }
 }
