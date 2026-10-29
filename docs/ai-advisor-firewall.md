@@ -122,7 +122,23 @@ Three things it deliberately does **not** remove:
 When part of a reply is removed, the rest is kept and a footer explains the gap.
 When nothing survives, the whole reply is replaced by the refusal template. Each
 redaction is logged (`Advisor reply filtered`) with counts only — never content.
-Over-blocking is the intended direction of error.
+
+The removal notice says what the filter *did*, not what the model wrote: this is
+a lexical check, so a removal means "this matched", not "this was advice". The
+earlier wording asserted the latter, and WEA-14 found it attached to five
+compliant refusals. Removing too much is not the safe direction of error — see
+below.
+
+**Protected speech.** A segment that refuses, discloses, declares the AI, asks
+the user to reflect, or poses a hypothesis is never removed, however many
+directive tokens it carries (`isProtectedSpeech()`). A refusal has to name what
+it refuses, so by construction it pairs a directive verb with an instrument name
+— the exact shape the co-occurrence rule fires on. Each licence is withheld on
+tested terms, because a licence is also a way through: a directive before the
+refusal frame is not covered by it, an adversative ends it, an imperative aimed
+at an operation is not a reflection, and the interrogative licence covers
+judgement words only — never an operative verb, a proposed number, or an
+assertion with a tag bolted on.
 
 **The filter runs twice, on purpose.**
 
@@ -212,25 +228,65 @@ verbs will be found; `HARD_DIRECTIVES`, `SOFT_DIRECTIVES`, `SUITABILITY`,
 `KNOWN_INSTRUMENTS`, `NOT_TICKERS` and `GENERIC_CLASS_NAMES` are meant to be
 extended, with a test per addition.
 `tests/Feature/Advisor/AdvisorOutputFilterTest.php` covers both directions: what
-must be removed, and what must survive. It carries the WEA-10 bypass harness —
-50 phrases across eight categories, rebuilt from that review's document — plus a
-false-positive guard for each risky addition, because the review also measured
-**zero** false positives and widening the lists is the obvious way to lose that.
+must be removed, and what must survive. It carries both bypass harnesses — the
+WEA-10 one (50 phrases across eight categories, rebuilt from that review's
+document) and the WEA-14 one (50 more) — plus a false-positive guard for each
+risky addition, because widening the lists is the obvious way to start eating
+the analysis.
 
-**Measured, not asserted.** On the 50 reconstructed harness phrases: 43 passed
-the filter before this work, 0 after. (The review's own harness scored 38/50;
-the reconstruction is slightly harsher than the original.) The false-positive
-set still scores 0.
+**Measured, not asserted.** On the 50 reconstructed WEA-10 phrases: 43 passed
+the filter before that work, 0 after. (The review's own harness scored 38/50;
+the reconstruction is slightly harsher than the original.) On the 50 WEA-14
+phrases: 42 passed when that review measured them — 47 before WEA-13 widened the
+lists — and 0 pass now. Closing them needed more than more words: the commonest
+shape of an allocation recommendation carries no verb at all, so the filter had
+to learn to read the notation (`VWCE: 40% → 25%`), the move stated in euro, and
+the proposed-allocation table.
+
+**Over-blocking is not the prudent direction of error, and the claim that it was
+is withdrawn.** WEA-14 ran the filter over six real model replies and it altered
+all six, removing thirteen segments: the MiFID disclaimer, the Art. 50(1)
+declaration, and reflection questions the clauses list among the *permitted*
+outputs. The cause is structural — a refusal has to name what it refuses, so it
+carries a directive verb and an instrument name in one segment by necessity —
+and the app then captioned the gap "an operative instruction was removed",
+which accuses a compliant reply of non-compliance. Deleting the disclaimer is a
+compliance loss, not a conservative one.
+
+So the hand-written false-positive set scoring zero was never the right measure:
+invented phrases are short and do not name the positions, while a real reply
+names them on every line, which understates the rate by construction. The
+measure that counts is `tests/Feature/Advisor/LiveModelProbeTest.php` — fourteen
+questions through the shipped prompt, tool loop and budget, against whatever
+`services.advisor.driver` selects. It is not part of the gate (it costs a model
+call); run it with `LIVE_MODEL_PROBE=1` after touching the filter, and read the
+segments it reports as removed rather than the count.
+
+Measured on `regolo` / `qwen3.5-122b`: **18 segments removed across 9 of 14
+replies before this work, 0 after** — and all 18 were compliant speech, since
+none of the fourteen replies contained a forbidden recommendation. The gates
+that fixed it are the protected-speech ones in `isProtectedSpeech()`: a refusal,
+a disclaimer, a reflection question, an interrogative, a hypothetical. Each is
+withheld on terms that are themselves tested, because a licence is also a way
+through: the interrogative one covers judgement words only, never an operative
+verb, a proposed number, or an assertion with a tag bolted on.
 
 **The briefing is a `system` message, so what goes into it is an injection
 surface.** `RenderAdvisorContext::userText()` collapses control characters and
-wraps a user-controlled value in guillemets, which the prompt declares to mean
-"this is data". The profile's `name`, `notes` and `memory` skipped it: a crafted
-value escaped its bullet and opened what read as a new top-level section of the
-system message. `memory` is written by `remember_fact`, the only profile tool
-that writes with no confirmation click, so the value persisted and was replayed
-on every later turn. All three go through `userText()` now, with a regression
-test per field.
+wraps a user-controlled value in guillemets. The profile's `name`, `notes` and
+`memory` skipped it: a crafted value escaped its bullet and opened what read as
+a new top-level section of the system message. `memory` is written by
+`remember_fact`, the only profile tool that writes with no confirmation click,
+so the value persisted and was replayed on every later turn. All three go
+through `userText()` now, with a regression test per field.
+
+What the guillemets *mean* is declared in `AdvisorBoundaries::CLAUSES`, not in
+the prompt files. WEA-14 found the earlier claim — that the prompt declared it —
+true only of `analysis.txt.example` and of one machine's private
+`conversation.txt`; on a clean clone, on the conversational path, they were two
+symbols with no stated meaning. `userText()` also escapes guillemets inside the
+value, because the defence rests on a single character and a value carrying a
+closing `»` could otherwise end its own delimiter.
 
 ## Related
 
