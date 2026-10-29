@@ -468,15 +468,28 @@ reopening the hole to pay it back.
 
 The fixes above all **tighten** the filter: every bare relational noun is now
 removed in context, `l'esposizione eccessiva` with it, and so is every arrow
-between a money amount and a percentage. The rate therefore probably went up,
-and it has not been re-measured — four samples overrun `AdvisorBudget`'s daily
-ceiling, and the fourth review did not make the rate a condition of approval
-(mandatory disclosure does not pass through the filter at all: `AiDisclosure` is
-app markup, and the OCF referral is a test case in both directions).
+between a money amount and a percentage. The rate therefore probably went up.
+
+**One sample was drawn after the round, as hygiene and not as a measurement:
+2/14 replies altered, 2 segments, both false positives.** That is inside the
+spread of the held-out set before the round (2/14, 0/14, 5/14 across its three
+samples), which says only that the rate did not visibly blow up — one draw is
+not a rate, which is the whole reason the probe takes samples. Four samples
+overrun `AdvisorBudget`'s daily ceiling, and the fourth review did not make the
+rate a condition of approval: mandatory disclosure does not pass through the
+filter at all (`AiDisclosure` is app markup) and the OCF referral is a test case
+in both directions.
 
 So the number to quote is still **7/42 on the held-out set, measured before this
-round and independently confirmed**, and it should be quoted with that date
-attached. Do not read it as the rate today.
+round and independently confirmed**, with that date attached. Do not read it as
+the rate today.
+
+The two segments the sample removed, both compliant:
+
+| Removed | Why |
+| --- | --- |
+| *"Se ci sono altri costi non visibili qui (es. commissioni di acquisto/vendita sulla tua piattaforma, costi di cambio valuta se compri in euro ma l'ETF è in dollari)"* | `compri` inside a conditional that explains a *cost*, not a purchase to make. A family of its own, not chased here. |
+| *"Capire se l'allocazione attuale è coerente con il tuo obiettivo (300.000€ entro il 2040)"* | The declared cost of the relational-noun fix, turning up on the first draw: `attuale` is not in the closed adjective list, so the noun reads as bare. It is deliberately not added — `complessiva` and `globale` say the noun is *of the whole*, while `attuale` says only *as of now*, which resolves nothing. Adding it would reopen the eleven anaphoric complements above. |
 
 #### Cases
 
