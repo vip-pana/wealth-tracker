@@ -1094,13 +1094,33 @@ class AdvisorOutputFilter
      * time noun — and TIME_NOUN is short, lexical, and fails in the right
      * direction, because an omission there costs an arithmetic sentence that
      * is visible rather than letting a recommendation through.
+     *
+     * Built rather than written out because the prepositions are one
+     * lookbehind each. A single `(?<!\b(?:di|in|…))` is a lookbehind whose
+     * branches have different lengths, which PCRE2 only accepts from 10.43 —
+     * so it compiles on a developer's PHP 8.5 and fails to compile on CI's,
+     * where the whole filter then throws rather than mismatching. One
+     * assertion per preposition is fixed-length by construction, and deriving
+     * them from PREPOSITION keeps it one list.
      */
-    private const string NEW_CLAUSE = '/(?:'
-        .'(?<!\b(?:'.self::PREPOSITION.'))'
-        .'\s(?:'.self::DETERMINER.')\b(?!'.self::TIME_NOUN_AHEAD.')'
-        .'|\s(?:e|ed|ma|però|pero|quindi|perciò|percio|dunque|pertanto|allora|mentre|laddove'
-        .'|oppure|ossia|anzi|tuttavia|eppure|invece)\s'
-        .')/iu';
+    private function newClausePattern(): string
+    {
+        return self::$newClausePattern ??= '/(?:'
+            .implode('', array_map(
+                static fn (string $preposition): string => '(?<!\b'.$preposition.')',
+                explode('|', self::PREPOSITION),
+            ))
+            .'\s(?:'.self::DETERMINER.')\b(?!'.self::TIME_NOUN_AHEAD.')'
+            .'|\s(?:'.self::NEW_CLAUSE_CONJUNCTION.')\s'
+            .')/iu';
+    }
+
+    /**
+     * The older net: a clause that starts without a new subject. Kept, no
+     * longer load-bearing.
+     */
+    private const string NEW_CLAUSE_CONJUNCTION = 'e|ed|ma|però|pero|quindi|perciò|percio'
+        .'|dunque|pertanto|allora|mentre|laddove|oppure|ossia|anzi|tuttavia|eppure|invece';
 
     /**
      * The Italian prepositions, simple, articulated and improper — the class
@@ -1530,6 +1550,9 @@ class AdvisorOutputFilter
     private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
         .'(?:'.self::GENERIC_CLASS_OBJECT.')\b/iu';
+
+    /** @var non-empty-string|null Built from constants, so it is memoised for the whole process. */
+    private static ?string $newClausePattern = null;
 
     /** @var non-empty-string|null Built from a constant, so it is memoised for the whole process. */
     private static ?string $knownPattern = null;
@@ -2178,7 +2201,7 @@ class AdvisorOutputFilter
             return false;
         }
 
-        return preg_match(self::NEW_CLAUSE, $m['span']) !== 1;
+        return preg_match($this->newClausePattern(), $m['span']) !== 1;
     }
 
     /**

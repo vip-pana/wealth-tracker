@@ -1743,6 +1743,81 @@ class AdvisorOutputFilterTest extends TestCase
         $this->assertSame([], $missing, 'HARD_DIRECTIVES names operations ATTRIBUTION_OPERATION does not, so an attribution naming them is redacted');
     }
 
+    /**
+     * No lookbehind in the filter's patterns has branches of differing
+     * lengths.
+     *
+     * PCRE2 only accepts a variable-length lookbehind from 10.43, so
+     * `(?<!\b(?:di|in|su))` compiles on a recent PHP and fails to compile on
+     * an older one — and a pattern that fails to compile makes `preg_match`
+     * return `false`, which the filter reads as "did not match". The failure
+     * is therefore not a crash but the firewall quietly deciding the opposite
+     * thing on the machine it runs on. The fix is one assertion per
+     * alternative, which is why NEW_CLAUSE is built instead of written out.
+     *
+     * Checked here rather than left to whichever PCRE2 happens to be
+     * installed: the local gate was green on this and CI was not.
+     */
+    public function test_no_pattern_uses_a_variable_length_lookbehind(): void
+    {
+        $offenders = [];
+
+        foreach (new \ReflectionClass(AdvisorOutputFilter::class)->getConstants() as $name => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+
+            foreach ($this->lookbehindBodies($value) as $body) {
+                if (str_contains($body, '|')) {
+                    $offenders[] = $name.': (?<…'.$body;
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, 'a lookbehind with alternatives of differing lengths does not compile before PCRE2 10.43');
+    }
+
+    /**
+     * The body of each lookbehind in a pattern, up to its matching bracket.
+     *
+     * @return list<string>
+     */
+    private function lookbehindBodies(string $pattern): array
+    {
+        $bodies = [];
+
+        foreach (['(?<!', '(?<='] as $opener) {
+            $from = 0;
+
+            while (($start = strpos($pattern, $opener, $from)) !== false) {
+                $depth = 1;
+                $i = $start + strlen($opener);
+
+                while ($i < strlen($pattern) && $depth > 0) {
+                    $char = $pattern[$i];
+
+                    if ($char === '\\') {
+                        $i += 2;
+
+                        continue;
+                    }
+
+                    $depth += match ($char) {
+                        '(' => 1,
+                        ')' => -1,
+                        default => 0,
+                    };
+                    $i++;
+                }
+
+                $bodies[] = substr($pattern, $start + strlen($opener), $i - $start - strlen($opener) - 1);
+                $from = $start + 1;
+            }
+        }
+
+        return $bodies;
+    }
+
     /** A private pattern of the filter, read for the class-enumeration tests. */
     private function filterConstant(string $name): string
     {
