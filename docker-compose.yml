@@ -30,19 +30,20 @@ services:
       # Laravel/Inertia emit https URLs (an http APP_URL trips the browser's
       # mixed-content block during the bank-consent flow).
       APP_URL: ${APP_URL_OVERRIDE:-http://${DEV_HOST:-localhost}:8080}
+      # The dev stack serves plain http, including to a phone on the LAN (see
+      # the README). `.env.example` leaves this true, which is right for a
+      # self-hosted instance behind HTTPS but marks the session cookie `secure`
+      # here: browsers make an exception for localhost, none for a LAN IP, so
+      # the cookie never comes back and the login fails with 419 Page Expired.
+      SESSION_SECURE_COOKIE: "false"
       VITE_DEV_HOST: ${DEV_HOST:-localhost}
       VITE_DEV_CLIENT_PORT: ${DEV_VITE_PORT:-5273}
       LARAVEL_BYPASS_ENV_CHECK: "1"
       PNPM_HOME: /root/.local/share/pnpm
       CI: "true"
-    command: >-
-      sh -c "mkdir -p /root/.config/scalable-cli &&
-      { [ -f /root/.config/scalable-cli/config.toml ] || printf '%s\n' '[auth]' 'session_backend = \"file\"' 'signing_key_backend = \"file\"' > /root/.config/scalable-cli/config.toml; } &&
-      touch /app/storage/app/database.sqlite &&
-      sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/app/storage/app/database.sqlite|' /app/.env &&
-      php artisan migrate --force &&
-      pnpm install --frozen-lockfile --ignore-scripts &&
-      pnpm dlx concurrently -c '#93c5fd,#c4b5fd,#a78bfa,#fb7185,#fdba74' 'php artisan serve --host=0.0.0.0' 'while true; do php artisan queue:work --tries=1 --timeout=660 --max-time=3600 --sleep=3; echo \"[queue] worker exited, restarting in 2s\"; sleep 2; done' 'php artisan schedule:work' 'php artisan pail --timeout=0' 'pnpm dev --host' --names=server,queue,scheduler,logs,vite"
+    # The working copy is mounted at /app, so the script does not need to be
+    # baked into the dev image — and editing it does not need a rebuild.
+    command: ["sh", "/app/docker/dev-entrypoint.sh"]
 
 volumes:
   scalable-cli:
