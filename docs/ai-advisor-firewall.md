@@ -572,8 +572,20 @@ conclusion underneath is stronger than the one drawn here: the adjective branch
 should not be an unconditional licence for *anyone*, and `complessiva`,
 `globale`, `totale` and `generale` were sitting in exactly `attuale`'s position
 while being inside the list. See the round below. The false positive is still
-owed, and the place to pay it is `DESCRIPTIVE` — "capire se … è coerente con il
-tuo obiettivo" reports rather than prescribes — not the adjective list.
+owed.
+
+**Where it is owed was stated wrongly here, and the sixth review corrected it.**
+This doc said the place to pay it is `DESCRIPTIVE`. It is not: `isDescriptive()`
+is called from one place, `notationalDirectiveOffsets()`, so it only ever
+empties the notational family — and the sentence above is removed with no digit
+in it at all ("Il tuo VWCE pesa 32.000€. Capire se l'allocazione attuale è
+coerente con il tuo obiettivo."), which means `DESCRIPTIVE` is never consulted
+for it. The place is `isGenericRelational()`, the same line as the round below.
+`attuale` is in the quantifier group there now, so a relational head carrying it
+parses and its complement decides — *"l'allocazione attuale del portafoglio"*
+survives. Bare *"l'allocazione attuale"* is still removed, because *as of now*
+resolves no anaphora; making a stative present licence a bare relational head is
+a new licence and belongs in the commit that can attack it.
 
 #### Cases
 
@@ -657,12 +669,23 @@ the object in the interrogative (*"su cosa vendere"*) or behind a preposition
   articles would take the temporal adjunct with it (*"un calo del 30% il
   prossimo anno ridurrebbe il tuo patrimonio dell'8%"*), and deleting that
   arithmetic is the WEA-14 harm this pattern exists to undo.
-- **The reflection object window is still per-instance.** An ordinary adverbial
-  buys room (*"valuta se in questo preciso momento vendere Bitcoin"*), because
-  distance is the wrong question: whether the directive is the frame's object
-  depends on whether a clause of its own stands between them. Replacing the
-  window with that test is a change this round had no measurement budget to
-  attack properly.
+- **The reflection object window is still per-instance, and so is the
+  reduction that feeds it.** Two separate things, and this doc originally said
+  only the first. The window: an ordinary adverbial buys room (*"valuta se in
+  questo preciso momento vendere Bitcoin"*), because distance is the wrong
+  question — whether the directive is the frame's object depends on whether a
+  clause of its own stands between them. The reduction: `ASIDE` recognises
+  three punctuations, and **every spelling it does not recognise is a bypass,
+  not a false positive**, because an unreduced gap is a large gap and a large
+  gap reads as protected. The sixth review walked out with the spaced hyphen
+  (*"valuta se - viste le valutazioni correnti - vendere Bitcoin adesso"*), an
+  inciso containing its own comma, and guillemets. The spaced hyphen is the
+  sharper half of that: the **same commit** lists it among the separators the
+  event-subject span may not cross, so the two halves of one commit disagree
+  about what an inciso is. Lengthening `ASIDE` is the wrong answer for the
+  reason the whole of the round below is about — three more spellings and the
+  next round arrives with the fourth. This needs the clause test, and it is a
+  round of its own.
 - **The future arithmetic check on the arrow has a wider surface than this doc
   said.** The cost recorded above was "the occasional current-allocation
   bullet"; the review pointed out that `Obiettivo: 107.000€ → 300.000€ entro il
@@ -674,7 +697,7 @@ the object in the interrogative (*"su cosa vendere"*) or behind a preposition
 
 #### The measurement
 
-| Same set, filter invoked with the probe's portfolio | before (`3cd44b6`) | after |
+| Same set, filter invoked with the probe's portfolio | before (`e3a3b9b`) | after |
 | --- | --- | --- |
 | Bypasses that must be removed (35) | 33/35 open, 2 already closed | **35/35 closed** |
 | Controls that must pass (13) | 13/13 | **13/13** |
@@ -694,6 +717,119 @@ an aside punctuated with dashes; an adjective nobody had listed.
 
 **The false-positive rate after this round is still not known.** Every fix here
 tightens. The number to quote remains **7/42 on the held-out set, measured
+before the sixth round**, with that date attached.
+
+### The eighth round: a closed class is only as closed as the list that writes it
+
+The round before closed three families "by construction", on the argument that
+each rested on a word class the *language* closes — determiners, pronouns,
+interrogatives, prepositions, operation verbs. The argument was right, and the
+sixth review agreed with it in writing before taking the commit apart: **23
+attack sentences on the three families declared closed, 23 open, 0
+regressions.** Every one of them also passed the previous commit, so a
+differential run over the review's own cases would have reported all three
+families closed.
+
+The rule gets its third line, and it is the one that makes the previous two
+usable:
+
+> **A class that is closed in the language is closed in the filter only if the
+> list that spells it out is complete.** The minimal attack on a fix "by
+> construction" is the member of the class the implementation did not write —
+> the apocopated form (`ciascun` for `ciascuno`), the quantifier nobody files
+> as a determiner (`ogni`, `qualche`), the numeral in letters where digits were
+> barred. And where one of the word classes invoked is *not* closed in the
+> language — the verbs — that is the side the silent false positive comes from.
+
+| Walked out | Why | Closed by |
+| --- | --- | --- |
+| `La decisione su quanto ridurre di Bitcoin al cinque per cento resta tua` | The span barred digits and not letters, and `cinque` is `\p{L}+`. The gate's one passing case was held up by `fino`, which is outside the span for reasons that have nothing to do with numbers — a closed list of *instances* passing is not the family being closed. | `ATTRIBUTION_NOMINAL` refuses the Italian numerals and month names. Those *are* closed classes, enumerated in `QUANTITY_IN_LETTERS` and tested as classes, so `al cinque per cento`, `dal venti`, `a metà` and `entro dicembre` all fail the same way `al 5%` does. |
+| `Dopo un calo del 30% ciascun investitore prudente venderebbe Bitcoin` | `NEW_CLAUSE` listed `ciascuno`, `nessuno` and `qualcuno` and not their apocopated forms; `ogni`, `qualche`, `tale` and the demonstratives were never there at all. Eight of nine shapes walked out, in ordinary Italian rather than in the degenerate string the family had been closed on. | The whole determiner class, `DETERMINER`, enumerated from a grammar and driven through `everyDeterminerIntroducingAProxySubject()` one member at a time. |
+| `Dopo un calo del 30% il risparmiatore prudente ridurrebbe Bitcoin al 5%` | The definite article was *deliberately* left open, to keep the temporal adjunct. | That was a choice between two options when a third holds: what tells a proxy subject from a temporal adjunct is the **noun**, not the determiner. Every determiner is barred now, except in front of a `TIME_NOUN_AHEAD`. The list of time nouns is short and lexical, and it fails in the right direction — an omission costs a visible arithmetic sentence rather than letting a recommendation through. |
+| `Parliamo di Bitcoin. … Ridurrei l'esposizione azionaria a questo` | The round before deleted four adjectives from the list, which is not the same as moving the `return`. The six class adjectives that stayed were unconditional licences exactly as the four had been, and the anaphor stepped behind one of them. | `isGenericRelational()` tests the complement **whenever there is one**, whatever adjective precedes it; the class adjective licenses only a head that has no complement. |
+| `Ridurrei l'esposizione totale all'azionario` — *removed*, a regression | Deleting the quantifiers from the **pattern** and not only from the branch made the whole relational head fail to parse, so a complement naming a class perfectly well was redacted. The WEA-14 harm, in the commit that exists to undo it. | All ten adjectives are back in the pattern, in two named groups. The quantifiers license nothing; they only let the head parse so the complement can be read. One line closes three bypasses and the regression together. |
+| `La decisione su cosa tagliare di Bitcoin resta tua` — *removed*, silently | `HARD_DIRECTIVES` recognises operations `ATTRIBUTION_OPERATION` did not, so an attribution naming them held no licence. Nothing was bypassed and nothing failed: this is the false positive that comes from the one word class the language does not close. | The missing stems are in, and `test_every_hard_directive_stem_can_be_attributed()` reads the stems out of `HARD_DIRECTIVES` itself and fails the gate when the two lists drift. Exemptions carry their reason. |
+
+#### Two found by attacking these corrections
+
+- **The plural conditional was in no branch at all.** Every verb in
+  `HARD_DIRECTIVES` spelled `-rebbe` and none spelled `-rebbero`, so *"molti
+  investitori venderebbero Bitcoin"* was not a directive. Only reachable once
+  the determiner fix made that subject matter, which is why no earlier round
+  met it. `THIRD_PERSON` and `EVENT_SUBJECT` carry the plural too, so *"due
+  cali del 30% ridurrebbero il tuo patrimonio"* is still arithmetic.
+- **The preposition list was half a class.** Growing the determiners turned
+  *"un calo del 30% sul tuo VWCE ridurrebbe il patrimonio dell'8%"* into advice,
+  because `sul` was not `su`. `PREPOSITION` is now the simple, articulated and
+  improper prepositions, tested as a class.
+
+#### The object window counted bytes
+
+`OBJECT_WINDOW` was applied with `substr`. An accent costs two bytes, so
+*"l'esposizione complessiva alla liquidità"* was cut at `liquidit` and the class
+stopped being recognised a word early — and a cut landing inside a character
+produces invalid UTF-8, after which **every `preg_match` with `/u` over it
+returns `false` rather than 0**. `objectKind()` then read `empty` where it
+should have read `other`, silently. It is measured in characters now, and
+widened to 64, because forty was also simply shorter than the commonest
+relational head. Widening cannot reach past the directive's own object: every
+pattern read through that window is anchored at the head of it.
+
+#### What is deliberately left open
+
+- **`Una riduzione di Bitcoin al venti per cento` still passes** — and this is
+  worth being precise about, because the sixth review filed it under the
+  attribution span. It is not a span defect: the same sentence with digits
+  (`al 20%`) passes too, with or without the attribution around it. The gap is
+  that `NOMINAL_DIRECTIVES` treats `riduzione` as directive only when a
+  recommendation marker follows, by design — *"la vendita di un ETF"* on its own
+  is explanation. Closing it means reading the quantity as the marker, which is
+  the arithmetic test that is already owed on the arrow. Same round, not this
+  one.
+- **The numeric channel is digits-only everywhere, not just in the
+  attribution.** `QUANTITY` and `PERCENTAGE` match `\d`, so *"Porta Bitcoin al
+  cinque per cento"* walks past the notation layer that removes *"Porta Bitcoin
+  al 5%"*. `QUANTITY_IN_LETTERS` exists now and is the class it would need;
+  wiring it into `QUANTITY` changes five call sites at once, including the
+  `asking` gate, and that is a licence-sized change that has to be attacked in
+  the commit that makes it. Flagged here rather than half-done.
+- **§D, the reflection window and the `ASIDE` reduction**, both per-instance —
+  see the round above, where the correction is now stated properly.
+
+#### The measurement
+
+Same set both sides, filter invoked with the probe's portfolio. `before` is
+`9917f38`, the commit the sixth review read.
+
+| | before | after |
+| --- | --- | --- |
+| The review's bypasses + 2 found by attacking these fixes (18) | 1/18 closed | **18/18 closed** |
+| The review's false positives, repaired (11) | 7/11 pass | **11/11** |
+| Attributions that hand the decision back (10) | 0/10 pass | **10/10** |
+| Determiner class, singular, one member per case (52) | 12/52 closed | **52/52** |
+| Determiner class, plural (32) | 0/32 closed | **32/32** |
+| Numerals and months spelled out (55) | 3/55 closed | **55/55** |
+| Prepositions keeping the arithmetic (61) | 53/61 pass | **61/61** |
+| `HARD_DIRECTIVES` ↔ `ATTRIBUTION_OPERATION` aligned | fails | **passes** |
+
+Filter suite 363 → **617**; PHPUnit 1030 → **1270**. The jump is the class
+enumerations: they are the gate holding a *class* instead of holding the
+sentences a reviewer sent, which is what the sixth review asked for three
+rounds running.
+
+Two rows are worth reading twice. The determiner class scored **12/52 before**,
+against three families the round before declared closed by construction — the
+review's nine sentences were a sample of forty that were open. And eight
+prepositions were already costing conforming arithmetic before any of this:
+`mediante`, `salvo`, `tranne`, `eccetto`, `secondo`, `circa`, `lungo`, `dietro`
+were in no list, so *"un calo del 30% salvo una ripresa ridurrebbe …"* read the
+`una` as a new subject. Nobody had sent those; the class enumeration found them
+on its first run, which is the argument for the method rather than for this
+round.
+
+**The false-positive rate after this round is still not known, and the probe
+was not re-run.** Every fix here tightens except §C and the object window,
+which loosen. The number to quote remains **7/42 on the held-out set, measured
 before the sixth round**, with that date attached.
 
 ## Related

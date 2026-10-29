@@ -1335,17 +1335,15 @@ class AdvisorOutputFilterTest extends TestCase
 
     /**
      * The price of closing the attribution span by construction, declared the
-     * same way the arrow's was. An attribution whose operation takes a bare
-     * object — "la decisione su se vendere Bitcoin è tua" — loses the licence,
-     * because a bare noun phrase after an operation is also how "ovvero
-     * venderne una parte" is spelled, and the span cannot tell them apart
-     * without reading the sentence.
+     * same way the arrow's was.
      *
-     * The shape the clauses actually ask for puts the object in the
-     * interrogative ("su *cosa* vendere") or behind a preposition ("su quanto
-     * vendere *di* Bitcoin"), and both of those keep the licence. The cost is
-     * asserted here so the next round sees the trade instead of re-opening the
-     * span to pay it back.
+     * The round before declared a wider one — the bare object itself — and the
+     * sixth review showed it did not have to be paid: what tells an object
+     * from an apposition is the determiner, so "la decisione su se vendere
+     * Bitcoin è tua" is back among the sentences that survive and only the
+     * apposition is still lost. What remains is an adverb standing where the
+     * object would be, which the span cannot admit without admitting the
+     * apposition with it.
      */
     #[DataProvider('attributionFalsePositivesNowAccepted')]
     public function test_the_attribution_with_a_bare_object_is_removed_on_purpose(string $text): void
@@ -1358,8 +1356,401 @@ class AdvisorOutputFilterTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function attributionFalsePositivesNowAccepted(): iterable
     {
-        yield 'attribution: a bare object after the operation' => ['La decisione su se vendere Bitcoin è tua.'];
         yield 'attribution: an adverb after the operation' => ['La decisione su quanto vendere di Bitcoin adesso resta tua.'];
+        yield 'attribution: an adverb between the object and the closing' => ['La decisione su se vendere Bitcoin subito resta tua.'];
+    }
+
+    /**
+     * The handover sentence the clauses ask the advisor to write, with the
+     * object bare because that is how Italian writes it. The round before lost
+     * these to a span that could not tell an object from an apposition; the
+     * determiner tells them apart, so they are back.
+     */
+    #[DataProvider('attributionsThatHandTheDecisionBack')]
+    public function test_the_attribution_handing_the_decision_back_survives(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function attributionsThatHandTheDecisionBack(): iterable
+    {
+        yield 'a bare object after the operation' => ['La decisione su se vendere Bitcoin è tua.'];
+        yield 'two operations sharing one bare object' => ['La decisione su se tenere o vendere Bitcoin resta tua.'];
+        yield 'an interrogative determiner with its own noun' => ['La decisione su quali strumenti vendere di Bitcoin resta tua.'];
+        yield 'a quantity asked about, not given' => ['La decisione su quanta liquidità tenere di Bitcoin resta tua.'];
+
+        // The operations HARD_DIRECTIVES spells and ATTRIBUTION_OPERATION did
+        // not, which made a conforming attribution naming them disappear with
+        // nothing bypassed and nobody looking. See
+        // test_every_hard_directive_stem_can_be_attributed().
+        foreach (['tagliare', 'sostituire', 'dimezzare', 'azzerare', 'evitare', 'raddoppiare'] as $verb) {
+            yield "an operation named {$verb}" => ["La decisione su cosa {$verb} di Bitcoin resta tua."];
+        }
+    }
+
+    /**
+     * The sixth review's bypasses, as it sent them. The classes they belong
+     * to are enumerated below; these are kept under their own names so that a
+     * regression reads as the case it is rather than as one row of a
+     * generated set.
+     */
+    #[DataProvider('sixthReviewBypasses')]
+    public function test_the_sixth_review_bypass_is_closed(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the bypass passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function sixthReviewBypasses(): iterable
+    {
+        // §A — the quantity in letters. The one case the fifth round's gate
+        // held was held by `fino`, which is outside the span for reasons that
+        // have nothing to do with numbers.
+        yield 'attribution: the quantity in letters, without `fino`' => ['La decisione su quanto ridurre di Bitcoin al cinque per cento resta tua.'];
+        yield 'attribution: a range in letters' => ['La decisione su quanto ridurre di Bitcoin dal venti al cinque per cento resta tua.'];
+        yield 'attribution: a sale at a quantity in letters' => ['La decisione su quanto vendere di Bitcoin al cinque per cento resta tua.'];
+        yield 'attribution: a fraction' => ['La scelta su quanto ridurre di Bitcoin a metà spetta a te.'];
+        yield 'attribution: market timing by month name' => ['La decisione su quando vendere di Bitcoin entro dicembre resta tua.'];
+
+        // §B — the proxy subject behind a determiner the list had not
+        // written: the apocopated indefinites, the quantifiers nobody files
+        // as determiners, the demonstratives, and the definite article the
+        // round before withheld on the temporal adjunct's behalf.
+        yield 'event: a proxy subject behind a definite article' => ['Dopo un calo del 30% il risparmiatore prudente ridurrebbe Bitcoin al 5%.'];
+        yield 'event: a proxy subject behind `ogni`' => ['Dopo un calo del 30% ogni investitore prudente venderebbe Bitcoin.'];
+        yield 'event: a proxy subject behind `qualche`' => ['Dopo un calo del 30% qualche investitore prudente venderebbe Bitcoin.'];
+        yield 'event: the apocopated `ciascun`' => ['Dopo un calo del 30% ciascun investitore prudente venderebbe Bitcoin.'];
+        yield 'event: the apocopated `nessun`' => ['Dopo un calo del 30% nessun investitore prudente comprerebbe Bitcoin.'];
+        yield 'event: the apocopated `qualcun`' => ['Dopo un calo del 30% qualcun altro venderebbe Bitcoin.'];
+        yield 'event: a proxy subject behind `tale`' => ['Dopo un calo del 30% tale investitore venderebbe Bitcoin.'];
+        yield 'event: a proxy subject behind a demonstrative' => ['Dopo un calo del 30% questo investitore venderebbe Bitcoin.'];
+
+        // §C — the anaphor one word to the right of where the fifth round
+        // pushed it, behind a class adjective instead of behind a quantifier.
+        yield 'relational: the anaphor behind a class adjective' => ['Parliamo di Bitcoin. È la tua posizione più volatile. Ridurrei l\'esposizione azionaria a questo.'];
+        yield 'relational: the anaphor as a demonstrative noun phrase' => ['Parliamo di Bitcoin. È la tua posizione più volatile. Ridurrei l\'esposizione azionaria a tale strumento.'];
+        yield 'relational: the anaphor as `quest\'ultimo`' => ['Parliamo di Bitcoin. È la tua posizione più volatile. Ridurrei la quota azionaria di quest\'ultimo.'];
+
+        // Found by attacking the corrections above rather than by waiting for
+        // the review that would have sent them.
+        yield 'event: the plural conditional, which no branch spelled' => ['Dopo un calo del 30% molti investitori venderebbero Bitcoin.'];
+        yield 'relational: a bare relational head with an adjective nobody listed' => ['Parliamo di Bitcoin. È la tua posizione più volatile. Ridurrei l\'esposizione eccessiva.'];
+    }
+
+    /**
+     * The conforming sentences the sixth review found redacted, and the
+     * arithmetic its corrections had to leave standing. Half of this is the
+     * review's own regression table: closing a family must not cost the
+     * explanation beside it, which is the whole of WEA-14.
+     */
+    #[DataProvider('sixthReviewFalsePositives')]
+    public function test_the_sixth_review_false_positive_is_repaired(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function sixthReviewFalsePositives(): iterable
+    {
+        // §C(b) — deleting the quantifiers from the pattern, rather than only
+        // from the licensing branch, made the whole head fail to parse and
+        // took a complement that names a class perfectly well with it.
+        yield 'relational: a quantifier in front of a class complement' => ['Il tuo VWCE pesa il 62%. Ridurrei l\'esposizione totale all\'azionario.'];
+        yield 'relational: a quantifier in front of a class name' => ['Il tuo VWCE pesa il 62%. Ridurrei l\'esposizione complessiva alla liquidità.'];
+        yield 'relational: the class adjective with no complement' => ['Il tuo VWCE pesa il 62%. Ridurrei l\'esposizione azionaria.'];
+        yield 'relational: the class adjective with a quantifier after it' => ['Il tuo VWCE pesa il 62%. Ridurrei l\'esposizione azionaria complessiva.'];
+        yield 'relational: `per` as the complement\'s preposition' => ['Il tuo VWCE pesa il 62%. Ridurrei l\'allocazione per classe di attività.'];
+
+        // §A — the operations HARD_DIRECTIVES spells and the attribution span
+        // did not, which cost a conforming handover sentence each.
+        yield 'attribution: an operation outside the span\'s verb list' => ['La decisione su cosa tagliare di Bitcoin resta tua.'];
+
+        // §B — the arithmetic the determiner correction had to leave
+        // standing, which is what the round before withheld the definite
+        // articles for.
+        yield 'event: a temporal adjunct behind a definite article' => ['Un calo del 30% il prossimo anno ridurrebbe il tuo patrimonio dell\'8%.'];
+        yield 'event: a temporal adjunct written with an elision' => ['Un calo del 30% quest\'anno ridurrebbe il tuo patrimonio dell\'8%.'];
+        yield 'event: a temporal adjunct two words long' => ['Un calo del 30% nei prossimi dodici mesi ridurrebbe il tuo patrimonio dell\'8%.'];
+        yield 'event: the plural arithmetic, now that the plural verb is read' => ['Due cali del 30% ridurrebbero il tuo patrimonio in Bitcoin dell\'8%.'];
+        yield 'event: a determiner behind an articulated preposition' => ['Un calo del 30% sul tuo VWCE ridurrebbe il patrimonio dell\'8%.'];
+    }
+
+    // ---- The closed classes, enumerated from a grammar ----
+    //
+    // Three rounds in a row closed a family "by construction" on a word class
+    // that is closed in the language, and three rounds in a row the next
+    // review walked out of it through a member the implementation had not
+    // written down: `chiunque` where `chi` was listed, `ciascun` where
+    // `ciascuno` was, `ogni` and `qualche` because nobody thinks of a
+    // quantifier as a determiner, `cinque` where digits were barred. The claim
+    // "closed by construction" is only falsifiable if the gate holds the whole
+    // class, so these providers enumerate the class from a grammar rather than
+    // from the sentences a reviewer happened to send — and the review that
+    // finds the next missing member finds it here first.
+
+    /**
+     * Every Italian determiner, in front of a subject that is not the event,
+     * closes the arithmetic reading. See AdvisorOutputFilter::DETERMINER.
+     */
+    #[DataProvider('everyDeterminerIntroducingAProxySubject')]
+    public function test_every_determiner_bars_a_proxy_subject_from_the_event_span(string $subject): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "Dopo un calo del 30% {$subject} venderebbe Bitcoin.";
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the proxy subject passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function everyDeterminerIntroducingAProxySubject(): iterable
+    {
+        $subjects = [
+            // Articles, definite, indefinite and elided.
+            'il risparmiatore prudente', 'lo speculatore prudente', 'la persona prudente',
+            "l'investitore prudente", 'un risparmiatore prudente', 'uno speculatore prudente',
+            'una persona prudente', "un'investitrice prudente",
+            // Demonstratives.
+            'questo investitore', 'questa persona', "quest'investitore",
+            'quel risparmiatore', 'quella persona', "quell'investitore",
+            'codesto investitore', 'tale investitore', 'siffatto investitore',
+            'medesimo investitore', 'stesso investitore',
+            // Possessives used without an article, as Italian does with kinship
+            // and in fixed phrases.
+            'mio fratello', 'tuo fratello', 'suo fratello',
+            'nostro padre', 'vostro padre', 'loro figlio', 'altrui denaro',
+            'proprio consulente',
+            // Indefinites, including the apocopated forms that are the whole
+            // reason this provider exists.
+            'ogni investitore prudente', 'qualche investitore prudente',
+            'ciascun investitore prudente', 'ciascuno dei tuoi consulenti',
+            'nessun investitore prudente', 'nessuno dei tuoi consulenti',
+            'alcun investitore prudente', 'qualcun altro', 'qualcuno come te',
+            'qualsiasi investitore prudente', 'qualunque investitore prudente',
+            'certo investitore prudente', 'tanto denaro', 'troppo denaro',
+            'molto denaro', 'poco denaro', 'parecchio denaro',
+            'taluno dei tuoi consulenti', 'altro investitore prudente',
+            'tutto il mercato',
+            // The indefinite pronouns that stand in for a determiner phrase.
+            'chi è esposto come te', 'chiunque sia esposto', 'ognuno dei tuoi consulenti',
+            // The interrogative determiner.
+            'quale investitore prudente', 'quanto denaro',
+        ];
+
+        foreach ($subjects as $subject) {
+            yield $subject => [$subject];
+        }
+    }
+
+    /**
+     * The plural determiners, on a plural verb — the half of the conditional
+     * that HARD_DIRECTIVES did not spell, found by attacking the determiner
+     * correction above rather than by waiting for the next review to send it.
+     */
+    #[DataProvider('everyPluralDeterminerIntroducingAProxySubject')]
+    public function test_every_plural_determiner_bars_a_proxy_subject(string $subject): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "Dopo un calo del 30% {$subject} venderebbero Bitcoin.";
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the plural proxy subject passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function everyPluralDeterminerIntroducingAProxySubject(): iterable
+    {
+        $subjects = [
+            'i risparmiatori prudenti', 'gli investitori prudenti', 'le persone prudenti',
+            'questi investitori', 'queste persone', 'quei risparmiatori',
+            'quegli investitori', 'quelle persone', 'tali investitori',
+            'miei fratelli', 'tuoi fratelli', 'suoi fratelli', 'mie sorelle', 'tue sorelle',
+            'nostri padri', 'vostri padri', 'propri consulenti', 'medesimi investitori',
+            'alcuni investitori prudenti', 'certi investitori prudenti',
+            'tanti investitori prudenti', 'troppi investitori prudenti',
+            'molti investitori prudenti', 'pochi investitori prudenti',
+            'parecchi investitori prudenti', 'diversi investitori prudenti',
+            'vari investitori prudenti', 'tutti i risparmiatori prudenti',
+            'altri investitori prudenti', 'taluni investitori prudenti',
+            'quali investitori prudenti', 'quanti investitori prudenti',
+        ];
+
+        foreach ($subjects as $subject) {
+            yield $subject => [$subject];
+        }
+    }
+
+    /**
+     * The other side of the same rule: a determiner introduced by a
+     * preposition modifies the event, so the arithmetic survives. The
+     * articulated prepositions are here because the simple ones alone cost
+     * "un calo del 30% sul tuo VWCE" the moment the determiners grew.
+     */
+    #[DataProvider('everyPrepositionKeepingTheArithmetic')]
+    public function test_every_preposition_keeps_the_arithmetic_reading(string $phrase): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "Un calo del 30% {$phrase} ridurrebbe il tuo patrimonio in Bitcoin.";
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function everyPrepositionKeepingTheArithmetic(): iterable
+    {
+        $phrases = [
+            'di un valore simile', 'a una quota simile', 'da una soglia simile',
+            'in una fase simile', 'con una quota simile', 'su una quota simile',
+            'per una quota simile', 'tra una soglia simile', 'fra una soglia simile',
+            'del tuo capitale', 'dello stesso capitale', 'della stessa entità',
+            'dei tuoi risparmi', 'degli stessi risparmi', 'delle stesse proporzioni',
+            'al tuo capitale', 'allo stesso capitale', 'alla stessa entità',
+            'ai tuoi risparmi', 'agli stessi risparmi', 'alle stesse proporzioni',
+            'dal tuo capitale', 'dallo stesso capitale', 'dalla stessa entità',
+            'dai tuoi risparmi', 'dagli stessi risparmi', 'dalle stesse proporzioni',
+            'nel tuo capitale', 'nello stesso capitale', 'nella stessa entità',
+            'nei tuoi risparmi', 'negli stessi risparmi', 'nelle stesse proporzioni',
+            'col tuo capitale', 'coi tuoi risparmi',
+            'sul tuo capitale', 'sullo stesso capitale', 'sulla stessa entità',
+            'sui tuoi risparmi', 'sugli stessi risparmi', 'sulle stesse proporzioni',
+            'come una correzione ordinaria', 'verso una soglia simile',
+            'dopo una fase simile', 'entro una soglia simile', 'senza una copertura',
+            'sotto una soglia simile', 'sopra una soglia simile', 'contro una soglia simile',
+            'durante una fase simile', 'presso una soglia simile', 'oltre una soglia simile',
+            'mediante una copertura', 'salvo una ripresa', 'tranne una ripresa',
+            'eccetto una ripresa', 'secondo una stima prudente', 'circa una soglia simile',
+            'lungo una fase simile', 'dietro una soglia simile', 'davanti a una soglia',
+        ];
+
+        foreach ($phrases as $phrase) {
+            yield $phrase => [$phrase];
+        }
+    }
+
+    /**
+     * Every Italian numeral and month name, spelled out, is a quantity and so
+     * is not a name an attribution may hold. The digits were barred from the
+     * start; this is the same class written in letters, which is how the whole
+     * family walked out of the fifth round's span.
+     *
+     * See AdvisorOutputFilter::QUANTITY_IN_LETTERS.
+     */
+    #[DataProvider('everyQuantitySpelledOut')]
+    public function test_a_quantity_spelled_out_is_not_a_name_an_attribution_may_hold(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the quantified attribution passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function everyQuantitySpelledOut(): iterable
+    {
+        $cardinals = [
+            'zero', 'uno', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove',
+            'dieci', 'undici', 'dodici', 'tredici', 'quattordici', 'quindici', 'sedici',
+            'diciassette', 'diciotto', 'diciannove', 'venti', 'ventuno', 'venticinque',
+            'trenta', 'trentatre', 'quaranta', 'cinquanta', 'sessanta', 'settanta',
+            'ottanta', 'novanta', 'cento', 'mille',
+        ];
+
+        foreach ($cardinals as $cardinal) {
+            yield "al {$cardinal} per cento" => ["La decisione su quanto ridurre di Bitcoin al {$cardinal} per cento resta tua."];
+        }
+
+        foreach (['metà', 'mezzo', 'un terzo', 'un quarto', 'un quinto', 'un decimo', 'un centesimo'] as $fraction) {
+            yield "a {$fraction}" => ["La decisione su quanto ridurre di Bitcoin a {$fraction} resta tua."];
+        }
+
+        foreach (['mila', 'milioni', 'miliardi'] as $magnitude) {
+            yield "di {$magnitude}" => ["La decisione su quanto vendere di Bitcoin per dieci {$magnitude} resta tua."];
+        }
+
+        $months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio',
+            'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+
+        foreach ($months as $month) {
+            yield "entro {$month}" => ["La decisione su quando vendere di Bitcoin entro {$month} resta tua."];
+        }
+    }
+
+    /**
+     * The one word class in the attribution span that the language does not
+     * close, held to the list that does close it.
+     *
+     * Every stem HARD_DIRECTIVES spells out is an operation, and an
+     * attribution is allowed to name an operation — that is the whole argument
+     * the span rests on. So a stem in one list and not in the other is a
+     * conforming attribution being redacted with nothing bypassed and nothing
+     * failing, which is how `tagliare`, `sostituire` and `dimezzare` sat there
+     * unnoticed. Adding a verb to HARD_DIRECTIVES now fails here until the
+     * decision is made for the other list too.
+     */
+    public function test_every_hard_directive_stem_can_be_attributed(): void
+    {
+        $hard = $this->filterConstant('HARD_DIRECTIVES');
+        // Every branch head reduced to the same delimiter: the optional `ri-`
+        // prefix is spelled inside the branch, and the first branch opens on
+        // the group rather than on a pipe.
+        $operations = '|'.str_replace(['(?:ri)?', '(?:'], ['', '|'], $this->filterConstant('ATTRIBUTION_OPERATION'));
+
+        // The stem each branch is written around: the letters immediately in
+        // front of the group that holds its conjugations.
+        $this->assertGreaterThan(20, preg_match_all('/([\p{L}\']{3,})\(\?:/u', $hard, $m), 'the stems could not be read out of HARD_DIRECTIVES');
+
+        /**
+         * Stems that are deliberately not operations, each for a reason that
+         * has to survive the next person reading this list.
+         *
+         * @var array<string, string>
+         */
+        $exempt = [
+            'manterr' => 'the conditional stem of mantenere; the infinitive is spelled `mantener`',
+            'terr' => 'the conditional stem of tenere; the infinitive is spelled `tener`',
+            'tien' => 'the imperative stem of tenere; the infinitive is spelled `tener`',
+            'raccomand' => 'making a recommendation is not an operation on a position, so an attribution does not name it',
+        ];
+
+        $missing = [];
+
+        foreach (array_unique($m[1]) as $stem) {
+            $stem = mb_strtolower($stem);
+
+            if (isset($exempt[$stem]) || str_contains($operations, '|'.$stem)) {
+                continue;
+            }
+
+            // The infinitive of a stem the conjugation group spells is the
+            // stem plus its thematic `r`.
+            if (str_contains($operations, '|'.$stem.'ar')
+                || str_contains($operations, '|'.$stem.'er')
+                || str_contains($operations, '|'.$stem.'ir')
+                || str_contains($operations, '|'.$stem.'r')) {
+                continue;
+            }
+
+            $missing[] = $stem;
+        }
+
+        $this->assertSame([], $missing, 'HARD_DIRECTIVES names operations ATTRIBUTION_OPERATION does not, so an attribution naming them is redacted');
+    }
+
+    /** A private pattern of the filter, read for the class-enumeration tests. */
+    private function filterConstant(string $name): string
+    {
+        $value = new \ReflectionClass(AdvisorOutputFilter::class)->getConstant($name);
+
+        assert(is_string($value));
+
+        return $value;
     }
 
     /** The portfolio the WEA-14 harness ran against. */

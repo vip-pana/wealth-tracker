@@ -159,7 +159,15 @@ class AdvisorOutputFilter
         .'|aspett(?:a|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|approfitt(?:a|i|are?|ando|erei|eresti|erebbe|iamo|ate)'
         .'|star(?:ei|ebbe)\s+alla\s+larga|alla\s+larga\s+da'
-        .')'.self::CLITIC.'\b/iu';
+        // The plural of the third-person conditional, allowed only where that
+        // is what it is. Every branch above spells the singular `-rebbe` and
+        // none of them spelled `-rebbero`, so "molti investitori venderebbero
+        // Bitcoin" was not a directive at all — found by attacking the sixth
+        // review's own correction, which is what made that subject reachable.
+        // THIRD_PERSON carries the same `(?:ro)?`, so the arithmetic reading
+        // ("due cali del 30% ridurrebbero il tuo patrimonio") is protected in
+        // the plural exactly as in the singular.
+        .')(?:(?<=rebbe)ro)?'.self::CLITIC.'\b/iu';
 
     /**
      * The same act in the passive: "andrebbe ridotta", "va venduto". The
@@ -604,18 +612,41 @@ class AdvisorOutputFilter
         // same way one inside the span licenses its own.
         .'(?:\h+'.self::ATTRIBUTION_NOMINAL.')?'
         .'(?:\h+(?:'.self::ATTRIBUTION_TOKEN.'))*'
+        // The operation's own object, bare, and only here: last before the
+        // closing. See ATTRIBUTION_BARE_OBJECT.
+        .'(?:\h+'.self::ATTRIBUTION_OPERATION.'\h+'.self::ATTRIBUTION_BARE_OBJECT.')?'
         .'\h+(?:è|resta|rimane|spetta)\h+(?:sempre\h+|comunque\h+|soltanto\h+|solo\h+)?(?:tua|a\h+te)\b/iu';
 
     /** The interrogative an attribution hands the decision over as. */
     private const string ATTRIBUTION_INTERROGATIVE = 'che\h+cosa|cosa|quant[aeio]|qual[ei]|come|se|quando|dove|che';
 
-    /** Operation verbs, as infinitives with or without a clitic: this is what an attribution may name. */
-    private const string ATTRIBUTION_OPERATION = '(?:comprar|acquistar|vender|liquidar|disinvestir'
+    /**
+     * Operation verbs, as infinitives with or without a clitic: this is what
+     * an attribution may name.
+     *
+     * This is the one of the span's four word classes that the language does
+     * not close, and the sixth review showed what that costs. HARD_DIRECTIVES
+     * recognises operations this list did not — `tagliare`, `sostituire`,
+     * `dimezzare` — so "la decisione su cosa tagliare di Bitcoin resta tua" was
+     * a directive inside an attribution the licence no longer covered, and it
+     * was redacted. Silently, because nothing was bypassed and nobody was
+     * looking at the conforming side. Two lists that must agree will not on
+     * their own, so test_every_hard_directive_stem_can_be_attributed() makes
+     * the drift fail the gate the moment a verb is added to one and not the
+     * other.
+     */
+    private const string ATTRIBUTION_OPERATION = '(?:(?:ri)?comprar|(?:ri)?acquistar|(?:ri)?vender'
+        .'|liquidar|disinvestir'
         .'|investir|reinvestir|tener|detener|mantener|conservar|ridurr|ridur|aumentar|incrementar'
         .'|diminuir|alleggerir|rafforzar|spostar|trasferir|convertir|ribilanciar|riequilibrar'
         .'|bilanciar|allocar|destinar|versar|accantonar|risparmiar|diversificar|concentrar'
         .'|far|muover|proceder|agir|modificar|cambiar|riveder|chiuder|aprir|entrar|uscir'
-        .'|attender|aspettar)(?:e|ne|ti|si|mi|ci|vi|l[aeio]|sene|sel[ao])';
+        .'|attender|aspettar'
+        // The stems HARD_DIRECTIVES spells and this list did not.
+        .'|sostituir|optar|puntar|tagliar|evitar|scaricar|scommetter|raddoppiar|dimezzar'
+        .'|azzerar|monetizzar|metter|preferir|eliminar|abbandonar|congelar|ridimensionar'
+        .'|smetter|toglier|approfittar|lasciar|star'
+        .')(?:e|ne|ti|si|mi|ci|vi|l[aeio]|sene|sel[ao])';
 
     /**
      * A prepositional phrase: what the operation acts on, named through a
@@ -631,10 +662,70 @@ class AdvisorOutputFilter
         .'|ogni|ciascun[ao]?|altr[aeio]|stess[ao])\h+|(?:un|l|quell|dell)\'\h*)?'
         .self::ATTRIBUTION_NOMINAL;
 
-    /** A name, with no digit in it: a number in an attribution is a recommendation. */
-    private const string ATTRIBUTION_NOMINAL = '\p{L}[\p{L}\'’]*';
+    /**
+     * A name, with no digit in it and no number spelled out in it: a quantity
+     * in an attribution is a recommendation.
+     *
+     * The digits were barred from the start and the letters were not, and the
+     * sixth review walked the whole family out through that gap: "la decisione
+     * su quanto ridurre di Bitcoin al cinque per cento resta tua" is the same
+     * recommendation as "al 5%", and `cinque` is `\p{L}+`. The one case the
+     * gate held was held by `fino`, which is outside the span for reasons that
+     * have nothing to do with numbers — a closed list of instances passing is
+     * not the family being closed.
+     *
+     * Italian numerals *are* a closed class, so this closes by construction
+     * rather than by enumeration of what anybody happened to send: the
+     * cardinals including their compounds, the fractions, and the month names,
+     * which are how a date is written without a digit ("entro dicembre" is
+     * market timing, which the clauses forbid on its own).
+     */
+    private const string ATTRIBUTION_NOMINAL = '(?!(?:'.self::QUANTITY_IN_LETTERS.')\b)\p{L}[\p{L}\'’]*';
 
-    private const string ATTRIBUTION_TOKEN = self::ATTRIBUTION_INTERROGATIVE
+    /** The Italian numerals and month names — closed classes, both of them. See ATTRIBUTION_NOMINAL. */
+    private const string QUANTITY_IN_LETTERS = 'zero|un[oa]?|due|tre|quattro|cinque|sei|sette|otto|nove'
+        .'|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove'
+        .'|(?:vent|trent|quarant|cinquant|sessant|settant|ottant|novant)[ia]'
+        .'(?:uno|due|tre|quattro|cinque|sei|sette|otto|nove)?'
+        .'|cent[oi]|mille|mila|milion[ei]|miliard[oi]|percento'
+        .'|mezz[oa]|metà|terz[oi]|quart[oi]|quint[oi]|sest[oi]|settim[oi]|ottav[oi]|non[oi]'
+        .'|decim[oi]|ventesim[oi]|centesim[oi]|millesim[oi]'
+        .'|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre'
+        .'|novembre|dicembre';
+
+    /**
+     * The one bare noun an operation or an interrogative may take as its
+     * object, and the sixth review is why it is here.
+     *
+     * The round before withheld it, on the ground that a bare noun phrase is
+     * how "ovvero venderne una parte" is spelled too — and so lost "la
+     * decisione su se vendere Bitcoin è tua", which is the handover sentence
+     * the clauses ask the advisor to write. That cost does not have to be
+     * paid: what tells an object from an apposition is the determiner, and
+     * `una parte` has one while `Bitcoin` does not. So one bare noun is
+     * allowed immediately after the interrogative or the operation that takes
+     * it, and only if it is not a determiner.
+     *
+     * One, not a run of them: the second noun of a run is the apposition.
+     * That is what the two places it is admitted are for, and they are the two
+     * places a bare noun is grammatically required rather than merely
+     * possible. After an interrogative *determiner* it is that determiner's
+     * own head — "quali strumenti", "quanta liquidità" — so the run ends
+     * there. After an operation it is the operation's object, and it is
+     * admitted only as the last thing before the closing: an object completes
+     * its verb, so anything following it is an apposition and not an object.
+     * That single restriction is what keeps "vendere magari Bitcoin" and
+     * "fare subito vendere di Bitcoin" out, without a list of the adverbs
+     * anybody has thought of.
+     */
+    private const string ATTRIBUTION_BARE_OBJECT = '(?!(?:'.self::DETERMINER.')\b)'.self::ATTRIBUTION_NOMINAL;
+
+    /** The interrogatives that are determiners, and so take a noun of their own. */
+    private const string ATTRIBUTION_INTERROGATIVE_DETERMINER = 'qual[ei]|quant[aeio]|che';
+
+    private const string ATTRIBUTION_TOKEN = '(?:'.self::ATTRIBUTION_INTERROGATIVE_DETERMINER.')'
+        .'\h+'.self::ATTRIBUTION_BARE_OBJECT
+        .'|'.self::ATTRIBUTION_INTERROGATIVE
         .'|e|ed|o|od|oppure|né|ne'
         .'|'.self::ATTRIBUTION_OPERATION
         .'|'.self::ATTRIBUTION_PHRASE;
@@ -955,15 +1046,15 @@ class AdvisorOutputFilter
      * modifier, not a new subject, which is what the lookbehinds let through —
      * "un calo del 30% in un anno" is still arithmetic.
      *
-     * The conjunctions stay as a second net, no longer load-bearing. What is
-     * deliberately *not* closed is the proxy subject behind a definite article
-     * and no punctuation at all ("… è plausibile l'investitore prudente
-     * ridurrebbe …"): barring bare definite articles would take the temporal
-     * adjunct with it ("un calo del 30% il prossimo anno ridurrebbe il tuo
-     * patrimonio dell'8%"), and deleting that arithmetic is the WEA-14 harm
-     * this pattern exists to undo.
+     * The conjunctions stay as a second net, no longer load-bearing.
      */
-    private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel)\s+'
+    private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel'
+        // The plurals, because HARD_DIRECTIVES now reads the plural
+        // conditional: without them "due cali del 30% ridurrebbero il tuo
+        // patrimonio" would be the arithmetic this pattern exists to protect,
+        // read as advice. The span test is the same one, so this costs no
+        // guard.
+        .'|i|gli|le|quest[ei]|quei|quegli|quelle|due|tre)\s+'
         .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
         .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'
         .'(?<span>(?:[^.!?;:,\n—–]|\.(?=\d)){0,60})$/iu';
@@ -980,19 +1071,86 @@ class AdvisorOutputFilter
      * event, "e un investitore" starts a clause of its own. The second branch
      * is the older net, kept for a clause that starts without a new subject
      * and no longer load-bearing.
+     *
+     * The determiners are the whole closed class and not the half of it the
+     * sixth review walked out of, and the way they were walked out of is the
+     * lesson: `ciascuno`, `nessuno` and `qualcuno` were listed and their
+     * apocopated forms `ciascun`, `nessun`, `qualcun` were not; `ogni` and
+     * `qualche` were nobody's idea of a pronoun and are determiners all the
+     * same; `tale` and the demonstratives were never there. A class is closed
+     * in the language; it is closed in the filter only when the list that
+     * spells it out is complete, which is why DETERMINER is enumerated from a
+     * grammar and tested as a class rather than as the instances somebody
+     * happened to send in.
+     *
+     * The round before withheld the definite articles on the ground that
+     * barring them would take the temporal adjunct with them ("un calo del 30%
+     * il prossimo anno ridurrebbe il tuo patrimonio dell'8%"), and deleting
+     * that arithmetic is the WEA-14 harm this pattern exists to undo. That was
+     * a choice between two options where a third one holds: the thing that
+     * tells a proxy subject from a temporal adjunct is not the determiner but
+     * the *noun*, and a bare noun phrase modifying an event in Italian is an
+     * expression of time. So every determiner is barred except in front of a
+     * time noun — and TIME_NOUN is short, lexical, and fails in the right
+     * direction, because an omission there costs an arithmetic sentence that
+     * is visible rather than letting a recommendation through.
      */
     private const string NEW_CLAUSE = '/(?:'
-        .'(?<!\bdi)(?<!\bin)(?<!\bsu)(?<!\bda)(?<!\bfra)(?<!\btra)(?<!\bcon)(?<!\bper)(?<!\ba)'
-        .'(?<!\bcome)(?<!\bverso)(?<!\bdopo)(?<!\bentro)(?<!\bsenza)(?<!\bsotto)(?<!\bsopra)'
-        .'(?<!\bcontro)(?<!\bdurante)(?<!\bpresso)(?<!\boltre)'
-        .'\s(?:uno?|una|chi|chiunque|qualcuno|qualsiasi|qualunque|nessuno|ognuno|ciascuno'
-        .'|molt[ie]|alcun[ie]|tutt[ie]|poch[ie]|parecchi|talun[ie])\b'
+        .'(?<!\b(?:'.self::PREPOSITION.'))'
+        .'\s(?:'.self::DETERMINER.')\b(?!'.self::TIME_NOUN_AHEAD.')'
         .'|\s(?:e|ed|ma|però|pero|quindi|perciò|percio|dunque|pertanto|allora|mentre|laddove'
         .'|oppure|ossia|anzi|tuttavia|eppure|invece)\s'
         .')/iu';
 
-    /** The third-person forms a consequence is stated in. */
-    private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)$/iu';
+    /**
+     * The Italian prepositions, simple, articulated and improper — the class
+     * that tells the event's own modifier from a new subject. Articulated, and
+     * not only simple, because the half-list cost a conforming sentence the
+     * moment the determiners grew: "un calo del 30% sul tuo VWCE ridurrebbe il
+     * patrimonio dell'8%" is arithmetic, and `sul` was not `su`.
+     *
+     * The elided forms are absent on purpose: they are written against the
+     * following word with no space, and the space is what this sits in front
+     * of.
+     */
+    private const string PREPOSITION = 'di|a|da|in|con|su|per|tra|fra'
+        .'|del|dello|della|dei|degli|delle|al|allo|alla|ai|agli|alle'
+        .'|dal|dallo|dalla|dai|dagli|dalle|nel|nello|nella|nei|negli|nelle'
+        .'|col|coi|sul|sullo|sulla|sui|sugli|sulle'
+        .'|come|verso|dopo|entro|senza|sotto|sopra|contro|durante|presso|oltre'
+        .'|mediante|salvo|tranne|eccetto|secondo|circa|lungo|dietro|davanti';
+
+    /**
+     * The Italian determiners and the indefinite pronouns that stand in for
+     * one, as a class rather than as a sample: articles, demonstratives,
+     * possessives, indefinites and the interrogatives, each with the
+     * apocopated and elided forms the language actually writes. Shared by
+     * NEW_CLAUSE, which bars a subject from a span, and by
+     * ATTRIBUTION_BARE_OBJECT, which uses the same class to tell an object
+     * from an apposition.
+     */
+    private const string DETERMINER = 'il|lo|la|i|gli|le|l\'|un|uno|una|un\''
+        .'|quest[aeio]|quest\'|codest[aeio]|codest\'|quell[aeio]|quel|quei|quegli|quell\''
+        .'|tale|tali|siffatt[aeio]|medesim[aeio]|stess[aeio]'
+        .'|mi[ao]|miei|mie|tu[ao]|tuoi|tue|su[ao]|suoi|sue'
+        .'|nostr[aeio]|vostr[aeio]|loro|altrui|propri[aeio]?'
+        .'|ogni|ognun[ao]|qualche|ciascun[ao]?|nessun[ao]?|alcun[aeio]?|qualcun[ao]?'
+        .'|qualsiasi|qualunque|chiunque|chi|cert[aeio]|tant[aeio]|tropp[aeio]'
+        .'|molt[aeio]|poc[ao]|poch[ie]|parecchi[ao]?|parecchie|divers[ie]|var[ie]'
+        .'|tutt[aeio]|altr[aeio]|talun[aeio]|quant[aeio]|qual[ei]';
+
+    /**
+     * The nouns that make a bare noun phrase an expression of time rather than
+     * a new subject, looked for up to two words past the determiner so that an
+     * adjective between the two ("il prossimo anno") does not hide it. See
+     * NEW_CLAUSE.
+     */
+    private const string TIME_NOUN_AHEAD = '\h*(?:\p{L}+\h+){0,2}(?:ann[oi]|mes[ei]|settiman[ae]'
+        .'|trimestr[ei]|semestr[ei]|decenni[oi]|bienni[oi]|giorn[oi]|volt[ae]|period[oi]'
+        .'|moment[oi]|tempo|futuro|scadenz[ae]|orizzonte)\b';
+
+    /** The third-person forms a consequence is stated in, singular and plural. */
+    private const string THIRD_PERSON = '/(?:rebbe|erebbe|irebbe|rrebbe)(?:ro)?$/iu';
 
     /**
      * The directive verb aimed at an abstraction instead of at a position:
@@ -1025,8 +1183,28 @@ class AdvisorOutputFilter
         // and the harness carries it.
         .'|calma|sangue\s+freddo|lucidit[àa]|disciplina|nervi|rotta|sonni\s+tranquilli)\b/iu';
 
-    /** How far after a directive its object is looked for. */
-    private const int OBJECT_WINDOW = 40;
+    /**
+     * How far after a directive its object is looked for, in characters.
+     *
+     * In characters and not in bytes, which is the sixth review's finding and
+     * not a tidying: an accent costs two bytes, so a byte window cut
+     * "l'esposizione complessiva alla liquidità" at `liquidit` and the class
+     * stopped being recognised a word earlier than the window says. Worse, a
+     * cut that lands inside a character produces invalid UTF-8, and every
+     * `preg_match` with `/u` over it then returns `false` rather than 0 — so
+     * objectKind() read `empty` where it should have read `other`, silently
+     * and in whichever direction the caller happened to treat `empty`.
+     *
+     * Forty was also simply too short, which the same example shows once the
+     * bytes stop confusing the count: "l'esposizione complessiva alla
+     * liquidità" is forty-two characters, so the window cut the complement
+     * that decides whether the head is a class at all. The window has to hold
+     * a determiner, a relational head, an adjective, a preposition and the
+     * complement — and widening it cannot reach further right than the
+     * directive's own object, because every pattern read through here is
+     * anchored at the head of it.
+     */
+    private const int OBJECT_WINDOW = 64;
 
     /**
      * The adverb that can sit between a directive and its object without
@@ -1316,30 +1494,38 @@ class AdvisorOutputFilter
      * The adjectival form is listed rather than left open, because an open
      * `\w+` after the noun would read "l'esposizione eccessiva" as a class.
      *
-     * Every adjective here has to *name a class*, and the fifth review is why.
-     * The round before also listed `complessiva`, `globale`, `totale` and
-     * `generale`, which only quantify: they say *all*, not *all of what*, so
-     * they leave the head as anaphoric as it was. The branch returns before the
-     * complement's class test runs, so listing them there was an unconditional
-     * licence that test never saw — "Parliamo di Bitcoin. Ridurrei
-     * l'esposizione complessiva" walked out, and so did the same sentence with
-     * the anaphor restored behind the adjective ("…complessiva a questo").
-     * `attuale` is kept out for the same reason, and that is the whole reason:
-     * a branch that returns true before a test annuls the test.
+     * The adjectives are in two groups, and the sixth review is why. An
+     * `adjective` *names a class*; a `quantifier` — `complessiva`, `globale`,
+     * `totale`, `generale` — only quantifies: it says *all*, not *all of what*,
+     * so it leaves the head as anaphoric as it was. `attuale` is a quantifier
+     * by the same test, saying only *now*.
+     *
+     * The round before answered that by deleting the four quantifiers from the
+     * *pattern*, which is not the same as deleting them from the licensing
+     * branch, and it cost two conforming sentences: with `totale` unlistable
+     * the whole head failed to parse, so "ridurrei l'esposizione totale
+     * all'azionario" lost a complement that names a class perfectly well and
+     * was redacted. That is the WEA-14 harm, in the commit that exists to undo
+     * it. So they are back in the pattern and licence nothing — see
+     * isGenericRelational(), where the complement decides whenever there is
+     * one and the class adjective only speaks in its absence.
+     *
+     * `per` is in the prepositions because "l'allocazione per classe di
+     * attività" says what it is an allocation of; its absence was one more
+     * enumeration of the most closed class there is.
      */
     private const string RELATIONAL_OBJECT_HEAD = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
         .'(?:'.self::RELATIONAL_OBJECT.')'
-        .'(?:'
         .'(?<adjective>\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
-        .')[aeio]?\b)'
+        .')[aeio]?\b)?'
+        .'(?:\s*(?:complessiv|global|total|general|attual)[aeio]?\b)?'
         // The preposition has to end where it ends: `a[il]?` without a
         // boundary swallowed the `a` of "l'esposizione azionaria" and read the
         // adjective as a complement.
-        .'|\s+(?:(?:di|in|su|verso|a|ai|al|alla|allo|agli|alle'
+        .'(?:\s+(?:(?:di|in|su|per|verso|a|ai|al|alla|allo|agli|alle'
         .'|da|dai|dal|dalla|dallo|dagli|dalle|de|dei|del|della|dello|degli|delle)\b'
-        .'|(?:all|dall|dell|d)\')\s*(?<complement>.*)'
-        .')/iu';
+        .'|(?:all|dall|dell|d)\')\s*(?<complement>.*))?/iu';
 
     private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
@@ -2085,7 +2271,7 @@ class AdvisorOutputFilter
      */
     private function objectKind(string $segment, int $end): string
     {
-        $object = substr($segment, $end, self::OBJECT_WINDOW);
+        $object = $this->objectAfter($segment, $end);
 
         // "aumentare (es. obbligazioni, liquidità)" — the example marker
         // introduces the object rather than being one, and both patterns below
@@ -2123,6 +2309,16 @@ class AdvisorOutputFilter
      * The complement cannot be an instrument — if it were, the segment would
      * name one and this check would never run — which is the same argument the
      * whole carve-out already rests on.
+     *
+     * The order of the two tests is the sixth review's correction, and it is
+     * the same defect one more time: a branch that returns true before a test
+     * annuls the test. Shortening the adjective list did not move the return —
+     * the six class adjectives that stayed were unconditional licences exactly
+     * as the four quantifiers had been, and the anaphor simply stepped behind
+     * one of them ("ridurrei l'esposizione azionaria a questo"). So the
+     * complement decides whenever there is a complement, whatever adjective
+     * stands in front of it, and the class adjective licenses only the head
+     * that has none.
      */
     private function isGenericRelational(string $object): bool
     {
@@ -2130,11 +2326,13 @@ class AdvisorOutputFilter
             return false;
         }
 
-        if ($m['adjective'] !== '') {
-            return true;
+        $complement = $m['complement'] ?? '';
+
+        if ($complement !== '') {
+            return $this->namesAClass($complement);
         }
 
-        return $this->namesAClass($m['complement']);
+        return ($m['adjective'] ?? '') !== '';
     }
 
     /**
@@ -2173,7 +2371,17 @@ class AdvisorOutputFilter
     /** Whether the directive ending at this offset acts on an abstraction, not a position. */
     private function hasAbstractObject(string $segment, int $end): bool
     {
-        return preg_match(self::ABSTRACT_OBJECT, substr($segment, $end, self::OBJECT_WINDOW)) === 1;
+        return preg_match(self::ABSTRACT_OBJECT, $this->objectAfter($segment, $end)) === 1;
+    }
+
+    /**
+     * OBJECT_WINDOW characters of whatever follows the directive. The offset
+     * arrives from a `/u` match so it is always on a character boundary; the
+     * end of the window is the one that has to be made one. See OBJECT_WINDOW.
+     */
+    private function objectAfter(string $segment, int $end): string
+    {
+        return mb_substr(substr($segment, $end), 0, self::OBJECT_WINDOW);
     }
 
     /**
