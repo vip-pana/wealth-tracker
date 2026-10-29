@@ -44,6 +44,17 @@ services:
     # The working copy is mounted at /app, so the script does not need to be
     # baked into the dev image — and editing it does not need a rebuild.
     command: ["sh", "/app/docker/dev-entrypoint.sh"]
+    # The base image inherits FrankenPHP's own check, which probes Caddy's admin
+    # API on :2019. The dev stack runs `php artisan serve` and never starts
+    # Caddy, so `docker compose ps` reported `unhealthy` forever on an app that
+    # was answering fine — the one signal a newcomer has that the install failed.
+    # start_period is generous because the first boot installs node_modules.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8000/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
 
 volumes:
   scalable-cli:
