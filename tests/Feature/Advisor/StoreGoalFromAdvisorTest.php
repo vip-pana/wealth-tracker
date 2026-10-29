@@ -9,6 +9,7 @@ use App\Advisor\AdvisorOutputFilter;
 use App\Models\Asset;
 use App\Models\Category;
 use App\Models\Goal;
+use App\Models\InvestorProfile;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -103,6 +104,91 @@ class StoreGoalFromAdvisorTest extends TestCase
         $this->assertDatabaseHas('goal_milestones', ['action' => AdvisorOutputFilter::REDACTION]);
         // The reasoning around it is kept: only the instruction goes.
         $this->assertDatabaseHas('goal_milestones', ['rationale' => 'Riduce la volatilità avvicinandosi al target.']);
+    }
+
+    /**
+     * The three fields that sit beside the milestones and were not covered in
+     * either direction — `goals.description`, `investor_profiles.notes` and
+     * `investor_profiles.memory`. Each is written by the advisor, kept for
+     * good, and shown on a page outside the chat, which is the whole reason
+     * the milestone fields are screened; the rule was written down and then
+     * not applied to the fields that already existed.
+     */
+    public function test_an_operative_instruction_in_the_goal_description_is_redacted_before_it_is_stored(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+
+        $this->post('/advisor/goal', [
+            'target_value' => 1000000,
+            'target_date' => '2099-12-31',
+            'description' => 'Vendi Bitcoin e compra obbligazioni.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('goal', ['description' => 'Vendi Bitcoin e compra obbligazioni.']);
+        $this->assertDatabaseHas('goal', ['description' => AdvisorOutputFilter::REDACTION]);
+    }
+
+    /**
+     * The name is derived from the description when the advisor proposes none,
+     * so screening has to happen before the derivation or the removed text
+     * walks into the other column.
+     */
+    public function test_the_name_derived_from_a_description_is_screened_too(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+
+        $this->post('/advisor/goal', [
+            'target_value' => 1000000,
+            'description' => 'Vendi Bitcoin e compra obbligazioni.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('goal', ['name' => AdvisorOutputFilter::REDACTION]);
+    }
+
+    public function test_a_goal_description_stored_before_the_filter_is_screened_on_the_way_out(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+        Goal::create([
+            'name' => 'Vendi Bitcoin subito.',
+            'description' => 'Vendi Bitcoin e compra obbligazioni.',
+            'target_value' => 1000000,
+            'target_date' => '2099-01-01',
+        ]);
+
+        $data = app(FetchGoalData::class)->run();
+
+        $this->assertIsArray($data['goal']);
+        $this->assertSame(AdvisorOutputFilter::REDACTION, $data['goal']['description']);
+        $this->assertSame(AdvisorOutputFilter::REDACTION, $data['goal']['name']);
+    }
+
+    public function test_an_operative_instruction_in_the_profile_notes_is_redacted_before_it_is_stored(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+
+        $this->post('/advisor/profile', [
+            'risk_tolerance' => 'medium',
+            'notes' => 'Vendi Bitcoin e compra obbligazioni.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('investor_profile', ['notes' => 'Vendi Bitcoin e compra obbligazioni.']);
+        $this->assertDatabaseHas('investor_profile', ['notes' => AdvisorOutputFilter::REDACTION]);
+    }
+
+    public function test_profile_notes_and_memory_stored_before_the_filter_are_screened_on_the_way_out(): void
+    {
+        Asset::factory()->create(['name' => 'Bitcoin']);
+        InvestorProfile::create([
+            'risk_tolerance' => 'medium',
+            'notes' => 'Vendi Bitcoin e compra obbligazioni.',
+            'memory' => 'Vendi Bitcoin e compra obbligazioni.',
+        ]);
+
+        $data = app(FetchGoalData::class)->run();
+
+        $this->assertIsArray($data['profile']);
+        $this->assertSame(AdvisorOutputFilter::REDACTION, $data['profile']['notes']);
+        $this->assertSame(AdvisorOutputFilter::REDACTION, $data['profile']['memory']);
     }
 
     /** The same field, read back: rows stored before the filter covered them. */

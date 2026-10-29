@@ -6,6 +6,7 @@ namespace Tests\Feature\Clients;
 
 use App\Actions\Advisor\BuildAdvisorContext;
 use App\Advisor\AdvisorBudget;
+use App\Advisor\AdvisorOutputFilter;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Advisor\Tools\AdvisorWidgetCollector;
@@ -38,7 +39,7 @@ class PrismAdvisorProviderTest extends TestCase
         $build = Mockery::mock(BuildAdvisorContext::class);
         $build->shouldReceive('run')->andReturn(['portfolio' => ['hasData' => false], 'positionReturns' => null]);
 
-        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter, new AdvisorWidgetCollector), new AdvisorBudget, $tuning);
+        return new PrismAdvisorProvider(Provider::Ollama, $model, 120, new AdvisorToolFactory($build, new AdvisorToolActivityReporter, new AdvisorWidgetCollector, new AdvisorOutputFilter), new AdvisorBudget, $tuning);
     }
 
     public function test_is_not_configured_without_a_model(): void

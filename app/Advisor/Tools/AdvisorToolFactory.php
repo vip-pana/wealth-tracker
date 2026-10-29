@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Advisor\Tools;
 
 use App\Actions\Advisor\BuildAdvisorContext;
+use App\Advisor\AdvisorOutputFilter;
 use App\Models\Category;
 use App\Models\Goal;
 use App\Models\GoalCategoryAllocation;
@@ -37,6 +38,7 @@ class AdvisorToolFactory
         private readonly BuildAdvisorContext $buildContext,
         private readonly AdvisorToolActivityReporter $activity,
         private readonly AdvisorWidgetCollector $widgets,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     /**
@@ -1465,9 +1467,25 @@ class AdvisorToolFactory
      * InvestorProfile row, creating it if the user has none yet. Returns a
      * confirmation the model relays to the user, telling them the fact was
      * saved. When mergedMemory yields null (empty/blank fact) nothing is written.
+     *
+     * The fact goes through the firewall first, and a fact the firewall would
+     * alter is REFUSED rather than stored redacted. This is the one profile
+     * field the model writes with no confirmation click, it persists for good,
+     * and it is replayed into the briefing on every later turn — so a
+     * recommendation smuggled in as a "durable preference" would come back as
+     * the user's own stated context, laundered. Storing the redaction marker
+     * instead would leave a permanent stub in a field meant to hold one short
+     * sentence, so refusing is both safer and tidier; the model is told why
+     * and can rephrase.
      */
     private function storeMemoryFact(string $fact): string
     {
+        if ($this->filter->filterField($fact) !== $fact) {
+            return 'Non posso memorizzare questo: contiene un\'indicazione operativa su uno strumento specifico, '
+                ."e la memoria del profilo non può contenerne.\nRiformula come preferenza o fatto durevole, "
+                .'oppure non memorizzare nulla.';
+        }
+
         $merged = $this->mergedMemory($fact);
         if ($merged === null) {
             return 'Non ho un fatto valido da ricordare. Chiedi all\'utente di precisare cosa vuole che tenga a mente.';

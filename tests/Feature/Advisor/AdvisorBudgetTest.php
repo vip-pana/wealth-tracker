@@ -9,6 +9,7 @@ use App\Actions\Advisor\ContinueChat;
 use App\Actions\Notifications\PushNotification;
 use App\Advisor\AdvisorBudget;
 use App\Advisor\AdvisorBudgetExceeded;
+use App\Advisor\AdvisorOutputFilter;
 use App\Advisor\Tools\AdvisorToolActivityReporter;
 use App\Advisor\Tools\AdvisorToolFactory;
 use App\Advisor\Tools\AdvisorWidgetCollector;
@@ -83,7 +84,7 @@ class AdvisorBudgetTest extends TestCase
             Provider::Ollama,
             'qwen3:8b',
             120,
-            new AdvisorToolFactory($this->app->make(BuildAdvisorContext::class), new AdvisorToolActivityReporter, new AdvisorWidgetCollector),
+            new AdvisorToolFactory($this->app->make(BuildAdvisorContext::class), new AdvisorToolActivityReporter, new AdvisorWidgetCollector, new AdvisorOutputFilter),
             $this->budget(),
         );
     }
