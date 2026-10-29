@@ -20,6 +20,23 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+// An empty APP_KEY in the environment is never a value, only a leftover — and
+// an immutable Dotenv will not overwrite a variable that is already set, even
+// to "". `env_file: .env` bakes every .env key into the container when it is
+// created, so a fresh checkout (`.env.example` ships `APP_KEY=`) hands an empty
+// string to that container for its whole life. The dev entrypoint writes a real
+// key into .env on first boot, but `docker compose exec … php artisan test`
+// starts from the container's *original* environment and sees the empty string
+// again — MissingAppKeyException against a .env that plainly holds a key, and
+// no amount of `key:generate` inside that container changes it.
+//
+// Dropping it here, before Dotenv runs, lets .env supply the value. A key that
+// is genuinely absent everywhere still fails loudly, which is correct.
+if (($_SERVER['APP_KEY'] ?? $_ENV['APP_KEY'] ?? getenv('APP_KEY')) === '') {
+    unset($_SERVER['APP_KEY'], $_ENV['APP_KEY']);
+    putenv('APP_KEY');
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

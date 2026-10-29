@@ -35,19 +35,20 @@ fi
 # file is a work area and holds no user data.
 touch "$DB_PATH" "$QUEUE_DB_PATH"
 
-# APP_KEY. `.env.example` ships it empty, so a clean checkout has none, and
-# generating it from a shell in the already-running container is a false
-# positive: `env_file` baked the empty value into this container's environment
-# when it was created, and an environment variable wins over the .env file for
-# the whole life of the container (which is also why `restart` does not pick up
-# a new one and `down && up` does). So generate it here, before anything boots
-# the framework, and export it over the empty value this process inherited.
+# APP_KEY. `.env.example` ships it empty, so a clean checkout has none and
+# nothing else in the quick-start generates one. The `grep -q '^APP_KEY='` is
+# not decoration: `key:generate` rewrites that line and writes nothing at all
+# when it is missing, so a hand-edited .env would otherwise report success and
+# still have no key.
+#
+# This only has to put the key in the *file*. bootstrap/app.php drops the empty
+# APP_KEY the container inherited from `env_file`, which is what lets every
+# later process — including `docker compose exec` ones, which never see this
+# script's environment — read the real value from .env.
 grep -q '^APP_KEY=' "$ENV_FILE" || printf 'APP_KEY=\n' >> "$ENV_FILE"
 if ! grep -q '^APP_KEY=.' "$ENV_FILE"; then
     php artisan key:generate --force
 fi
-APP_KEY="$(sed -n 's/^APP_KEY=//p' "$ENV_FILE" | head -n 1)"
-export APP_KEY
 
 php artisan migrate --force
 
