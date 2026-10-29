@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advisor;
 
 use App\Actions\Advisor\ComputeAdvisorFunFacts;
+use App\Advisor\AdvisorOutputFilter;
 use App\Contracts\AdvisorProvider;
 use App\Http\Controllers\Controller;
 use App\Models\AdvisorMessage;
@@ -23,6 +24,7 @@ class IndexController extends Controller
     public function __construct(
         private readonly AdvisorProvider $provider,
         private readonly ComputeAdvisorFunFacts $funFacts,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     public function __invoke(?AdvisorSession $session = null): Response
@@ -52,17 +54,19 @@ class IndexController extends Controller
                 // Read-only: derived from the goal's target date, not stored.
                 'horizon' => $goal?->horizon(),
                 'risk_tolerance' => $profile->risk_tolerance,
-                'notes' => $profile->notes,
-                'memory' => $profile->memory,
+                // Same screening as the Goal page: these are the advisor's own
+                // words and this is a second surface that shows them.
+                'notes' => $profile->displayNotes(),
+                'memory' => $profile->displayMemory(),
             ] : null,
             'goal' => $goal instanceof Goal ? [
-                'name' => $goal->name,
-                'description' => $goal->description,
+                'name' => $goal->displayName(),
+                'description' => $goal->displayDescription(),
                 'target_value' => $goal->target_value,
                 'target_date' => $goal->target_date?->format('Y-m-d'),
                 'milestones' => $goal->milestones
                     ->map(fn ($m): array => [
-                        'notes' => $m->notes,
+                        'notes' => $this->screen($m->notes),
                         'target_value' => (float) $m->target_value,
                         'target_date' => $m->target_date->format('Y-m-d'),
                         'allocation' => $m->categoryAllocations
@@ -87,6 +91,11 @@ class IndexController extends Controller
             'activeSession' => $session instanceof AdvisorSession ? $this->serializeSession($session) : null,
             'funFacts' => $this->provider->isConfigured() ? $this->funFacts->run() : [],
         ]);
+    }
+
+    private function screen(?string $value): ?string
+    {
+        return $value === null ? null : $this->filter->filterField($value);
     }
 
     /**

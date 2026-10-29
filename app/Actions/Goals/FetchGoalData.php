@@ -111,8 +111,11 @@ class FetchGoalData extends Action
 
             $goalData = [
                 'id' => $goal->id,
-                'name' => $goal->name,
-                'description' => $goal->description,
+                // Both are the advisor's words when it proposed the goal, and
+                // the name is derived from the description when none was
+                // proposed, so the two carry the same text.
+                'name' => $goal->displayName(),
+                'description' => $goal->displayDescription(),
                 'target_value' => $goal->target_value,
                 'target_date' => $goal->target_date?->format('Y-m-d'),
                 'categoryAllocations' => $categoryAllocations,
@@ -134,8 +137,11 @@ class FetchGoalData extends Action
                 'birth_date' => $profile->birth_date?->format('Y-m-d'),
                 'horizon' => $goal?->horizon(),
                 'risk_tolerance' => $profile->risk_tolerance,
-                'notes' => $profile->notes,
-                'memory' => $profile->memory,
+                // Written by the advisor — `memory` without even a confirmation
+                // click — and shown on this page outside the chat, so they are
+                // screened here the same way the milestones are.
+                'notes' => $profile->displayNotes(),
+                'memory' => $profile->displayMemory(),
             ] : null,
             'categories' => $categories->map(fn (Category $c) => [
                 'id' => $c->id,
