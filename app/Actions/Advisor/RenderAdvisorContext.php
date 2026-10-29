@@ -370,12 +370,21 @@ class RenderAdvisorContext extends Action
      * as inert data inside the briefing. Newlines and control characters are
      * collapsed so a crafted value can't open a fake new line/section, and the
      * value is wrapped in guillemets as an explicit "this is data" delimiter
-     * the system prompt is told to respect. Defense against prompt injection;
-     * matters most once input is multi-user or the provider becomes cloud.
+     * the boundary clauses declare (AdvisorBoundaries::CLAUSES). Defense
+     * against prompt injection; matters most once input is multi-user or the
+     * provider becomes cloud.
+     *
+     * The guillemets inside the value are replaced, not kept. The whole defence
+     * rests on one character, so a value that contains a closing `»` could end
+     * its own delimiter and carry on in prose as if it were the briefing. It
+     * never moved the model in testing, but a marker that the data can forge is
+     * not a marker. They become ordinary typographic quotes, which is what
+     * PrismAdvisorProvider::normalise() turns them into on the way out anyway.
      */
     private function userText(string $value): string
     {
         $clean = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? $value;
+        $clean = str_replace(['«', '»'], ['“', '”'], $clean);
         $clean = trim($clean);
 
         return '«'.$clean.'»';

@@ -482,10 +482,7 @@ class AdvisorOutputFilter
      * judgement, not about an operation.
      */
     private const string REFLECTION = '/\b(?:'
-        .'chiediti|chieditelo|domandati|ti\s+sei\s+(?:mai\s+)?chiest[oa]'
-        .'|prova\s+a\s+chiedert[ei]|una\s+domanda\s+da\s+(?:port[ei]|fart[ei])'
-        .'|la\s+domanda\s+da\s+fars[ei]'
-        .'|valuta\s+se|verifica\s+se|controlla\s+se|considera\s+se|rifletti\s+su|ragiona\s+su'
+        .'valuta\s+se|verifica\s+se|controlla\s+se|considera\s+se|rifletti\s+su|ragiona\s+su'
         .'|riuscirest[ei]\s+a|te\s+la\s+sentirest[ei]|saresti\s+(?:disposto|disposta|in\s+grado)'
         .'|ti\s+permetterest[ei]|sopporterest[ei]|reagirest[ei]|farest[ei]\s+se'
         .'|preferirest[ei]|ti\s+sentirest[ei]|ti\s+dà\s+(?:sicurezza|fastidio|serenità)'
@@ -510,13 +507,22 @@ class AdvisorOutputFilter
      *
      * Kept separate from REFLECTION for exactly that reason — merging them
      * would either re-eat these segments or open the window on the imperatives.
+     *
+     * The whole *chiedersi* family lives here rather than in REFLECTION. "Dire
+     * che cosa l'utente dovrebbe CHIEDERSI" is named in the clauses as a thing
+     * the advisor should do, and the question asked is a proposition, so the
+     * directive inside it is the proposition's verb — which is precisely what
+     * the object window would reject. The window stays on *valutare* /
+     * *verificare*, where the object is an operation to perform.
      */
     private const string REFLECTION_INDICATIVE = '/\b(?:'
-        .'ti\s+chiedi\s+se|ci\s+si\s+chiede\s+se|c\'è\s+da\s+chiedersi'
+        .'chiediti|chieditelo|domandati|ti\s+sei\s+(?:mai\s+)?chiest[oa]'
+        .'|prova\s+a\s+chiedert[ei]|potrest[ei]\s+chiedert[ei]'
+        .'|ti\s+chiedi\s+se|ci\s+si\s+chiede\s+se|c\'è\s+da\s+chiedersi'
         .'|vale\s+la\s+pena\s+(?:di\s+)?(?:chiedersi|domandarsi|interrogarsi)'
-        .'|la\s+domanda\s+(?:da\s+port[ei]|che\s+conta|giusta|vera|chiave)'
+        .'|(?:una|la)\s+domanda\s+da\s+(?:port[ei]|fart[ei]|fars[ei])'
+        .'|la\s+domanda\s+(?:che\s+conta|giusta|vera|chiave|è\s+se)'
         .'|ti\s+senti\s+di|te\s+la\s+senti\s+di|sei\s+disposto\s+a|sei\s+disposta\s+a'
-        .'|la\s+domanda\s+è\s+se'
         .')\b/iu';
 
     /**
@@ -547,6 +553,19 @@ class AdvisorOutputFilter
         .'|non\s+(?:credi|pensi|trovi|ti\s+pare|è\s+vero))\s*[?.!]*\s*$/iu';
 
     /**
+     * The indirect question, which carries no question mark of its own: the
+     * bullets under "ecco cosa verificare" are clauses opening with *se*, and
+     * "se la tua allocazione è coerente con il tuo profilo" asserts nothing —
+     * it names the thing to check, which the clauses ask the advisor to do.
+     * The live probe found one of these redacted on SUITABILITY.
+     *
+     * Treated exactly like an interrogative, so it earns the licence only on
+     * the same terms: judgement words alone, never an operative verb or a
+     * proposed number. "Se vuoi, vendi VWCE" is therefore still removed.
+     */
+    private const string INDIRECT_QUESTION = '/^[\s\-*#>•]*(?:\d+[.)]\s*)?(?:e\s+|oppure\s+)?se\b/iu';
+
+    /**
      * The pivot from refusing to advising. Everything after one of these is
      * outside whatever licence the segment had opened with.
      */
@@ -569,6 +588,9 @@ class AdvisorOutputFilter
      */
     private const string INVERTED_DIRECTIVE = '/\b(?:'
         .'senza|invece\s+di|anziché|anzichè|piuttosto\s+che|evitando\s+di'
+        // "...per non dover vendere in caso di emergenza" — the point of the
+        // emergency fund, stated as what it spares you.
+        .'|(?:per\s+)?non\s+dover(?:si)?'
         .'|(?:la\s+|l\'|una\s+)?(?:necessità|esigenza|tentazione|urgenza|voglia|fretta)\s+di'
         .'|(?:il\s+|un\s+)?(?:bisogno|obbligo|rischio|timore|dovere)\s+di'
         .'|(?:la\s+|una\s+)?(?:paura|possibilità|libertà|facoltà)\s+di'
@@ -591,15 +613,66 @@ class AdvisorOutputFilter
      *
      * `concentrazione`, `allocazione`, `esposizione` and `peso` are pointedly
      * NOT here: "ridurre la concentrazione in VWCE" is the recommendation.
+     *
+     * The second group is the object of "mantenere" when it is composure and
+     * not a position — "saresti in grado di mantenere la calma senza vendere?"
+     * is the stress-test question the clauses ask for, and the live probe
+     * found it redacted on the word "mantenere".
      */
     private const string ABSTRACT_OBJECT = '/^\W*(?:(?:ulteriormente|molto|notevolmente|sensibilmente|leggermente|troppo)\s+)?'
         .'(?:(?:il|lo|la|i|gli|le|un|uno|una|dei|delle|degli|l\')\s*)?'
         .'(?:rischi[oi]|volatilit[àa]|cost[oi]|spes[ae]|commission[ei]|impost[ae]|tass[ae]'
         .'|incertezz[ae]|complessit[àa]|probabilit[àa]|dubbi|stress|ansia|drawdown|impatt[oi]'
-        .'|oscillazion[ei]|fluttuazion[ei]|sensibilit[àa]|margine\s+di\s+errore)\b/iu';
+        .'|oscillazion[ei]|fluttuazion[ei]|sensibilit[àa]|margine\s+di\s+errore'
+        // Composure only. `piano`, `strategia` and `equilibrio` are pointedly
+        // NOT here: "apri un piano di accumulo su Amundi" is a recommendation,
+        // and the harness carries it.
+        .'|calma|sangue\s+freddo|lucidit[àa]|disciplina|nervi|rotta|sonni\s+tranquilli)\b/iu';
 
     /** How far after a directive its object is looked for. */
     private const int OBJECT_WINDOW = 40;
+
+    /**
+     * The infinitive used as the subject of the sentence rather than as an
+     * order — the Italian *infinito sostantivato*. "Mantenere due ETF azionari
+     * globali potrebbe non aggiungere diversificazione, ma aumenta la
+     * complessità" says what keeping them costs; it does not say to keep them.
+     * The live probe found it redacted on "Mantenere".
+     *
+     * Two conditions, and both are needed. The infinitive must open its clause
+     * (segment start, or straight after a colon, a bullet or a list number),
+     * which is the nominal-subject position; and the finite verb that follows
+     * must be one that states a property or a consequence. "Vendere Bitcoin
+     * potrebbe aiutarti" is not covered — `aiutarti` is a benefit, which is
+     * how a recommendation argues for itself.
+     */
+    private const string NOMINALISED_SUBJECT = '/(?:^|[:•]|^\s*[-*]|\d[.)])\s*$/u';
+
+    /** The finite verb that confirms a nominalised infinitive. */
+    private const string NOMINALISED_PREDICATE = '/^(?:\W|\w)*?\b(?:'
+        .'significa|comporta|implica|richiede|costa|espone|aggiunge|toglie'
+        .'|ha\s+senso|non\s+ha\s+senso|è\s+(?:un|una|il|la|lo)\b'
+        .'|potrebbe\s+(?:non\s+)?(?:aggiungere|comportare|implicare|richiedere|costare'
+        .'|esporre|ridurre|aumentare|significare|avere)'
+        .')\b/iu';
+
+    /** How far after a nominalised infinitive its predicate is looked for. */
+    private const int NOMINALISED_WINDOW = 90;
+
+    /**
+     * Saving toward the goal, which is the one target figure this app exists
+     * to discuss. "Posso simulare quanto dovresti versare mensilmente per
+     * raggiungere l'obiettivo" is an offer to run the product's own forecast,
+     * and the live probe found it redacted on `dovresti`.
+     *
+     * Suppresses the judgement and notational families only. The contribution
+     * verbs here are about putting money aside, so an operative directive in
+     * the same breath ("dovresti vendere VWCE per raggiungere l'obiettivo")
+     * is untouched: `vendere` is not one of these verbs and HARD_DIRECTIVES is
+     * not suppressed.
+     */
+    private const string GOAL_CONTRIBUTION = '/\b(?:versar|risparmiar|accantonar|investir|mettere\s+da\s+parte)\w*'
+        .'[^.!?;\n]{0,80}?\b(?:per\s+raggiunger|per\s+arrivare\s+a|obiettivo|traguardo)/iu';
 
     /** A 12-character ISIN: two letters, nine alphanumerics, a check digit. */
     private const string ISIN = '/(?<![\p{L}\p{N}])[A-Z]{2}[A-Z0-9]{9}[0-9](?![\p{L}\p{N}])/u';
@@ -881,7 +954,7 @@ class AdvisorOutputFilter
             // about a judgement: no operative verb, no proposed number, and
             // not an assertion with a tag bolted on. "Vendi VWCE?" and "Porta
             // VWCE al 25%?" are instructions whose punctuation changes nothing.
-            $asking = $segment['question']
+            $asking = ($segment['question'] || preg_match(self::INDIRECT_QUESTION, $part) === 1)
                 && $notational === []
                 && $operative === []
                 && preg_match(self::TAG_QUESTION, $part) !== 1;
@@ -994,6 +1067,10 @@ class AdvisorOutputFilter
      */
     private function judgementDirectiveOffsets(string $segment): array
     {
+        if (preg_match(self::GOAL_CONTRIBUTION, $segment) === 1) {
+            return [];
+        }
+
         return $this->offsetsOf($segment, [
             self::SOFT_DIRECTIVES,
             self::SUITABILITY,
@@ -1015,14 +1092,15 @@ class AdvisorOutputFilter
      */
     private function notationalDirectiveOffsets(string $segment): array
     {
-        if ($this->isDescriptive($segment) || preg_match(self::HYPOTHETICAL, $segment) === 1) {
+        if ($this->isDescriptive($segment)
+            || preg_match(self::HYPOTHETICAL, $segment) === 1
+            || preg_match(self::GOAL_CONTRIBUTION, $segment) === 1) {
             return [];
         }
 
         $patterns = [
             self::NOTATION_ARROW,
             self::NOTATION_RANGE,
-            self::NOTATION_CAP,
             self::NOTATION_MOVE,
             self::NOTATION_DELTA,
             self::NOTATION_MORE_LESS,
@@ -1032,6 +1110,13 @@ class AdvisorOutputFilter
         // and only as a percentage: the app talks about a goal in euro.
         if (preg_match('/\d{1,3}(?:[.,]\d+)?\s*%/u', $segment) === 1) {
             $patterns[] = self::NOTATION_TARGET;
+        }
+
+        // A ceiling is a number, so without one in the segment there is no
+        // ceiling being proposed: "hai un tetto massimo oltre il quale non
+        // vorresti che arrivasse?" asks the user whether they have one.
+        if (preg_match('/'.self::QUANTITY.'/u', $segment) === 1) {
+            $patterns[] = self::NOTATION_CAP;
         }
 
         return $this->offsetsOf($segment, $patterns);
@@ -1054,7 +1139,11 @@ class AdvisorOutputFilter
             $found = $matches[0];
 
             foreach ($found as [$text, $offset]) {
-                if ($this->isInverted($segment, $offset) || $this->hasAbstractObject($segment, $offset + strlen($text))) {
+                $end = $offset + strlen($text);
+
+                if ($this->isInverted($segment, $offset)
+                    || $this->hasAbstractObject($segment, $end)
+                    || $this->isNominalisedSubject($segment, $offset, $end)) {
                     continue;
                 }
 
@@ -1090,6 +1179,22 @@ class AdvisorOutputFilter
     private function hasAbstractObject(string $segment, int $end): bool
     {
         return preg_match(self::ABSTRACT_OBJECT, substr($segment, $end, self::OBJECT_WINDOW)) === 1;
+    }
+
+    /**
+     * Whether this directive is the sentence's subject rather than its order —
+     * an infinitive opening a clause and followed by a verb that states a
+     * property. See NOMINALISED_SUBJECT.
+     */
+    private function isNominalisedSubject(string $segment, int $offset, int $end): bool
+    {
+        // Only an infinitive can be nominalised; an imperative cannot.
+        if (preg_match('/(?:are|ere|ire|rre|arsi|ersi|irsi)$/iu', substr($segment, $offset, $end - $offset)) !== 1) {
+            return false;
+        }
+
+        return preg_match(self::NOMINALISED_SUBJECT, substr($segment, 0, $offset)) === 1
+            && preg_match(self::NOMINALISED_PREDICATE, substr($segment, $end, self::NOMINALISED_WINDOW)) === 1;
     }
 
     /**
