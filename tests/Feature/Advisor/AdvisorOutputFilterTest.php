@@ -1482,6 +1482,181 @@ class AdvisorOutputFilterTest extends TestCase
         yield 'event: a determiner behind an articulated preposition' => ['Un calo del 30% sul tuo VWCE ridurrebbe il patrimonio dell\'8%.'];
     }
 
+    /**
+     * The seventh review's §C: the relational object parsed greedily to the
+     * left and tolerantly to the right, so everything it could not read it
+     * dropped, and then the licensing branch spoke on the half it could.
+     *
+     * Each of these names an instrument a sentence earlier and points an
+     * anaphor back at it, which is the WEA-10 vector the carve-out exists to
+     * keep closed. They are generated from the two shapes rather than listed,
+     * because the review's point was that the previous round closed the
+     * instances it was sent and left the family.
+     */
+    #[DataProvider('seventhReviewRelationalBypasses')]
+    public function test_the_relational_object_fails_closed(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the anaphor passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function seventhReviewRelationalBypasses(): iterable
+    {
+        // C1 — an adjective outside the two closed groups makes the
+        // preposition group fail, the complement come back empty, and the
+        // class adjective license a head that is still carrying an anaphor.
+        $adjectives = [
+            'diretta', 'indiretta', 'netta', 'lorda', 'elevata', 'specifica', 'reale',
+            'effettiva', 'media', 'massima', 'minima', 'ulteriore', 'crescente', 'alta',
+            'bassa', 'importante', 'rilevante', 'significativa', 'eccessiva', 'residua',
+        ];
+
+        foreach ($adjectives as $adjective) {
+            yield "C1: azionaria {$adjective}" => ["Parliamo di Bitcoin. Ridurrei l'esposizione azionaria {$adjective} a questo."];
+        }
+
+        // C2 — the complement test was anchored at its own head, so a class
+        // name in first position licensed whatever followed it.
+        yield 'C2: a class complement with an anaphor behind it' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione in azionario su questo.'];
+        yield 'C2: a class complement with a prepositional anaphor' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione alla liquidità a favore di questo.'];
+        yield 'C2: the regression `per` introduced' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione per categoria su questo.'];
+        yield 'C2: a class complement on another relational head' => ['Parliamo di Bitcoin. Ridurrei la quota in azionario verso questo.'];
+        yield 'C2: a class complement on an allocation' => ['Parliamo di Bitcoin. Ridurrei l\'allocazione in obbligazionario su questo.'];
+        yield 'C2: a class complement on a concentration' => ['Parliamo di Bitcoin. Ridurrei la concentrazione nel portafoglio su questo.'];
+        yield 'C2: a coordinated complement' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione complessiva alle classi di attività e in particolare a questo.'];
+    }
+
+    /**
+     * The numeric channel read in letters as well as in digits.
+     *
+     * This is the thing the round before declared and did not fix: the
+     * attribution span was closed against a quantity spelled out and the rest
+     * of the filter went on matching `\d`, so "Porta Bitcoin al 5%" was
+     * removed and "Porta Bitcoin al cinque per cento" — the same instruction
+     * — was not. The seventh review ordered it last of five, because wiring
+     * the letters into QUANTITY is only safe once the numeral class is
+     * complete, and the compounds were missing a quarter of their forms.
+     */
+    #[DataProvider('theSameInstructionInLetters')]
+    public function test_the_numeric_channel_reads_letters_too(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the instruction in letters passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function theSameInstructionInLetters(): iterable
+    {
+        yield 'a target weight in letters' => ['Porta Bitcoin al cinque per cento.'];
+        yield 'a target weight in letters, written solid' => ['Porta Bitcoin al cinque percento.'];
+        yield 'a larger target weight in letters' => ['Porta Bitcoin al venti per cento.'];
+        yield 'a compound the morphology had wrong' => ['Porta Bitcoin al ventotto per cento.'];
+        yield 'a money move in letters' => ['Porta Bitcoin a duecento euro al mese.'];
+        yield 'a fraction of the whole' => ['Porta Bitcoin a un quinto del portafoglio.'];
+        yield 'a half of the whole' => ['Porta Bitcoin a metà del portafoglio.'];
+        yield 'a range in letters' => ['Scendi su Bitcoin dal venti al cinque per cento.'];
+        yield 'an arrow with the destination in letters' => ['VWCE → cinque per cento.'];
+        yield 'holding at a weight in letters' => ['Mantieni VWCE al venticinque per cento.'];
+    }
+
+    /**
+     * The other side of the same change: a number spelled out in a sentence
+     * that reports rather than instructs is the product, and the filter has
+     * been made stricter on exactly the words the product is written in.
+     */
+    #[DataProvider('numbersInLettersThatReport')]
+    public function test_a_number_in_letters_that_reports_still_passes(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function numbersInLettersThatReport(): iterable
+    {
+        yield 'arithmetic on an event' => ['Un calo del cinque per cento ridurrebbe il tuo patrimonio in Bitcoin.'];
+        yield 'a report of what happened' => ['Il tuo portafoglio è cresciuto del venti per cento negli ultimi tre anni.'];
+        yield 'a description of the current weight' => ['Bitcoin pesa circa il cinque per cento del portafoglio.'];
+        yield 'a count that is not an amount' => ['Hai mantenuto questa posizione per cinque anni.'];
+        yield 'a reflection question with a number in it' => ['Che cosa faresti se Bitcoin perdesse metà del suo valore?'];
+    }
+
+    /**
+     * The seventh review's other two measured families, as it sent them: the
+     * numerals the compound rule did not spell, and the bare time complement.
+     *
+     * Both are the attribution span again, and both are a quantity or a date
+     * standing where the span admits one bare noun. `ventuno` was *listed* in
+     * the round before's provider and absent from the class it was meant to
+     * prove closed, which is the clearest single statement of why a provider
+     * typed out of a constant proves nothing.
+     */
+    #[DataProvider('seventhReviewAttributionBypasses')]
+    public function test_the_seventh_review_attribution_bypass_is_closed(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the bypass passed the filter unchanged');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function seventhReviewAttributionBypasses(): iterable
+    {
+        // The elided and the accented compounds, which the generator wrote as
+        // `ventiuno` and `ventitre` — spellings Italian does not use.
+        $numerals = ['ventuno', 'ventotto', 'ventitré', 'trentuno', 'trentatré', 'trentotto',
+            'quarantotto', 'cinquantuno', 'duecento', 'duemila', 'ventimila',
+            'primo', 'secondo', 'ultimo', 'undicesimo', 'dozzina', 'decina'];
+
+        foreach ($numerals as $numeral) {
+            yield "al {$numeral}" => ["La decisione su quanto ridurre di Bitcoin al {$numeral} resta tua."];
+        }
+
+        // The bare time complement, which in Italian takes no determiner —
+        // which is exactly why it fits the one slot the span leaves open.
+        $dates = ['lunedì', 'venerdì', 'domani', 'dopodomani', 'stasera',
+            'Natale', 'ferragosto', 'sera', 'primavera'];
+
+        foreach ($dates as $date) {
+            yield "entro {$date}" => ["La decisione su quando vendere di Bitcoin entro {$date} resta tua."];
+        }
+    }
+
+    /**
+     * The other side of §C: what the licence is *for* has to go on passing.
+     * A fail-closed parse is only the right trade if the conforming shapes
+     * still parse whole, and the round before paid two of them for a shorter
+     * adjective list — which is the WEA-14 harm, in the commit that exists to
+     * undo it.
+     */
+    #[DataProvider('seventhReviewRelationalControls')]
+    public function test_the_relational_object_still_licenses_a_whole_parse(string $text): void
+    {
+        $this->wea14Portfolio();
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function seventhReviewRelationalControls(): iterable
+    {
+        yield 'a class adjective on a bare head' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione azionaria.'];
+        yield 'a class adjective with a quantifier behind it' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione azionaria complessiva.'];
+        yield 'a quantifier with a class complement' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione totale all\'azionario.'];
+        yield 'a quantifier with an accented class complement' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione complessiva alla liquidità.'];
+        yield 'an allocation saying what it allocates' => ['Parliamo di Bitcoin. Ridurrei l\'allocazione per classe di attività.'];
+        yield 'a class complement with a class adjective of its own' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione al portafoglio azionario.'];
+        yield 'a complement naming the whole' => ['Parliamo di Bitcoin. Ridurrei la quota del portafoglio.'];
+        // The preposition the hand-written complement list did not hold, which
+        // a fail-closed parse turns from a silent miss into a redaction.
+        yield 'a complement behind an articulated `in`' => ['Parliamo di Bitcoin. Ridurrei la concentrazione nel portafoglio.'];
+        yield 'a complement behind an articulated `su`' => ['Parliamo di Bitcoin. Ridurrei l\'esposizione sull\'azionario.'];
+    }
+
     // ---- The closed classes, enumerated from a grammar ----
     //
     // Three rounds in a row closed a family "by construction" on a word class
@@ -1636,50 +1811,225 @@ class AdvisorOutputFilterTest extends TestCase
     }
 
     /**
-     * Every Italian numeral and month name, spelled out, is a quantity and so
-     * is not a name an attribution may hold. The digits were barred from the
-     * start; this is the same class written in letters, which is how the whole
-     * family walked out of the fifth round's span.
+     * Every Italian numeral and date word, spelled out, is a quantity or a
+     * time and so is not a name an attribution may hold. The digits were
+     * barred from the start; this is the same class written in letters, which
+     * is how the whole family walked out of the fifth round's span.
      *
-     * See AdvisorOutputFilter::QUANTITY_IN_LETTERS.
+     * The frame carries no member of the class, and the seventh review is why.
+     * The round before wrote "al {numeral} per cento", and `cento` is itself a
+     * numeral — so the span broke on the frame whatever stood in the slot, and
+     * the provider stayed green with all 33 cardinals deleted from the
+     * constant. The frame is held inert by the test below rather than by
+     * anyone's reading of it.
+     *
+     * See AdvisorOutputFilter::QUANTITY_IN_LETTERS and DATE_IN_LETTERS.
      */
     #[DataProvider('everyQuantitySpelledOut')]
-    public function test_a_quantity_spelled_out_is_not_a_name_an_attribution_may_hold(string $text): void
+    public function test_a_quantity_spelled_out_is_not_a_name_an_attribution_may_hold(string $word): void
     {
         $this->wea14Portfolio();
 
+        $text = $this->quantityFrame($word);
+
         $this->assertNotSame($text, $this->filter()->filter($text), 'the quantified attribution passed the filter unchanged');
+    }
+
+    /**
+     * The frame of the test above, with a word that is not in either class in
+     * the slot, passes.
+     *
+     * This is the assertion the round before was missing, and the one that
+     * would have failed on the day it was written: without it a provider says
+     * only that the sentences it generates are removed, which a frame carrying
+     * a member of the class under test satisfies on its own.
+     */
+    public function test_the_quantity_frame_is_inert(): void
+    {
+        $this->wea14Portfolio();
+
+        foreach (['piacere', 'scadenza', 'rialzo'] as $word) {
+            $text = $this->quantityFrame($word);
+
+            $this->assertSame($text, $this->filter()->filter($text), 'the frame removes the attribution on its own, so the slot proves nothing');
+        }
+    }
+
+    private function quantityFrame(string $word): string
+    {
+        return "La decisione su quanto ridurre di Bitcoin a {$word} resta tua.";
     }
 
     /** @return iterable<string, array{string}> */
     public static function everyQuantitySpelledOut(): iterable
     {
-        $cardinals = [
-            'zero', 'uno', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove',
-            'dieci', 'undici', 'dodici', 'tredici', 'quattordici', 'quindici', 'sedici',
-            'diciassette', 'diciotto', 'diciannove', 'venti', 'ventuno', 'venticinque',
-            'trenta', 'trentatre', 'quaranta', 'cinquanta', 'sessanta', 'settanta',
-            'ottanta', 'novanta', 'cento', 'mille',
+        foreach (self::italianNumerals() as $numeral) {
+            yield "a {$numeral}" => [$numeral];
+        }
+
+        foreach (self::closedClass('Dates without a digit') as $date) {
+            yield "a {$date}" => [$date];
+        }
+    }
+
+    /**
+     * The Italian cardinals from zero to one hundred, plus the magnitudes, the
+     * fractions and the ordinals, generated from the morphology rather than
+     * listed — which is the only form in which this can disagree with the
+     * constant it tests.
+     *
+     * Two rules, and they are the two the constant had wrong: the tens vowel
+     * elides in front of `uno` and `otto`, and the `tre` of a compound takes
+     * an accent.
+     *
+     * @return list<string>
+     */
+    private static function italianNumerals(): array
+    {
+        $units = ['zero', 'uno', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove'];
+        $teens = ['dieci', 'undici', 'dodici', 'tredici', 'quattordici', 'quindici', 'sedici',
+            'diciassette', 'diciotto', 'diciannove'];
+        $tens = ['venti', 'trenta', 'quaranta', 'cinquanta', 'sessanta', 'settanta', 'ottanta', 'novanta'];
+
+        $numerals = [...$units, ...$teens];
+
+        foreach ($tens as $ten) {
+            $numerals[] = $ten;
+            $stem = mb_substr($ten, 0, -1);
+
+            foreach (array_slice($units, 1) as $unit) {
+                $numerals[] = match ($unit) {
+                    'uno', 'otto' => $stem.$unit,
+                    'tre' => $stem.mb_substr($ten, -1).'tré',
+                    default => $stem.mb_substr($ten, -1).$unit,
+                };
+            }
+        }
+
+        return [
+            ...$numerals,
+            'cento', 'duecento', 'trecento', 'cinquecento', 'novecento',
+            'mille', 'mila', 'duemila', 'tremila', 'ventimila', 'milioni', 'miliardi',
+            'metà', 'mezzo', 'terzo', 'quarto', 'quinto', 'decimo', 'centesimo',
+            'primo', 'secondo', 'ultimo', 'penultimo', 'ventesimo', 'undicesimo', 'millesimo',
+            'dozzina', 'decina', 'centinaio', 'migliaia', 'paio', 'coppia',
         ];
+    }
 
-        foreach ($cardinals as $cardinal) {
-            yield "al {$cardinal} per cento" => ["La decisione su quanto ridurre di Bitcoin al {$cardinal} per cento resta tua."];
+    /**
+     * One list from closed-classes.md, which is transcribed from a grammar and
+     * not from the filter. A member added to the filter and not to that file
+     * changes nothing; a member added to that file and not to the filter fails
+     * the gate, which is the direction a class test has to fail in.
+     *
+     * @return list<string>
+     */
+    private static function closedClass(string $heading): array
+    {
+        $file = file_get_contents(__DIR__.'/closed-classes.md');
+
+        if ($file === false || preg_match('/^## '.preg_quote($heading, '/').'\R(.*?)(?=^## |\z)/msu', $file, $m) !== 1) {
+            throw new \RuntimeException("closed-classes.md has no section '{$heading}'");
         }
 
-        foreach (['metà', 'mezzo', 'un terzo', 'un quarto', 'un quinto', 'un decimo', 'un centesimo'] as $fraction) {
-            yield "a {$fraction}" => ["La decisione su quanto ridurre di Bitcoin a {$fraction} resta tua."];
-        }
+        preg_match_all('/^- (.+)$/mu', $m[1], $words);
 
-        foreach (['mila', 'milioni', 'miliardi'] as $magnitude) {
-            yield "di {$magnitude}" => ["La decisione su quanto vendere di Bitcoin per dieci {$magnitude} resta tua."];
-        }
+        return $words[1];
+    }
 
-        $months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio',
-            'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+    /**
+     * Every word class the filter calls closed is covered by the grammar's
+     * list of it.
+     *
+     * This is the shape the seventh review asked for and the one the five
+     * providers below do not have on their own: they read a sentence through
+     * the filter, so they demonstrate the mechanism, and they were written by
+     * reading the constant, so they cannot fail for a member the constant
+     * never had. These compare the constant against a transcription that was
+     * not derived from it.
+     */
+    #[DataProvider('closedClassMembership')]
+    public function test_the_class_in_the_filter_covers_the_class_in_the_grammar(string $constant, string $heading): void
+    {
+        $pattern = '/^(?:'.$this->filterConstant($constant).')$/iu';
 
-        foreach ($months as $month) {
-            yield "entro {$month}" => ["La decisione su quando vendere di Bitcoin entro {$month} resta tua."];
+        $missing = array_values(array_filter(
+            $heading === 'numerals' ? self::italianNumerals() : self::closedClass($heading),
+            static fn (string $word): bool => preg_match($pattern, $word) !== 1,
+        ));
+
+        $this->assertSame([], $missing, $constant.' does not cover every member of the class');
+    }
+
+    /**
+     * Every determiner that can introduce a plural event keeps the arithmetic
+     * reading, not the five the round before happened to write down.
+     *
+     * The seventh review measured this as fourteen regressions *introduced* by
+     * the round that taught the filter the plural conditional: with the verb
+     * now read as a directive and the determiner slot holding a fifth of its
+     * class, "quattro cali del 30% ridurrebbero il tuo patrimonio" became a
+     * recommendation. The determiners come from the grammar file, so this
+     * fails for a member the constant never had.
+     */
+    #[DataProvider('everyPluralDeterminerIntroducingTheEvent')]
+    public function test_every_determiner_may_introduce_the_event(string $determiner): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "{$determiner} cali del 30% sul tuo VWCE ridurrebbero il tuo patrimonio dell'8%.";
+
+        $this->assertSame($text, $this->filter()->filter($text));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function everyPluralDeterminerIntroducingTheEvent(): iterable
+    {
+        $determiners = array_merge(
+            self::closedClass('Determiners, plural'),
+            // A count is how an event is usually introduced, and the numerals
+            // are a closed class the filter already holds.
+            ['Due', 'Tre', 'Quattro', 'Cinque', 'Dieci', 'Venti', 'Ventitré', '4'],
+        );
+
+        foreach ($determiners as $determiner) {
+            // An elided or apostrophe form does not stand in front of a space,
+            // and this slot is followed by one.
+            if (str_ends_with($determiner, "'")) {
+                continue;
+            }
+
+            yield $determiner => [ucfirst($determiner)];
         }
+    }
+
+    /**
+     * The frame of the test above, with a word that is not a determiner in the
+     * slot, is removed — so the slot is what does the work.
+     *
+     * `Ripetuti cali` is a bare plural with an adjectival premodifier, which
+     * is not a closed class and is not covered. It is here as the measurement
+     * of what the licence costs rather than as an omission to be found later.
+     */
+    public function test_the_event_subject_frame_is_inert(): void
+    {
+        $this->wea14Portfolio();
+
+        $text = "Ripetuti cali del 30% sul tuo VWCE ridurrebbero il tuo patrimonio dell'8%.";
+
+        $this->assertNotSame($text, $this->filter()->filter($text), 'the frame passes on its own, so the determiner slot proves nothing');
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function closedClassMembership(): iterable
+    {
+        yield 'prepositions, simple' => ['PREPOSITION', 'Simple prepositions'];
+        yield 'prepositions, articulated' => ['PREPOSITION', 'Articulated prepositions'];
+        yield 'prepositions, improper' => ['PREPOSITION', 'Improper prepositions'];
+        yield 'determiners, singular' => ['DETERMINER', 'Determiners, singular'];
+        yield 'determiners, plural' => ['DETERMINER', 'Determiners, plural'];
+        yield 'numerals' => ['QUANTITY_IN_LETTERS', 'numerals'];
+        yield 'dates' => ['DATE_IN_LETTERS', 'Dates without a digit'];
     }
 
     /**
@@ -1744,37 +2094,363 @@ class AdvisorOutputFilterTest extends TestCase
     }
 
     /**
-     * No lookbehind in the filter's patterns has branches of differing
-     * lengths.
+     * Every branch of every lookbehind the filter *runs* has exactly one
+     * possible length.
      *
-     * PCRE2 only accepts a variable-length lookbehind from 10.43, so
-     * `(?<!\b(?:di|in|su))` compiles on a recent PHP and fails to compile on
-     * an older one — and a pattern that fails to compile makes `preg_match`
-     * return `false`, which the filter reads as "did not match". The failure
-     * is therefore not a crash but the firewall quietly deciding the opposite
-     * thing on the machine it runs on. The fix is one assertion per
-     * alternative, which is why NEW_CLAUSE is built instead of written out.
+     * PCRE2 only accepts a variable-length lookbehind from 10.43, so a body
+     * whose branch can match two different lengths compiles on a recent PHP
+     * and fails to compile on an older one. The filter then throws on every
+     * call site rather than mismatching — Laravel turns the warning into an
+     * `ErrorException` and nothing in `app/Advisor` or `app/Jobs` catches it —
+     * so the failure is loud, which is why CI caught it. It is loud *on the
+     * machine with the old PCRE2*, which is the production host and not this
+     * one, and that is the reason the property is checked statically here.
      *
-     * Checked here rather than left to whichever PCRE2 happens to be
-     * installed: the local gate was green on this and CI was not.
+     * Two things about this gate were wrong when the round before wrote it,
+     * and the seventh review measured both.
+     *
+     * It read `getConstants()`, and the correction that prompted it had moved
+     * the offending pattern *out* of the constants into newClausePattern() —
+     * 65 lookbehinds run, 3 were inspected, and the 61 the commit had just
+     * created were in the pattern the gate was blind to. So the enumeration is
+     * over the patterns the filter executes: the constants, plus every
+     * argument-free string-returning method on the class, invoked. A builder
+     * that takes an argument would still escape, and there is none.
+     *
+     * And it tested `str_contains($body, '|')`, which is a proxy for the
+     * property and not the property. It is too weak in the direction that
+     * matters: `(?<!\ball[oa]?)` — one more preposition written the way the
+     * sister list DETERMINER already writes them — has no `|` in it and is
+     * variable-length all the same. It is also too strong, flagging `(?<!di|su)`,
+     * which PCRE2 has always accepted because its *top-level* branches may
+     * differ from each other. So the lengths are counted instead.
      */
     public function test_no_pattern_uses_a_variable_length_lookbehind(): void
     {
         $offenders = [];
 
-        foreach (new \ReflectionClass(AdvisorOutputFilter::class)->getConstants() as $name => $value) {
-            if (! is_string($value)) {
-                continue;
-            }
-
-            foreach ($this->lookbehindBodies($value) as $body) {
-                if (str_contains($body, '|')) {
+        foreach ($this->patternsTheFilterRuns() as $name => $pattern) {
+            foreach ($this->lookbehindBodies($pattern) as $body) {
+                if (! $this->isFixedLength($body)) {
                     $offenders[] = $name.': (?<…'.$body;
                 }
             }
         }
 
-        $this->assertSame([], $offenders, 'a lookbehind with alternatives of differing lengths does not compile before PCRE2 10.43');
+        $this->assertSame([], $offenders, 'a lookbehind branch that can match two lengths does not compile before PCRE2 10.43');
+    }
+
+    /**
+     * The gate above, pointed at a planted offender in the place the offender
+     * actually lived — the built pattern, not a constant.
+     *
+     * "Verified against a planted offender" proves the detector fires, not
+     * that it is aimed at the production artefact, and the round before
+     * planted it in a constant while the pattern that broke CI was built. This
+     * plants the two shapes that have each cost a round: the alternation of
+     * differing lengths that was the CI failure, and the optional letter that
+     * a preposition written in the house style of DETERMINER would reintroduce
+     * without any `|` to notice.
+     */
+    public function test_the_lookbehind_gate_sees_a_built_pattern(): void
+    {
+        $found = [];
+
+        foreach (['\b(?:di|in|sul)', '\ball[oa]?', '\bsul?', '\b(?:di|a)'] as $offender) {
+            $found[$offender] = ! $this->isFixedLength($offender);
+        }
+
+        $this->assertSame([
+            '\b(?:di|in|sul)' => true,
+            '\ball[oa]?' => true,
+            '\bsul?' => true,
+            '\b(?:di|a)' => true,
+        ], $found);
+
+        // And the shapes that do compile everywhere are not flagged, because a
+        // gate that cries wolf is the one somebody deletes.
+        foreach (['\bdi', '\bsul', '[\p{L}\p{N}]', '\b(?:di|in|su)', 'di|insu'] as $clean) {
+            $this->assertTrue($this->isFixedLength($clean), $clean.' is fixed-length and was flagged');
+        }
+
+        // The enumeration reaches the built patterns, which is the half the
+        // round before got wrong: NEW_CLAUSE is not a constant any more.
+        $names = array_keys($this->patternsTheFilterRuns());
+
+        $this->assertContains('newClausePattern()', $names);
+        $this->assertContains('knownInstrumentPattern()', $names);
+        $this->assertContains('buildGenericClassPattern()', $names);
+    }
+
+    /**
+     * Every pattern the filter runs: the string constants, and the return of
+     * every argument-free string-returning method, invoked on an instance that
+     * has holdings so the two that build from them are not null.
+     *
+     * @return array<string, string>
+     */
+    private function patternsTheFilterRuns(): array
+    {
+        $patterns = [];
+        $class = new \ReflectionClass(AdvisorOutputFilter::class);
+
+        foreach ($class->getConstants() as $name => $value) {
+            if (is_string($value)) {
+                $patterns[$name] = $value;
+            }
+        }
+
+        $this->wea14Portfolio();
+        $filter = $this->filter();
+
+        foreach ($class->getMethods() as $method) {
+            if ($method->isStatic() || $method->getNumberOfParameters() > 0) {
+                continue;
+            }
+
+            $returned = $method->invoke($filter);
+
+            if (is_string($returned)) {
+                $patterns[$method->getName().'()'] = $returned;
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Whether a lookbehind body is one PCRE2 accepted before 10.43: every one
+     * of its *top-level* branches has a single length. The branches may differ
+     * from one another — `(?<!di|insu)` has always compiled — so this is a
+     * check per branch and not over their union.
+     */
+    private function isFixedLength(string $body): bool
+    {
+        return array_all(
+            $this->topLevelBranches($body),
+            fn (string $branch): bool => count($this->concatenatedLengths($branch)) === 1,
+        );
+    }
+
+    /**
+     * The distinct lengths a regex fragment can match, counted the way PCRE2
+     * counted them before 10.43: a branch is fixed when every item in it is,
+     * and a group is an item whose own branches must therefore agree.
+     *
+     * Zero-width assertions cost nothing, a character class costs one, and a
+     * quantifier that is not `{n}` makes the item variable. Unbounded is
+     * returned as two lengths rather than as a special case, because the
+     * caller only ever asks whether there is exactly one.
+     *
+     * @return list<int>
+     */
+    private function branchLengths(string $fragment): array
+    {
+        $lengths = [];
+
+        foreach ($this->topLevelBranches($fragment) as $branch) {
+            foreach ($this->concatenatedLengths($branch) as $length) {
+                $lengths[] = $length;
+            }
+        }
+
+        return array_values(array_unique($lengths));
+    }
+
+    /**
+     * A fragment split on the alternation bars that are not inside a group or
+     * a character class.
+     *
+     * @return list<string>
+     */
+    private function topLevelBranches(string $fragment): array
+    {
+        $branches = [];
+        $current = '';
+        $depth = 0;
+        $inClass = false;
+
+        for ($i = 0; $i < strlen($fragment); $i++) {
+            $char = $fragment[$i];
+
+            if ($char === '\\') {
+                $current .= substr($fragment, $i, 2);
+                $i++;
+
+                continue;
+            }
+
+            if ($inClass) {
+                $inClass = $char !== ']';
+            } elseif ($char === '[') {
+                $inClass = true;
+            } elseif ($char === '(') {
+                $depth++;
+            } elseif ($char === ')') {
+                $depth--;
+            } elseif ($char === '|' && $depth === 0) {
+                $branches[] = $current;
+                $current = '';
+
+                continue;
+            }
+
+            $current .= $char;
+        }
+
+        $branches[] = $current;
+
+        return $branches;
+    }
+
+    /**
+     * The distinct lengths one branch can match: the items' lengths summed,
+     * where an item with more than one possible length makes the whole branch
+     * variable — which is exactly what PCRE2 refused.
+     *
+     * @return list<int>
+     */
+    private function concatenatedLengths(string $branch): array
+    {
+        $lengths = [0];
+
+        foreach ($this->items($branch) as $item) {
+            $itemLengths = $this->itemLengths($item);
+
+            if (count($itemLengths) !== 1) {
+                return [0, 1];
+            }
+
+            foreach ($lengths as $index => $length) {
+                $lengths[$index] = $length + $itemLengths[0];
+            }
+        }
+
+        return $lengths;
+    }
+
+    /**
+     * A branch split into items, each one an atom with its quantifier, if any.
+     *
+     * @return list<string>
+     */
+    private function items(string $branch): array
+    {
+        $items = [];
+
+        for ($i = 0; $i < strlen($branch);) {
+            $start = $i;
+            $char = $branch[$i];
+
+            if ($char === '\\') {
+                $i += 2;
+
+                // `\p{L}` and `\P{Nd}` carry a braced property name.
+                if ($i < strlen($branch) && $branch[$i] === '{' && in_array($branch[$i - 1], ['p', 'P'], true)) {
+                    $i = ($close = strpos($branch, '}', $i)) === false ? strlen($branch) : $close + 1;
+                }
+            } elseif ($char === '[') {
+                $i++;
+
+                while ($i < strlen($branch) && $branch[$i] !== ']') {
+                    $i += $branch[$i] === '\\' ? 2 : 1;
+                }
+
+                $i++;
+            } elseif ($char === '(') {
+                $depth = 1;
+                $i++;
+
+                while ($i < strlen($branch) && $depth > 0) {
+                    if ($branch[$i] === '\\') {
+                        $i += 2;
+
+                        continue;
+                    }
+
+                    $depth += match ($branch[$i]) {
+                        '(' => 1,
+                        ')' => -1,
+                        default => 0,
+                    };
+                    $i++;
+                }
+            } else {
+                $i++;
+            }
+
+            // The quantifier belongs to the atom in front of it, with its lazy
+            // or possessive modifier.
+            if ($i < strlen($branch) && in_array($branch[$i], ['?', '*', '+', '{'], true)) {
+                $i = $branch[$i] === '{'
+                    ? (($close = strpos($branch, '}', $i)) === false ? strlen($branch) : $close + 1)
+                    : $i + 1;
+
+                if ($i < strlen($branch) && in_array($branch[$i], ['?', '+'], true)) {
+                    $i++;
+                }
+            }
+
+            $items[] = substr($branch, $start, $i - $start);
+        }
+
+        return $items;
+    }
+
+    /**
+     * The distinct lengths one atom-with-quantifier can match.
+     *
+     * @return list<int>
+     */
+    private function itemLengths(string $item): array
+    {
+        $quantifier = '';
+
+        if (preg_match('/(\?|\*|\+|\{\d+(?:,\d*)?\})[?+]?$/', $item, $m) === 1 && $item !== $m[0]) {
+            $quantifier = $m[1];
+            $item = substr($item, 0, strlen($item) - strlen($m[0]));
+        }
+
+        $atom = $this->atomLengths($item);
+
+        if ($quantifier === '') {
+            return $atom;
+        }
+
+        if (preg_match('/^\{(\d+)\}$/', $quantifier, $m) === 1) {
+            return array_values(array_unique(array_map(static fn (int $l): int => $l * (int) $m[1], $atom)));
+        }
+
+        // `?`, `*`, `+` and `{n,m}` all admit at least two counts, except over
+        // an atom that matches nothing at all.
+        return $atom === [0] ? [0] : [0, 1];
+    }
+
+    /**
+     * The distinct lengths one atom can match, groups recursively.
+     *
+     * @return list<int>
+     */
+    private function atomLengths(string $atom): array
+    {
+        // Zero-width: the anchors, the escaped assertions, and lookarounds.
+        if (in_array($atom, ['^', '$'], true) || preg_match('/^\\\\[bBAZzGKR]$/', $atom) === 1) {
+            return [0];
+        }
+
+        if (str_starts_with($atom, '(')) {
+            $inner = substr($atom, 1, -1);
+
+            if (preg_match('/^\?(?:[=!]|<[=!])/', $inner) === 1) {
+                return [0];
+            }
+
+            $inner = (string) preg_replace('/^\?(?::|<[\p{L}_]\w*>|P?<[\p{L}_]\w*>|\'[\p{L}_]\w*\'|[imsxuUn]*:?)/u', '', $inner);
+
+            return $this->branchLengths($inner);
+        }
+
+        return [1];
     }
 
     /**

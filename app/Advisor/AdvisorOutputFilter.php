@@ -306,7 +306,31 @@ class AdvisorOutputFilter
      * A percentage or a money amount, however the model groups and spaces it:
      * `25%`, `0 %`, `5.000€`, `1.234,50 euro`.
      */
-    private const string QUANTITY = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:%|€|euro\b)';
+    private const string QUANTITY = '(?:'.self::QUANTITY_IN_DIGITS.'|'.self::QUANTITY_SPELLED.')';
+
+    private const string QUANTITY_IN_DIGITS = '\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:%|€|euro\b)';
+
+    /**
+     * The same amount written in letters: "al cinque per cento", "a duecento
+     * euro al mese", "a metà del portafoglio".
+     *
+     * The sixth round closed the attribution span against a quantity spelled
+     * out and left the rest of the filter reading digits, so "Porta Bitcoin al
+     * 5%" was removed and "Porta Bitcoin al cinque per cento" — the same
+     * instruction — was not. That was declared rather than fixed at the time,
+     * on the ground that wiring it in touches every call site of QUANTITY at
+     * once; the seventh review's answer was to complete the numeral class
+     * first, which it now is, and then make this one change.
+     *
+     * The unit is required. A bare numeral is a count of anything —
+     * "negli ultimi cinque anni" — and only `per cento`, a currency, or a
+     * share-of-the-whole makes it an amount of the portfolio.
+     */
+    private const string QUANTITY_SPELLED = '(?:'.self::QUANTITY_IN_LETTERS.')'
+        .'(?:\h+(?:'.self::QUANTITY_IN_LETTERS.')){0,3}'
+        .'\h*(?:per\h*cento|percento|%|€|euro\b'
+        .'|(?:di|del|dello|della|dei|degli|delle)\h+'
+        .'(?:portafogli[oi]|patrimoni[oi]|capitale|totale|posizion[ei]|investiment\w+))';
 
     /**
      * The allocation recommendation written as notation rather than as a
@@ -680,18 +704,71 @@ class AdvisorOutputFilter
      * which are how a date is written without a digit ("entro dicembre" is
      * market timing, which the clauses forbid on its own).
      */
-    private const string ATTRIBUTION_NOMINAL = '(?!(?:'.self::QUANTITY_IN_LETTERS.')\b)\p{L}[\p{L}\'’]*';
+    private const string ATTRIBUTION_NOMINAL = '(?!(?:'.self::NOT_A_NAME.')\b)\p{L}[\p{L}\'’]*';
 
-    /** The Italian numerals and month names — closed classes, both of them. See ATTRIBUTION_NOMINAL. */
-    private const string QUANTITY_IN_LETTERS = 'zero|un[oa]?|due|tre|quattro|cinque|sei|sette|otto|nove'
+    /**
+     * What an attribution may not take as the name of a thing: a quantity, or
+     * a date. Both are closed classes, and both are a recommendation when they
+     * stand where a name should — "al cinque per cento" is an amount and
+     * "entro venerdì" is market timing.
+     */
+    private const string NOT_A_NAME = self::QUANTITY_IN_LETTERS.'|'.self::DATE_IN_LETTERS;
+
+    /**
+     * The Italian numerals spelled out, generated from the morphology rather
+     * than listed.
+     *
+     * The seventh review is why. The round before wrote the compounds as a
+     * tens stem plus a unit, which produces `ventiuno` and `ventitre` — two
+     * spellings Italian does not use. The language elides the tens vowel in
+     * front of `uno` and `otto` (`ventuno`, `ventotto`, `quarantotto`) and
+     * accents the `tre` of a compound (`ventitré`). That is 24 of the 72
+     * compounds between 21 and 99 absent by construction, in the constant
+     * whose docblock claimed to close the class by construction — and the
+     * provider that was supposed to hold it listed `ventuno` and passed
+     * anyway, because every one of its sentences carried `per cento` and
+     * `cento` is itself in the class. A provider derived from the constant it
+     * tests cannot fail for a missing member; see the inertness check in
+     * AdvisorOutputFilterTest.
+     *
+     * So the rule is written instead of the results: the stem takes either its
+     * own vowel with an optional unit behind it, or `uno`/`otto` directly.
+     */
+    private const string QUANTITY_IN_LETTERS = 'zero|un[oa]?|due|tr[eé]|quattro|cinque|sei|sette|otto|nove'
         .'|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove'
-        .'|(?:vent|trent|quarant|cinquant|sessant|settant|ottant|novant)[ia]'
-        .'(?:uno|due|tre|quattro|cinque|sei|sette|otto|nove)?'
-        .'|cent[oi]|mille|mila|milion[ei]|miliard[oi]|percento'
-        .'|mezz[oa]|metà|terz[oi]|quart[oi]|quint[oi]|sest[oi]|settim[oi]|ottav[oi]|non[oi]'
-        .'|decim[oi]|ventesim[oi]|centesim[oi]|millesim[oi]'
-        .'|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre'
-        .'|novembre|dicembre';
+        .'|(?:vent|trent|quarant|cinquant|sessant|settant|ottant|novant)'
+        .'(?:[ia](?:due|tr[eé]|quattro|cinque|sei|sette|nove)?|uno|otto)'
+        // The multiplied magnitudes: `duecento`, `ventimila`. Written as the
+        // multiplier plus the magnitude, for the same reason as above.
+        .'|(?:(?:due|tre|quattro|cinque|sei|sette|otto|nove|dieci'
+        .'|vent|trent|quarant|cinquant|sessant|settant|ottant|novant)[i]?)?(?:cent[oi]|mila)'
+        .'|mille|milion[ei]|miliard[oi]|percento'
+        // The fractions and the ordinals. `-esimo` is the productive ordinal
+        // suffix, so it covers every ordinal above ten without a list.
+        .'|mezz[aeio]|metà|terz[aeio]|quart[aeio]|quint[aeio]|sest[aeio]|settim[aeio]|ottav[aeio]'
+        .'|non[aeio]|decim[aeio]|prim[aeio]|second[aeio]|ultim[aeio]|penultim[aeio]'
+        .'|\p{L}+esim[aeio]'
+        // The collectives, which are a quantity said as a noun.
+        .'|dozzin[ae]|decin[ae]|centinai[ao]|migliai[ao]|paio|coppia';
+
+    /**
+     * The dates spelled out without a digit — months, weekdays, the relative
+     * days, the parts of the day, the seasons and the fixed holidays.
+     *
+     * The months were here first, on the argument that "entro dicembre" is
+     * market timing, which the clauses forbid on its own. The seventh review
+     * made the point that the argument is about *dates* and the list was about
+     * months: a bare time complement takes no determiner in Italian, which is
+     * exactly why it slips into the one slot the attribution span leaves open
+     * for a bare noun, and nine of them walked through it.
+     */
+    private const string DATE_IN_LETTERS = 'gennaio|febbraio|marzo|aprile|maggio|giugno|luglio'
+        .'|agosto|settembre|ottobre|novembre|dicembre'
+        .'|luned[ìi]|marted[ìi]|mercoled[ìi]|gioved[ìi]|venerd[ìi]|sabato|domenica'
+        .'|oggi|domani|dopodomani|ieri|stasera|stamattina|stanotte|stamane'
+        .'|mattina|mattino|pomeriggio|sera|serata|notte|mezzogiorno|mezzanotte'
+        .'|primavera|estate|autunno|inverno|weekend'
+        .'|natale|capodanno|ferragosto|pasqua|epifania|immacolata|ognissanti';
 
     /**
      * The one bare noun an operation or an interrogative may take as its
@@ -1047,14 +1124,20 @@ class AdvisorOutputFilter
      * "un calo del 30% in un anno" is still arithmetic.
      *
      * The conjunctions stay as a second net, no longer load-bearing.
+     *
+     * The slot that introduces the event is DETERMINER itself, and the
+     * seventh review is why. The round before taught the pattern the plural
+     * conditional and then listed five of the determiners that can stand in
+     * front of a plural event, so the other fourteen — `quattro`, `alcuni`,
+     * `molti`, `parecchi`, `numerosi` — turned fourteen sentences of
+     * conforming arithmetic into redactions, in the commit written to undo
+     * exactly that harm. Which determiner introduces the event decides
+     * nothing: the licence is kept safe by the span test below, which does not
+     * look at it. So the slot is the closed class and not a sample of it, and
+     * the numerals are there because a count is how an event is usually
+     * introduced.
      */
-    private const string EVENT_SUBJECT = '/\b(?:un|una|il|lo|la|ogni|questo|quel'
-        // The plurals, because HARD_DIRECTIVES now reads the plural
-        // conditional: without them "due cali del 30% ridurrebbero il tuo
-        // patrimonio" would be the arithmetic this pattern exists to protect,
-        // read as advice. The span test is the same one, so this costs no
-        // guard.
-        .'|i|gli|le|quest[ei]|quei|quegli|quelle|due|tre)\s+'
+    private const string EVENT_SUBJECT = '/\b(?:'.self::DETERMINER.'|'.self::QUANTITY_IN_LETTERS.'|\d+)\s+'
         .'(?:cal[oi]|croll[oi]|ribass[oi]|rialz[oi]|disces[ae]|salit[ae]|perdit[ae]|guadagn[oi]'
         .'|scenario|recessione|correzione|mercato|inflazione|andamento)\b'
         .'(?<span>(?:[^.!?;:,\n—–]|\.(?=\d)){0,60})$/iu';
@@ -1138,7 +1221,13 @@ class AdvisorOutputFilter
         .'|dal|dallo|dalla|dai|dagli|dalle|nel|nello|nella|nei|negli|nelle'
         .'|col|coi|sul|sullo|sulla|sui|sugli|sulle'
         .'|come|verso|dopo|entro|senza|sotto|sopra|contro|durante|presso|oltre'
-        .'|mediante|salvo|tranne|eccetto|secondo|circa|lungo|dietro|davanti';
+        .'|mediante|salvo|tranne|eccetto|secondo|circa|lungo|dietro|davanti'
+        // The improper prepositions the round before stopped at, which the
+        // seventh review measured as fourteen more sentences of conforming
+        // arithmetic being deleted. The list is now the grammar's — see
+        // tests/Feature/Advisor/closed-classes.md.
+        .'|nonostante|malgrado|attraverso|tramite|rasente|fuorché|fuorche'
+        .'|escluso|incluso|compreso|eccettuato|stante|tolto|visto|causa';
 
     /**
      * The Italian determiners and the indefinite pronouns that stand in for
@@ -1150,14 +1239,20 @@ class AdvisorOutputFilter
      * from an apposition.
      */
     private const string DETERMINER = 'il|lo|la|i|gli|le|l\'|un|uno|una|un\''
-        .'|quest[aeio]|quest\'|codest[aeio]|codest\'|quell[aeio]|quel|quei|quegli|quell\''
+        .'|quest[aeio]|quest\'|codest[aeio]|codest\'|cotest[aeio]|cotest\''
+        .'|quell[aeio]|quel|quei|quegli|quell\''
         .'|tale|tali|siffatt[aeio]|medesim[aeio]|stess[aeio]'
         .'|mi[ao]|miei|mie|tu[ao]|tuoi|tue|su[ao]|suoi|sue'
         .'|nostr[aeio]|vostr[aeio]|loro|altrui|propri[aeio]?'
         .'|ogni|ognun[ao]|qualche|ciascun[ao]?|nessun[ao]?|alcun[aeio]?|qualcun[ao]?'
         .'|qualsiasi|qualunque|chiunque|chi|cert[aeio]|tant[aeio]|tropp[aeio]'
-        .'|molt[aeio]|poc[ao]|poch[ie]|parecchi[ao]?|parecchie|divers[ie]|var[ie]'
-        .'|tutt[aeio]|altr[aeio]|talun[aeio]|quant[aeio]|qual[ei]';
+        .'|molt[aeio]|poc[ao]|poch[ie]|parecchi[ao]?|parecchie|divers[aeio]|var[ie]|vari[aeo]'
+        .'|tutt[aeio]|altr[aeio]|talun[aeio]|quant[aeio]|qual[ei]'
+        // The quantifiers in their superlative and their emphatic forms, which
+        // are the same determiner said louder and were the seventh review's
+        // way out: "moltissimi investitori prudenti venderebbero Bitcoin".
+        .'|moltissim[aeio]|pochissim[aeio]|tantissim[aeio]|parecchissim[aeio]'
+        .'|svariat[aeio]|numeros[aeio]|innumerevol[ei]';
 
     /**
      * The nouns that make a bare noun phrase an expression of time rather than
@@ -1507,6 +1602,30 @@ class AdvisorOutputFilter
     private const string RELATIONAL_OBJECT = 'quot[ae]|esposizion[ei]|concentrazion[ei]|allocazion[ei]';
 
     /**
+     * The adjective that names a class, and so says what the relational head
+     * is a share of without a complement: "l'esposizione azionaria".
+     */
+    private const string CLASS_ADJECTIVE = 'azionari|obbligazionari|monetari|immobiliar|valutari|creditizi';
+
+    /**
+     * The adjective that only quantifies: it says *all*, or *now*, not *all of
+     * what*, so it leaves the head as anaphoric as it was.
+     */
+    private const string QUANTIFIER_ADJECTIVE = 'complessiv|global|total|general|attual';
+
+    /**
+     * The preposition that introduces what a relational head is a share of.
+     *
+     * The same list the event span reads, and not a second one: the hand-written
+     * one held `in` and not `nel`, so "la concentrazione nel portafoglio" never
+     * parsed a complement at all. Under the fail-closed parse that is a
+     * conforming sentence losing its licence, which is the error this round
+     * exists to stop making. Widening it cannot open an anaphor, because the
+     * complement still has to be a class name and nothing else.
+     */
+    private const string RELATIONAL_PREPOSITION = self::PREPOSITION.'|de';
+
+    /**
      * A relational head with whatever says what it is a share *of* captured,
      * so that part can be put through the same class test the head would have
      * had to pass. See isGenericRelational().
@@ -1533,19 +1652,56 @@ class AdvisorOutputFilter
      * `per` is in the prepositions because "l'allocazione per classe di
      * attività" says what it is an allocation of; its absence was one more
      * enumeration of the most closed class there is.
+     *
+     * Everything the head does not consume is captured rather than discarded,
+     * and the seventh review is why. The pattern parsed greedily to the left
+     * and tolerantly to the right: whatever it could not parse it dropped in
+     * silence, and then the licensing branch spoke anyway. An adjective
+     * outside the two lists — `diretta`, `netta`, `eccessiva`, seventeen more
+     * — made the preposition group fail, so the complement came back empty and
+     * the class adjective licensed a head that was still carrying an anaphor:
+     * "Parliamo di Bitcoin. Ridurrei l'esposizione azionaria diretta a questo"
+     * passed in twenty measured shapes. The remedy is not another list of
+     * adjectives — §C already says an open `\w+` would read "l'esposizione
+     * eccessiva" as a class — it is the direction of the failure: either the
+     * object parses whole, or the licence is denied. See isGenericRelational().
      */
     private const string RELATIONAL_OBJECT_HEAD = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
         .'(?:'.self::RELATIONAL_OBJECT.')'
-        .'(?<adjective>\s*(?:azionari|obbligazionari|monetari|immobiliar|valutari|creditizi'
-        .')[aeio]?\b)?'
-        .'(?:\s*(?:complessiv|global|total|general|attual)[aeio]?\b)?'
-        // The preposition has to end where it ends: `a[il]?` without a
-        // boundary swallowed the `a` of "l'esposizione azionaria" and read the
-        // adjective as a complement.
-        .'(?:\s+(?:(?:di|in|su|per|verso|a|ai|al|alla|allo|agli|alle'
-        .'|da|dai|dal|dalla|dallo|dagli|dalle|de|dei|del|della|dello|degli|delle)\b'
-        .'|(?:all|dall|dell|d)\')\s*(?<complement>.*))?/iu';
+        .'(?<adjective>\s*(?:'.self::CLASS_ADJECTIVE.')[aeio]?\b)?'
+        .'(?:\s*(?:'.self::QUANTIFIER_ADJECTIVE.')[aeio]?\b)?'
+        .'(?<rest>.*)$/iu';
+
+    /**
+     * What a relational head's remainder has to be for the head to be a class:
+     * a preposition, then the thing it is a share of. Split out of the head
+     * pattern so that the remainder is read rather than skipped when it is
+     * neither — see RELATIONAL_OBJECT_HEAD.
+     *
+     * The preposition has to end where it ends: `a[il]?` without a boundary
+     * swallowed the `a` of "l'esposizione azionaria" and read the adjective as
+     * a complement.
+     */
+    private const string RELATIONAL_COMPLEMENT = '/^\s+(?:(?:'.self::RELATIONAL_PREPOSITION.')\b'
+        .'|'.self::ELIDED_PREPOSITION.')\s*(?<complement>.*)$/iu';
+
+    /**
+     * The articulated prepositions as Italian elides them in front of a vowel.
+     * Absent from PREPOSITION on purpose — it sits in front of a space — and
+     * so written here, where the complement follows the apostrophe directly.
+     */
+    private const string ELIDED_PREPOSITION = '(?:all|dall|dell|nell|sull|coll|d)\'';
+
+    /**
+     * The run of modifiers a class noun may carry and still be that class, so
+     * that a complement can be required to end where the class name ends
+     * without "all'azionario globale" counting as unparsed material. The two
+     * adjective groups are the same two the head uses: one list, so an
+     * adjective learned for the head is not a blind spot in the complement.
+     */
+    private const string CLASS_MODIFIER_RUN = '/^(?:\s*(?:'.self::CLASS_ADJECTIVE
+        .'|'.self::QUANTIFIER_ADJECTIVE.')[aeio]?\b)*/iu';
 
     private const string GENERIC_OBJECT = '/^\W*(?:(?:'.self::DEGREE_ADVERB.')\s+)?'
         .self::GENERIC_DETERMINER
@@ -2311,8 +2467,53 @@ class AdvisorOutputFilter
     /** Whether this text opens with the name of the whole or of a class of it. */
     private function namesAClass(string $text): bool
     {
-        return preg_match(self::GENERIC_OBJECT, $text) === 1
-            || preg_match(self::$genericClassPattern ??= $this->buildGenericClassPattern(), $this->deaccent($text)) === 1;
+        return $this->afterTheClassName($text) !== null;
+    }
+
+    /**
+     * Whether this text is the name of a class and *nothing else*, modifiers
+     * from the two closed adjective groups aside.
+     *
+     * The head-anchored test above is right where the object of a directive is
+     * read, because a directive's object may run on into the rest of the
+     * sentence. It is wrong for the complement of a relational head, and the
+     * seventh review measured the difference: the complement test was anchored
+     * at its head too, so a class name in first position licensed whatever
+     * anaphor followed it — "l'esposizione alla liquidità a favore di questo",
+     * "l'esposizione in azionario su questo", "l'esposizione per categoria su
+     * questo", six measured shapes and one of them a regression. The licence
+     * is for a head that says what it is a share *of*; a head that says that
+     * and then points somewhere else has not said it.
+     */
+    private function namesOnlyAClass(string $text): bool
+    {
+        $rest = $this->afterTheClassName($text);
+
+        if ($rest === null) {
+            return false;
+        }
+
+        return preg_match('/[\p{L}\p{N}]/u', (string) preg_replace(self::CLASS_MODIFIER_RUN, '', $rest)) !== 1;
+    }
+
+    /**
+     * What follows the class name this text opens with, or null when it does
+     * not open with one. The accent-free view is a separate string, so the
+     * remainder is taken from whichever view matched rather than by offset.
+     */
+    private function afterTheClassName(string $text): ?string
+    {
+        if (preg_match(self::GENERIC_OBJECT, $text, $m) === 1) {
+            return substr($text, strlen($m[0]));
+        }
+
+        $flat = $this->deaccent($text);
+
+        if (preg_match(self::$genericClassPattern ??= $this->buildGenericClassPattern(), $flat, $m) === 1) {
+            return substr($flat, strlen($m[0]));
+        }
+
+        return null;
     }
 
     /**
@@ -2342,6 +2543,12 @@ class AdvisorOutputFilter
      * complement decides whenever there is a complement, whatever adjective
      * stands in front of it, and the class adjective licenses only the head
      * that has none.
+     *
+     * The seventh review's correction is the direction of the failure, and it
+     * is the same defect read one level up: a parse that discards what it
+     * cannot read licenses on the half it could. So the remainder is read, and
+     * material that is neither a complement nor nothing at all denies the
+     * licence rather than being skipped past it.
      */
     private function isGenericRelational(string $object): bool
     {
@@ -2349,13 +2556,17 @@ class AdvisorOutputFilter
             return false;
         }
 
-        $complement = $m['complement'] ?? '';
-
-        if ($complement !== '') {
-            return $this->namesAClass($complement);
+        // Nothing but punctuation left: the head stands alone, and only a
+        // class adjective can say what it is a share of.
+        if (preg_match('/[\p{L}\p{N}]/u', $rest = $m['rest']) !== 1) {
+            return $m['adjective'] !== '';
         }
 
-        return ($m['adjective'] ?? '') !== '';
+        if (preg_match(self::RELATIONAL_COMPLEMENT, $rest, $c) !== 1) {
+            return false;
+        }
+
+        return $this->namesOnlyAClass($c['complement']);
     }
 
     /**
