@@ -24,10 +24,31 @@ class AdvisorOutputFilterTest extends TestCase
         return new AdvisorOutputFilter;
     }
 
+    /**
+     * A holding, under a category whose name is fixed.
+     *
+     * `Asset::factory()` would fill `category_id` with `Category::factory()`,
+     * whose name is `fake()->word()` — a draw from a 172-word lorem list that
+     * holds `non`, `vero`, `sed` and `minus`. A category name is part of the
+     * filter's instrument vocabulary, because the clauses say a category the
+     * user named after an instrument *is* one, so every test ran against a
+     * vocabulary five random words wide and a different five each time. The
+     * live probe caught it first: it scored 3/14 and 4/14 on byte-identical
+     * cached replies within a minute, which is the same defect with the dial
+     * turned up.
+     */
     private function holding(string $name, ?string $ticker = null, ?string $isin = null): Asset
     {
-        return Asset::factory()->create(['name' => $name, 'ticker' => $ticker, 'isin' => $isin]);
+        return Asset::factory()->create([
+            'category_id' => Category::factory()->create(['name' => 'Categoria '.self::$categories++])->id,
+            'name' => $name,
+            'ticker' => $ticker,
+            'isin' => $isin,
+        ]);
     }
+
+    /** Distinguishes the fixed category names, which `unique()` cannot do for us. */
+    private static int $categories = 1;
 
     // ---- Layer 2: the boundary clauses are in source and always prepended ----
 

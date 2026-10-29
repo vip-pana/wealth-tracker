@@ -60,13 +60,35 @@ class LiveModelProbeTest extends TestCase
             $this->markTestSkipped('no advisor model configured for driver '.Config::string('services.advisor.driver', 'ollama'));
         }
 
-        Asset::factory()->create(['name' => 'Vanguard FTSE All-World', 'ticker' => 'VWCE', 'isin' => 'IE00BK5BQT80']);
-        Asset::factory()->create(['name' => 'iShares Core MSCI World', 'ticker' => 'SWDA', 'isin' => 'IE00B4L5Y983']);
-        Asset::factory()->create(['name' => 'Bitcoin', 'ticker' => 'BTC', 'isin' => null]);
-        Asset::factory()->create(['name' => 'Buono Fruttifero Postale', 'ticker' => null, 'isin' => null]);
-        Asset::factory()->create(['name' => 'Conto Corrente', 'ticker' => null, 'isin' => null]);
+        // Every asset is attached to a named category, and no others exist.
+        //
+        // `Asset::factory()` fills `category_id` with `Category::factory()`,
+        // whose name is `fake()->word()` — a draw from a 172-word lorem list
+        // that holds `non`, `vero`, `sed` and `minus`. A category name is part
+        // of the filter's instrument vocabulary, because the clauses say a
+        // category the user named after an instrument *is* one. So the
+        // vocabulary was five random words wide and a different five on every
+        // run, and re-scoring the same cached reply could score differently:
+        // this probe returned 3/14 and 4/14 on identical text within a minute.
+        // A probe whose own fixture moves cannot measure a filter change.
+        $categories = [];
         foreach (['Azionario', 'Obbligazioni', 'Liquidità', 'Crypto', 'Immobiliare'] as $n) {
-            Category::factory()->create(['name' => $n]);
+            $categories[$n] = Category::factory()->create(['name' => $n]);
+        }
+
+        foreach ([
+            ['Vanguard FTSE All-World', 'VWCE', 'IE00BK5BQT80', 'Azionario'],
+            ['iShares Core MSCI World', 'SWDA', 'IE00B4L5Y983', 'Azionario'],
+            ['Bitcoin', 'BTC', null, 'Crypto'],
+            ['Buono Fruttifero Postale', null, null, 'Obbligazioni'],
+            ['Conto Corrente', null, null, 'Liquidità'],
+        ] as [$name, $ticker, $isin, $category]) {
+            Asset::factory()->create([
+                'category_id' => $categories[$category]->id,
+                'name' => $name,
+                'ticker' => $ticker,
+                'isin' => $isin,
+            ]);
         }
 
         $system = AdvisorPrompt::load('conversation');
