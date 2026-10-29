@@ -1157,6 +1157,13 @@ On the held-out sample indices 10–12, through Regolo (`qwen3.5-122b`), 14
 questions each: **5 of 42 replies altered, 5 segments removed.** All five are
 false positives; none of the 42 replies carried a forbidden recommendation.
 
+> **Do not quote this number without the category names it was measured on.**
+> The probe's five categories are `Azionario`, `Obbligazioni`, `Liquidità`,
+> `Crypto`, `Immobiliare`. The filter's instrument vocabulary includes the
+> user's category names, so this is the rate on *those five* and not the rate
+> of the filter — see [the eleventh round](#the-eleventh-round-the-instrument-vocabulary-is-written-by-the-user),
+> which measures how far that qualification reaches.
+
 | Removed | Family |
 | --- | --- |
 | *"Come bilanciare la concentrazione su un singolo strumento mantenendo la diversificazione"* | A heading listing what the reply will discuss |
@@ -1172,6 +1179,153 @@ a change of three segments. What can be said is that the rate is of the same
 order, that it did not rise across a round that tightens, and that it is not
 tending to zero. The three questions whose answers were never altered in any
 sample are not evidence of anything either; one draw is not a rate.
+
+### The eleventh round: the instrument vocabulary is written by the user
+
+The tenth round found that the fixture the filter was measured against was
+random, and pinned it. The ninth review's reply was that the mechanism is not
+the fixture's: `heldPattern()` reads the user's **category names**, and a
+category name is free text the user types. So the instrument vocabulary is
+partly written by the user, and the false-positive rate is not a property of
+the filter — it is a property of the filter *and this install's category list*.
+
+They asked for one thing and were explicit that it was not a fix: measure what
+an ordinary category name costs, so the shape of the correction can be decided
+against a number. This section is that measurement.
+
+#### The mechanism, which is worse than "a common word matches"
+
+Layer 3 removes a segment when a directive and an instrument mention co-occur.
+A category name joins the **instrument** half. Nothing stops that same name
+being a word the filter's own grammar uses on the **conforming** half — and
+when it is, one word satisfies both halves at once and the licence that was
+keeping the sentence alive stops applying.
+
+That is why the costliest names are not exotic. They are the filter's own
+generic vocabulary: the words four rounds of work taught it to read as *a class,
+not an instrument*.
+
+**All four members of `RELATIONAL_OBJECT` cost conforming text as a category
+name** — `quota`, `esposizione`, `concentrazione`, `allocazione`. A category
+called `Esposizione` deletes **every one of the 13 conforming sentences the word
+appears in**, including the ones the seventh and eighth rounds were spent
+licensing.
+
+#### Two enumerations, because a list of names anyone thought of is a sample
+
+Measured against the **277 conforming sentences this suite already asserts come
+back unchanged** — the corpus is the suite's own, so it cannot be chosen to
+flatter the number. Baseline: 0 of 277 altered.
+
+**Enumerated over the filter's generic vocabulary.** One name per top-level
+branch of `GENERIC_CLASS_OBJECT`, `RELATIONAL_OBJECT`, `CLASS_ADJECTIVE` and
+`QUANTIFIER_ADJECTIVE`, gated so a branch added later cannot go unmeasured:
+**10 of 29 remove conforming text.**
+
+| Category name | Conforming sentences removed |
+| --- | --- |
+| `Esposizione` | 13 — every sentence the word appears in |
+| `Quota`, `Allocazione`, `Classe di attività` | 3 each |
+| `Decisioni di investimento`, `Profilo`, `Totale` | 2 each |
+| `Concentrazione`, `Orizzonte`, `Globale` | 1 each |
+
+A zero in that table means *the word is not in this corpus*, not *this name is
+safe* — which is why the second enumeration exists.
+
+**Enumerated over the corpus instead of over names.** A one-word category name
+can only alter a sentence that contains the word, so sweeping the corpus's own
+vocabulary measures *every* one-word name there is. Of **461 distinct words** of
+three characters or more, **84 remove conforming text**, and **44 of the 277
+sentences (16%) are reachable** by some one-word name. The worst single name
+removes **22**.
+
+#### What this says about the two shapes a fix could take
+
+The review offered two, and the measurement answers one of them outright.
+
+- **"A category name enters the vocabulary only above a minimum length."** It
+  does not work, and it fails in the direction that is easy to miss: length does
+  not predict harmlessness. The most expensive *plausible* name measured,
+  `Esposizione`, is eleven characters — above any threshold a category name
+  could survive. Over the whole enumeration, raising `MIN_NAME_LENGTH` from 3 to
+  6 still leaves **54 of the 84** offenders, and the worst survivor of that cut
+  removes 21 sentences. A threshold high enough to clear the list has excluded
+  every category name anyone writes.
+- **"A category name does not enter the vocabulary when it is a common word."**
+  Not measured here, because it needs a lexicon this repo does not have. What
+  the numbers do say is that a cheap, closed version of it already exists and is
+  far too small: `GENERIC_CLASS_NAMES` is 44 entries and does not contain
+  `patrimonio`, `riserva`, `cuscinetto`, `orizzonte`, `quota`, `esposizione`,
+  `concentrazione` or `allocazione` — every one of which the filter's *own*
+  constants call generic somewhere else. Two lists that have to agree, which is
+  the fifth round's lesson in a new place.
+
+#### The good news, measured and not assumed
+
+**The six categories a fresh install is created with cost nothing.** Read from
+the seed migration rather than copied, so renaming a default fails the test
+instead of quietly leaving it measuring names nobody has. Five of the six are in
+`GENERIC_CLASS_NAMES`; the sixth, `Bitcoin`, is a specific instrument and is
+meant to be in the vocabulary.
+
+So this is not a defect every install has on day one. It is a defect an install
+acquires the first time the owner names a bucket after a word the advisor uses.
+
+#### The ninth review's own measurement reproduces
+
+Their two sentences, with a category called `Piano`: **2 of 2 removed**;
+`Piano di accumulo`: **1 of 2**. Exactly what they reported.
+
+Against *this* file's corpus both score **0 of 277**, because neither word
+appears in it. That is worth keeping rather than smoothing over: the number is a
+property of the corpus as much as of the vocabulary, and neither one alone is
+"the filter's false-positive rate". It is the same caution as the probe
+qualification above, arrived at from the other side.
+
+#### §F — the pinning of the tenth round was partial, and so was its diagnosis
+
+The review found four advisor test files still drawing a lorem category name.
+Two things about that:
+
+- The repair belongs in the **factories**, not in four call sites. The tenth
+  round pinned the two files that *measure*; a fixture defect that is repaired
+  per call site is repaired until the next call site. `CategoryFactory` and
+  `AssetFactory` now generate `Categoria 7` / `Posizione 7`, which are inert
+  because the filter matches a name whole. A test asserts the generated *shape*,
+  so restoring a draw fails deterministically rather than one run in five.
+- **`AssetFactory` had the same defect and nobody had flagged it.**
+  `heldPattern()` reads the asset's name exactly as it reads the category's, and
+  `AssetFactory::definition()` filled it with `fake()->word()` from the same
+  172-word lorem list. The tenth round's commit message claimed the fixture was
+  pinned "in the probe and in all 1081 filter tests"; it was pinned on the
+  category half of two files.
+
+`fake()->unique()->word()` also throws past the 172nd category, which is how the
+sweep above found it: a 461-name sweep cannot be written against that factory at
+all.
+
+#### What is deliberately left open
+
+- **The fix itself.** The review asked for the measurement and said explicitly
+  that the correction was not this round's work. It is not attempted here, and
+  nothing about the user-written vocabulary has changed.
+- **§D — the lookbehind coverage gate compares member *names*, not values.**
+  Confirmed by the review with a planted offender inside `newClausePattern()`
+  that both gates pass. Latent: the three live sites are sound. It goes with the
+  `=== 1` idiom, in the round after the filter stops moving.
+- Everything the tenth round left open is still open: the enclitic pro-form,
+  `il ponte`, the `=== 1` idiom (*as of 29 October 2026*), and the arithmetic
+  test owed on the arrow.
+
+#### The measurement
+
+Filter suite 1081 → **1117**; PHPUnit 1734 → **1770**.
+
+The probe was **not** re-run, and nothing in this round changes what the filter
+removes: the only production files touched are two test factories. The number
+to quote is still **5/42 on the held-out set, measured on 29 October 2026 on
+`d996f7c`** — and now, per the ninth review's condition, never without the five
+category names it was measured on.
 
 ## Related
 

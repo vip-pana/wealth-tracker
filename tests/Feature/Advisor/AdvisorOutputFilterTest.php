@@ -3022,4 +3022,409 @@ class AdvisorOutputFilterTest extends TestCase
             $this->filter()->instrumentNames(['Azionario', 'VWCE', 'Bitcoin', 'vwce', 'Liquidità']),
         );
     }
+
+    // ---- What a category name costs, because the user writes the vocabulary ----
+
+    /**
+     * Every sentence this file asserts must come back unchanged, in one list.
+     *
+     * The corpus is the suite's own rather than one written for this question,
+     * so the measurement below cannot be tuned by choosing its sentences: each
+     * of these is already the subject of a passing test somewhere above. Two
+     * providers yield a fragment rather than a sentence, so the frame their
+     * own test wraps them in is repeated here.
+     *
+     * @return list<string>
+     */
+    public static function conformingCorpus(): array
+    {
+        $out = [];
+
+        foreach ([
+            'legitimateHarness', 'falsePositiveGuards', 'protectedSpeech',
+            'thirdReviewFalsePositives', 'fourthReviewControls', 'fifthReviewControls',
+            'attributionsThatHandTheDecisionBack', 'sixthReviewFalsePositives',
+            'numbersInLettersThatReport', 'seventhReviewRelationalControls',
+            'conformingTailsOnAGenericObject',
+        ] as $provider) {
+            foreach (self::{$provider}() as $case) {
+                $out[] = $case[0];
+            }
+        }
+
+        foreach (self::everyPrepositionKeepingTheArithmetic() as $case) {
+            $out[] = "Un calo del 30% {$case[0]} ridurrebbe il tuo patrimonio in Bitcoin.";
+        }
+
+        foreach (self::everyPluralDeterminerIntroducingTheEvent() as $case) {
+            $out[] = "{$case[0]} cali del 30% sul tuo VWCE ridurrebbero il tuo patrimonio dell'8%.";
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * The WEA-14 holdings without the five class categories, so that any name
+     * under measurement is free to be created.
+     *
+     * Dropping them changes nothing the filter can see: all five are
+     * GENERIC_CLASS_NAMES, so namePattern() discards them before the
+     * alternation is built. Measured rather than assumed — the sweep below
+     * scores identically with and without them.
+     */
+    private function measurementPortfolio(): void
+    {
+        $this->holding('Vanguard FTSE All-World', 'VWCE', 'IE00BK5BQT80');
+        $this->holding('iShares Core MSCI World', 'SWDA', 'IE00B4L5Y983');
+        $this->holding('Bitcoin', 'BTC');
+        $this->holding('Buono Fruttifero Postale');
+        $this->holding('Conto Corrente');
+    }
+
+    /**
+     * How many sentences of a corpus the filter alters when the user has one
+     * category called $name, and nothing else is different.
+     *
+     * Created with the model rather than the factory because the sweep names
+     * hundreds of categories in one test, and because the name is the whole
+     * independent variable. forceDelete(), not delete(): heldPattern() reads
+     * withTrashed(), so a soft-deleted category stays in the vocabulary and
+     * the scenarios would accumulate instead of being measured one at a time.
+     *
+     * @param  list<string>  $corpus
+     */
+    private function conformingTextLostTo(string $name, array $corpus): int
+    {
+        $category = Category::create(['name' => $name, 'color' => '#111111', 'sort_order' => 0]);
+        $filter = new AdvisorOutputFilter;
+
+        $lost = 0;
+        foreach ($corpus as $sentence) {
+            if ($filter->filter($sentence) !== $sentence) {
+                $lost++;
+            }
+        }
+
+        $category->forceDelete();
+
+        return $lost;
+    }
+
+    /**
+     * The measurement the ninth review asked for: what an ordinary category
+     * name costs in conforming text.
+     *
+     * A category name joins the *instrument* half of the co-occurrence rule,
+     * because the clauses say a category the user named after an instrument is
+     * one. Nothing then stops that name also being a word the filter's own
+     * grammar uses on the *conforming* side — and when it is, the two halves
+     * are satisfied by one word and the licence that was keeping the sentence
+     * alive stops applying. So the words that cost the most are not exotic:
+     * they are the filter's own generic vocabulary, enumerated below from the
+     * four constants that define it.
+     *
+     * A zero here means the word does not appear in this corpus, not that the
+     * name is safe. See the sweep below for the bound that does not depend on
+     * which names anyone thought to try.
+     */
+    #[DataProvider('aNameFromTheFiltersOwnGenericVocabulary')]
+    public function test_what_a_category_name_from_the_generic_vocabulary_costs(string $name, int $lost): void
+    {
+        $this->measurementPortfolio();
+
+        $this->assertSame($lost, $this->conformingTextLostTo($name, self::conformingCorpus()), $name);
+    }
+
+    /**
+     * One name per top-level branch of the four constants that tell the filter
+     * an object is generic, with the cost measured on 2026-10-30.
+     *
+     * @return iterable<string, array{string, int}>
+     */
+    public static function aNameFromTheFiltersOwnGenericVocabulary(): iterable
+    {
+        foreach (self::theFiltersOwnGenericVocabulary() as $name => $lost) {
+            yield $name => [$name, $lost];
+        }
+    }
+
+    /**
+     * The name, and what it removed when it was measured.
+     *
+     * @return array<string, int>
+     */
+    private static function theFiltersOwnGenericVocabulary(): array
+    {
+        return [
+            // GENERIC_CLASS_OBJECT
+            'Portafoglio' => 0, 'Patrimonio' => 0, 'Asset allocation' => 0,
+            'Ripartizione' => 0, 'Diversificazione' => 0, 'Composizione' => 0,
+            'Classe di attività' => 3, 'Categoria' => 0,
+            'Decisioni di investimento' => 2, 'Profilo' => 2, 'Orizzonte' => 1,
+            'Cuscinetto' => 0, 'Fondo di emergenza' => 0, 'Riserva' => 0,
+            // RELATIONAL_OBJECT — every one of the four costs something.
+            'Quota' => 3, 'Esposizione' => 13, 'Concentrazione' => 1, 'Allocazione' => 3,
+            // CLASS_ADJECTIVE
+            'Azionario' => 0, 'Obbligazionario' => 0, 'Monetario' => 0,
+            'Immobiliare' => 0, 'Valutario' => 0, 'Creditizio' => 0,
+            // QUANTIFIER_ADJECTIVE
+            'Complessivo' => 0, 'Globale' => 1, 'Totale' => 2, 'Generale' => 0, 'Attuale' => 0,
+        ];
+    }
+
+    /**
+     * The list above names every branch of the constants it claims to cover.
+     *
+     * Without this the provider is a sample again: a branch added to
+     * GENERIC_CLASS_OBJECT and not to the list would be measured by nobody,
+     * which is the failure the seventh review spent a round on. The gate runs
+     * in the direction that can fail — constant first, list second.
+     */
+    public function test_the_generic_vocabulary_under_measurement_is_the_whole_constant(): void
+    {
+        $names = array_keys(self::theFiltersOwnGenericVocabulary());
+
+        $unmeasured = [];
+
+        foreach (['GENERIC_CLASS_OBJECT', 'RELATIONAL_OBJECT'] as $constant) {
+            foreach ($this->topLevelBranches($this->filterConstant($constant)) as $branch) {
+                $pattern = '/^(?:'.$branch.')$/iu';
+
+                if (array_filter($names, static fn (string $n): bool => preg_match($pattern, $n) === 1) === []) {
+                    $unmeasured[] = $constant.': '.$branch;
+                }
+            }
+        }
+
+        foreach (['CLASS_ADJECTIVE', 'QUANTIFIER_ADJECTIVE'] as $constant) {
+            foreach ($this->topLevelBranches($this->filterConstant($constant)) as $branch) {
+                $pattern = '/^(?:'.$branch.')[aeio]?$/iu';
+
+                if (array_filter($names, static fn (string $n): bool => preg_match($pattern, $n) === 1) === []) {
+                    $unmeasured[] = $constant.': '.$branch;
+                }
+            }
+        }
+
+        $this->assertSame([], $unmeasured, 'a branch of the generic vocabulary has no name measured against it');
+    }
+
+    /**
+     * The inertness control for the measurement above: a bucket the user
+     * invented costs nothing, so a non-zero reading is the name and not the
+     * frame.
+     */
+    public function test_a_bucket_the_user_invented_costs_no_conforming_text(): void
+    {
+        $this->measurementPortfolio();
+        $corpus = self::conformingCorpus();
+
+        foreach (['Immobili Milano', 'Pensione integrativa', 'Viaggi', 'Casa al mare'] as $name) {
+            $this->assertSame(0, $this->conformingTextLostTo($name, $corpus), $name);
+        }
+    }
+
+    /**
+     * The fixture every other test builds on is inert too.
+     *
+     * The ninth review found the pinning of the previous round partial: two
+     * call sites pinned their own category, and four advisor test files went
+     * on drawing one. The repair moved into the factories, so this asserts the
+     * property rather than the call sites — a generated name, and a generated
+     * name that costs nothing. A drawn name would fail the first assertion
+     * every time, where failing the second would depend on the draw.
+     */
+    public function test_a_factory_made_name_is_not_in_the_instrument_vocabulary(): void
+    {
+        $this->assertMatchesRegularExpression('/^Categoria \d+$/', Category::factory()->make()->name);
+        $this->assertMatchesRegularExpression('/^Posizione \d+$/', Asset::factory()->make()->name);
+
+        Asset::factory()->create();
+        $filter = new AdvisorOutputFilter;
+
+        foreach (self::conformingCorpus() as $sentence) {
+            $this->assertSame($sentence, $filter->filter($sentence));
+        }
+    }
+
+    /**
+     * The configuration every install actually starts in costs nothing.
+     *
+     * The six names are read from the migration that creates them rather than
+     * copied, so renaming a default there fails here instead of silently
+     * leaving this measuring names nobody has.
+     */
+    public function test_the_category_names_a_fresh_install_ships_with_cost_nothing(): void
+    {
+        // The seed is guarded on an empty table, so it has to run before any
+        // fixture — which is also the order a real install does it in.
+        $migration = require database_path('migrations/2026_10_20_000001_seed_default_categories.php');
+        $migration->up();
+
+        $defaults = Category::query()->pluck('name')->all();
+        $this->assertCount(6, $defaults);
+
+        $category = Category::query()->firstOrFail();
+        foreach ([
+            ['Vanguard FTSE All-World', 'VWCE', 'IE00BK5BQT80'],
+            ['iShares Core MSCI World', 'SWDA', 'IE00B4L5Y983'],
+            ['Bitcoin', 'BTC', null],
+            ['Buono Fruttifero Postale', null, null],
+            ['Conto Corrente', null, null],
+        ] as [$name, $ticker, $isin]) {
+            Asset::factory()->create([
+                'category_id' => $category->id, 'name' => $name, 'ticker' => $ticker, 'isin' => $isin,
+            ]);
+        }
+
+        $filter = new AdvisorOutputFilter;
+
+        $altered = 0;
+        foreach (self::conformingCorpus() as $sentence) {
+            if ($filter->filter($sentence) !== $sentence) {
+                $altered++;
+            }
+        }
+
+        $this->assertSame(0, $altered, 'the shipped defaults remove conforming text: '.implode(', ', $defaults));
+    }
+
+    /**
+     * The ninth review's own two sentences, so their measurement and this one
+     * are known to be the same measurement.
+     *
+     * `Piano` removes both and `Piano di accumulo` removes one, which is what
+     * they reported. Neither word appears in this file's corpus, so against
+     * that corpus both score zero — which is the point worth keeping: the
+     * number is a property of the corpus as much as of the vocabulary, and
+     * neither one alone is "the filter's false-positive rate".
+     */
+    public function test_the_ninth_reviews_measurement_of_an_ordinary_name_reproduces(): void
+    {
+        $this->measurementPortfolio();
+
+        $theirs = [
+            'Molti scelgono di aumentare il piano di accumulo quando il reddito cresce: è una scelta personale.',
+            'Valuta con calma se il piano che hai scelto è ancora coerente con i tuoi obiettivi.',
+        ];
+
+        $baseline = new AdvisorOutputFilter;
+        foreach ($theirs as $sentence) {
+            $this->assertSame($sentence, $baseline->filter($sentence));
+        }
+
+        $this->assertSame(2, $this->conformingTextLostTo('Piano', $theirs));
+        $this->assertSame(1, $this->conformingTextLostTo('Piano di accumulo', $theirs));
+
+        $corpus = self::conformingCorpus();
+        $this->assertSame(0, $this->conformingTextLostTo('Piano', $corpus));
+        $this->assertSame(0, $this->conformingTextLostTo('Piano di accumulo', $corpus));
+    }
+
+    /**
+     * Every single word of the conforming corpus, measured as a category name.
+     *
+     * This is the bound the table above cannot give. A one-word category name
+     * that does not appear in the corpus cannot alter it, so sweeping the
+     * corpus's own vocabulary measures *every* single-word name there is —
+     * the answer stops depending on which names anyone thought to try.
+     *
+     * The numbers are a measurement, not a threshold. When this fails because
+     * a conforming case was added, re-record them and report the new ones:
+     * they are the deliverable, and a silently updated number is the thing
+     * this branch has spent four rounds learning not to produce.
+     *
+     * @param  list<string>  $corpus
+     * @return array{words: int, cost: array<string, list<string>>}
+     */
+    private function sweepTheCorpusVocabulary(array $corpus): array
+    {
+        $words = [];
+        foreach ($corpus as $index => $sentence) {
+            foreach (preg_split('/[^\p{L}]+/u', $sentence) ?: [] as $token) {
+                if (mb_strlen($token) >= 3) {
+                    $words[mb_strtolower($token)][$index] = true;
+                }
+            }
+        }
+
+        $cost = [];
+        foreach ($words as $word => $indices) {
+            // Only a sentence holding the word can change, so this is one pass
+            // over the corpus in total rather than one pass per word.
+            $held = array_map(static fn (int $i): string => $corpus[$i], array_keys($indices));
+            $lost = [];
+
+            $category = Category::create(['name' => (string) $word, 'color' => '#111111', 'sort_order' => 0]);
+            $filter = new AdvisorOutputFilter;
+
+            foreach ($held as $sentence) {
+                if ($filter->filter($sentence) !== $sentence) {
+                    $lost[] = $sentence;
+                }
+            }
+
+            $category->forceDelete();
+
+            if ($lost !== []) {
+                $cost[(string) $word] = $lost;
+            }
+        }
+
+        return ['words' => count($words), 'cost' => $cost];
+    }
+
+    public function test_every_word_of_the_conforming_corpus_measured_as_a_category_name(): void
+    {
+        $this->measurementPortfolio();
+        $corpus = self::conformingCorpus();
+
+        // Nothing is already being removed, so every reading below is the name.
+        $filter = new AdvisorOutputFilter;
+        foreach ($corpus as $sentence) {
+            $this->assertSame($sentence, $filter->filter($sentence));
+        }
+
+        ['words' => $words, 'cost' => $cost] = $this->sweepTheCorpusVocabulary($corpus);
+
+        $this->assertSame(277, count($corpus));
+        $this->assertSame(461, $words);
+        $this->assertSame(84, count($cost));
+
+        $worst = array_map(count(...), $cost);
+        arsort($worst);
+        $this->assertSame('per', array_key_first($worst));
+        $this->assertSame(22, reset($worst));
+
+        // The ceiling: how much of the corpus some one-word name can reach.
+        $reachable = array_unique(array_merge(...array_values($cost)));
+        $this->assertSame(44, count($reachable));
+    }
+
+    /**
+     * A minimum length does not bound what a category name costs — it is the
+     * long names that cost the most.
+     *
+     * The ninth review offered two shapes a fix might take, one of them "a
+     * category name enters the vocabulary only above some minimum length".
+     * This is the number that answers it: MIN_NAME_LENGTH would have to reach
+     * 16 to leave nothing, by which point it has excluded every category name
+     * anyone writes. At 6 it still leaves two thirds of the offenders, and the
+     * single worst name of all is fifteen characters long.
+     */
+    public function test_a_minimum_name_length_does_not_bound_what_a_category_name_costs(): void
+    {
+        $this->measurementPortfolio();
+
+        ['cost' => $cost] = $this->sweepTheCorpusVocabulary(self::conformingCorpus());
+
+        $survivingAtSix = array_filter(
+            array_keys($cost),
+            static fn (string $word): bool => mb_strlen($word) >= 6,
+        );
+
+        $this->assertSame(54, count($survivingAtSix));
+        $this->assertSame(18, count($cost['significherebbe']));
+        $this->assertSame(13, count($cost['esposizione']));
+    }
 }
