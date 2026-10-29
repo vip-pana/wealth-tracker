@@ -70,6 +70,27 @@ abstract class TestCase extends BaseTestCase
     {
         $app = require __DIR__.'/../bootstrap/app.php';
 
+        // Point the database at memory *before* the framework boots, not after.
+        //
+        // Setting `config(…)` once the app is up is too late: something in the
+        // boot sequence already opens the default connection, so the live PDO
+        // stays bound to whatever DB_DATABASE said while config() reports
+        // ':memory:'. In the Docker dev container DB_DATABASE is the real
+        // database, and RefreshDatabase's `migrate:fresh` then reaches it:
+        // SQLiteBuilder::dropAllTables() wipes a file connection with
+        // `file_put_contents($path, '')`, so one `php artisan test` truncated
+        // the developer's whole financial history to zero bytes. It needs no
+        // lock, so the running dev stack did not prevent it either.
+        //
+        // phpunit.xml cannot do this itself — not even with force="true". That
+        // writes $_ENV and putenv() but not $_SERVER, and Laravel's env reader
+        // consults $_SERVER first, where the container's value still sits.
+        foreach (['DB_CONNECTION' => 'sqlite', 'DB_DATABASE' => ':memory:', 'DB_QUEUE_DATABASE' => ':memory:'] as $key => $value) {
+            $_SERVER[$key] = $value;
+            $_ENV[$key] = $value;
+            putenv($key.'='.$value);
+        }
+
         $app->make(Kernel::class)->bootstrap();
 
         $app['config']->set('database.default', 'sqlite');

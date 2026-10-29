@@ -12,9 +12,14 @@ To override the host path (e.g. for another machine), export `WEALTH_TRACKER_DAT
 
 The container exports `DB_CONNECTION` and `DB_DATABASE` as process env vars. These override `phpunit.xml` `<env>` entries and even `.env.testing`, so naively running tests inside the container would point `RefreshDatabase` at the dev DB and wipe it.
 
-`tests/TestCase.php::createApplication()` forces `database.default = sqlite` and `database.connections.sqlite.database = :memory:` at application boot, before any test bootstraps. This guarantees the test suite never touches the dev DB regardless of container env.
+`tests/TestCase.php::createApplication()` overwrites `DB_CONNECTION`, `DB_DATABASE` and `DB_QUEUE_DATABASE` in `$_SERVER`, `$_ENV` and `putenv()` **before** `$app->make(Kernel::class)->bootstrap()`, and then also sets the matching config keys. Both halves are load-bearing:
 
-Do **not** remove this override. Do **not** rely on `phpunit.xml` `<env>` or `.env.testing` alone — they are silently ignored when the host env wins.
+- **The env write has to come first.** Something in the boot sequence opens the default connection, so a `config(…)` set afterwards is cosmetic: `config()` reports `:memory:` while the live PDO is still bound to the file `DB_DATABASE` named. `RefreshDatabase` then runs `migrate:fresh` against the dev database, and `SQLiteBuilder::dropAllTables()` wipes a *file* connection with `file_put_contents($path, '')` — it truncates the whole financial history to zero bytes. That needs no lock, so a running dev stack does not prevent it; it only turns the rest of the suite into `database is locked` failures, which read like a flaky environment rather than a database that has just been destroyed.
+- **All three superglobals have to be written.** Laravel's env reader consults `$_SERVER` first, so `putenv()` alone is not enough.
+
+Do **not** remove either half, and do **not** move the env writes below `bootstrap()`.
+
+Do **not** rely on `phpunit.xml` `<env>` or `.env.testing` instead — they are silently ignored when the host env wins. `force="true"` does not rescue them either: PHPUnit's force writes `$_ENV` and `putenv()` but not `$_SERVER`, which is exactly the one the reader checks first.
 
 ## Backups
 
