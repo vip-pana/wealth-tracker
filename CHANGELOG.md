@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/vip-pana/wealth-tracker/compare/v1.11.0...v1.12.0) (2026-10-30)
+
+
+### Features
+
+* **security:** phase 1 hardening before any internet exposure ([#116](https://github.com/vip-pana/wealth-tracker/issues/116)) ([c59b5f2](https://github.com/vip-pana/wealth-tracker/commit/c59b5f249068dbcc82ff7343d3546e711d7e48ad))
+
+
+### Bug Fixes
+
+* **advisor,dev:** stop the filter deleting its own compliance, and make a clean install work ([#121](https://github.com/vip-pana/wealth-tracker/issues/121)) ([25699fc](https://github.com/vip-pana/wealth-tracker/commit/25699fce9cb3244117925eafb8d4ad3cec120b29))
+
 ## [1.11.0](https://github.com/vip-pana/wealth-tracker/compare/v1.10.1...v1.11.0) (2026-10-21)
 
 
