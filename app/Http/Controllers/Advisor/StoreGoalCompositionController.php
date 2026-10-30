@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Advisor;
 
+use App\Advisor\AdvisorOutputFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Advisor\StoreGoalCompositionRequest;
 use App\Models\Category;
@@ -15,12 +16,33 @@ use Illuminate\Http\RedirectResponse;
 
 class StoreGoalCompositionController extends Controller
 {
+    public function __construct(private readonly AdvisorOutputFilter $filter) {}
+
     public function __invoke(StoreGoalCompositionRequest $request): RedirectResponse
     {
         $goal = Goal::query()->first();
 
         if (! $goal instanceof Goal) {
             return redirect()->back()->with('error', 'Definisci prima l\'obiettivo, poi la composizione target.');
+        }
+
+        /** @var array<int, array<string, string|float>> $allocations */
+        $allocations = $request->input('allocations', []);
+
+        // The same numeric channel the milestones carry, without the glide
+        // path: a target weight on a category the user named after an
+        // instrument. Refused before the delete below, so a rejected
+        // submission costs the user nothing. See AdvisorOutputFilter.
+        $names = [];
+        foreach ($allocations as $alloc) {
+            if (is_string($alloc['category'] ?? null)) {
+                $names[] = $alloc['category'];
+            }
+        }
+
+        $named = $this->filter->instrumentNames($names);
+        if ($named !== []) {
+            return redirect()->back()->with('error', AdvisorOutputFilter::allocationRefusal(...$named));
         }
 
         // The advisor suggests per-category weights and the user edited the exact
@@ -32,8 +54,6 @@ class StoreGoalCompositionController extends Controller
 
         $goal->categoryAllocations()->delete();
 
-        /** @var array<int, array<string, string|float>> $allocations */
-        $allocations = $request->input('allocations', []);
         foreach ($allocations as $alloc) {
             $name = (string) $alloc['category'];
             $goal->categoryAllocations()->create([

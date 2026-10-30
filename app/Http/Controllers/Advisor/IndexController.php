@@ -8,13 +8,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Advisor;
 
 use App\Actions\Advisor\ComputeAdvisorFunFacts;
+use App\Advisor\AdvisorOutputFilter;
 use App\Contracts\AdvisorProvider;
 use App\Http\Controllers\Controller;
 use App\Models\AdvisorMessage;
 use App\Models\AdvisorSession;
 use App\Models\Goal;
+use App\Models\GoalCategoryAllocation;
 use App\Models\InvestorProfile;
 use App\Models\Notification;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +26,7 @@ class IndexController extends Controller
     public function __construct(
         private readonly AdvisorProvider $provider,
         private readonly ComputeAdvisorFunFacts $funFacts,
+        private readonly AdvisorOutputFilter $filter,
     ) {}
 
     public function __invoke(?AdvisorSession $session = null): Response
@@ -52,41 +56,81 @@ class IndexController extends Controller
                 // Read-only: derived from the goal's target date, not stored.
                 'horizon' => $goal?->horizon(),
                 'risk_tolerance' => $profile->risk_tolerance,
-                'notes' => $profile->notes,
-                'memory' => $profile->memory,
+                // Same screening as the Goal page: these are the advisor's own
+                // words and this is a second surface that shows them.
+                'notes' => $profile->displayNotes(),
+                'memory' => $profile->displayMemory(),
             ] : null,
             'goal' => $goal instanceof Goal ? [
-                'name' => $goal->name,
-                'description' => $goal->description,
+                'name' => $goal->displayName(),
+                'description' => $goal->displayDescription(),
                 'target_value' => $goal->target_value,
                 'target_date' => $goal->target_date?->format('Y-m-d'),
                 'milestones' => $goal->milestones
                     ->map(fn ($m): array => [
-                        'notes' => $m->notes,
+                        'notes' => $this->screen($m->notes),
                         'target_value' => (float) $m->target_value,
                         'target_date' => $m->target_date->format('Y-m-d'),
-                        'allocation' => $m->categoryAllocations
-                            ->map(fn ($a): array => [
-                                'category' => $a->category !== null ? $a->category->name : ($a->macro_category ?? 'Sconosciuta'),
-                                'percentage' => (float) $a->percentage,
-                                'cap_amount' => $a->cap_amount !== null ? (float) $a->cap_amount : null,
-                            ])
-                            ->values()
-                            ->all(),
+                        // The numeric channel, screened on the way out like the
+                        // text beside it: rows saved before the write gate are
+                        // already in the database. All-or-nothing, because the
+                        // weights sum to 100. See AdvisorOutputFilter.
+                        'allocation' => $this->namesInstrument($m->categoryAllocations)
+                            ? []
+                            : $m->categoryAllocations
+                                ->map(fn ($a): array => [
+                                    'category' => $this->label($a),
+                                    'percentage' => (float) $a->percentage,
+                                    'cap_amount' => $a->cap_amount !== null ? (float) $a->cap_amount : null,
+                                ])
+                                ->values()
+                                ->all(),
                     ])
                     ->all(),
-                'allocations' => $goal->categoryAllocations
-                    ->map(fn ($a): array => [
-                        'category' => $a->category !== null ? $a->category->name : ($a->macro_category ?? 'Sconosciuta'),
-                        'percentage' => (float) $a->percentage,
-                    ])
-                    ->values()
-                    ->all(),
+                'allocations' => $this->namesInstrument($goal->categoryAllocations)
+                    ? []
+                    : $goal->categoryAllocations
+                        ->map(fn ($a): array => [
+                            'category' => $this->label($a),
+                            'percentage' => (float) $a->percentage,
+                        ])
+                        ->values()
+                        ->all(),
             ] : null,
             'sessions' => $this->sessionList(),
             'activeSession' => $session instanceof AdvisorSession ? $this->serializeSession($session) : null,
             'funFacts' => $this->provider->isConfigured() ? $this->funFacts->run() : [],
         ]);
+    }
+
+    private function screen(?string $value): ?string
+    {
+        return $value === null ? null : $this->filter->filterField($value);
+    }
+
+    /** The name an allocation row is shown under: its category, or its macro bucket. */
+    private function label(GoalCategoryAllocation $allocation): string
+    {
+        return $allocation->category !== null
+            ? $allocation->category->name
+            : ($allocation->macro_category ?? 'Sconosciuta');
+    }
+
+    /**
+     * Whether any row of a target allocation weights a specific instrument
+     * rather than an asset class.
+     *
+     * @param  Collection<int, GoalCategoryAllocation>  $rows
+     */
+    private function namesInstrument(Collection $rows): bool
+    {
+        $names = [];
+
+        foreach ($rows as $row) {
+            $names[] = $this->label($row);
+        }
+
+        return $this->filter->instrumentNames($names) !== [];
     }
 
     /**

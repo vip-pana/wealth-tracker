@@ -47,6 +47,15 @@ cp .env.example .env
 docker compose up
 ```
 
+That is the whole quick-start: the container creates the SQLite databases,
+generates `APP_KEY`, runs the migrations and prints the setup code (see
+[First run](#first-run)) before starting anything. Nothing to edit in `.env`
+first, and nothing to run afterwards.
+
+The **first** start also installs the frontend dependencies, so it takes a few
+minutes. Wait for the `vite` line to report its dev server; until then the app
+is not up yet.
+
 The app will be available at [http://localhost:8080](http://localhost:8080).
 
 A new install starts with a usable set of categories and no goal — create your
@@ -78,9 +87,17 @@ for normal desktop use.
 cp .env.example .env
 composer install
 pnpm install
+php artisan key:generate
+touch storage/app/queue.sqlite
 php artisan migrate
 composer dev        # starts all services (PHP server + Vite)
 ```
+
+`.env.example` ships an empty `APP_KEY`, so `key:generate` is a step and not a
+formality. The `touch` is the queue's own SQLite database — it lives beside the
+application one so the worker's polling does not contend with web writes, and
+`migrate` creates neither (it offers to create only the default connection's).
+The Docker stack above does both for you.
 
 The app will be available at [http://localhost:8000](http://localhost:8000).
 
@@ -101,7 +118,7 @@ Three ways to read it — they all show the same code:
 ```bash
 docker compose logs app | grep "Setup code"   # printed at startup
 cat ~/wealth-tracker-data/setup-token.txt     # the data directory on the host
-php artisan setup:token                       # or from a shell in the container
+docker compose exec app php artisan setup:token
 ```
 
 Paste it into `/setup`, choose an email and a password, and you are in. The code

@@ -15,6 +15,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/Comp
 import { monthsUntil, requiredMonthlyGrowth, requiredAnnualGrowth, formatPct, pctOfTotal, allocationDeviation } from '@/lib/goalMath';
 import { SmallDonut } from '@/Components/Goal/SmallDonut';
 import { MilestoneCarousel } from '@/Components/Goal/MilestoneCarousel';
+import { AiDisclosure } from '@/Components/Advisor/AiDisclosure';
 import { MACRO_COLORS } from '@/Components/Goal/types';
 import type { CurrentAllocationItem, CurrentMacroAllocationItem } from '@/Components/Goal/types';
 import type { Category } from '@/types/models';
@@ -205,7 +206,13 @@ export function GoalProgress({
                             </Button>
                         </div>
                         {goal.description && (
-                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{goal.description}</p>
+                            <>
+                                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{goal.description}</p>
+                                {/* The name and the description are the advisor's words
+                                    when it proposed the goal, kept here for good with
+                                    none of the chat's framing around them. */}
+                                <AiDisclosure where="derived" />
+                            </>
                         )}
                         {goal.target_date && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">

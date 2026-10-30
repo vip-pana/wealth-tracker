@@ -17,6 +17,7 @@ use App\Http\Clients\PrismAdvisorProvider;
 use App\Http\Clients\ScalableCliClient;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
@@ -134,7 +135,38 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->passThroughDevelopmentEnvironment();
+
         $this->configureRateLimiters();
+    }
+
+    /**
+     * `php artisan serve` is a supervisor, not the web server: it spawns a
+     * `php -S` child and hands it a deliberately minimal environment — only the
+     * names in ServeCommand::$passthroughVariables, everything else dropped so
+     * a stale shell cannot leak into the server. The child then reads .env
+     * itself, which is why this is invisible until something is configured
+     * *outside* .env.
+     *
+     * The Docker dev stack is exactly that: docker-compose.yml sets the
+     * database path, the URL and the cookie flag as container environment
+     * variables, which reached the migrations and the queue worker but never
+     * the process serving pages. DB_DATABASE falling back to Laravel's default
+     * path — absent in the container — turned every page into a 500 while
+     * `migrate` reported success (WEA-17).
+     *
+     * Only these four, and only for `serve`: production runs FrankenPHP, where
+     * the environment arrives intact and none of this applies.
+     */
+    private function passThroughDevelopmentEnvironment(): void
+    {
+        ServeCommand::$passthroughVariables = [
+            ...ServeCommand::$passthroughVariables,
+            'APP_URL',
+            'DB_CONNECTION',
+            'DB_DATABASE',
+            'SESSION_SECURE_COOKIE',
+        ];
     }
 
     /**

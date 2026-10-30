@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Advisor\AdvisorOutputFilter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -35,4 +36,33 @@ class InvestorProfile extends Model
         'birth_date' => 'date',
         'emergency_fund_months' => 'integer',
     ];
+
+    /**
+     * `notes` as sent to the UI. The advisor writes this through the profile
+     * proposal card, it is kept on the Goal page for good, and it is shown
+     * outside the advisor with none of its framing — the same properties that
+     * made saved milestones need the firewall. Screened on the way out as well
+     * as on the way in, because rows written before this existed are already
+     * in the database.
+     */
+    public function displayNotes(): ?string
+    {
+        return $this->screen($this->notes);
+    }
+
+    /**
+     * `memory` as sent to the UI. This is the field that most needed it:
+     * `remember_fact` is the only profile tool that writes with no
+     * confirmation click, so the model's own words land here unreviewed, stay
+     * for good, and are replayed into the briefing on every later turn.
+     */
+    public function displayMemory(): ?string
+    {
+        return $this->screen($this->memory);
+    }
+
+    private function screen(?string $value): ?string
+    {
+        return $value === null ? null : app(AdvisorOutputFilter::class)->filterField($value);
+    }
 }

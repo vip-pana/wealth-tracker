@@ -3,6 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
+import { AiDisclosure } from '@/Components/Advisor/AiDisclosure';
 import { UserCog, Pencil } from 'lucide-react';
 import type { InvestorProfile } from '@/Components/Advisor/ProfileDialog';
 
@@ -63,6 +64,10 @@ export function ProfileCard({ profile, onEdit }: { profile: InvestorProfile | nu
                     <div className="pt-2 border-t border-border">
                         <p className="text-xs text-muted-foreground mb-0.5">Note sul profilo di rischio</p>
                         <p className="text-xs text-muted-foreground whitespace-pre-wrap">{profile.notes}</p>
+                        {/* The advisor wrote these notes and they are shown here, outside
+                            the chat and without its framing — the same situation as the
+                            saved milestones, so they get the same standing notice. */}
+                        <AiDisclosure where="derived" className="pt-2" />
                     </div>
                 )}
             </CardContent>

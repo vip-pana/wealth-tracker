@@ -29,6 +29,25 @@ class StoreGoalMilestonesController extends Controller
             return redirect()->back()->with('error', 'Definisci prima l\'obiettivo, poi le tappe intermedie.');
         }
 
+        /** @var array<int, array<string, mixed>> $submitted */
+        $submitted = $request->input('milestones', []);
+
+        // The numeric channel. `notes` / `action` / `rationale` go through the
+        // filter below, but the allocation is percentages against category
+        // names and no lexical check can reach it — and the request validates
+        // only its shape. A weight on a category the user named after an
+        // instrument is the proposition the filter removes from the text,
+        // persisted as a row and redrawn on the Goal page indefinitely.
+        //
+        // Refused before the delete, and for the whole submission: this write
+        // replaces every milestone, so skipping one after the fact would cost
+        // the user a plan they already had in exchange for one they cannot see
+        // the hole in.
+        $named = $this->instrumentBuckets($submitted);
+        if ($named !== []) {
+            return redirect()->back()->with('error', AdvisorOutputFilter::allocationRefusal(...$named));
+        }
+
         // Replace ONLY the milestones, leaving the goal core untouched. Each
         // milestone carries its own target allocation (the glide-path). The
         // milestones are soft-deleted, so their per-milestone allocation rows
@@ -40,9 +59,7 @@ class StoreGoalMilestonesController extends Controller
 
         $categoryIds = Category::query()->pluck('id', 'name');
 
-        /** @var array<int, array<string, mixed>> $milestones */
-        $milestones = $request->input('milestones', []);
-        foreach ($milestones as $milestone) {
+        foreach ($submitted as $milestone) {
             // The three free-text fields are the model's own words, posted back
             // from the proposal card. Once saved they are shown on the Goal page
             // for good, outside the advisor and outside its footer, so they go
@@ -80,5 +97,29 @@ class StoreGoalMilestonesController extends Controller
     private function screen(mixed $value): string
     {
         return is_string($value) ? $this->filter->filterField($value) : '';
+    }
+
+    /**
+     * Every category name across the submitted milestones' allocations that
+     * names a specific instrument rather than an asset class.
+     *
+     * @param  array<int, array<string, mixed>>  $milestones
+     * @return list<string>
+     */
+    private function instrumentBuckets(array $milestones): array
+    {
+        $names = [];
+
+        foreach ($milestones as $milestone) {
+            $allocation = is_array($milestone['allocation'] ?? null) ? $milestone['allocation'] : [];
+
+            foreach ($allocation as $alloc) {
+                if (is_array($alloc) && is_string($alloc['category'] ?? null)) {
+                    $names[] = $alloc['category'];
+                }
+            }
+        }
+
+        return $this->filter->instrumentNames($names);
     }
 }

@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Advisor\AdvisorOutputFilter;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -36,6 +37,30 @@ class Goal extends Model
         'target_value' => 'float',
         'target_date' => 'date:Y-m-d',
     ];
+
+    /**
+     * `description` as sent to the UI — the advisor's own words, written
+     * through the goal proposal card and then shown on the Goal page for good,
+     * outside the advisor and without its footer.
+     */
+    public function displayDescription(): ?string
+    {
+        return $this->description === null
+            ? null
+            : app(AdvisorOutputFilter::class)->filterField($this->description);
+    }
+
+    /**
+     * `name` as sent to the UI. Screened for the same reason as the
+     * description and not as a separate concern: when the advisor proposes a
+     * goal without naming it, StoreGoalCoreController derives the name from
+     * the first 100 characters of the description, so the two fields can hold
+     * the same model-written sentence.
+     */
+    public function displayName(): string
+    {
+        return app(AdvisorOutputFilter::class)->filterField($this->name);
+    }
 
     /**
      * The investment horizon, DERIVED from the target date rather than stored:

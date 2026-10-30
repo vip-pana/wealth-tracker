@@ -370,12 +370,36 @@ class RenderAdvisorContext extends Action
      * as inert data inside the briefing. Newlines and control characters are
      * collapsed so a crafted value can't open a fake new line/section, and the
      * value is wrapped in guillemets as an explicit "this is data" delimiter
-     * the system prompt is told to respect. Defense against prompt injection;
-     * matters most once input is multi-user or the provider becomes cloud.
+     * the boundary clauses declare (AdvisorBoundaries::CLAUSES). Defense
+     * against prompt injection; matters most once input is multi-user or the
+     * provider becomes cloud.
+     *
+     * The guillemets inside the value are replaced, not kept. The whole defence
+     * rests on one character, so a value that contains a closing `»` could end
+     * its own delimiter and carry on in prose as if it were the briefing. It
+     * never moved the model in testing, but a marker that the data can forge is
+     * not a marker. They become ordinary typographic quotes, which is what
+     * PrismAdvisorProvider::normalise() turns them into on the way out anyway.
+     *
+     * The control-character strip is matched as bytes, without `/u`. With it,
+     * `preg_replace` returns null on a subject that is not valid UTF-8 and the
+     * old `?? $value` fallback then handed back the raw string — newlines and
+     * all — so the escape did not happen on exactly the input most likely to
+     * be hostile. The class is ASCII and those bytes cannot occur inside a
+     * multi-byte sequence, so dropping `/u` loses nothing and cannot fail.
+     *
+     * The invalid byte then survives the strip instead of defeating it, which
+     * is the residue the fourth review pointed at: the briefing goes out as a
+     * `system` message and `json_encode` returns false on a string that is not
+     * valid UTF-8, so one stray byte in an asset name could fail the whole
+     * request. `mb_scrub` replaces it rather than leaving that to be found in
+     * production.
      */
     private function userText(string $value): string
     {
-        $clean = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) ?? $value;
+        $clean = (string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value);
+        $clean = mb_scrub($clean, 'UTF-8');
+        $clean = str_replace(['«', '»'], ['“', '”'], $clean);
         $clean = trim($clean);
 
         return '«'.$clean.'»';
