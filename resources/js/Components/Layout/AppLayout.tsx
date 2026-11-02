@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutDashboard, Scale, Settings, Target, TrendingUp, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight, LogOut } from 'lucide-react';
+import { LayoutDashboard, Scale, Settings, Target, X, ChevronLeft, ChevronRight, Sun, Moon, Menu, Eye, EyeOff, Sparkles, ArrowLeftRight, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrivacyContext } from '@/lib/privacy';
 import { ToastContext, type ToastType } from '@/lib/toast';
@@ -20,6 +20,16 @@ const navItems = [
     { href: '/advisor', label: 'Consulente AI', icon: Sparkles },
     { href: '/settings', label: 'Impostazioni', icon: Settings },
 ];
+
+function AppLogo() {
+    return (
+        <svg viewBox="0 0 64 64" className="w-6 h-6 shrink-0" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#121212" />
+            <path d="M12 22 L22 44 L32 28 L42 40 L52 16" fill="none" stroke="#10B981" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="52" cy="16" r="5" fill="#fff" />
+        </svg>
+    );
+}
 
 interface Toast {
     id: number;
@@ -236,7 +246,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                     <Menu className="w-5 h-5" />
                 </button>
-                <TrendingUp className="w-5 h-5 text-primary shrink-0" />
+                <AppLogo />
                 <span className="font-bold text-base text-foreground">Wealth Tracker</span>
                 <div className="ml-auto">
                     <NotificationBell variant="icon" direction="down" />
@@ -268,7 +278,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     'flex items-center border-b border-border h-[60px] overflow-hidden',
                     showCollapsed ? 'justify-center px-0' : 'gap-2 px-4',
                 )}>
-                    <TrendingUp className="w-5 h-5 text-primary shrink-0" />
+                    <AppLogo />
                     {!showCollapsed && (
                         <span className="font-bold text-base text-foreground whitespace-nowrap">Wealth Tracker</span>
                     )}
