@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/vip-pana/wealth-tracker/compare/v1.12.0...v1.13.0) (2026-11-02)
+
+
+### Features
+
+* **ui:** replace the app logo with the new "W line" mark ([#124](https://github.com/vip-pana/wealth-tracker/issues/124)) ([ff5c9bb](https://github.com/vip-pana/wealth-tracker/commit/ff5c9bbbc11d867b89097e8efd4990468ed06d1d))
+
+
+### Chores
+
+* **deploy:** add health-tracker to the deploy wrapper whitelist ([#122](https://github.com/vip-pana/wealth-tracker/issues/122)) ([db61a6c](https://github.com/vip-pana/wealth-tracker/commit/db61a6ca59f5e1ce3a237bc21d36107788b09705))
+
 ## [1.12.0](https://github.com/vip-pana/wealth-tracker/compare/v1.11.0...v1.12.0) (2026-10-30)
 
 
