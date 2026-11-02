@@ -16,6 +16,7 @@
 #   cat > /etc/sudoers.d/deploy <<'EOF'
 #   deploy ALL=(pana) NOPASSWD: /home/pana/wealth-tracker/scripts/deploy-release.sh
 #   deploy ALL=(pana) NOPASSWD: /home/pana/funeral-docs/scripts/deploy-release.sh
+#   deploy ALL=(pana) NOPASSWD: /home/pana/health-tracker/scripts/deploy-release.sh
 #   EOF
 #   chmod 440 /etc/sudoers.d/deploy && visudo -c
 #
@@ -36,7 +37,7 @@ set -euo pipefail
 
 # The only deployable apps. Adding one is a branch in resolve_app below plus a
 # line in /etc/sudoers.d/deploy.
-KNOWN_APPS="wealth-tracker funeral-docs"
+KNOWN_APPS="wealth-tracker funeral-docs health-tracker"
 
 # Maps an app name to its deploy script. A `case` rather than an associative
 # array so this runs under any bash — including the 3.2 on a Mac, where an
@@ -48,6 +49,7 @@ resolve_app() {
     case "$1" in
         wealth-tracker) echo /home/pana/wealth-tracker/scripts/deploy-release.sh ;;
         funeral-docs)   echo /home/pana/funeral-docs/scripts/deploy-release.sh ;;
+        health-tracker) echo /home/pana/health-tracker/scripts/deploy-release.sh ;;
         *)              return 1 ;;
     esac
 }
