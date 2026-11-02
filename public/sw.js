@@ -1,7 +1,7 @@
 // Deliberately minimal: the app shows live financial data, so nothing that can
 // go stale is ever cached. Only hashed build assets (immutable by definition)
 // and the offline page are stored; every other request goes to the network.
-const CACHE = 'wealth-tracker-v1';
+const CACHE = 'wealth-tracker-v2';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
